@@ -13,7 +13,8 @@
     "db:studio": "drizzle-kit studio",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
-    "db:promote": "tsx src/db/promote.ts"
+    "db:promote": "tsx src/db/promote.ts",
+    "db:demo-off": "tsx src/db/demo-off.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

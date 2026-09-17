@@ -96,6 +96,7 @@ All seeded users share the password `Password@123`. Every person, university and
 | `npm run db:migrate` | Apply migrations |
 | `npm run db:seed` | Reset and load sample data |
 | `npm run db:promote -- you@example.com` | Make an existing account a super admin (safe to run against production) |
+| `npm run db:demo-off` | Switch off every sample `.test` account and scramble its password. Add `--delete-enquiries` to drop the sample enquiries too |
 | `npm run db:studio` | Browse the database |
 
 ## Project layout
@@ -144,6 +145,7 @@ tests/                          node:test unit tests
 
 ## Before going live
 
+- Run `npm run db:demo-off` so the seeded `.test` accounts (which all share one password) can no longer sign in.
 - Set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` with a private `student-documents` bucket, so uploads survive a deploy (`src/server/storage.ts` falls back to local disk).
 - Set `WHATSAPP_PROVIDER=meta` with approved message templates (free text only works inside the 24-hour window).
 - Email the one-time password to the user instead of showing it to the person doing the reset.
