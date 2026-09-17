@@ -24,10 +24,11 @@ This repository currently contains **Phase 0 basics and Phase 1 (core pipeline)*
 | WhatsApp | System | Outbound adapter (`console` for development, `meta` for WhatsApp Cloud API) and an inbound webhook that verifies Meta's signature and posts student replies into the Student channel. |
 
 | Program search | All | Search the catalogue by keyword, destination, level, intake and English requirement, with quick filters. Pick a student and every row shows eligible, on track (including practice scores from Medcity's own test platform) or not yet, with the reason. Apply straight from a result. |
+| Enquiries | Partners, staff | Every walk-in, call, website form and referral before a student file exists. Owner, stage (new, contacted, qualified, in counselling, converted, lost), follow-up date with overdue highlighting, a history line per contact, and one click to register the person as a student, which closes the enquiry as converted. Partners see their own branch; the Overseas team sees every branch. |
 | Password safety | All | Temporary passwords force a change on first sign in; sign in is rate limited per account and per caller. |
 | Document storage | All | Supabase Storage in production, local disk in development. |
 
-Nav items marked P3 / P4 are placeholders for later phases (wallet, commission, learning, insights). Enquiries is the remaining Phase 2 module.
+Nav items marked P3 / P4 are placeholders for later phases (wallet, commission, learning, insights). Phase 1 and Phase 2 are complete.
 
 ## Design
 
@@ -155,7 +156,7 @@ The Hostinger build does not touch the database, so a migration is applied on pu
 npm run db:migrate
 ```
 
-`drizzle/0002_super_admin_role.sql` adds `SUPER_ADMIN` to the role enum. If you would rather do it in the Supabase SQL editor:
+`drizzle/0002_super_admin_role.sql` adds `SUPER_ADMIN` to the role enum and `drizzle/0003_enquiries.sql` adds the enquiry tables. If you would rather do it in the Supabase SQL editor:
 
 ```sql
 alter type "public"."role" add value 'SUPER_ADMIN';
@@ -174,6 +175,6 @@ Run the two statements separately: Postgres will not let a new enum value be use
 | Partner owner | Own organisation | Register students, apply, upload documents, answer requests, manage their own counsellors' work |
 | Counsellor | Own organisation | Same as partner owner, without full passport numbers |
 
-## Next: Phase 2
+## Next: Phase 3 and 4
 
-Enquiries, the public student registration form (QR) and student portal in English and Malayalam, Medcity CRM lead sync, and the parent / sponsor view.
+Wallet and commission, the public student registration form (QR) and student portal in English and Malayalam, Medcity CRM lead sync, and the parent / sponsor view.

@@ -19,6 +19,7 @@ import {
   recentChanges,
   todayCounts,
 } from "@/server/dashboard";
+import { enquiryCounts } from "@/server/enquiries";
 import {
   BarList,
   Card,
@@ -41,7 +42,7 @@ export default async function AdminDashboard({ user, f }: { user: SessionUser; f
   const { applications: a, countries: c } = schema;
   const filters: ApplicationFilters = { from: f.from, to: f.to, country: f.country, intakeYear: f.intakeYear, intakeMonth: f.intakeMonth };
 
-  const [kpis, groups, late, mine, today, aging, unassignedRows, deadlines, recent, partners, countries, destinations, pathways, points, load] =
+  const [kpis, groups, late, mine, today, aging, unassignedRows, deadlines, recent, partners, countries, destinations, pathways, points, load, enquiries] =
     await Promise.all([
       kpiTotals(user, applicationWhere(user, filters)),
       groupCounts(user),
@@ -58,6 +59,7 @@ export default async function AdminDashboard({ user, f }: { user: SessionUser; f
       pathwayMix(user),
       monthlyPoints(user, 6),
       officerLoad(user),
+      enquiryCounts(user),
     ]);
 
   const qs = (extra: Record<string, string>) =>
@@ -198,6 +200,8 @@ export default async function AdminDashboard({ user, f }: { user: SessionUser; f
                 { label: "Non-enrolment", value: kpis.non_enrolment, href: `/applications?${qs({ kpi: "non_enrolment" })}`, tone: "warn" },
                 { label: "On hold", value: groups.HOLD, href: "/applications?group=HOLD" },
                 { label: "Closed", value: groups.CLOSED, href: "/applications?group=CLOSED" },
+                { label: "Open enquiries", value: enquiries.open, href: "/enquiries?stage=OPEN" },
+                { label: "Follow ups overdue", value: enquiries.overdue, href: "/enquiries?due=overdue", tone: enquiries.overdue ? "bad" : undefined },
               ]}
             />
           </Card>

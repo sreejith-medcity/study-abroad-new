@@ -5,6 +5,7 @@ import type { SessionUser } from "@/lib/auth";
 import { fmtDate, fullName, greetingName } from "@/lib/format";
 import { applicationWhere, type ApplicationFilters } from "@/server/queries";
 import { agingList, countryMix, deadlineList, funnel, kpiTotals, monthlyPoints, myWork, recentChanges, teamLoad } from "@/server/dashboard";
+import { STAGE_LABEL, STAGE_TONE, enquiryCounts, followUpQueue } from "@/server/enquiries";
 import {
   BarList,
   Card,
@@ -22,7 +23,7 @@ import {
   Th,
   TrendChart,
 } from "@/components/ui";
-import { IconAlert, IconApplications, IconChat, IconCheck, IconClock, IconDoc, IconPlus, IconSearch, IconSpark } from "@/components/icons";
+import { IconAlert, IconApplications, IconChat, IconCheck, IconClock, IconDoc, IconEnquiry, IconPlus, IconSearch, IconSpark } from "@/components/icons";
 import { AgingCard, DashboardFilters, DeadlinesCard, RecentChangesCard } from "./parts";
 
 const TILES = [
@@ -63,7 +64,7 @@ export default async function PartnerDashboard({
   const filters: ApplicationFilters = { from: f.from, to: f.to, country: f.country, intakeYear: f.intakeYear, intakeMonth: f.intakeMonth };
   const mine = variant === "counsellor" ? eq(s.assignedToId, user.id) : undefined;
 
-  const [kpis, work, deadlines, recent, org, countries, destinations, points, steps] = await Promise.all([
+  const [kpis, work, deadlines, recent, org, countries, destinations, points, steps, enquiries, followUps] = await Promise.all([
     kpiTotals(user, and(applicationWhere(user, filters), mine)),
     myWork(user),
     deadlineList(user, 14, 6, mine),
@@ -73,6 +74,8 @@ export default async function PartnerDashboard({
     countryMix(user, 5),
     monthlyPoints(user, 6),
     funnel(user),
+    enquiryCounts(user),
+    followUpQueue(user, 5),
   ]);
 
   const yearAgo = new Date(Date.now() - 365 * 86400000);
@@ -117,6 +120,7 @@ export default async function PartnerDashboard({
             ? [
                 { label: "Live applications", value: kpis.all - (kpis.visa_received ?? 0) },
                 { label: "Waiting on us", value: kpis.pending_partner },
+                { label: "Open enquiries", value: enquiries.open },
                 { label: "Offers", value: kpis.offers },
                 { label: "Active students", value: Number(openStudents) },
               ]
@@ -124,6 +128,7 @@ export default async function PartnerDashboard({
                 { label: "My students", value: work.students },
                 { label: "Waiting on me", value: work.waiting },
                 { label: "Live applications", value: work.live },
+                { label: "Follow ups due", value: enquiries.overdue + enquiries.dueToday },
                 { label: "Student replies", value: work.replies.length },
               ]
         }
@@ -180,6 +185,36 @@ export default async function PartnerDashboard({
               )}
             </Card>
           )}
+
+          <Card>
+            <CardHeader
+              title="Enquiries to call"
+              subtitle={enquiries.overdue > 0 ? `${enquiries.overdue} overdue, oldest first` : "Oldest follow-up date first"}
+              action={<Link href="/enquiries" className="text-[13px] font-medium text-brand-600 hover:underline">All enquiries</Link>}
+            />
+            {followUps.length === 0 ? (
+              <EmptyState title="Nothing to chase" icon={<IconEnquiry className="size-5" />}>
+                New walk-ins and calls appear here with their follow-up date.
+              </EmptyState>
+            ) : (
+              <ul>
+                {followUps.map((q) => {
+                  const overdue = q.nextFollowUpAt && q.nextFollowUpAt.getTime() < Date.now();
+                  return (
+                    <li key={q.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line px-4 py-3 last:border-0">
+                      <Link href={`/enquiries/${q.id}`} className="font-medium hover:underline">{q.name}</Link>
+                      <span className="text-[13px] text-muted tabular">{q.phone}</span>
+                      <span className="text-[13px] text-muted">{q.interestCountry ?? "Destination open"}</span>
+                      <span className="ml-auto flex items-center gap-2">
+                        <Chip tone={STAGE_TONE[q.stage]}>{STAGE_LABEL[q.stage]}</Chip>
+                        <Chip tone={overdue ? "bad" : "neutral"}>{q.nextFollowUpAt ? fmtDate(q.nextFollowUpAt) : "No date"}</Chip>
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </Card>
 
           <div className="grid gap-5 lg:grid-cols-2">
             <Card>

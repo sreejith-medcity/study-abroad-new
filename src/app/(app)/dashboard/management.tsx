@@ -15,6 +15,7 @@ import {
   recentChanges,
   todayCounts,
 } from "@/server/dashboard";
+import { enquiryCounts } from "@/server/enquiries";
 import {
   BarList,
   Card,
@@ -42,7 +43,7 @@ export default async function ManagementDashboard({ user, f }: { user: SessionUs
   const { countries: c } = schema;
   const filters: ApplicationFilters = { from: f.from, to: f.to, country: f.country, intakeYear: f.intakeYear, intakeMonth: f.intakeMonth };
 
-  const [kpis, steps, points, groups, late, partners, destinations, pathways, recent, today, countries] = await Promise.all([
+  const [kpis, steps, points, groups, late, partners, destinations, pathways, recent, today, countries, enquiries] = await Promise.all([
     kpiTotals(user, applicationWhere(user, filters)),
     funnel(user),
     monthlyPoints(user, 12),
@@ -54,6 +55,7 @@ export default async function ManagementDashboard({ user, f }: { user: SessionUs
     recentChanges(user, 6),
     todayCounts(user),
     db.select().from(c).orderBy(asc(c.name)),
+    enquiryCounts(user),
   ]);
 
   const registered = steps[0]?.value ?? 0;
@@ -93,12 +95,13 @@ export default async function ManagementDashboard({ user, f }: { user: SessionUs
           <div className="grid gap-5 lg:grid-cols-2">
             <Card>
               <CardHeader title="Conversion funnel" subtitle="Registered through to enrolled" />
-              <FunnelSteps steps={steps} />
+              <FunnelSteps steps={[{ label: "Enquiries logged", value: enquiries.total, href: "/enquiries" }, ...steps]} />
             </Card>
             <Card>
               <CardHeader title="Rates" subtitle="Stage to stage, all time" />
               <DataList
                 rows={[
+                  { label: "Enquiries that registered", value: rate(registered, enquiries.total) },
                   { label: "Students who applied", value: rate(applied, registered) },
                   { label: "Applications with an offer", value: rate(offers, applied), tone: "ok" },
                   { label: "Offers that paid a fee", value: rate(steps[3]?.value ?? 0, offers) },

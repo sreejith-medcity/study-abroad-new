@@ -16,7 +16,7 @@ const PASSWORD = "Password@123";
 
 async function main() {
   console.log("Resetting data...");
-  await db.execute(sql`TRUNCATE audit_logs, outbound_messages, notifications, documents, comments, status_history,
+  await db.execute(sql`TRUNCATE enquiry_notes, enquiries, audit_logs, outbound_messages, notifications, documents, comments, status_history,
     applications, edit_requests, work_experience, test_scores, academic_records, students, programs, universities,
     countries, status_definitions, document_types, users, organizations RESTART IDENTITY CASCADE`);
   await db.execute(sql`DROP SEQUENCE IF EXISTS application_ack_seq`);
@@ -220,6 +220,54 @@ async function main() {
     { actorId: admin.id, action: "passport.reveal", entityType: "student", entityId: firstStudentId, meta: {}, createdAt: months(4) },
     { actorId: null, action: "whatsapp.inbound", entityType: "application", entityId: lastAppId, meta: { type: "text" }, createdAt: months(1) },
   );
+  // Enquiries: the stage before a student file exists.
+  const days = (n: number) => new Date(Date.now() + n * 86400000);
+  const enquirySeed: {
+    name: string; phone: string; email?: string; city: string;
+    source: schema.EnquirySource; stage: schema.EnquiryStage;
+    country?: string; pathway?: schema.Pathway; intake?: [number, number];
+    budget?: number; owner: string; org: { id: string }; next?: number; note: string; lost?: string;
+  }[] = [
+    { name: "Nandana Prakash", phone: "+91 98470 11001", email: "nandana.prakash@example.com", city: "Kottayam", source: "WALK_IN", stage: "NEW", country: "United Kingdom", pathway: "DEGREE", intake: [9, 2027], budget: 18, owner: ukDocs.id, org: kottayam, next: 1, note: "Walked in with her father. BSc Nursing final year, wants a UK masters." },
+    { name: "Abhijith Menon", phone: "+91 98470 11002", city: "Changanassery", source: "PHONE", stage: "CONTACTED", country: "Germany", pathway: "AUSBILDUNG", intake: [4, 2027], budget: 6, owner: deDocs.id, org: kottayam, next: 3, note: "Plus two done, asked about Ausbildung. Explained the A2 requirement." },
+    { name: "Sneha Rajan", phone: "+91 98470 11003", email: "sneha.rajan@example.com", city: "Kochi", source: "WEBSITE", stage: "QUALIFIED", country: "Ireland", pathway: "DEGREE", intake: [1, 2027], budget: 22, owner: partnerKochi.id, org: kochi, next: -2, note: "Filled the website form. IELTS 7.0 already, shortlisting universities." },
+    { name: "Fahad Rahman", phone: "+91 98470 11004", city: "Thrissur", source: "REFERRAL", stage: "COUNSELLING", country: "Germany", pathway: "NURSING", intake: [6, 2027], budget: 8, owner: partnerTsr.id, org: thrissur, next: 5, note: "Referred by a former student. GNM with two years in a Thrissur hospital." },
+    { name: "Meera Suresh", phone: "+91 98470 11005", email: "meera.suresh@example.com", city: "Pala", source: "EVENT", stage: "CONTACTED", country: "Australia", pathway: "DEGREE", intake: [2, 2027], budget: 25, owner: ukDocs.id, org: kottayam, note: "Met at the Pala seminar. Wants to compare Australia and Ireland." },
+    { name: "Vishnu Pillai", phone: "+91 98470 11006", city: "Kottayam", source: "SOCIAL", stage: "LOST", country: "United Kingdom", pathway: "DEGREE", owner: ukDocs.id, org: kottayam, note: "Instagram enquiry, wanted a full scholarship.", lost: "Budget below what the UK route needs" },
+  ];
+
+  for (const q of enquirySeed) {
+    const [row] = await db
+      .insert(schema.enquiries)
+      .values({
+        orgId: q.org.id,
+        createdById: q.owner,
+        assignedToId: q.owner,
+        name: q.name,
+        phone: q.phone,
+        email: q.email,
+        city: q.city,
+        source: q.source,
+        stage: q.stage,
+        interestCountry: q.country,
+        interestPathway: q.pathway,
+        intakeMonth: q.intake?.[0],
+        intakeYear: q.intake?.[1],
+        budgetLakhs: q.budget,
+        notes: q.note,
+        nextFollowUpAt: q.next === undefined ? null : days(q.next),
+        lastContactedAt: q.stage === "NEW" ? null : months(2),
+        lostReason: q.lost,
+        createdAt: months(Math.floor(Math.random() * 20) + 2),
+      })
+      .returning();
+    await db.insert(schema.enquiryNotes).values({ enquiryId: row.id, authorId: q.owner, body: q.note, stageAfter: q.stage === "NEW" ? null : q.stage });
+    if (q.lost) {
+      await db.insert(schema.enquiryNotes).values({ enquiryId: row.id, authorId: q.owner, body: `Closed as lost: ${q.lost}`, stageAfter: "LOST" });
+    }
+    trail.push({ actorId: q.owner, action: "enquiry.create", entityType: "enquiry", entityId: row.id, meta: { source: q.source }, createdAt: row.createdAt });
+  }
+
   await db.insert(schema.auditLogs).values(trail);
 
   await db.insert(schema.notifications).values([

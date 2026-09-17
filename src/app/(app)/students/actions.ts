@@ -63,6 +63,25 @@ export async function createStudentAction(_: FormState, formData: FormData): Pro
     })
     .returning();
   await audit(user.id, "student.create", "student", student.id, { consent: true });
+
+  // Registered straight from an enquiry: close the enquiry against this student.
+  const enquiryId = String(formData.get("enquiryId") || "");
+  if (enquiryId) {
+    const enquiry = await db.query.enquiries.findFirst({ where: eq(schema.enquiries.id, enquiryId) });
+    if (enquiry && (isStaff(user) || enquiry.orgId === user.orgId)) {
+      await db
+        .update(schema.enquiries)
+        .set({ stage: "CONVERTED", studentId: student.id, nextFollowUpAt: null, updatedAt: new Date() })
+        .where(eq(schema.enquiries.id, enquiry.id));
+      await db.insert(schema.enquiryNotes).values({
+        enquiryId: enquiry.id,
+        authorId: user.id,
+        body: `Registered as a student: ${d.firstName} ${d.lastName}.`,
+        stageAfter: "CONVERTED",
+      });
+      await audit(user.id, "enquiry.convert", "enquiry", enquiry.id, { studentId: student.id });
+    }
+  }
   redirect(`/students/${student.id}/profile`);
 }
 

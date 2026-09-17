@@ -46,6 +46,17 @@ export const feeStatus = pgEnum("fee_status", ["NOT_APPLICABLE", "DUE", "PAID"])
 export const commentChannel = pgEnum("comment_channel", ["TEAM", "STUDENT"]);
 export const messageSource = pgEnum("message_source", ["WEB", "WHATSAPP", "SYSTEM"]);
 export const editRequestStatus = pgEnum("edit_request_status", ["OPEN", "APPROVED", "REJECTED"]);
+export const enquirySource = pgEnum("enquiry_source", [
+  "WALK_IN",
+  "PHONE",
+  "WHATSAPP",
+  "WEBSITE",
+  "REFERRAL",
+  "EVENT",
+  "SOCIAL",
+  "OTHER",
+]);
+export const enquiryStage = pgEnum("enquiry_stage", ["NEW", "CONTACTED", "QUALIFIED", "COUNSELLING", "CONVERTED", "LOST"]);
 
 // ---------- Organisation and users ----------
 
@@ -381,6 +392,57 @@ export const outboundMessages = pgTable("outbound_messages", {
   createdAt: createdAt(),
 });
 
+// ---------- Enquiries ----------
+
+export const enquiries = pgTable(
+  "enquiries",
+  {
+    id: id(),
+    orgId: text("org_id")
+      .notNull()
+      .references(() => organizations.id),
+    createdById: text("created_by_id")
+      .notNull()
+      .references(() => users.id),
+    assignedToId: text("assigned_to_id").references(() => users.id),
+    name: text("name").notNull(),
+    phone: text("phone").notNull(),
+    email: text("email"),
+    city: text("city"),
+    source: enquirySource("source").notNull().default("WALK_IN"),
+    stage: enquiryStage("stage").notNull().default("NEW"),
+    interestCountry: text("interest_country"),
+    interestPathway: pathway("interest_pathway"),
+    intakeMonth: integer("intake_month"),
+    intakeYear: integer("intake_year"),
+    budgetLakhs: real("budget_lakhs"),
+    notes: text("notes"),
+    nextFollowUpAt: timestamp("next_follow_up_at", { withTimezone: true }),
+    lastContactedAt: timestamp("last_contacted_at", { withTimezone: true }),
+    lostReason: text("lost_reason"),
+    studentId: text("student_id").references(() => students.id),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("enquiries_org_idx").on(t.orgId, t.stage), index("enquiries_follow_up_idx").on(t.nextFollowUpAt)],
+);
+
+/** One row per contact attempt, so the follow-up history is never overwritten. */
+export const enquiryNotes = pgTable(
+  "enquiry_notes",
+  {
+    id: id(),
+    enquiryId: text("enquiry_id")
+      .notNull()
+      .references(() => enquiries.id, { onDelete: "cascade" }),
+    authorId: text("author_id").references(() => users.id),
+    body: text("body").notNull(),
+    stageAfter: enquiryStage("stage_after"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("enquiry_notes_idx").on(t.enquiryId)],
+);
+
 export const auditLogs = pgTable(
   "audit_logs",
   {
@@ -489,6 +551,21 @@ export const documentsRelations = relations(documents, ({ one }) => ({
   uploadedBy: one(users, { fields: [documents.uploadedById], references: [users.id] }),
 }));
 
+export const enquiriesRelations = relations(enquiries, ({ one, many }) => ({
+  org: one(organizations, { fields: [enquiries.orgId], references: [organizations.id] }),
+  assignedTo: one(users, { fields: [enquiries.assignedToId], references: [users.id] }),
+  createdBy: one(users, { fields: [enquiries.createdById], references: [users.id], relationName: "enquiryCreator" }),
+  student: one(students, { fields: [enquiries.studentId], references: [students.id] }),
+  notes: many(enquiryNotes),
+}));
+
+export const enquiryNotesRelations = relations(enquiryNotes, ({ one }) => ({
+  enquiry: one(enquiries, { fields: [enquiryNotes.enquiryId], references: [enquiries.id] }),
+  author: one(users, { fields: [enquiryNotes.authorId], references: [users.id] }),
+}));
+
 export type Role = (typeof role.enumValues)[number];
 export type Pathway = (typeof pathway.enumValues)[number];
 export type StatusGroup = (typeof statusGroup.enumValues)[number];
+export type EnquiryStage = (typeof enquiryStage.enumValues)[number];
+export type EnquirySource = (typeof enquirySource.enumValues)[number];
