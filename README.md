@@ -22,6 +22,8 @@ This repository currently contains **Phase 0 basics and Phase 1 (core pipeline)*
 | Audit log | Super admin | Every recorded action with who, when, which record and the details, filtered by person, action, record type and date, with CSV export. |
 | Commission | Partners, staff | Rules per country, university or program (percentage of tuition or a flat fee) with the partner's share. A placement that reaches a visa or enrolment accrues its commission automatically, then moves expected, invoiced, received, paid to the partner. Management sees the same numbers read-only. |
 | Wallet | Partners | The branch's account with Medcity: commission credits, bonuses and adjustments, running balance, payout requests, and the transfer once the Overseas team marks it paid. |
+| Insights | Staff | Conversion grouped by partner, destination, university, pathway or officer, with offer and visa rates; median days to offer and to visa read from the status history; intakes ahead; which enquiry sources convert; earnings by destination; CSV export. Management reads the same page. |
+| Learning resources | All | Library of guides, templates, policies, training and marketing material. Each item is a file or a link, tagged by pathway and destination, visible to the roles it is meant for. The Overseas team publishes, pins and retires items. |
 | Notifications | All | Bell with unread count, list, mark read. Raised on new applications, status changes, comments and WhatsApp replies. |
 | WhatsApp | System | Outbound adapter (`console` for development, `meta` for WhatsApp Cloud API) and an inbound webhook that verifies Meta's signature and posts student replies into the Student channel. |
 
@@ -30,7 +32,7 @@ This repository currently contains **Phase 0 basics and Phase 1 (core pipeline)*
 | Password safety | All | Temporary passwords force a change on first sign in; sign in is rate limited per account and per caller. |
 | Document storage | All | Supabase Storage in production, local disk in development. |
 
-Nav items marked P4 are placeholders for the last phase (learning resources, insights). Phases 1 to 3 are complete.
+All four phases are built. Every nav item leads somewhere.
 
 ## Design
 
@@ -89,7 +91,7 @@ All seeded users share the password `Password@123`. Every person, university and
 | `npm run build` / `npm start` | Production build and server |
 | `npm run typecheck` | TypeScript check |
 | `npm run lint` | ESLint |
-| `npm test` | Unit tests (pre-submission rules, CSV import, formatting, the role matrix) |
+| `npm test` | Unit tests (pre-submission rules, CSV import, formatting, the role matrix, commission arithmetic) |
 | `npm run db:generate` | Create a migration after changing `src/db/schema.ts` |
 | `npm run db:migrate` | Apply migrations |
 | `npm run db:seed` | Reset and load sample data |
@@ -159,7 +161,7 @@ The Hostinger build does not touch the database, so a migration is applied on pu
 npm run db:migrate
 ```
 
-`drizzle/0002_super_admin_role.sql` adds `SUPER_ADMIN` to the role enum `drizzle/0003_enquiries.sql` adds the enquiry tables, and `drizzle/0004_commission_wallet.sql` adds commission rules, commissions, wallet entries and payout requests. If you would rather do it in the Supabase SQL editor:
+`drizzle/0002_super_admin_role.sql` adds `SUPER_ADMIN` to the role enum `drizzle/0003_enquiries.sql` adds the enquiry tables, and `drizzle/0004_commission_wallet.sql` adds commission rules, commissions, wallet entries and payout requests, and `drizzle/0005_resources.sql` adds the learning library. If you would rather do it in the Supabase SQL editor:
 
 ```sql
 alter type "public"."role" add value 'SUPER_ADMIN';
@@ -178,6 +180,6 @@ Run the two statements separately: Postgres will not let a new enum value be use
 | Partner owner | Own organisation | Register students, apply, upload documents, answer requests, manage their own counsellors' work |
 | Counsellor | Own organisation | Same as partner owner, without full passport numbers |
 
-## Next: Phase 4
+## Next
 
-Insights reporting, the learning resource library, the public student registration form (QR) and student portal in English and Malayalam, Medcity CRM lead sync, and the parent / sponsor view.
+The public student registration form (QR) and student portal in English and Malayalam, the public student registration form (QR) and student portal in English and Malayalam, Medcity CRM lead sync, and the parent / sponsor view.

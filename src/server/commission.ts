@@ -4,6 +4,9 @@ import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { orgScope } from "@/lib/permissions";
 import type { CommissionStatus } from "@/db/schema";
+import { amountsFor, fxToInr, inr, money } from "@/lib/money";
+
+export { amountsFor, fxToInr, inr, money };
 
 const {
   commissions: cm,
@@ -38,25 +41,6 @@ export const STATUS_TONE: Record<CommissionStatus, "neutral" | "info" | "warn" |
 /** Statuses that earn the milestone: the placement actually happened. */
 export const EARNING_CODES = ["VISA_RECEIVED", "ENROLLED", "JOINED", "DEPLOYED"];
 
-/**
- * Indicative rates so every commission carries a rupee figure from the start.
- * The real amount is entered when the partner's share is settled, which
- * overwrites this estimate. Override through COMMISSION_FX, for example
- * COMMISSION_FX="GBP:115,EUR:98".
- */
-const DEFAULT_FX: Record<string, number> = { INR: 1, GBP: 112, EUR: 96, AUD: 58, CAD: 62, USD: 88 };
-
-export function fxToInr(currency: string) {
-  const overrides = (process.env.COMMISSION_FX ?? "")
-    .split(",")
-    .map((pair) => pair.split(":"))
-    .filter((parts) => parts.length === 2);
-  for (const [code, rate] of overrides) {
-    const value = Number(rate);
-    if (code && !Number.isNaN(value) && value > 0) DEFAULT_FX[code.trim().toUpperCase()] = value;
-  }
-  return DEFAULT_FX[currency.toUpperCase()] ?? 1;
-}
 
 /**
  * The rule that applies to one application: the most specific live rule wins,
@@ -81,14 +65,6 @@ export async function findRule(programId: string, universityId: string, countryI
   return rules.sort((x, y) => score(y) - score(x))[0];
 }
 
-export function amountsFor(rule: { basis: string; percentOfTuition: number | null; flatAmount: number | null; partnerSharePercent: number }, tuition: number | null) {
-  const gross =
-    rule.basis === "FLAT"
-      ? Math.round(rule.flatAmount ?? 0)
-      : Math.round(((tuition ?? 0) * (rule.percentOfTuition ?? 0)) / 100);
-  const partner = Math.round((gross * rule.partnerSharePercent) / 100);
-  return { gross, partner };
-}
 
 /**
  * Creates the commission row for an application that just reached a paying
@@ -315,11 +291,3 @@ export async function rulesWithScope() {
     .orderBy(desc(cr.active), asc(cr.name));
 }
 
-/** Rupees, no decimals: every amount in this module is a whole unit. */
-export function inr(amount: number | null | undefined) {
-  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount ?? 0);
-}
-
-export function money(amount: number | null | undefined, currency: string) {
-  return new Intl.NumberFormat("en-IN", { style: "currency", currency, maximumFractionDigits: 0 }).format(amount ?? 0);
-}

@@ -16,7 +16,7 @@ const PASSWORD = "Password@123";
 
 async function main() {
   console.log("Resetting data...");
-  await db.execute(sql`TRUNCATE wallet_entries, payout_requests, commissions, commission_rules, enquiry_notes, enquiries, audit_logs, outbound_messages, notifications, documents, comments, status_history,
+  await db.execute(sql`TRUNCATE resources, wallet_entries, payout_requests, commissions, commission_rules, enquiry_notes, enquiries, audit_logs, outbound_messages, notifications, documents, comments, status_history,
     applications, edit_requests, work_experience, test_scores, academic_records, students, programs, universities,
     countries, status_definitions, document_types, users, organizations RESTART IDENTITY CASCADE`);
   await db.execute(sql`DROP SEQUENCE IF EXISTS application_ack_seq`);
@@ -198,7 +198,19 @@ async function main() {
           deadline: a.deadline ? new Date(a.deadline) : null, createdAt: created, statusChangedAt: created,
         })
         .returning();
-      await db.insert(schema.statusHistory).values({ applicationId: app.id, toStatusId: statusId, changedById: a.officer?.id ?? s.creator.id, createdAt: created });
+      // Two rows when the application has moved on, so "days to offer" means something.
+      const firstStatusId = statusIds[`${pw}.${pw === "DEGREE" ? "ASSESSMENT" : pw === "AUSBILDUNG" ? "LANGUAGE_PENDING" : "CREDENTIAL_CHECK"}`] ?? statusId;
+      await db.insert(schema.statusHistory).values({ applicationId: app.id, toStatusId: firstStatusId, changedById: s.creator.id, createdAt: created });
+      if (firstStatusId !== statusId) {
+        const movedAt = new Date(Math.min(Date.now(), created.getTime() + (12 + Math.floor(Math.random() * 30)) * 86400000));
+        await db.insert(schema.statusHistory).values({
+          applicationId: app.id,
+          fromStatusId: firstStatusId,
+          toStatusId: statusId,
+          changedById: a.officer?.id ?? s.creator.id,
+          createdAt: movedAt,
+        });
+      }
       lastAppId = app.id;
       logged(s.creator.id, "application.create", "application", app.id, created, { programId: prog(a.program).id, intake: `${a.month}/${a.year}` });
       if (a.status !== "ASSESSMENT") {
@@ -350,6 +362,60 @@ async function main() {
       trail.push({ actorId: admin.id, action: "commission.status", entityType: "commission", entityId: commission.id, meta: { from: "RECEIVED", to: "SETTLED" }, createdAt: months(1) });
     }
   }
+
+  // Learning library: a few starters so the shelf is not bare.
+  await db.insert(schema.resources).values([
+    {
+      title: "UK student visa: document checklist",
+      summary: "Everything a student needs before the visa appointment, in the order the caseworker expects it.",
+      kind: "GUIDE" as const,
+      countryId: c.GB,
+      pathway: "DEGREE" as const,
+      url: "https://www.gov.uk/student-visa",
+      audience: ["PARTNER", "COUNSELLOR"],
+      pinned: true,
+      createdById: admin.id,
+    },
+    {
+      title: "Statement of purpose: structure that works",
+      summary: "The five paragraphs we ask for, with the study gap and finance sections spelled out.",
+      kind: "TEMPLATE" as const,
+      audience: ["PARTNER", "COUNSELLOR"],
+      pinned: true,
+      createdById: admin.id,
+    },
+    {
+      title: "Ausbildung: German level and timeline",
+      summary: "A2 to B1 expectations, when interviews happen, and what the employer decides.",
+      kind: "TRAINING" as const,
+      countryId: c.DE,
+      pathway: "AUSBILDUNG" as const,
+      audience: ["PARTNER", "COUNSELLOR"],
+      createdById: officerDe.id,
+    },
+    {
+      title: "Data protection: handling passports and marksheets",
+      summary: "What we may store, who may see a full passport number, and how long documents are kept.",
+      kind: "POLICY" as const,
+      audience: ["PARTNER", "COUNSELLOR", "ADMIN", "MANAGEMENT"],
+      createdById: admin.id,
+    },
+    {
+      title: "Nurse registration: NMC and NCLEX in plain words",
+      summary: "The order of CBT, OET or IELTS, and the board application, with realistic timelines.",
+      kind: "FAQ" as const,
+      pathway: "NURSING" as const,
+      audience: ["PARTNER", "COUNSELLOR"],
+      createdById: officerNurse.id,
+    },
+    {
+      title: "Counter posters for the September intake",
+      summary: "Print-ready posters and WhatsApp cards for branch counters.",
+      kind: "MARKETING" as const,
+      audience: ["PARTNER"],
+      createdById: admin.id,
+    },
+  ]);
 
   await db.insert(schema.auditLogs).values(trail);
 

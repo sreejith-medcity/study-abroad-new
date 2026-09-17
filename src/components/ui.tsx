@@ -260,7 +260,20 @@ const barTone = {
 export type BarItem = { label: string; value: number; hint?: string; href?: string; tone?: keyof typeof barTone };
 
 /** Ranked horizontal bars: destinations, pathways, partners, actions per person. */
-export function BarList({ items, tone = "brand", unit, empty = "Nothing to show yet." }: { items: BarItem[]; tone?: keyof typeof barTone; unit?: string; empty?: string }) {
+export function BarList({
+  items,
+  tone = "brand",
+  unit,
+  empty = "Nothing to show yet.",
+  format,
+}: {
+  items: BarItem[];
+  tone?: keyof typeof barTone;
+  unit?: string;
+  empty?: string;
+  /** Money and other formatted values, when a bare number would not read well. */
+  format?: (value: number) => string;
+}) {
   const max = Math.max(1, ...items.map((i) => i.value));
   if (items.length === 0) return <p className="px-4 py-8 text-center text-[13px] text-muted">{empty}</p>;
   return (
@@ -281,7 +294,7 @@ export function BarList({ items, tone = "brand", unit, empty = "Nothing to show 
                 label
               )}
               <span className="shrink-0 font-semibold tabular text-ink">
-                {item.value}
+                {format ? format(item.value) : item.value}
                 {unit && <span className="ml-0.5 text-xs font-normal text-muted">{unit}</span>}
               </span>
             </div>

@@ -32,7 +32,7 @@ const partnerNav = (home: string): NavGroup[] => [
       { href: "/commission", label: "Commission", icon: "commission" },
     ],
   },
-  { title: "Support", items: [{ href: "/learning", label: "Learning resources", icon: "learning", soon: "P4" }] },
+  { title: "Support", items: [{ href: "/learning", label: "Learning resources", icon: "learning" }] },
 ];
 
 const PARTNER_NAV = partnerNav("Dashboard");
@@ -61,12 +61,16 @@ const ADMIN_NAV: NavGroup[] = [
     items: [
       { href: "/enquiries", label: "Enquiries", icon: "enquiry" },
       { href: "/admin/partners", label: "Partners", icon: "partners" },
-      { href: "/admin/insights", label: "Insights", icon: "insights", soon: "P4" },
+      { href: "/admin/insights", label: "Insights", icon: "insights" },
     ],
   },
   {
     title: "Money",
     items: [{ href: "/admin/commission", label: "Commission", icon: "commission" }],
+  },
+  {
+    title: "Support",
+    items: [{ href: "/learning", label: "Learning resources", icon: "learning" }],
   },
 ];
 
@@ -83,7 +87,8 @@ const MANAGEMENT_NAV: NavGroup[] = [
       { href: "/applications", label: "Applications", icon: "applications" },
       { href: "/students", label: "Students", icon: "students" },
       { href: "/admin/commission", label: "Commission", icon: "commission" },
-      { href: "/admin/insights", label: "Insights", icon: "insights", soon: "P4" },
+      { href: "/admin/insights", label: "Insights", icon: "insights" },
+      { href: "/learning", label: "Learning resources", icon: "learning" },
     ],
   },
 ];
@@ -190,7 +195,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <div className="thin-scroll sticky top-16 max-h-[calc(100vh-4rem)] overflow-y-auto">
             <SideNav groups={groups} />
             <p className="px-5 pb-6 pt-2 text-[11px] leading-relaxed text-muted/70">
-              Phase 1 and 2 are live. Items marked P2 to P4 arrive with later phases.
+              Medcity Overseas partner portal
             </p>
           </div>
         </aside>

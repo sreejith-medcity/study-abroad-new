@@ -67,6 +67,7 @@ export const commissionStatus = pgEnum("commission_status", [
 ]);
 export const walletEntryKind = pgEnum("wallet_entry_kind", ["COMMISSION", "PAYOUT", "BONUS", "ADJUSTMENT"]);
 export const payoutStatus = pgEnum("payout_status", ["REQUESTED", "APPROVED", "PAID", "REJECTED"]);
+export const resourceKind = pgEnum("resource_kind", ["GUIDE", "TEMPLATE", "POLICY", "TRAINING", "MARKETING", "FAQ"]);
 
 // ---------- Organisation and users ----------
 
@@ -499,6 +500,40 @@ export const payoutRequests = pgTable(
   (t) => [index("payout_requests_org_idx").on(t.orgId, t.status)],
 );
 
+// ---------- Learning resources ----------
+
+/**
+ * The shared library: guides, templates, policies and training material.
+ * A resource is either an uploaded file or a link, visible to the roles
+ * listed in audience.
+ */
+export const resources = pgTable(
+  "resources",
+  {
+    id: id(),
+    title: text("title").notNull(),
+    summary: text("summary"),
+    kind: resourceKind("kind").notNull().default("GUIDE"),
+    audience: text("audience").array().notNull().default(sql`'{}'::text[]`),
+    pathway: pathway("pathway"),
+    countryId: text("country_id").references(() => countries.id),
+    url: text("url"),
+    storageKey: text("storage_key"),
+    fileName: text("file_name"),
+    mimeType: text("mime_type"),
+    sizeBytes: integer("size_bytes"),
+    published: boolean("published").notNull().default(true),
+    pinned: boolean("pinned").notNull().default(false),
+    downloads: integer("downloads").notNull().default(0),
+    createdById: text("created_by_id")
+      .notNull()
+      .references(() => users.id),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("resources_kind_idx").on(t.kind, t.published)],
+);
+
 // ---------- Enquiries ----------
 
 export const enquiries = pgTable(
@@ -658,6 +693,11 @@ export const documentsRelations = relations(documents, ({ one }) => ({
   uploadedBy: one(users, { fields: [documents.uploadedById], references: [users.id] }),
 }));
 
+export const resourcesRelations = relations(resources, ({ one }) => ({
+  country: one(countries, { fields: [resources.countryId], references: [countries.id] }),
+  createdBy: one(users, { fields: [resources.createdById], references: [users.id] }),
+}));
+
 export const commissionsRelations = relations(commissions, ({ one }) => ({
   application: one(applications, { fields: [commissions.applicationId], references: [applications.id] }),
   org: one(organizations, { fields: [commissions.orgId], references: [organizations.id] }),
@@ -704,3 +744,4 @@ export type EnquirySource = (typeof enquirySource.enumValues)[number];
 export type CommissionStatus = (typeof commissionStatus.enumValues)[number];
 export type WalletEntryKind = (typeof walletEntryKind.enumValues)[number];
 export type PayoutStatus = (typeof payoutStatus.enumValues)[number];
+export type ResourceKind = (typeof resourceKind.enumValues)[number];

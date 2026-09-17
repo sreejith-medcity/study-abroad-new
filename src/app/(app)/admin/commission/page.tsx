@@ -387,7 +387,7 @@ export default async function AdminCommissionPage({ searchParams }: { searchPara
             )}
             <Card>
               <CardHeader title="Where the money sits" subtitle="Balance per partner" />
-              <BarList items={wallets.map((w) => ({ label: w.name, value: Number(w.balance) }))} empty="No wallets yet." />
+              <BarList items={wallets.map((w) => ({ label: w.name, value: Number(w.balance) }))} format={inr} empty="No wallets yet." />
             </Card>
           </div>
         </div>
