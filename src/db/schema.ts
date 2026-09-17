@@ -57,6 +57,16 @@ export const enquirySource = pgEnum("enquiry_source", [
   "OTHER",
 ]);
 export const enquiryStage = pgEnum("enquiry_stage", ["NEW", "CONTACTED", "QUALIFIED", "COUNSELLING", "CONVERTED", "LOST"]);
+export const commissionBasis = pgEnum("commission_basis", ["PERCENT_TUITION", "FLAT"]);
+export const commissionStatus = pgEnum("commission_status", [
+  "EXPECTED",
+  "INVOICED",
+  "RECEIVED",
+  "SETTLED",
+  "WRITTEN_OFF",
+]);
+export const walletEntryKind = pgEnum("wallet_entry_kind", ["COMMISSION", "PAYOUT", "BONUS", "ADJUSTMENT"]);
+export const payoutStatus = pgEnum("payout_status", ["REQUESTED", "APPROVED", "PAID", "REJECTED"]);
 
 // ---------- Organisation and users ----------
 
@@ -392,6 +402,103 @@ export const outboundMessages = pgTable("outbound_messages", {
   createdAt: createdAt(),
 });
 
+// ---------- Commission and wallet ----------
+
+/**
+ * What Medcity earns for a placement, and what the partner keeps of it.
+ * The most specific live rule wins: program, then university, then country.
+ */
+export const commissionRules = pgTable(
+  "commission_rules",
+  {
+    id: id(),
+    name: text("name").notNull(),
+    countryId: text("country_id").references(() => countries.id),
+    universityId: text("university_id").references(() => universities.id),
+    programId: text("program_id").references(() => programs.id),
+    intakeYear: integer("intake_year"),
+    basis: commissionBasis("basis").notNull().default("PERCENT_TUITION"),
+    percentOfTuition: real("percent_of_tuition"),
+    flatAmount: integer("flat_amount"),
+    currency: text("currency").notNull().default("INR"),
+    partnerSharePercent: real("partner_share_percent").notNull().default(50),
+    active: boolean("active").notNull().default(true),
+    notes: text("notes"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("commission_rules_scope_idx").on(t.universityId, t.programId)],
+);
+
+/** One row per application that reached a paying milestone. */
+export const commissions = pgTable(
+  "commissions",
+  {
+    id: id(),
+    applicationId: text("application_id")
+      .notNull()
+      .unique()
+      .references(() => applications.id, { onDelete: "cascade" }),
+    orgId: text("org_id")
+      .notNull()
+      .references(() => organizations.id),
+    ruleId: text("rule_id").references(() => commissionRules.id),
+    currency: text("currency").notNull().default("INR"),
+    grossAmount: integer("gross_amount").notNull(),
+    partnerAmount: integer("partner_amount").notNull(),
+    partnerAmountInr: integer("partner_amount_inr"),
+    status: commissionStatus("status").notNull().default("EXPECTED"),
+    invoiceRef: text("invoice_ref"),
+    invoicedAt: timestamp("invoiced_at", { withTimezone: true }),
+    receivedAt: timestamp("received_at", { withTimezone: true }),
+    settledAt: timestamp("settled_at", { withTimezone: true }),
+    note: text("note"),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("commissions_org_idx").on(t.orgId, t.status)],
+);
+
+/** The partner's running account with Medcity, in rupees. Credits are positive. */
+export const walletEntries = pgTable(
+  "wallet_entries",
+  {
+    id: id(),
+    orgId: text("org_id")
+      .notNull()
+      .references(() => organizations.id),
+    kind: walletEntryKind("kind").notNull(),
+    amountInr: integer("amount_inr").notNull(),
+    commissionId: text("commission_id").references(() => commissions.id),
+    payoutId: text("payout_id"),
+    reference: text("reference"),
+    note: text("note"),
+    createdById: text("created_by_id").references(() => users.id),
+    createdAt: createdAt(),
+  },
+  (t) => [index("wallet_entries_org_idx").on(t.orgId, t.createdAt)],
+);
+
+export const payoutRequests = pgTable(
+  "payout_requests",
+  {
+    id: id(),
+    orgId: text("org_id")
+      .notNull()
+      .references(() => organizations.id),
+    amountInr: integer("amount_inr").notNull(),
+    status: payoutStatus("status").notNull().default("REQUESTED"),
+    requestedById: text("requested_by_id")
+      .notNull()
+      .references(() => users.id),
+    decidedById: text("decided_by_id").references(() => users.id),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    reference: text("reference"),
+    note: text("note"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("payout_requests_org_idx").on(t.orgId, t.status)],
+);
+
 // ---------- Enquiries ----------
 
 export const enquiries = pgTable(
@@ -551,6 +658,31 @@ export const documentsRelations = relations(documents, ({ one }) => ({
   uploadedBy: one(users, { fields: [documents.uploadedById], references: [users.id] }),
 }));
 
+export const commissionsRelations = relations(commissions, ({ one }) => ({
+  application: one(applications, { fields: [commissions.applicationId], references: [applications.id] }),
+  org: one(organizations, { fields: [commissions.orgId], references: [organizations.id] }),
+  rule: one(commissionRules, { fields: [commissions.ruleId], references: [commissionRules.id] }),
+}));
+
+export const commissionRulesRelations = relations(commissionRules, ({ one, many }) => ({
+  country: one(countries, { fields: [commissionRules.countryId], references: [countries.id] }),
+  university: one(universities, { fields: [commissionRules.universityId], references: [universities.id] }),
+  program: one(programs, { fields: [commissionRules.programId], references: [programs.id] }),
+  commissions: many(commissions),
+}));
+
+export const walletEntriesRelations = relations(walletEntries, ({ one }) => ({
+  org: one(organizations, { fields: [walletEntries.orgId], references: [organizations.id] }),
+  commission: one(commissions, { fields: [walletEntries.commissionId], references: [commissions.id] }),
+  createdBy: one(users, { fields: [walletEntries.createdById], references: [users.id] }),
+}));
+
+export const payoutRequestsRelations = relations(payoutRequests, ({ one }) => ({
+  org: one(organizations, { fields: [payoutRequests.orgId], references: [organizations.id] }),
+  requestedBy: one(users, { fields: [payoutRequests.requestedById], references: [users.id] }),
+  decidedBy: one(users, { fields: [payoutRequests.decidedById], references: [users.id], relationName: "payoutDecider" }),
+}));
+
 export const enquiriesRelations = relations(enquiries, ({ one, many }) => ({
   org: one(organizations, { fields: [enquiries.orgId], references: [organizations.id] }),
   assignedTo: one(users, { fields: [enquiries.assignedToId], references: [users.id] }),
@@ -569,3 +701,6 @@ export type Pathway = (typeof pathway.enumValues)[number];
 export type StatusGroup = (typeof statusGroup.enumValues)[number];
 export type EnquiryStage = (typeof enquiryStage.enumValues)[number];
 export type EnquirySource = (typeof enquirySource.enumValues)[number];
+export type CommissionStatus = (typeof commissionStatus.enumValues)[number];
+export type WalletEntryKind = (typeof walletEntryKind.enumValues)[number];
+export type PayoutStatus = (typeof payoutStatus.enumValues)[number];

@@ -16,6 +16,7 @@ import {
   todayCounts,
 } from "@/server/dashboard";
 import { enquiryCounts } from "@/server/enquiries";
+import { commissionTotals, inr } from "@/server/commission";
 import {
   BarList,
   Card,
@@ -43,7 +44,7 @@ export default async function ManagementDashboard({ user, f }: { user: SessionUs
   const { countries: c } = schema;
   const filters: ApplicationFilters = { from: f.from, to: f.to, country: f.country, intakeYear: f.intakeYear, intakeMonth: f.intakeMonth };
 
-  const [kpis, steps, points, groups, late, partners, destinations, pathways, recent, today, countries, enquiries] = await Promise.all([
+  const [kpis, steps, points, groups, late, partners, destinations, pathways, recent, today, countries, enquiries, commission] = await Promise.all([
     kpiTotals(user, applicationWhere(user, filters)),
     funnel(user),
     monthlyPoints(user, 12),
@@ -56,6 +57,7 @@ export default async function ManagementDashboard({ user, f }: { user: SessionUs
     todayCounts(user),
     db.select().from(c).orderBy(asc(c.name)),
     enquiryCounts(user),
+    commissionTotals(user),
   ]);
 
   const registered = steps[0]?.value ?? 0;
@@ -165,6 +167,18 @@ export default async function ManagementDashboard({ user, f }: { user: SessionUs
                 { label: "New students", value: today.students },
                 { label: "New applications", value: today.applications },
                 { label: "Status changes", value: today.moves },
+              ]}
+            />
+          </Card>
+
+          <Card>
+            <CardHeader title="Commission" subtitle="Partner share, indicative in rupees" />
+            <DataList
+              rows={[
+                { label: "Expected", value: inr(commission.EXPECTED.partner), href: "/admin/commission?status=EXPECTED" },
+                { label: "Invoiced", value: inr(commission.INVOICED.partner), href: "/admin/commission?status=INVOICED" },
+                { label: "Received", value: inr(commission.RECEIVED.partner), href: "/admin/commission?status=RECEIVED", tone: "warn" },
+                { label: "Paid to partners", value: inr(commission.SETTLED.partner), href: "/admin/commission?status=SETTLED", tone: "ok" },
               ]}
             />
           </Card>

@@ -20,6 +20,7 @@ import {
   todayCounts,
 } from "@/server/dashboard";
 import { enquiryCounts } from "@/server/enquiries";
+import { commissionTotals, inr } from "@/server/commission";
 import {
   BarList,
   Card,
@@ -42,7 +43,7 @@ export default async function AdminDashboard({ user, f }: { user: SessionUser; f
   const { applications: a, countries: c } = schema;
   const filters: ApplicationFilters = { from: f.from, to: f.to, country: f.country, intakeYear: f.intakeYear, intakeMonth: f.intakeMonth };
 
-  const [kpis, groups, late, mine, today, aging, unassignedRows, deadlines, recent, partners, countries, destinations, pathways, points, load, enquiries] =
+  const [kpis, groups, late, mine, today, aging, unassignedRows, deadlines, recent, partners, countries, destinations, pathways, points, load, enquiries, commission] =
     await Promise.all([
       kpiTotals(user, applicationWhere(user, filters)),
       groupCounts(user),
@@ -60,6 +61,7 @@ export default async function AdminDashboard({ user, f }: { user: SessionUser; f
       monthlyPoints(user, 6),
       officerLoad(user),
       enquiryCounts(user),
+      commissionTotals(user),
     ]);
 
   const qs = (extra: Record<string, string>) =>
@@ -202,6 +204,8 @@ export default async function AdminDashboard({ user, f }: { user: SessionUser; f
                 { label: "Closed", value: groups.CLOSED, href: "/applications?group=CLOSED" },
                 { label: "Open enquiries", value: enquiries.open, href: "/enquiries?stage=OPEN" },
                 { label: "Follow ups overdue", value: enquiries.overdue, href: "/enquiries?due=overdue", tone: enquiries.overdue ? "bad" : undefined },
+                { label: "Commission received, not settled", value: inr(commission.RECEIVED.partner), href: "/admin/commission?status=RECEIVED", tone: commission.RECEIVED.n ? "warn" : undefined },
+                { label: "Paid to partners", value: inr(commission.SETTLED.partner), href: "/admin/commission?status=SETTLED", tone: "ok" },
               ]}
             />
           </Card>

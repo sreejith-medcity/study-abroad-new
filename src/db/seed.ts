@@ -16,7 +16,7 @@ const PASSWORD = "Password@123";
 
 async function main() {
   console.log("Resetting data...");
-  await db.execute(sql`TRUNCATE enquiry_notes, enquiries, audit_logs, outbound_messages, notifications, documents, comments, status_history,
+  await db.execute(sql`TRUNCATE wallet_entries, payout_requests, commissions, commission_rules, enquiry_notes, enquiries, audit_logs, outbound_messages, notifications, documents, comments, status_history,
     applications, edit_requests, work_experience, test_scores, academic_records, students, programs, universities,
     countries, status_definitions, document_types, users, organizations RESTART IDENTITY CASCADE`);
   await db.execute(sql`DROP SEQUENCE IF EXISTS application_ack_seq`);
@@ -120,15 +120,15 @@ async function main() {
     { first: "Arathi", last: "Krishnan", org: kottayam, assigned: ukDocs, creator: ukDocs, pathway: "DEGREE", country: "Australia", dob: "1999-03-22", passportExpiry: "2032-05-01", backlogs: 0, gap: 3, tests: [{ test: "IELTS", overall: "7.5" }], docs: ["PASSPORT", "MARKSHEET_12", "DEGREE_MARKSHEETS", "ENGLISH_TEST", "SOP", "NURSING_LICENSE"],
       apps: [{ program: "Master of Nursing Practice (Pre-registration)", status: "ON_HOLD_INTAKE", month: 2, year: 2027, officer: admin, deadline: "2026-10-21" }] },
     { first: "Jibin", last: "Thomas", org: kottayam, assigned: ukDocs, creator: ukDocs, pathway: "DEGREE", country: "United Kingdom", dob: "1998-11-02", passportExpiry: "2031-08-19", backlogs: 4, gap: 4, tests: [{ test: "PTE", overall: "61" }], docs: ["PASSPORT", "MARKSHEET_12", "DEGREE_MARKSHEETS", "ENGLISH_TEST", "SOP"],
-      apps: [{ program: "MSc Digital Marketing", status: "CONDITIONAL_OFFER", month: 1, year: 2027, officer: admin }, { program: "MSc Artificial Intelligence", status: "SUBMITTED", month: 1, year: 2027, officer: admin }, { program: "MSc Artificial Intelligence", status: "CLOSED_NOT_QUALIFIED", month: 9, year: 2026, officer: admin }] },
+      apps: [{ program: "MSc Digital Marketing", status: "CONDITIONAL_OFFER", month: 1, year: 2027, officer: admin }, { program: "MSc Artificial Intelligence", status: "SUBMITTED", month: 1, year: 2027, officer: admin }, { program: "MSc Artificial Intelligence", status: "CLOSED_NOT_QUALIFIED", month: 9, year: 2026, officer: admin }, { program: "MSc Digital Marketing", status: "ENROLLED", month: 9, year: 2026, officer: admin }] },
     { first: "Aswin", last: "Anil", org: kottayam, assigned: deDocs, creator: deDocs, pathway: "DEGREE", country: "Ireland", dob: "2000-01-15", passportExpiry: "2030-01-10", backlogs: 1, gap: 1, tests: [{ test: "IELTS", overall: "6.5" }], docs: ["PASSPORT", "MARKSHEET_12", "DEGREE_MARKSHEETS"],
       apps: [{ program: "MSc Computer Science: Adaptive Cybersecurity", status: "ASSESSMENT", month: 9, year: 2027, deadline: "2027-07-04" }] },
     { first: "Akshara", last: "Anilkumar", org: kottayam, assigned: deDocs, creator: deDocs, pathway: "AUSBILDUNG", country: "Germany", dob: "2004-05-30", passportExpiry: "2033-03-03", backlogs: 0, gap: 1, tests: [{ test: "GERMAN", overall: "B1" }, { test: "GERMAN", overall: "B2", isMock: true, source: "lms" }], docs: ["PASSPORT", "MARKSHEET_12", "GERMAN_CERTIFICATE", "CV"],
-      apps: [{ program: "Ausbildung Pflegefachmann/-frau (Nursing)", status: "EMPLOYER_INTERVIEW", month: 4, year: 2027, officer: officerDe }] },
+      apps: [{ program: "Ausbildung Pflegefachmann/-frau (Nursing)", status: "EMPLOYER_INTERVIEW", month: 4, year: 2027, officer: officerDe }, { program: "Ausbildung Pflegefachmann/-frau (Nursing)", status: "JOINED", month: 10, year: 2026, officer: officerDe }] },
     { first: "Rihan", last: "Ebrahim", org: kottayam, assigned: deDocs, creator: deDocs, pathway: "AUSBILDUNG", country: "Germany", dob: "2003-09-12", passportExpiry: "2034-06-20", backlogs: 0, gap: 2, tests: [{ test: "GERMAN", overall: "A2" }], docs: ["PASSPORT", "MARKSHEET_12"],
       apps: [{ program: "Ausbildung Pflegefachmann/-frau (Nursing)", status: "LANGUAGE_PENDING", month: 10, year: 2027, officer: officerDe }] },
     { first: "Simi", last: "Joseph", org: kottayam, assigned: ukDocs, creator: ukDocs, pathway: "NURSING", country: "United Kingdom", dob: "1995-12-01", passportExpiry: "2029-11-11", backlogs: 0, gap: 0, tests: [{ test: "OET", overall: "B" }], docs: ["PASSPORT", "DEGREE_CERTIFICATE", "NURSING_LICENSE", "ENGLISH_TEST", "CV"],
-      apps: [{ program: "Registered Nurse (NMC) international recruitment", status: "BOARD_APPLICATION", month: 1, year: 2027, officer: officerNurse }] },
+      apps: [{ program: "Registered Nurse (NMC) international recruitment", status: "BOARD_APPLICATION", month: 1, year: 2027, officer: officerNurse }, { program: "Registered Nurse (NMC) international recruitment", status: "DEPLOYED", month: 9, year: 2026, officer: officerNurse }] },
     { first: "Anto", last: "Mathew", org: kochi, assigned: partnerKochi, creator: partnerKochi, pathway: "DEGREE", country: "United Kingdom", dob: "2001-04-04", passportExpiry: "2031-04-04", backlogs: 3, gap: 1, tests: [{ test: "IELTS", overall: "6.0" }], docs: ["PASSPORT", "MARKSHEET_12", "DEGREE_MARKSHEETS", "ENGLISH_TEST", "SOP"],
       apps: [{ program: "BSc (Hons) Nursing (Adult)", status: "VISA_RECEIVED", month: 9, year: 2026, officer: admin }, { program: "MSc Digital Marketing", status: "UNCONDITIONAL_OFFER", month: 1, year: 2027, officer: admin }] },
     { first: "Aleesha", last: "Varghese", org: kochi, assigned: partnerKochi, creator: partnerKochi, pathway: "DEGREE", country: "Malta", dob: "2002-02-18", passportExpiry: "2035-02-18", backlogs: 0, gap: 2, tests: [], docs: ["PASSPORT"],
@@ -266,6 +266,89 @@ async function main() {
       await db.insert(schema.enquiryNotes).values({ enquiryId: row.id, authorId: q.owner, body: `Closed as lost: ${q.lost}`, stageAfter: "LOST" });
     }
     trail.push({ actorId: q.owner, action: "enquiry.create", entityType: "enquiry", entityId: row.id, meta: { source: q.source }, createdAt: row.createdAt });
+  }
+
+  // Commission rules, then the commission each finished placement earns.
+  const ruleRows = await db
+    .insert(schema.commissionRules)
+    .values([
+      { name: "UK universities", countryId: c.GB, basis: "PERCENT_TUITION" as const, percentOfTuition: 15, currency: "GBP", partnerSharePercent: 50, notes: "Standard UK agreement" },
+      { name: "Ireland universities", countryId: c.IE, basis: "PERCENT_TUITION" as const, percentOfTuition: 12, currency: "EUR", partnerSharePercent: 50 },
+      { name: "Australia universities", countryId: c.AU, basis: "PERCENT_TUITION" as const, percentOfTuition: 14, currency: "AUD", partnerSharePercent: 45 },
+      { name: "Germany Ausbildung placement", countryId: c.DE, basis: "FLAT" as const, flatAmount: 150000, currency: "INR", partnerSharePercent: 40, notes: "Flat fee per candidate who joins" },
+      { name: "Malta colleges", countryId: c.MT, basis: "PERCENT_TUITION" as const, percentOfTuition: 18, currency: "EUR", partnerSharePercent: 55 },
+      { name: "NHS nurse recruitment", universityId: nmc.id, basis: "FLAT" as const, flatAmount: 225000, currency: "INR", partnerSharePercent: 40, notes: "Flat fee per nurse who starts. Beats the UK country rule." },
+    ])
+    .returning();
+  const ruleByCountry = new Map(ruleRows.filter((r) => r.countryId).map((r) => [r.countryId, r]));
+  const ruleByUniversity = new Map(ruleRows.filter((r) => r.universityId).map((r) => [r.universityId, r]));
+
+  const earning = await db
+    .select({
+      id: schema.applications.id,
+      orgId: schema.applications.orgId,
+      tuition: schema.programs.tuitionPerYear,
+      countryId: schema.universities.countryId,
+      universityId: schema.universities.id,
+      currency: schema.countries.currency,
+      code: schema.statusDefinitions.code,
+    })
+    .from(schema.applications)
+    .innerJoin(schema.programs, sql`${schema.programs.id} = ${schema.applications.programId}`)
+    .innerJoin(schema.universities, sql`${schema.universities.id} = ${schema.programs.universityId}`)
+    .innerJoin(schema.countries, sql`${schema.countries.id} = ${schema.universities.countryId}`)
+    .innerJoin(schema.statusDefinitions, sql`${schema.statusDefinitions.id} = ${schema.applications.statusId}`);
+
+  for (const app of earning) {
+    if (!["VISA_RECEIVED", "ENROLLED", "JOINED", "DEPLOYED"].includes(app.code)) continue;
+    // A university rule beats the country rule, the same way findRule scores them.
+    const rule = ruleByUniversity.get(app.universityId) ?? ruleByCountry.get(app.countryId);
+    if (!rule) continue;
+    const gross = rule.basis === "FLAT" ? (rule.flatAmount ?? 0) : Math.round(((app.tuition ?? 0) * (rule.percentOfTuition ?? 0)) / 100);
+    if (gross <= 0) continue;
+    const partner = Math.round((gross * rule.partnerSharePercent) / 100);
+    const currency = rule.basis === "FLAT" ? rule.currency : app.currency;
+    // The oldest one is already settled, so a wallet has something in it.
+    const settled = app.code === "VISA_RECEIVED";
+    const partnerInr = currency === "INR" ? partner : Math.round(partner * (currency === "GBP" ? 112 : currency === "EUR" ? 96 : 58));
+    const [commission] = await db
+      .insert(schema.commissions)
+      .values({
+        applicationId: app.id,
+        orgId: app.orgId,
+        ruleId: rule.id,
+        currency,
+        grossAmount: gross,
+        partnerAmount: partner,
+        partnerAmountInr: partnerInr,
+        status: settled ? "SETTLED" : "EXPECTED",
+        invoiceRef: settled ? "MIO/26-27/0001" : null,
+        invoicedAt: settled ? months(3) : null,
+        receivedAt: settled ? months(2) : null,
+        settledAt: settled ? months(1) : null,
+      })
+      .returning();
+    if (settled) {
+      await db.insert(schema.walletEntries).values({
+        orgId: app.orgId,
+        kind: "COMMISSION",
+        amountInr: partnerInr,
+        commissionId: commission.id,
+        reference: "MIO/26-27/0001",
+        note: "Commission share credited",
+        createdById: admin.id,
+        createdAt: months(1),
+      });
+      await db.insert(schema.walletEntries).values({
+        orgId: app.orgId,
+        kind: "BONUS",
+        amountInr: 25000,
+        note: "Elite tier bonus for the September intake",
+        createdById: admin.id,
+        createdAt: months(1),
+      });
+      trail.push({ actorId: admin.id, action: "commission.status", entityType: "commission", entityId: commission.id, meta: { from: "RECEIVED", to: "SETTLED" }, createdAt: months(1) });
+    }
   }
 
   await db.insert(schema.auditLogs).values(trail);

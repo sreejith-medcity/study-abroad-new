@@ -20,6 +20,8 @@ This repository currently contains **Phase 0 basics and Phase 1 (core pipeline)*
 | Programs | Admin | Catalogue with structured requirements. CSV import with preview and line-level errors before anything is saved; re-importing updates existing programs. |
 | Partners and people | Admin, super admin | Invite branch or sub-agent with a one-time temporary password, set tier, seats and relationship manager, add or deactivate users. Seat limits enforced. Role changes, password resets and Overseas staff accounts are super admin only. |
 | Audit log | Super admin | Every recorded action with who, when, which record and the details, filtered by person, action, record type and date, with CSV export. |
+| Commission | Partners, staff | Rules per country, university or program (percentage of tuition or a flat fee) with the partner's share. A placement that reaches a visa or enrolment accrues its commission automatically, then moves expected, invoiced, received, paid to the partner. Management sees the same numbers read-only. |
+| Wallet | Partners | The branch's account with Medcity: commission credits, bonuses and adjustments, running balance, payout requests, and the transfer once the Overseas team marks it paid. |
 | Notifications | All | Bell with unread count, list, mark read. Raised on new applications, status changes, comments and WhatsApp replies. |
 | WhatsApp | System | Outbound adapter (`console` for development, `meta` for WhatsApp Cloud API) and an inbound webhook that verifies Meta's signature and posts student replies into the Student channel. |
 
@@ -28,7 +30,7 @@ This repository currently contains **Phase 0 basics and Phase 1 (core pipeline)*
 | Password safety | All | Temporary passwords force a change on first sign in; sign in is rate limited per account and per caller. |
 | Document storage | All | Supabase Storage in production, local disk in development. |
 
-Nav items marked P3 / P4 are placeholders for later phases (wallet, commission, learning, insights). Phase 1 and Phase 2 are complete.
+Nav items marked P4 are placeholders for the last phase (learning resources, insights). Phases 1 to 3 are complete.
 
 ## Design
 
@@ -146,6 +148,7 @@ tests/                          node:test unit tests
 - Move the sign-in rate limiter from process memory to Redis or the database once more than one instance runs.
 - Email notifications alongside in-app ones.
 - Set `TZ=Asia/Kolkata` on the server.
+- Set `COMMISSION_FX` (for example `GBP:115,EUR:98,AUD:60`) so the rupee estimate on foreign-currency commission matches your bank's rate. The figure entered when a partner's share is settled always wins.
 
 ## Deploying a schema change
 
@@ -156,7 +159,7 @@ The Hostinger build does not touch the database, so a migration is applied on pu
 npm run db:migrate
 ```
 
-`drizzle/0002_super_admin_role.sql` adds `SUPER_ADMIN` to the role enum and `drizzle/0003_enquiries.sql` adds the enquiry tables. If you would rather do it in the Supabase SQL editor:
+`drizzle/0002_super_admin_role.sql` adds `SUPER_ADMIN` to the role enum `drizzle/0003_enquiries.sql` adds the enquiry tables, and `drizzle/0004_commission_wallet.sql` adds commission rules, commissions, wallet entries and payout requests. If you would rather do it in the Supabase SQL editor:
 
 ```sql
 alter type "public"."role" add value 'SUPER_ADMIN';
@@ -175,6 +178,6 @@ Run the two statements separately: Postgres will not let a new enum value be use
 | Partner owner | Own organisation | Register students, apply, upload documents, answer requests, manage their own counsellors' work |
 | Counsellor | Own organisation | Same as partner owner, without full passport numbers |
 
-## Next: Phase 3 and 4
+## Next: Phase 4
 
-Wallet and commission, the public student registration form (QR) and student portal in English and Malayalam, Medcity CRM lead sync, and the parent / sponsor view.
+Insights reporting, the learning resource library, the public student registration form (QR) and student portal in English and Malayalam, Medcity CRM lead sync, and the parent / sponsor view.

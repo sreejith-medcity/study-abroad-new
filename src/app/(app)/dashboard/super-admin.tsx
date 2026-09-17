@@ -5,6 +5,7 @@ import { storageBackend } from "@/server/storage";
 import { actionLabel } from "@/server/audit-query";
 import type { ApplicationFilters } from "@/server/queries";
 import { funnel, groupCounts, lateWork, partnerLeaderboard, platformSnapshot, todayCounts } from "@/server/dashboard";
+import { commissionTotals, inr } from "@/server/commission";
 import { db, schema } from "@/db";
 import { and, desc, eq, inArray, isNull, or } from "drizzle-orm";
 import { ROLE_LABEL } from "@/lib/permissions";
@@ -34,13 +35,14 @@ export default async function SuperAdminDashboard({ user, f }: { user: SessionUs
   void f;
   const { users: us, organizations: og } = schema;
 
-  const [snapshot, groups, late, steps, partners, today, attention, sensitive] = await Promise.all([
+  const [snapshot, groups, late, steps, partners, today, commission, attention, sensitive] = await Promise.all([
     platformSnapshot(),
     groupCounts(user),
     lateWork(user),
     funnel(user),
     partnerLeaderboard(5),
     todayCounts(user),
+    commissionTotals(user),
     db
       .select({ id: us.id, name: us.name, email: us.email, role: us.role, active: us.active, mustChangePassword: us.mustChangePassword, lastSignInAt: us.lastSignInAt, orgName: og.name })
       .from(us)
@@ -235,6 +237,8 @@ export default async function SuperAdminDashboard({ user, f }: { user: SessionUs
                 { label: "Messages failed", value: snapshot.messages.failed, tone: snapshot.messages.failed ? "bad" : undefined },
                 { label: "Branches", value: snapshot.orgs.BRANCH ?? 0 },
                 { label: "Sub-agents", value: snapshot.orgs.SUB_AGENT ?? 0 },
+                { label: "Commission in flight", value: inr(commission.EXPECTED.partner + commission.INVOICED.partner + commission.RECEIVED.partner) },
+                { label: "Paid to partners", value: inr(commission.SETTLED.partner), tone: "ok" },
               ]}
             />
           </Card>

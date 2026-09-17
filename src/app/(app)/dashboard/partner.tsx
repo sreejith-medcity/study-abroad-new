@@ -6,6 +6,7 @@ import { fmtDate, fullName, greetingName } from "@/lib/format";
 import { applicationWhere, type ApplicationFilters } from "@/server/queries";
 import { agingList, countryMix, deadlineList, funnel, kpiTotals, monthlyPoints, myWork, recentChanges, teamLoad } from "@/server/dashboard";
 import { STAGE_LABEL, STAGE_TONE, enquiryCounts, followUpQueue } from "@/server/enquiries";
+import { commissionTotals, inr, walletBalance } from "@/server/commission";
 import {
   BarList,
   Card,
@@ -64,7 +65,7 @@ export default async function PartnerDashboard({
   const filters: ApplicationFilters = { from: f.from, to: f.to, country: f.country, intakeYear: f.intakeYear, intakeMonth: f.intakeMonth };
   const mine = variant === "counsellor" ? eq(s.assignedToId, user.id) : undefined;
 
-  const [kpis, work, deadlines, recent, org, countries, destinations, points, steps, enquiries, followUps] = await Promise.all([
+  const [kpis, work, deadlines, recent, org, countries, destinations, points, steps, enquiries, followUps, wallet, commission] = await Promise.all([
     kpiTotals(user, and(applicationWhere(user, filters), mine)),
     myWork(user),
     deadlineList(user, 14, 6, mine),
@@ -76,6 +77,8 @@ export default async function PartnerDashboard({
     funnel(user),
     enquiryCounts(user),
     followUpQueue(user, 5),
+    walletBalance(user.orgId),
+    commissionTotals(user),
   ]);
 
   const yearAgo = new Date(Date.now() - 365 * 86400000);
@@ -296,6 +299,8 @@ export default async function PartnerDashboard({
               </div>
               <DataList
                 rows={[
+                  { label: "Wallet balance", value: inr(wallet.balance), href: "/wallet", tone: wallet.balance > 0 ? "ok" : undefined },
+                  { label: "Commission in flight", value: inr(commission.EXPECTED.partner + commission.INVOICED.partner + commission.RECEIVED.partner), href: "/commission" },
                   { label: "Counsellor seats", value: org.counsellorSeats },
                   { label: "Active students", value: Number(openStudents) },
                   { label: variant === "counsellor" ? "My documents" : "Documents on file", value: variant === "counsellor" ? work.documents : work.orgDocuments },

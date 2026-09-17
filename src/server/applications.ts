@@ -8,6 +8,7 @@ import { audit } from "@/lib/audit";
 import { notifyUsers, partnerRecipients } from "./notify";
 import { sendWhatsApp } from "./whatsapp";
 import { isAdmin } from "@/lib/permissions";
+import { EARNING_CODES, accrueCommission } from "./commission";
 
 export async function statusesFor(pathway: (typeof schema.pathway.enumValues)[number]) {
   return db
@@ -64,6 +65,18 @@ export async function changeStatus(user: SessionUser, applicationId: string, toS
   const href = `/students/${app.studentId}/applications?app=${app.id}`;
   await notifyUsers(await partnerRecipients(app.orgId, app.student.assignedToId), title, fullName(app.student), href);
   await audit(user.id, "application.status", "application", app.id, { from: app.status.code, to: to.code, reason });
+
+  // A placement that reached a paying milestone accrues its commission once.
+  if (EARNING_CODES.includes(to.code)) {
+    const commission = await accrueCommission(app.id);
+    if (commission) {
+      await audit(user.id, "commission.accrue", "commission", commission.id, {
+        applicationId: app.id,
+        gross: commission.grossAmount,
+        partner: commission.partnerAmount,
+      });
+    }
+  }
 
   if (to.isMilestone && app.student.whatsappOptIn) {
     await sendWhatsApp({

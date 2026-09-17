@@ -28,8 +28,8 @@ const partnerNav = (home: string): NavGroup[] => [
   {
     title: "Money",
     items: [
-      { href: "/wallet", label: "Wallet", icon: "wallet", soon: "P3" },
-      { href: "/commission", label: "Commission", icon: "commission", soon: "P3" },
+      { href: "/wallet", label: "Wallet", icon: "wallet" },
+      { href: "/commission", label: "Commission", icon: "commission" },
     ],
   },
   { title: "Support", items: [{ href: "/learning", label: "Learning resources", icon: "learning", soon: "P4" }] },
@@ -64,6 +64,10 @@ const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/insights", label: "Insights", icon: "insights", soon: "P4" },
     ],
   },
+  {
+    title: "Money",
+    items: [{ href: "/admin/commission", label: "Commission", icon: "commission" }],
+  },
 ];
 
 const PLATFORM_NAV: NavGroup = {
@@ -78,6 +82,7 @@ const MANAGEMENT_NAV: NavGroup[] = [
       { href: "/dashboard", label: "Performance", icon: "dashboard" },
       { href: "/applications", label: "Applications", icon: "applications" },
       { href: "/students", label: "Students", icon: "students" },
+      { href: "/admin/commission", label: "Commission", icon: "commission" },
       { href: "/admin/insights", label: "Insights", icon: "insights", soon: "P4" },
     ],
   },
