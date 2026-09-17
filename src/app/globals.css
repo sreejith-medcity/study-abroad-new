@@ -1,25 +1,121 @@
 @import "tailwindcss";
 
+/*
+  Medcity Overseas portal design tokens.
+  Brand crimson and gold come from Medcity's own identity; everything else is
+  built for long working sessions in a data-heavy tool: warm neutrals, one
+  accent, and status colours that stay distinct from the brand red.
+*/
 @theme {
-  --color-brand-50: #eef3ff;
-  --color-brand-100: #dbe5ff;
-  --color-brand-500: #2f5fe3;
-  --color-brand-600: #1f4fd8;
-  --color-brand-700: #1a40ad;
-  --color-ink: #172033;
-  --color-muted: #5d6778;
-  --color-line: #dfe4ec;
-  --color-ground: #f4f6fa;
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --color-brand-50: #fdf2f6;
+  --color-brand-100: #fbdfe9;
+  --color-brand-200: #f6bccf;
+  --color-brand-300: #ef8dae;
+  --color-brand-400: #e1517f;
+  --color-brand-500: #cc2160;
+  --color-brand-600: #be1049;
+  --color-brand-700: #9d0b3c;
+  --color-brand-800: #7a0a30;
+  --color-brand-900: #5a0723;
+
+  --color-gold-300: #ffd85e;
+  --color-gold-400: #f5c518;
+  --color-gold-500: #d9a900;
+
+  --color-ink: #1c1420;
+  --color-ink-soft: #3b3242;
+  --color-muted: #6c6374;
+  --color-line: #e9e2e8;
+  --color-line-strong: #d8cdd6;
+  --color-surface: #ffffff;
+  --color-surface-2: #faf7f9;
+  --color-ground: #f6f2f5;
+
+  --color-info-50: #eef2ff;
+  --color-info-500: #4353c4;
+  --color-info-700: #2f3a94;
+  --color-good-50: #e9f7ef;
+  --color-good-500: #12855a;
+  --color-good-700: #0c6644;
+  --color-warn-50: #fdf3e2;
+  --color-warn-500: #a86a08;
+  --color-warn-700: #7c4d05;
+  --color-stop-50: #fdeeee;
+  --color-stop-500: #c0342c;
+  --color-stop-700: #96261f;
+
+  --font-display: "Poppins", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --shadow-card: 0 1px 2px rgba(28, 20, 32, 0.04), 0 8px 24px -16px rgba(28, 20, 32, 0.18);
+  --shadow-pop: 0 12px 40px -12px rgba(28, 20, 32, 0.28);
 }
 
-html,
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   background: var(--color-ground);
   color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv05", "ss01";
+}
+
+h1,
+h2,
+h3,
+h4,
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.015em;
 }
 
 .tabular {
   font-variant-numeric: tabular-nums;
+}
+
+.ack {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8125rem;
+  letter-spacing: -0.02em;
+}
+
+/* Brand gradient used on the sign-in panel and the app header. */
+.brand-wash {
+  background:
+    radial-gradient(1200px 400px at 10% -10%, rgba(245, 197, 24, 0.35), transparent 60%),
+    linear-gradient(135deg, var(--color-brand-700) 0%, var(--color-brand-600) 45%, var(--color-brand-500) 100%);
+}
+
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.35;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1px);
+  background-size: 18px 18px;
+  pointer-events: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Scrollbars inside panes, kept unobtrusive */
+.thin-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-strong) transparent;
 }

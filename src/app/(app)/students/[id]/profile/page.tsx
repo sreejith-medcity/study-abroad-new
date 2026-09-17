@@ -67,7 +67,7 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
       {!student.profileLocked && user.role === "ADMIN" && (
         <form action={toggleLockAction} className="text-right">
           <input type="hidden" name="studentId" value={id} />
-          <Button variant="ghost" className="py-1">Lock profile</Button>
+          <Button variant="quiet" className="py-1">Lock profile</Button>
         </form>
       )}
       {openRequests.length > 0 && (
@@ -90,7 +90,7 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
           <form action={revealPassportAction} className="mb-3 flex items-center justify-end gap-2 text-xs text-muted">
             <input type="hidden" name="studentId" value={id} />
             Passport number is masked. Viewing the full number is logged.
-            <Button variant="ghost" className="px-2 py-1 text-xs">Reveal</Button>
+            <Button variant="quiet" className="px-2 py-1 text-xs">Reveal</Button>
           </form>
         )}
         <PersonalForm student={pickProfile(student)} passportDisplay={passportDisplay} disabled={readOnly} />

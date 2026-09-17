@@ -10,12 +10,12 @@ export function LoginForm() {
     <form action={action} className="space-y-4">
       {state.error && <Alert tone="bad">{state.error}</Alert>}
       <Field label="Email" htmlFor="email">
-        <Input id="email" name="email" type="email" autoComplete="username" required />
+        <Input id="email" name="email" type="email" autoComplete="username" placeholder="you@medcity.test" required />
       </Field>
       <Field label="Password" htmlFor="password">
         <Input id="password" name="password" type="password" autoComplete="current-password" required />
       </Field>
-      <Button type="submit" className="w-full" disabled={pending}>
+      <Button type="submit" size="lg" className="w-full" disabled={pending}>
         {pending ? "Signing in…" : "Sign in"}
       </Button>
     </form>

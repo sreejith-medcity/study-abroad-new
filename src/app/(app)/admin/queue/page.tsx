@@ -80,7 +80,7 @@ export default async function QueuePage({ searchParams }: { searchParams: Promis
           </Select>
           <Button type="submit" variant="secondary">Apply</Button>
         </form>
-        <LinkButton variant="ghost" href={`/applications?pathway=${pathway}&group=CLOSED`} className="ml-auto">Closed cases</LinkButton>
+        <LinkButton variant="quiet" href={`/applications?pathway=${pathway}&group=CLOSED`} className="ml-auto">Closed cases</LinkButton>
       </div>
 
       <div className="overflow-x-auto pb-2">

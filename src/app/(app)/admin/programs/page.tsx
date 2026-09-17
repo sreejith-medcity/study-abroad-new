@@ -34,7 +34,7 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="space-y-4">
           <Card className="p-4">
-            <form className="grid gap-3 sm:grid-cols-5">
+            <form className="grid gap-2.5 sm:grid-cols-5 [&>*]:min-w-0">
               <Input name="q" placeholder="Program or university" aria-label="Search" defaultValue={f.q} className="sm:col-span-2" />
               <Select name="country" aria-label="Country" defaultValue={f.country ?? ""}>
                 <option value="">Country</option>
@@ -53,7 +53,7 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
           </Card>
           <Card>
             {rows.length === 0 ? <EmptyState title="No programs yet">Import a CSV to get started.</EmptyState> : (
-              <Table>
+              <Table tableClassName="min-w-[1100px]">
                 <thead><tr><Th>Program</Th><Th>University</Th><Th>Level</Th><Th>Intakes</Th><Th>Tuition / yr</Th><Th>Requirements</Th><Th>Status</Th></tr></thead>
                 <tbody>
                   {rows.map((r) => (
@@ -76,7 +76,7 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
                           <Select name="status" defaultValue={r.status} aria-label={`Status of ${r.name}`} className="w-28 py-1 text-xs">
                             <option>LIVE</option><option>DRAFT</option><option>ARCHIVED</option>
                           </Select>
-                          <Button variant="ghost" className="px-2 py-1 text-xs">Set</Button>
+                          <Button variant="quiet" className="px-2 py-1 text-xs">Set</Button>
                         </form>
                       </Td>
                     </tr>

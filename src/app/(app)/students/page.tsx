@@ -5,7 +5,8 @@ import { requireUser } from "@/lib/auth";
 import { isStaff } from "@/lib/permissions";
 import { fmtDate, fullName } from "@/lib/format";
 import { orgUsers, readFilters } from "@/server/queries";
-import { Button, Card, Chip, EmptyState, Input, LinkButton, PageHeader, Select, Table, Td, Th } from "@/components/ui";
+import { Button, Card, Chip, EmptyState, Input, LinkButton, PageHeader, Select, Table, Td, Th, Toolbar } from "@/components/ui";
+import { IconPlus, IconStudents } from "@/components/icons";
 import { archiveStudentAction, reassignStudentAction } from "./actions";
 
 export const metadata = { title: "Students" };
@@ -67,13 +68,13 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
         actions={
           <>
             <LinkButton variant="secondary" href={archived ? "/students" : "/students?view=archived"}>{archived ? "Active students" : "Archived students"}</LinkButton>
-            {canWrite && !staff && <LinkButton href="/students/new">+ Register new student</LinkButton>}
+            {canWrite && !staff && <LinkButton href="/students/new"><IconPlus className="size-4" /> Register student</LinkButton>}
           </>
         }
       />
 
-      <Card className="mb-4 p-4">
-        <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+      <Toolbar className="mb-4">
+        <form className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-6 [&>*]:min-w-0">
           {archived && <input type="hidden" name="view" value="archived" />}
           {staff ? (
             <Select name="org" aria-label="Partner" defaultValue={f.org ?? ""}>
@@ -103,15 +104,15 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
             <Button type="submit">Search</Button>
           </div>
         </form>
-      </Card>
+      </Toolbar>
 
       <Card>
         {rows.length === 0 ? (
-          <EmptyState title={archived ? "No archived students" : "No students match these filters"}>
+          <EmptyState icon={<IconStudents />} title={archived ? "No archived students" : "No students match these filters"}>
             {!archived && canWrite && !staff && <Link className="text-brand-600 hover:underline" href="/students/new">Register a student</Link>}
           </EmptyState>
         ) : (
-          <Table>
+          <Table tableClassName="min-w-[980px]">
             <thead>
               <tr>
                 <Th>{staff ? "Partner" : "Created by"}</Th>
@@ -140,7 +141,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                           <option value="">Unassigned</option>
                           {counsellors.map((c) => <option key={c.id} value={c.id}>{c.deskLabel ?? c.name}</option>)}
                         </Select>
-                        <Button variant="ghost" className="px-2 py-1" type="submit" aria-label="Save assignment">Save</Button>
+                        <Button variant="quiet" className="px-2 py-1" type="submit" aria-label="Save assignment">Save</Button>
                       </form>
                     </Td>
                   )}

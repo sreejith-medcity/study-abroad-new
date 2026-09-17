@@ -151,7 +151,7 @@ async function ApplicationDetail({ appId, studentId, channel, userRole, staff, c
           <span className="text-muted">Application fee:</span>
           {app.feeStatus === "NOT_APPLICABLE" ? <Chip tone="ok">No application fee</Chip> : app.feeStatus === "PAID" ? <Chip tone="ok">Paid {fmtMoney(app.program.applicationFee, currency)}</Chip> : <Chip tone="warn">Due {fmtMoney(app.program.applicationFee, currency)}</Chip>}
           {app.feeStatus === "DUE" && userRole === "ADMIN" && (
-            <form action={markFeePaidAction}><input type="hidden" name="applicationId" value={app.id} /><Button variant="ghost" className="py-1 text-xs">Mark paid</Button></form>
+            <form action={markFeePaidAction}><input type="hidden" name="applicationId" value={app.id} /><Button variant="quiet" className="py-1 text-xs">Mark paid</Button></form>
           )}
           <span className="ml-auto text-muted">Officer: {app.officer ? `${app.officer.name}${app.officer.phone ? ` · ${app.officer.phone}` : ""}` : "not assigned yet"}</span>
         </div>

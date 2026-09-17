@@ -60,7 +60,7 @@ export default async function StatusesPage() {
                     <input type="checkbox" name="requiresReason" defaultChecked={r.requiresReason} aria-label="Requires reason" className="size-4 justify-self-center" />
                     <input type="checkbox" name="isMilestone" defaultChecked={r.isMilestone} aria-label="Milestone" className="size-4 justify-self-center" />
                     <input type="checkbox" name="active" defaultChecked={r.active} aria-label="Active" className="size-4 justify-self-center" />
-                    <Button variant="ghost" className="px-2 py-1">Save</Button>
+                    <Button variant="quiet" className="px-2 py-1">Save</Button>
                   </form>
                 ))}
               </div>

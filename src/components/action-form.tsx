@@ -65,7 +65,7 @@ export function FieldError({ name }: { name: string }) {
   return <p className="text-xs text-red-600">{errors[0]}</p>;
 }
 
-export function SubmitButton({ children, className, variant = "primary" }: { children: ReactNode; className?: string; variant?: "primary" | "secondary" | "ghost" | "danger" }) {
+export function SubmitButton({ children, className, variant = "primary" }: { children: ReactNode; className?: string; variant?: "primary" | "secondary" | "quiet" | "danger" }) {
   return (
     <Button type="submit" variant={variant} className={className}>
       {children}

@@ -5,7 +5,8 @@ import { requireUser } from "@/lib/auth";
 import { fmtDate, fullName, intakeLabel, MONTHS } from "@/lib/format";
 import { isStaff } from "@/lib/permissions";
 import { applicationsBase, applicationWhere, orgUsers, readFilters } from "@/server/queries";
-import { Button, Card, EmptyState, Input, LinkButton, PageHeader, Select, StatusBadge, Table, Td, Th } from "@/components/ui";
+import { Button, Card, EmptyState, Input, LinkButton, PageHeader, Select, StatusBadge, Table, Td, Th, Toolbar } from "@/components/ui";
+import { IconApplications, IconExport } from "@/components/icons";
 
 export const metadata = { title: "Applications" };
 
@@ -42,10 +43,10 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
       <PageHeader
         title="Applications"
         subtitle={f.kpi ? `Filtered: ${KPI_LABEL[f.kpi] ?? f.kpi}` : "Manage your students' applications"}
-        actions={<LinkButton variant="secondary" href={`/api/applications/export?${exportQs}`} prefetch={false}>Export CSV</LinkButton>}
+        actions={<LinkButton variant="secondary" href={`/api/applications/export?${exportQs}`} prefetch={false}><IconExport className="size-4" /> Export CSV</LinkButton>}
       />
-      <Card className="mb-4 p-4">
-        <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <Toolbar className="mb-4">
+        <form className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-5 [&>*]:min-w-0">
           {f.kpi && <input type="hidden" name="kpi" value={f.kpi} />}
           {staff ? (
             <Select name="org" aria-label="Partner" defaultValue={f.org ?? ""}>
@@ -92,16 +93,16 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
           <Input name="student" placeholder="Student name" aria-label="Student" defaultValue={f.student} />
           <div className="flex gap-2 lg:col-span-5">
             <Button type="submit">Search</Button>
-            <LinkButton variant="ghost" href="/applications">Clear all</LinkButton>
+            <LinkButton variant="quiet" href="/applications">Clear all</LinkButton>
           </div>
         </form>
-      </Card>
+      </Toolbar>
 
       <Card>
         {list.length === 0 ? (
-          <EmptyState title="No applications match these filters" />
+          <EmptyState title="No applications match these filters" icon={<IconApplications />}>Try clearing a filter, or widen the date range.</EmptyState>
         ) : (
-          <Table>
+          <Table tableClassName="min-w-[1140px]">
             <thead>
               <tr>
                 <Th>Ack. no.</Th><Th>Date created</Th><Th>Student</Th><Th>University</Th><Th>Program</Th><Th>Intake</Th>
@@ -113,7 +114,7 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
                 const overdue = r.deadline && r.deadline < now;
                 return (
                   <tr key={r.id} className="hover:bg-ground/40">
-                    <Td><Link href={`/students/${r.studentId}/applications?app=${r.id}`} className="font-medium underline decoration-line underline-offset-2 hover:text-brand-600 tabular whitespace-nowrap">{r.ackNo}</Link></Td>
+                    <Td><Link href={`/students/${r.studentId}/applications?app=${r.id}`} className="ack font-medium text-brand-700 hover:underline">{r.ackNo}</Link></Td>
                     <Td className="whitespace-nowrap tabular">{fmtDate(r.createdAt)}</Td>
                     <Td>{fullName(r)}</Td>
                     <Td>{r.universityName}<p className="text-xs text-muted">{r.countryName}</p></Td>
