@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import { cache } from "react";
 import { db, schema } from "@/db";
 import type { Role } from "@/db/schema";
+import { rateLimit } from "@/server/rate-limit";
 
 const COOKIE = "sa_session";
 const MAX_AGE = 60 * 60 * 12; // 12 hours
@@ -25,20 +26,35 @@ export type SessionUser = {
   orgId: string;
   orgName: string;
   orgType: "HQ" | "BRANCH" | "SUB_AGENT";
+  mustChangePassword: boolean;
 };
+
+export type SignInResult = { ok: true } | { ok: false; reason: "invalid" } | { ok: false; reason: "throttled"; retryAfterSeconds: number };
 
 export async function hashPassword(password: string) {
   return bcrypt.hash(password, 10);
 }
 
-export async function signIn(email: string, password: string): Promise<boolean> {
-  const user = await db.query.users.findFirst({
-    where: eq(schema.users.email, email.trim().toLowerCase()),
-  });
-  if (!user || !user.active) return false;
-  const ok = await bcrypt.compare(password, user.passwordHash);
-  if (!ok) return false;
-  const token = await new SignJWT({ sub: user.id })
+export async function signIn(email: string, password: string, clientKey = "unknown"): Promise<SignInResult> {
+  const address = email.trim().toLowerCase();
+  // Two limits: one per account, one per caller, so neither a single target nor a single source can be hammered.
+  for (const key of [`login:email:${address}`, `login:client:${clientKey}`]) {
+    const check = rateLimit(key, { limit: 8, windowMs: 10 * 60_000, blockMs: 10 * 60_000 });
+    if (!check.allowed) return { ok: false, reason: "throttled", retryAfterSeconds: check.retryAfterSeconds };
+  }
+
+  const user = await db.query.users.findFirst({ where: eq(schema.users.email, address) });
+  if (!user || !user.active) return { ok: false, reason: "invalid" };
+  const matches = await bcrypt.compare(password, user.passwordHash);
+  if (!matches) return { ok: false, reason: "invalid" };
+
+  await issueSession(user.id);
+  await db.update(schema.users).set({ lastSignInAt: new Date() }).where(eq(schema.users.id, user.id));
+  return { ok: true };
+}
+
+export async function issueSession(userId: string) {
+  const token = await new SignJWT({ sub: userId })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${MAX_AGE}s`)
@@ -50,7 +66,6 @@ export async function signIn(email: string, password: string): Promise<boolean> 
     path: "/",
     maxAge: MAX_AGE,
   });
-  return true;
 }
 
 export async function signOut() {
@@ -76,16 +91,28 @@ export const getSession = cache(async (): Promise<SessionUser | null> => {
       orgId: user.orgId,
       orgName: user.org.name,
       orgType: user.org.type,
+      mustChangePassword: user.mustChangePassword,
     };
   } catch {
     return null;
   }
 });
 
-/** Use in server components and actions. Redirects to login when signed out. */
+/**
+ * Use in server components and actions. Redirects to login when signed out, and to
+ * the password change page while a temporary password is still in place.
+ */
 export async function requireUser(roles?: Role[]): Promise<SessionUser> {
   const user = await getSession();
   if (!user) redirect("/login");
+  if (user.mustChangePassword) redirect("/change-password");
   if (roles && !roles.includes(user.role)) redirect("/forbidden");
+  return user;
+}
+
+/** Like requireUser but allowed while the password still needs changing. */
+export async function requireUserAllowingPasswordChange(): Promise<SessionUser> {
+  const user = await getSession();
+  if (!user) redirect("/login");
   return user;
 }

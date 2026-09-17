@@ -1,14 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { unlink } from "fs/promises";
-import path from "path";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { getStudentForUser } from "@/server/queries";
-import { saveUpload, UploadError } from "@/server/storage";
+import { deleteUpload, saveUpload, UploadError } from "@/server/storage";
 
 export type FormState = { error?: string; ok?: string };
 
@@ -45,11 +43,7 @@ export async function deleteDocumentAction(formData: FormData) {
   const allowed = user.role === "ADMIN" || (doc.uploadedById === user.id && doc.type?.uploadedBy !== "team") || (user.role === "PARTNER" && doc.type?.uploadedBy !== "team");
   if (!allowed) return;
   await db.delete(schema.documents).where(eq(schema.documents.id, documentId));
-  try {
-    await unlink(path.join(path.resolve(process.env.UPLOAD_DIR ?? "./uploads"), doc.storageKey));
-  } catch {
-    // file already gone; the record is what matters
-  }
+  await deleteUpload(doc.storageKey);
   await audit(user.id, "document.delete", "document", documentId, { fileName: doc.fileName, typeCode: doc.typeCode });
   revalidatePath(`/students/${doc.studentId}`, "layout");
 }
