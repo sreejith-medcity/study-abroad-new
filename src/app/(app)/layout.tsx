@@ -7,6 +7,7 @@ import { MobileNav, SideNav, type NavGroup } from "@/components/nav";
 import { Logo, cn } from "@/components/ui";
 import { IconBell, IconLogout } from "@/components/icons";
 import { logoutAction } from "@/app/login/actions";
+import { APP_ROLES, isAdmin, isSuperAdmin, ROLE_LABEL } from "@/lib/permissions";
 
 const PARTNER_NAV: NavGroup[] = [
   {
@@ -61,6 +62,11 @@ const ADMIN_NAV: NavGroup[] = [
   },
 ];
 
+const PLATFORM_NAV: NavGroup = {
+  title: "Platform",
+  items: [{ href: "/admin/audit", label: "Audit log", icon: "shield" }],
+};
+
 const MANAGEMENT_NAV: NavGroup[] = [
   {
     title: "Overview",
@@ -73,16 +79,15 @@ const MANAGEMENT_NAV: NavGroup[] = [
   },
 ];
 
-const ROLE_LABEL: Record<string, string> = {
-  ADMIN: "Overseas team",
-  MANAGEMENT: "Management",
-  PARTNER: "Partner owner",
-  COUNSELLOR: "Counsellor",
-};
-
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const user = await requireUser(["ADMIN", "MANAGEMENT", "PARTNER", "COUNSELLOR"]);
-  const groups = user.role === "ADMIN" ? ADMIN_NAV : user.role === "MANAGEMENT" ? MANAGEMENT_NAV : PARTNER_NAV;
+  const user = await requireUser([...APP_ROLES]);
+  const groups = isSuperAdmin(user)
+    ? [...ADMIN_NAV, PLATFORM_NAV]
+    : isAdmin(user)
+      ? ADMIN_NAV
+      : user.role === "MANAGEMENT"
+        ? MANAGEMENT_NAV
+        : PARTNER_NAV;
 
   const [{ unread }] = await db
     .select({ unread: count() })

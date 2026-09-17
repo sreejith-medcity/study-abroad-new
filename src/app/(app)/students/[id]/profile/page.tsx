@@ -3,7 +3,7 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { profileCompleteness } from "@/lib/checks";
 import { fmtDate, fmtDateTime } from "@/lib/format";
-import { canSeeFullPassport, maskPassport } from "@/lib/permissions";
+import { APP_ROLES, canSeeFullPassport, isAdmin, maskPassport } from "@/lib/permissions";
 import { getStudentForUser } from "@/server/queries";
 import { Alert, Button, Card, Chip } from "@/components/ui";
 import { deleteProfileRowAction, revealPassportAction, toggleLockAction } from "../../actions";
@@ -16,7 +16,7 @@ const LEVEL = { SCHOOL: "Std. 12th / school", UG_DIPLOMA: "Diploma", UG: "Bachel
 export default async function ProfilePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ reveal?: string }> }) {
   const { id } = await params;
   const { reveal } = await searchParams;
-  const user = await requireUser(["ADMIN", "MANAGEMENT", "PARTNER", "COUNSELLOR"]);
+  const user = await requireUser([...APP_ROLES]);
   const student = await getStudentForUser(user, id);
   const [academics, tests, work, openRequests] = await Promise.all([
     db.select().from(schema.academicRecords).where(eq(schema.academicRecords.studentId, id)).orderBy(asc(schema.academicRecords.yearCompleted)),
@@ -26,7 +26,7 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
   ]);
 
   const done = profileCompleteness({ ...student, academics, tests, documentTypeCodes: [] });
-  const readOnly = user.role === "MANAGEMENT" || (student.profileLocked && user.role !== "ADMIN");
+  const readOnly = user.role === "MANAGEMENT" || (student.profileLocked && !isAdmin(user));
   const showFull = canSeeFullPassport(user) || reveal === "1";
   const passportDisplay = showFull ? student.passportNumber ?? "" : maskPassport(student.passportNumber);
 
@@ -53,9 +53,9 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span>
               This profile is locked because applications have been submitted.{" "}
-              {user.role === "ADMIN" ? "You can unlock it to allow changes." : "Send an edit request and the Medcity Overseas team will make the change or unlock it."}
+              {isAdmin(user) ? "You can unlock it to allow changes." : "Send an edit request and the Medcity Overseas team will make the change or unlock it."}
             </span>
-            {user.role === "ADMIN" && (
+            {isAdmin(user) && (
               <form action={toggleLockAction}>
                 <input type="hidden" name="studentId" value={id} />
                 <Button variant="secondary" className="py-1">Unlock profile</Button>
@@ -64,7 +64,7 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
           </div>
         </Alert>
       )}
-      {!student.profileLocked && user.role === "ADMIN" && (
+      {!student.profileLocked && isAdmin(user) && (
         <form action={toggleLockAction} className="text-right">
           <input type="hidden" name="studentId" value={id} />
           <Button variant="quiet" className="py-1">Lock profile</Button>

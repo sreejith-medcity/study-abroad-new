@@ -7,13 +7,14 @@ import { getStudentForUser } from "@/server/queries";
 import { Card, Chip, cn } from "@/components/ui";
 import { deleteDocumentAction } from "./actions";
 import { UploadForm } from "./upload";
+import { APP_ROLES, isAdmin } from "@/lib/permissions";
 
 export const metadata = { title: "Documents" };
 
 export default async function DocumentsPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> }) {
   const { id } = await params;
   const { tab } = await searchParams;
-  const user = await requireUser(["ADMIN", "MANAGEMENT", "PARTNER", "COUNSELLOR"]);
+  const user = await requireUser([...APP_ROLES]);
   await getStudentForUser(user, id);
   const canWrite = user.role !== "MANAGEMENT";
   const teamTab = tab === "team";
@@ -33,7 +34,7 @@ export default async function DocumentsPage({ params, searchParams }: { params: 
   const visibleTypes = types.filter((t) => (teamTab ? t.uploadedBy === "team" : t.uploadedBy !== "team"));
   const mandatory = visibleTypes.filter((t) => requiredBy.has(t.code));
   const additional = visibleTypes.filter((t) => !requiredBy.has(t.code) && docs.some((d) => d.typeCode === t.code));
-  const partnerTypes = types.filter((t) => t.uploadedBy !== "team" || user.role === "ADMIN");
+  const partnerTypes = types.filter((t) => t.uploadedBy !== "team" || isAdmin(user));
 
   const docsFor = (code: string) => docs.filter((d) => d.typeCode === code);
 
@@ -61,10 +62,10 @@ export default async function DocumentsPage({ params, searchParams }: { params: 
         <section>
           <h2 className="mb-3 font-semibold text-brand-700">{teamTab ? "Issued by Medcity Overseas" : "Additional documents"}</h2>
           <div className="space-y-3">
-            {(teamTab ? visibleTypes.filter((t) => docsFor(t.code).length || user.role === "ADMIN") : additional).map((t) => (
-              <DocTypeCard key={t.code} type={t} files={docsFor(t.code)} studentId={id} canWrite={canWrite && (!teamTab || user.role === "ADMIN")} userId={user.id} role={user.role} />
+            {(teamTab ? visibleTypes.filter((t) => docsFor(t.code).length || isAdmin(user)) : additional).map((t) => (
+              <DocTypeCard key={t.code} type={t} files={docsFor(t.code)} studentId={id} canWrite={canWrite && (!teamTab || isAdmin(user))} userId={user.id} role={user.role} />
             ))}
-            {teamTab && user.role !== "ADMIN" && !visibleTypes.some((t) => docsFor(t.code).length) && <p className="text-muted">Offer letters, CAS / COE and visa documents will appear here.</p>}
+            {teamTab && !isAdmin(user) && !visibleTypes.some((t) => docsFor(t.code).length) && <p className="text-muted">Offer letters, CAS / COE and visa documents will appear here.</p>}
           </div>
           {canWrite && !teamTab && (
             <div className="mt-4 rounded-md border border-dashed border-line p-3">

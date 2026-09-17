@@ -12,7 +12,8 @@
     "db:seed": "tsx src/db/seed.ts",
     "db:studio": "drizzle-kit studio",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test tests/*.test.ts"
+    "test": "tsx --test tests/*.test.ts",
+    "db:promote": "tsx src/db/promote.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

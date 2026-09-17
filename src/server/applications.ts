@@ -7,6 +7,7 @@ import { fullName, intakeLabel } from "@/lib/format";
 import { audit } from "@/lib/audit";
 import { notifyUsers, partnerRecipients } from "./notify";
 import { sendWhatsApp } from "./whatsapp";
+import { isAdmin } from "@/lib/permissions";
 
 export async function statusesFor(pathway: (typeof schema.pathway.enumValues)[number]) {
   return db
@@ -20,7 +21,7 @@ export class StatusChangeError extends Error {}
 
 /** Moves an application to a new status, recording history and informing the partner and student. */
 export async function changeStatus(user: SessionUser, applicationId: string, toStatusId: string, reason?: string) {
-  if (user.role !== "ADMIN") throw new StatusChangeError("Only the Medcity Overseas team can change status.");
+  if (!isAdmin(user)) throw new StatusChangeError("Only the Medcity Overseas team can change status.");
 
   const app = await db.query.applications.findFirst({
     where: eq(schema.applications.id, applicationId),

@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import { getSession } from "@/lib/auth";
 import { storageBackend } from "@/server/storage";
+import { isAdmin } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ export async function GET(request: Request) {
   const token = new URL(request.url).searchParams.get("token");
   const expected = process.env.HEALTH_TOKEN;
   const session = await getSession();
-  const detailed = session?.role === "ADMIN" || (!!expected && token === expected);
+  const detailed = !!session && isAdmin(session) || (!!expected && token === expected);
 
   const started = Date.now();
   try {

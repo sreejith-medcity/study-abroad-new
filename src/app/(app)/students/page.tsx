@@ -2,7 +2,7 @@ import Link from "next/link";
 import { and, asc, desc, eq, gte, ilike, lte, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
-import { isStaff } from "@/lib/permissions";
+import { APP_ROLES, isAdmin, isStaff } from "@/lib/permissions";
 import { fmtDate, fullName } from "@/lib/format";
 import { orgUsers, readFilters } from "@/server/queries";
 import { Button, Card, Chip, EmptyState, Input, LinkButton, PageHeader, Select, Table, Td, Th, Toolbar } from "@/components/ui";
@@ -12,7 +12,7 @@ import { archiveStudentAction, reassignStudentAction } from "./actions";
 export const metadata = { title: "Students" };
 
 export default async function StudentsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const user = await requireUser(["ADMIN", "MANAGEMENT", "PARTNER", "COUNSELLOR"]);
+  const user = await requireUser([...APP_ROLES]);
   const f = readFilters(await searchParams) as Record<string, string>;
   const s = schema.students;
   const staff = isStaff(user);
@@ -157,7 +157,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                     )}
                   </Td>
                   <Td>
-                    {canWrite && (user.role === "PARTNER" || user.role === "ADMIN") && (
+                    {canWrite && (user.role === "PARTNER" || isAdmin(user)) && (
                       <form action={archiveStudentAction}>
                         <input type="hidden" name="studentId" value={r.id} />
                         <button className="text-xs text-muted hover:text-red-600" title={r.appCount === 0 ? "Delete student with no applications" : archived ? "Restore" : "Archive"}>

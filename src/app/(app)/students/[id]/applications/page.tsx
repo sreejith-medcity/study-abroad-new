@@ -4,7 +4,7 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { summarise } from "@/lib/checks";
 import { fmtDate, fmtDateTime, fmtMoney, intakeLabel } from "@/lib/format";
-import { isStaff } from "@/lib/permissions";
+import { APP_ROLES, isStaff } from "@/lib/permissions";
 import { checkApplication, statusesFor } from "@/server/applications";
 import { getStudentForUser } from "@/server/queries";
 import { Button, Card, Chip, EmptyState, Select, StatusBadge, cn } from "@/components/ui";
@@ -16,7 +16,7 @@ export const metadata = { title: "Applications" };
 export default async function StudentApplicationsPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ app?: string; tab?: string; ch?: string; program?: string }> }) {
   const { id } = await params;
   const sp = await searchParams;
-  const user = await requireUser(["ADMIN", "MANAGEMENT", "PARTNER", "COUNSELLOR"]);
+  const user = await requireUser([...APP_ROLES]);
   const student = await getStudentForUser(user, id);
   const canWrite = user.role !== "MANAGEMENT";
 

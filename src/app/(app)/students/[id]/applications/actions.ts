@@ -10,7 +10,7 @@ import { audit } from "@/lib/audit";
 import { nextAckNo } from "@/lib/ack";
 import { summarise } from "@/lib/checks";
 import { intakeLabel } from "@/lib/format";
-import { isStaff } from "@/lib/permissions";
+import { ADMIN_ROLES, isStaff } from "@/lib/permissions";
 import { changeStatus, checkApplication, StatusChangeError } from "@/server/applications";
 import { adminIds, notifyUsers, partnerRecipients } from "@/server/notify";
 import { getApplicationForUser, getStudentForUser } from "@/server/queries";
@@ -26,7 +26,7 @@ const createSchema = z.object({
 });
 
 export async function createApplicationAction(_: FormState, formData: FormData): Promise<FormState> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", "ADMIN"]);
+  const user = await requireUser(["PARTNER", "COUNSELLOR", ...ADMIN_ROLES]);
   const parsed = createSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Choose a program and intake." };
   const student = await getStudentForUser(user, parsed.data.studentId);
@@ -74,7 +74,7 @@ export async function createApplicationAction(_: FormState, formData: FormData):
 }
 
 export async function changeStatusAction(_: FormState, formData: FormData): Promise<FormState> {
-  const user = await requireUser(["ADMIN"]);
+  const user = await requireUser([...ADMIN_ROLES]);
   const applicationId = String(formData.get("applicationId"));
   const statusId = String(formData.get("statusId"));
   const reason = String(formData.get("reason") ?? "");
@@ -89,7 +89,7 @@ export async function changeStatusAction(_: FormState, formData: FormData): Prom
 }
 
 export async function addCommentAction(_: FormState, formData: FormData): Promise<FormState> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", "ADMIN"]);
+  const user = await requireUser(["PARTNER", "COUNSELLOR", ...ADMIN_ROLES]);
   const applicationId = String(formData.get("applicationId"));
   const channel = formData.get("channel") === "STUDENT" ? "STUDENT" : "TEAM";
   const body = String(formData.get("body") ?? "").trim();
@@ -139,7 +139,7 @@ export async function addCommentAction(_: FormState, formData: FormData): Promis
 
 /** Pre-submission check: turn every blocker and warning into one request to the partner. */
 export async function askPartnerAction(formData: FormData) {
-  const user = await requireUser(["ADMIN"]);
+  const user = await requireUser([...ADMIN_ROLES]);
   const applicationId = String(formData.get("applicationId"));
   const app = await db.query.applications.findFirst({ where: eq(schema.applications.id, applicationId), with: { status: true, student: true } });
   if (!app) return;
@@ -167,7 +167,7 @@ export async function askPartnerAction(formData: FormData) {
 }
 
 export async function setDocumentTypeAction(formData: FormData) {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", "ADMIN"]);
+  const user = await requireUser(["PARTNER", "COUNSELLOR", ...ADMIN_ROLES]);
   const documentId = String(formData.get("documentId"));
   const typeCode = String(formData.get("typeCode"));
   const doc = await db.query.documents.findFirst({ where: eq(schema.documents.id, documentId) });
@@ -181,7 +181,7 @@ export async function setDocumentTypeAction(formData: FormData) {
 }
 
 export async function markFeePaidAction(formData: FormData) {
-  const user = await requireUser(["ADMIN"]);
+  const user = await requireUser([...ADMIN_ROLES]);
   const applicationId = String(formData.get("applicationId"));
   await db.update(schema.applications).set({ feeStatus: "PAID" }).where(and(eq(schema.applications.id, applicationId), inArray(schema.applications.feeStatus, ["DUE"])));
   await audit(user.id, "application.fee_paid", "application", applicationId);

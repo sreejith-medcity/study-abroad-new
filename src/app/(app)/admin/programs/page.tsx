@@ -6,11 +6,12 @@ import { readFilters } from "@/server/queries";
 import { Button, Card, Chip, EmptyState, Input, PageHeader, Select, Table, Td, Th } from "@/components/ui";
 import { setProgramStatusAction } from "./actions";
 import { ImportForm } from "./import-form";
+import { ADMIN_ROLES } from "@/lib/permissions";
 
 export const metadata = { title: "Programs" };
 
 export default async function ProgramsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  await requireUser(["ADMIN"]);
+  await requireUser([...ADMIN_ROLES]);
   const f = readFilters(await searchParams) as Record<string, string>;
   const { programs: p, universities: u, countries: c } = schema;
   const rows = await db

@@ -7,7 +7,7 @@ import { z } from "zod";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { isStaff } from "@/lib/permissions";
+import { ADMIN_ROLES, isAdmin, isStaff } from "@/lib/permissions";
 import { adminIds, notifyUsers } from "@/server/notify";
 import { getStudentForUser } from "@/server/queries";
 
@@ -32,7 +32,7 @@ const newStudent = z.object({
 });
 
 export async function createStudentAction(_: FormState, formData: FormData): Promise<FormState> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", "ADMIN"]);
+  const user = await requireUser(["PARTNER", "COUNSELLOR", ...ADMIN_ROLES]);
   const parsed = newStudent.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Check the highlighted fields." };
   const d = parsed.data;
@@ -67,7 +67,7 @@ export async function createStudentAction(_: FormState, formData: FormData): Pro
 }
 
 export async function reassignStudentAction(formData: FormData) {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", "ADMIN"]);
+  const user = await requireUser(["PARTNER", "COUNSELLOR", ...ADMIN_ROLES]);
   const studentId = String(formData.get("studentId"));
   const assignedToId = String(formData.get("assignedToId") || "") || null;
   const student = await getStudentForUser(user, studentId);
@@ -82,7 +82,7 @@ export async function reassignStudentAction(formData: FormData) {
 }
 
 export async function archiveStudentAction(formData: FormData) {
-  const user = await requireUser(["PARTNER", "ADMIN"]);
+  const user = await requireUser(["PARTNER", ...ADMIN_ROLES]);
   const studentId = String(formData.get("studentId"));
   const student = await getStudentForUser(user, studentId);
   const [{ n }] = await db.select({ n: count() }).from(schema.applications).where(eq(schema.applications.studentId, studentId));
@@ -99,9 +99,9 @@ export async function archiveStudentAction(formData: FormData) {
 // ---------- Profile ----------
 
 async function editableStudent(studentId: string) {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", "ADMIN"]);
+  const user = await requireUser(["PARTNER", "COUNSELLOR", ...ADMIN_ROLES]);
   const student = await getStudentForUser(user, studentId);
-  if (student.profileLocked && user.role !== "ADMIN") {
+  if (student.profileLocked && !isAdmin(user)) {
     return { user, student, locked: true as const };
   }
   return { user, student, locked: false as const };
@@ -232,7 +232,7 @@ export async function requestEditAction(_: FormState, formData: FormData): Promi
 }
 
 export async function toggleLockAction(formData: FormData) {
-  const user = await requireUser(["ADMIN"]);
+  const user = await requireUser([...ADMIN_ROLES]);
   const studentId = String(formData.get("studentId"));
   const student = await getStudentForUser(user, studentId);
   await db.update(schema.students).set({ profileLocked: !student.profileLocked }).where(eq(schema.students.id, studentId));

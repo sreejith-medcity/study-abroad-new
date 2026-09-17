@@ -34,6 +34,8 @@ async function main() {
   const u = async (name: string, email: string, role: schema.Role, orgId: string, deskLabel?: string, phone?: string) =>
     (await db.insert(schema.users).values({ name, email, role, orgId, deskLabel, phone, passwordHash: hash }).returning())[0];
 
+  const superEmail = process.env.SUPER_ADMIN_EMAIL ?? "sreejith@miak.in";
+  await u("Sreejith", superEmail, "SUPER_ADMIN", hq.id, "Platform owner");
   const admin = await u("Anita Menon", "admin@medcityoverseas.test", "ADMIN", hq.id, "UK Desk", "+91 90000 00001");
   const officerDe = await u("Rahul Nair", "germany.desk@medcityoverseas.test", "ADMIN", hq.id, "Germany Desk", "+91 90000 00002");
   const officerNurse = await u("Divya Pillai", "nursing.desk@medcityoverseas.test", "ADMIN", hq.id, "Nursing Desk", "+91 90000 00003");
@@ -138,6 +140,13 @@ async function main() {
   const months = (d: number) => new Date(Date.now() - d * 86400000);
   let dayOffset = 30;
 
+  // Sample trail so the audit log is not empty on a fresh install.
+  const trail: (typeof schema.auditLogs.$inferInsert)[] = [];
+  let firstStudentId = "";
+  let lastAppId = "";
+  const logged = (actorId: string, action: string, entityType: string, entityId: string, createdAt: Date, meta?: Record<string, unknown>) =>
+    trail.push({ actorId, action, entityType, entityId, meta, createdAt });
+
   for (const s of seeds) {
     const [st] = await db
       .insert(schema.students)
@@ -157,6 +166,8 @@ async function main() {
         createdAt: months(dayOffset),
       })
       .returning();
+    if (!firstStudentId) firstStudentId = st.id;
+    logged(s.creator.id, "student.create", "student", st.id, months(dayOffset), { consent: true });
     dayOffset -= 3;
 
     await db.insert(schema.academicRecords).values([
@@ -169,7 +180,8 @@ async function main() {
       const key = `students/${st.id}/${code.toLowerCase()}.pdf`;
       await mkdir(path.join(uploads, path.dirname(key)), { recursive: true });
       await writeFile(path.join(uploads, key), tinyPdf);
-      await db.insert(schema.documents).values({ studentId: st.id, typeCode: code, fileName: `${s.first}_${code.toLowerCase()}.pdf`, storageKey: key, mimeType: "application/pdf", sizeBytes: tinyPdf.length, uploadedById: s.creator.id });
+      const [doc] = await db.insert(schema.documents).values({ studentId: st.id, typeCode: code, fileName: `${s.first}_${code.toLowerCase()}.pdf`, storageKey: key, mimeType: "application/pdf", sizeBytes: tinyPdf.length, uploadedById: s.creator.id }).returning();
+      logged(s.creator.id, "document.upload", "document", doc.id, months(dayOffset + 1), { typeCode: code });
     }
 
     for (const a of s.apps) {
@@ -187,6 +199,11 @@ async function main() {
         })
         .returning();
       await db.insert(schema.statusHistory).values({ applicationId: app.id, toStatusId: statusId, changedById: a.officer?.id ?? s.creator.id, createdAt: created });
+      lastAppId = app.id;
+      logged(s.creator.id, "application.create", "application", app.id, created, { programId: prog(a.program).id, intake: `${a.month}/${a.year}` });
+      if (a.status !== "ASSESSMENT") {
+        logged(a.officer?.id ?? admin.id, "application.status", "application", app.id, created, { from: "ASSESSMENT", to: a.status });
+      }
       if (a.status === "PENDING_PARTNER") {
         await db.insert(schema.comments).values([
           { applicationId: app.id, channel: "TEAM", authorId: a.officer?.id ?? admin.id, body: "Dear team,\n\nPlease share a course and university specific SOP. Mention the study gap explanation in the SOP.\n\nRegards", createdAt: months(1) },
@@ -197,6 +214,14 @@ async function main() {
     }
   }
 
+  trail.push(
+    { actorId: admin.id, action: "programs.import", entityType: "program", entityId: "*", meta: { created: 12, updated: 0, skipped: 0 }, createdAt: months(21) },
+    { actorId: admin.id, action: "partner.invite", entityType: "organization", entityId: thrissur.id, meta: { ownerEmail: "owner@horizon.test" }, createdAt: months(18) },
+    { actorId: admin.id, action: "passport.reveal", entityType: "student", entityId: firstStudentId, meta: {}, createdAt: months(4) },
+    { actorId: null, action: "whatsapp.inbound", entityType: "application", entityId: lastAppId, meta: { type: "text" }, createdAt: months(1) },
+  );
+  await db.insert(schema.auditLogs).values(trail);
+
   await db.insert(schema.notifications).values([
     { userId: ukDocs.id, title: "Action needed on 2 applications", body: "Pending from partner", href: "/applications?group=PENDING_PARTNER" },
     { userId: admin.id, title: "New application submitted", body: "Aswin Anil: MSc Computer Science", href: "/admin/queue" },
@@ -204,6 +229,7 @@ async function main() {
 
   console.log("Seed complete.\n");
   console.log(`All users share the password: ${PASSWORD}`);
+  console.log(`  ${superEmail}${" ".repeat(Math.max(1, 33 - superEmail.length))}Super admin (platform owner)`);
   console.log("  admin@medcityoverseas.test       Medcity Overseas admin (UK desk)");
   console.log("  germany.desk@medcityoverseas.test Medcity Overseas admin (Germany desk)");
   console.log("  management@medcityoverseas.test  Management (read-only)");

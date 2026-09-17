@@ -2,7 +2,7 @@ import Link from "next/link";
 import { and, asc, count, eq, gte, isNotNull, lte, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
-import { isStaff } from "@/lib/permissions";
+import { APP_ROLES, isStaff } from "@/lib/permissions";
 import { fmtDate, fullName, intakeLabel, MONTHS } from "@/lib/format";
 import { applicationWhere, KPI_WHERE, readFilters } from "@/server/queries";
 import { Button, Card, CardHeader, Chip, Input, LinkButton, PageHeader, Progress, Select, Stat, StatusBadge, Toolbar } from "@/components/ui";
@@ -36,7 +36,7 @@ const TIER_TARGETS = { SILVER: 10, GOLD: 20, ELITE: 50, PLATINUM: 50 } as const;
 const NEXT_TIER = { SILVER: "Gold", GOLD: "Elite", ELITE: "Platinum", PLATINUM: null } as const;
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const user = await requireUser(["ADMIN", "MANAGEMENT", "PARTNER", "COUNSELLOR"]);
+  const user = await requireUser([...APP_ROLES]);
   const f = readFilters(await searchParams);
   const where = applicationWhere(user, { from: f.from, to: f.to, country: f.country, intakeYear: f.intakeYear, intakeMonth: f.intakeMonth });
 

@@ -90,3 +90,6 @@ export const IconGlobe = (p: P) => (
 export const IconSpark = (p: P) => (
   <svg {...base} {...p}><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" /><path d="M18.5 16.5l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z" /></svg>
 );
+export const IconShield = (p: P) => (
+  <svg {...base} {...p}><path d="M12 3l7 3v5.5c0 4.2-2.8 7.8-7 9.5-4.2-1.7-7-5.3-7-9.5V6z" /><path d="m9 12 2 2 4-4" /></svg>
+);

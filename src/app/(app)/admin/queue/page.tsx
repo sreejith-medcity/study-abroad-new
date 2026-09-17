@@ -8,6 +8,7 @@ import { applicationsBase, readFilters } from "@/server/queries";
 import type { Pathway, StatusGroup } from "@/db/schema";
 import { Button, Card, Chip, LinkButton, PageHeader, Select, cn } from "@/components/ui";
 import { StatusForm } from "@/app/(app)/students/[id]/applications/client";
+import { ADMIN_ROLES } from "@/lib/permissions";
 
 export const metadata = { title: "Work queue" };
 
@@ -26,7 +27,7 @@ const PATHWAYS: { key: Pathway; label: string }[] = [
 ];
 
 export default async function QueuePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const user = await requireUser(["ADMIN"]);
+  const user = await requireUser([...ADMIN_ROLES]);
   const f = readFilters(await searchParams) as Record<string, string>;
   const pathway = (PATHWAYS.find((p) => p.key === f.pathway)?.key ?? "DEGREE") as Pathway;
   const mine = f.officer !== "all";

@@ -17,6 +17,7 @@ import {
   IconPrograms,
   IconQueue,
   IconSearch,
+  IconShield,
   IconStudents,
   IconWallet,
 } from "./icons";
@@ -35,6 +36,7 @@ const ICONS = {
   partners: IconPartners,
   flow: IconFlow,
   insights: IconInsights,
+  shield: IconShield,
 } as const;
 
 export type NavItem = { href: string; label: string; icon: keyof typeof ICONS; soon?: string };

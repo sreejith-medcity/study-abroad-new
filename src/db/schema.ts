@@ -20,7 +20,7 @@ const createdAt = () => timestamp("created_at", { withTimezone: true }).notNull(
 
 export const orgType = pgEnum("org_type", ["HQ", "BRANCH", "SUB_AGENT"]);
 export const tier = pgEnum("tier", ["SILVER", "GOLD", "ELITE", "PLATINUM"]);
-export const role = pgEnum("role", ["ADMIN", "MANAGEMENT", "PARTNER", "COUNSELLOR", "STUDENT"]);
+export const role = pgEnum("role", ["ADMIN", "MANAGEMENT", "PARTNER", "COUNSELLOR", "STUDENT", "SUPER_ADMIN"]);
 export const pathway = pgEnum("pathway", ["DEGREE", "AUSBILDUNG", "NURSING"]);
 export const studyLevel = pgEnum("study_level", [
   "SCHOOL",

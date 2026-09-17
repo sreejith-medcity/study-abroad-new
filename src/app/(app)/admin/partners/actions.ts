@@ -7,6 +7,7 @@ import { z } from "zod";
 import { db, schema } from "@/db";
 import { hashPassword, requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
+import { ADMIN_ROLES, canManageUsers, canResetPasswords, ROLE_LABEL } from "@/lib/permissions";
 
 export type FormState = { error?: string; ok?: string; fieldErrors?: Record<string, string[] | undefined> };
 
@@ -27,7 +28,7 @@ const invite = z.object({
 const SEATS = { SILVER: 3, GOLD: 5, ELITE: 8, PLATINUM: 15 } as const;
 
 export async function invitePartnerAction(_: FormState, formData: FormData): Promise<FormState> {
-  const user = await requireUser(["ADMIN"]);
+  const user = await requireUser([...ADMIN_ROLES]);
   const parsed = invite.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Check the highlighted fields." };
   const d = parsed.data;
@@ -50,17 +51,20 @@ const addUser = z.object({
   name: z.string().trim().min(2, "Name is required").max(100),
   email: z.string().trim().toLowerCase().email("Enter a valid email"),
   deskLabel: z.string().trim().max(60).optional(),
-  role: z.enum(["PARTNER", "COUNSELLOR", "ADMIN", "MANAGEMENT"]),
+  role: z.enum(["PARTNER", "COUNSELLOR", "ADMIN", "MANAGEMENT", "SUPER_ADMIN"]),
 });
 
 export async function addUserAction(_: FormState, formData: FormData): Promise<FormState> {
-  const user = await requireUser(["ADMIN"]);
+  const user = await requireUser([...ADMIN_ROLES]);
   const parsed = addUser.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Check the highlighted fields." };
   const d = parsed.data;
   const org = await db.query.organizations.findFirst({ where: eq(schema.organizations.id, d.orgId) });
   if (!org) return { error: "Organisation not found." };
-  if (org.type === "HQ" && !["ADMIN", "MANAGEMENT"].includes(d.role)) return { error: "Medcity Overseas users must be Admin or Management." };
+  if (org.type === "HQ" && !["SUPER_ADMIN", "ADMIN", "MANAGEMENT"].includes(d.role)) return { error: "Medcity Overseas users must be Super admin, Admin or Management." };
+  if ((d.role === "SUPER_ADMIN" || d.role === "ADMIN") && !canManageUsers(user)) {
+    return { error: "Only a super admin can create Medcity Overseas staff accounts." };
+  }
   if (org.type !== "HQ" && !["PARTNER", "COUNSELLOR"].includes(d.role)) return { error: "Partner users must be Partner or Counsellor." };
   if (await db.query.users.findFirst({ where: eq(schema.users.email, d.email) })) return { error: "A user with that email already exists." };
 
@@ -77,7 +81,7 @@ export async function addUserAction(_: FormState, formData: FormData): Promise<F
 }
 
 export async function updateOrgAction(formData: FormData) {
-  const user = await requireUser(["ADMIN"]);
+  const user = await requireUser([...ADMIN_ROLES]);
   const orgId = String(formData.get("orgId"));
   const tier = String(formData.get("tier")) as (typeof schema.tier.enumValues)[number];
   const seats = Number(formData.get("counsellorSeats"));
@@ -89,12 +93,59 @@ export async function updateOrgAction(formData: FormData) {
 }
 
 export async function toggleUserAction(formData: FormData) {
-  const admin = await requireUser(["ADMIN"]);
+  const actor = await requireUser([...ADMIN_ROLES]);
   const userId = String(formData.get("userId"));
-  if (userId === admin.id) return;
+  if (userId === actor.id) return;
   const u = await db.query.users.findFirst({ where: eq(schema.users.id, userId) });
   if (!u) return;
+  // Only a super admin may switch off another Medcity Overseas account.
+  if (["SUPER_ADMIN", "ADMIN", "MANAGEMENT"].includes(u.role) && !canManageUsers(actor)) return;
   await db.update(schema.users).set({ active: !u.active }).where(eq(schema.users.id, userId));
-  await audit(admin.id, u.active ? "user.deactivate" : "user.activate", "user", userId);
+  await audit(actor.id, u.active ? "user.deactivate" : "user.activate", "user", userId, { email: u.email, role: u.role });
   revalidatePath("/admin/partners");
+}
+
+/** Super admin only: move a user between roles, inside the rules for their organisation. */
+export async function changeRoleAction(_: FormState, formData: FormData): Promise<FormState> {
+  const actor = await requireUser([...ADMIN_ROLES]);
+  if (!canManageUsers(actor)) return { error: "Only a super admin can change roles." };
+  const userId = String(formData.get("userId"));
+  const role = String(formData.get("role")) as (typeof schema.role.enumValues)[number];
+  if (!schema.role.enumValues.includes(role) || role === "STUDENT") return { error: "Pick a valid role." };
+
+  const target = await db.query.users.findFirst({ where: eq(schema.users.id, userId), with: { org: true } });
+  if (!target) return { error: "User not found." };
+  if (target.id === actor.id) return { error: "Ask another super admin to change your own role." };
+
+  const hq = target.org.type === "HQ";
+  if (hq && !["SUPER_ADMIN", "ADMIN", "MANAGEMENT"].includes(role)) return { error: "Medcity Overseas staff can only be Super admin, Admin or Management." };
+  if (!hq && !["PARTNER", "COUNSELLOR"].includes(role)) return { error: "Partner staff can only be Partner owner or Counsellor." };
+
+  if (target.role === "SUPER_ADMIN" && role !== "SUPER_ADMIN") {
+    const [{ n }] = await db.select({ n: count() }).from(schema.users).where(and(eq(schema.users.role, "SUPER_ADMIN"), eq(schema.users.active, true)));
+    if (n <= 1) return { error: "Keep at least one active super admin." };
+  }
+
+  await db.update(schema.users).set({ role }).where(eq(schema.users.id, userId));
+  await audit(actor.id, "user.role_change", "user", userId, { email: target.email, from: target.role, to: role });
+  revalidatePath("/admin/partners");
+  return { ok: `${target.name} is now ${ROLE_LABEL[role]}.` };
+}
+
+/** Super admin only: issue a one-time password that the user must change at sign in. */
+export async function resetPasswordAction(_: FormState, formData: FormData): Promise<FormState> {
+  const actor = await requireUser([...ADMIN_ROLES]);
+  if (!canResetPasswords(actor)) return { error: "Only a super admin can reset passwords." };
+  const userId = String(formData.get("userId"));
+  const target = await db.query.users.findFirst({ where: eq(schema.users.id, userId) });
+  if (!target) return { error: "User not found." };
+
+  const password = tempPassword();
+  await db
+    .update(schema.users)
+    .set({ passwordHash: await hashPassword(password), mustChangePassword: true, passwordUpdatedAt: new Date() })
+    .where(eq(schema.users.id, userId));
+  await audit(actor.id, "user.password_reset", "user", userId, { email: target.email });
+  revalidatePath("/admin/partners");
+  return { ok: `Temporary password for ${target.email}: ${password}. Shown once, and they must change it at sign in.` };
 }

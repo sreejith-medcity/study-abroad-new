@@ -4,6 +4,7 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { Button, Card, Input, PageHeader, Select, StatusBadge } from "@/components/ui";
+import { ADMIN_ROLES } from "@/lib/permissions";
 
 export const metadata = { title: "Status flows" };
 
@@ -11,7 +12,7 @@ const PATHWAY_LABEL = { DEGREE: "Degree (UK, IE, AU, CA, MT)", AUSBILDUNG: "Ausb
 
 async function saveStatus(formData: FormData) {
   "use server";
-  const user = await requireUser(["ADMIN"]);
+  const user = await requireUser([...ADMIN_ROLES]);
   const id = String(formData.get("id"));
   const label = String(formData.get("label") ?? "").trim();
   const studentLabel = String(formData.get("studentLabel") ?? "").trim();
@@ -29,7 +30,7 @@ async function saveStatus(formData: FormData) {
 }
 
 export default async function StatusesPage() {
-  await requireUser(["ADMIN"]);
+  await requireUser([...ADMIN_ROLES]);
   const rows = await db.select().from(schema.statusDefinitions).orderBy(asc(schema.statusDefinitions.pathway), asc(schema.statusDefinitions.sortOrder));
   const pathways = ["DEGREE", "AUSBILDUNG", "NURSING"] as const;
 

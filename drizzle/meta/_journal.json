@@ -15,6 +15,13 @@
       "when": 1789669672567,
       "tag": "0001_user_password_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789671516659,
+      "tag": "0002_super_admin_role",
+      "breakpoints": true
     }
   ]
 }

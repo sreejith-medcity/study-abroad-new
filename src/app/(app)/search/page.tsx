@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { and, asc, count, eq, gte, ilike, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, eq, ilike, lte, or, sql, type SQL } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { checkEligibility, type Eligibility } from "@/lib/eligibility";
 import { fmtMoney, fullName, MONTHS } from "@/lib/format";
-import { isStaff } from "@/lib/permissions";
+import { APP_ROLES, isStaff } from "@/lib/permissions";
 import { readFilters } from "@/server/queries";
 import { Button, Card, Chip, EmptyState, Input, LinkButton, PageHeader, Select, Table, Td, Th, Toolbar, cn } from "@/components/ui";
 import { IconCheck, IconAlert, IconClock, IconGlobe, IconSearch, IconSpark } from "@/components/icons";
@@ -34,7 +34,7 @@ const QUICK = [
 ] as const;
 
 export default async function SearchPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const user = await requireUser(["ADMIN", "MANAGEMENT", "PARTNER", "COUNSELLOR"]);
+  const user = await requireUser([...APP_ROLES]);
   const f = readFilters(await searchParams) as Record<string, string>;
   const page = Math.max(1, Number(f.page ?? 1));
   const { programs: p, universities: u, countries: c, students: s } = schema;

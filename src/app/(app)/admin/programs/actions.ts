@@ -6,6 +6,7 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { parseProgramCsv, type ImportError, type ImportRow } from "@/lib/program-import";
+import { ADMIN_ROLES } from "@/lib/permissions";
 
 export type ImportState = {
   error?: string;
@@ -14,7 +15,7 @@ export type ImportState = {
 };
 
 export async function importProgramsAction(prev: ImportState, formData: FormData): Promise<ImportState> {
-  const user = await requireUser(["ADMIN"]);
+  const user = await requireUser([...ADMIN_ROLES]);
   const mode = String(formData.get("mode"));
   let text = String(formData.get("csv") ?? "");
   const file = formData.get("file");
@@ -76,7 +77,7 @@ export async function importProgramsAction(prev: ImportState, formData: FormData
 }
 
 export async function setProgramStatusAction(formData: FormData) {
-  const user = await requireUser(["ADMIN"]);
+  const user = await requireUser([...ADMIN_ROLES]);
   const id = String(formData.get("programId"));
   const status = String(formData.get("status")) as "DRAFT" | "LIVE" | "ARCHIVED";
   if (!["DRAFT", "LIVE", "ARCHIVED"].includes(status)) return;

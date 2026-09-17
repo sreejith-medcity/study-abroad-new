@@ -3,7 +3,7 @@ import { count, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fullName } from "@/lib/format";
-import { isStaff } from "@/lib/permissions";
+import { APP_ROLES, isStaff } from "@/lib/permissions";
 import { getStudentForUser } from "@/server/queries";
 import { Card, Chip } from "@/components/ui";
 import { StepTabs } from "@/components/tabs";
@@ -12,7 +12,7 @@ const PATHWAY_LABEL = { DEGREE: "Degree", AUSBILDUNG: "Ausbildung", NURSING: "Nu
 
 export default async function StudentLayout({ children, params }: { children: React.ReactNode; params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const user = await requireUser(["ADMIN", "MANAGEMENT", "PARTNER", "COUNSELLOR"]);
+  const user = await requireUser([...APP_ROLES]);
   const student = await getStudentForUser(user, id);
   const [{ apps }] = await db.select({ apps: count() }).from(schema.applications).where(eq(schema.applications.studentId, id));
   const [{ docs }] = await db.select({ docs: count() }).from(schema.documents).where(eq(schema.documents.studentId, id));

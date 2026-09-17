@@ -3,7 +3,7 @@ import { asc, desc, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fmtDate, fullName, intakeLabel, MONTHS } from "@/lib/format";
-import { isStaff } from "@/lib/permissions";
+import { APP_ROLES, isStaff } from "@/lib/permissions";
 import { applicationsBase, applicationWhere, orgUsers, readFilters } from "@/server/queries";
 import { Button, Card, EmptyState, Input, LinkButton, PageHeader, Select, StatusBadge, Table, Td, Th, Toolbar } from "@/components/ui";
 import { IconApplications, IconExport } from "@/components/icons";
@@ -17,7 +17,7 @@ const KPI_LABEL: Record<string, string> = {
 const PAGE = 50;
 
 export default async function ApplicationsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const user = await requireUser(["ADMIN", "MANAGEMENT", "PARTNER", "COUNSELLOR"]);
+  const user = await requireUser([...APP_ROLES]);
   const f = readFilters(await searchParams);
   const page = Math.max(1, Number((f as Record<string, string>).page ?? 1));
   const where = applicationWhere(user, f);

@@ -8,7 +8,7 @@ This repository currently contains **Phase 0 basics and Phase 1 (core pipeline)*
 
 | Area | Who | What |
 | --- | --- | --- |
-| Sign in and roles | All | Admin, Management (read-only), Partner owner, Counsellor. Partners only ever see their own organisation's data. |
+| Sign in and roles | All | Super admin, Overseas admin, Management (read-only), Partner owner, Counsellor. Partners only ever see their own organisation's data. |
 | Dashboard | Partners, staff | KPI tiles (all, offers, payments, visa received / rejected, non-enrolment, deferrals, pending from partner) with date, intake and country filters. Each tile opens a filtered list. Tier progress, upcoming deadlines, relationship manager. |
 | Students | Partners, staff | List with filters, inline reassignment, archive / delete. Registration requires recorded consent. |
 | Student file | Partners, staff | Three steps: **Profile** (personal, address, passport, academics, work, tests), **Applications**, **Documents**. Profile locks once the team starts working an application; partners send edit requests. Passport numbers are masked for counsellors and every reveal and download is logged. |
@@ -18,7 +18,8 @@ This repository currently contains **Phase 0 basics and Phase 1 (core pipeline)*
 | Status flows | Admin | Separate status lists for Degree, Ausbildung and Nursing. Reasons required for closed / deferred. Milestones send the student a WhatsApp update. Editable in **Status flows**. |
 | Work queue | Admin | Kanban by status group per pathway, oldest first, SLA breach highlighting, change status inline. |
 | Programs | Admin | Catalogue with structured requirements. CSV import with preview and line-level errors before anything is saved; re-importing updates existing programs. |
-| Partners | Admin | Invite branch or sub-agent with a one-time temporary password, set tier, seats and relationship manager, add or deactivate users. Seat limits enforced. |
+| Partners and people | Admin, super admin | Invite branch or sub-agent with a one-time temporary password, set tier, seats and relationship manager, add or deactivate users. Seat limits enforced. Role changes, password resets and Overseas staff accounts are super admin only. |
+| Audit log | Super admin | Every recorded action with who, when, which record and the details, filtered by person, action, record type and date, with CSV export. |
 | Notifications | All | Bell with unread count, list, mark read. Raised on new applications, status changes, comments and WhatsApp replies. |
 | WhatsApp | System | Outbound adapter (`console` for development, `meta` for WhatsApp Cloud API) and an inbound webhook that verifies Meta's signature and posts student replies into the Student channel. |
 
@@ -62,13 +63,14 @@ npm run dev                     # http://localhost:3000
 
 ### Sample accounts
 
-All seeded users share the password `Password@123`. Every person, university and number in the seed is fictional.
+All seeded users share the password `Password@123`. Every person, university and number in the seed is fictional, apart from the super admin address, which is set with `SUPER_ADMIN_EMAIL` (default `sreejith@miak.in`).
 
 | Email | Role |
 | --- | --- |
-| admin@medcityoverseas.test | Admin, UK desk |
-| germany.desk@medcityoverseas.test | Admin, Germany desk |
-| nursing.desk@medcityoverseas.test | Admin, Nursing desk |
+| sreejith@miak.in | Super admin, platform owner |
+| admin@medcityoverseas.test | Overseas admin, UK desk |
+| germany.desk@medcityoverseas.test | Overseas admin, Germany desk |
+| nursing.desk@medcityoverseas.test | Overseas admin, Nursing desk |
 | management@medcityoverseas.test | Management (read-only) |
 | kottayam@medcity.test | Partner owner, Medcity Kottayam |
 | uk.docs@medcity.test | Counsellor, Medcity Kottayam |
@@ -84,10 +86,11 @@ All seeded users share the password `Password@123`. Every person, university and
 | `npm run build` / `npm start` | Production build and server |
 | `npm run typecheck` | TypeScript check |
 | `npm run lint` | ESLint |
-| `npm test` | Unit tests (pre-submission rules, CSV import, formatting) |
+| `npm test` | Unit tests (pre-submission rules, CSV import, formatting, the role matrix) |
 | `npm run db:generate` | Create a migration after changing `src/db/schema.ts` |
 | `npm run db:migrate` | Apply migrations |
 | `npm run db:seed` | Reset and load sample data |
+| `npm run db:promote -- you@example.com` | Make an existing account a super admin (safe to run against production) |
 | `npm run db:studio` | Browse the database |
 
 ## Project layout
@@ -127,6 +130,8 @@ tests/                          node:test unit tests
 
 - Every page and action loads records through org-scoped helpers (`getStudentForUser`, `applicationWhere`); partners get a 404 for other organisations' records.
 - Only admins change application status, lock / unlock profiles, and manage programs, partners and statuses.
+- Only a super admin creates or deactivates Overseas staff accounts, changes anyone's role, resets passwords, and reads the audit log. The role change refuses to leave the platform without an active super admin, and nobody can change their own role.
+- Password resets issue a one-time password shown once in the confirmation, and the account cannot use the app until it is changed.
 - Student consent text and time are stored on registration.
 - Audit log covers profile edits, reassignments, status changes, passport reveals, document uploads, downloads and deletes, exports and imports.
 - Uploads: PDF / JPG / PNG / WebP up to 10 MB, stored outside the web root, served with `no-store` and `nosniff`.
@@ -134,13 +139,41 @@ tests/                          node:test unit tests
 
 ## Before going live
 
-- Swap local file storage (`src/server/storage.ts`) for S3-compatible storage.
+- Set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` with a private `student-documents` bucket, so uploads survive a deploy (`src/server/storage.ts` falls back to local disk).
 - Set `WHATSAPP_PROVIDER=meta` with approved message templates (free text only works inside the 24-hour window).
-- Add password reset and forced password change on first sign-in (temporary passwords are shown once today).
-- Add rate limiting on sign in.
+- Email the one-time password to the user instead of showing it to the person doing the reset.
+- Move the sign-in rate limiter from process memory to Redis or the database once more than one instance runs.
 - Email notifications alongside in-app ones.
 - Set `TZ=Asia/Kolkata` on the server.
 
+## Deploying a schema change
+
+The Hostinger build does not touch the database, so a migration is applied on purpose:
+
+```bash
+# from your Mac, with DATABASE_URL pointing at Supabase
+npm run db:migrate
+```
+
+`drizzle/0002_super_admin_role.sql` adds `SUPER_ADMIN` to the role enum. If you would rather do it in the Supabase SQL editor:
+
+```sql
+alter type "public"."role" add value 'SUPER_ADMIN';
+update users set role = 'SUPER_ADMIN' where email = 'sreejith@miak.in';
+```
+
+Run the two statements separately: Postgres will not let a new enum value be used in the same transaction that added it.
+
+## Roles
+
+| Role | Sees | Can |
+| --- | --- | --- |
+| Super admin | Everything | Everything an Overseas admin can, plus create and deactivate staff accounts, change roles, reset passwords, read and export the audit log |
+| Overseas admin | Everything | Process applications: statuses, work queue, programs, status flows, partner organisations, partner users, documents |
+| Management | Everything | Read only: dashboard, applications, students |
+| Partner owner | Own organisation | Register students, apply, upload documents, answer requests, manage their own counsellors' work |
+| Counsellor | Own organisation | Same as partner owner, without full passport numbers |
+
 ## Next: Phase 2
 
-Program search with eligibility filters and LMS test readiness, enquiries, the public student registration form (QR) and student portal in English and Malayalam, Medcity CRM lead sync, and the parent / sponsor view.
+Enquiries, the public student registration form (QR) and student portal in English and Malayalam, Medcity CRM lead sync, and the parent / sponsor view.
