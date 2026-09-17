@@ -1,0 +1,367 @@
+import Link from "next/link";
+import { and, asc, count, eq, gte, ilike, lte, or, sql, type SQL } from "drizzle-orm";
+import { db, schema } from "@/db";
+import { requireUser } from "@/lib/auth";
+import { checkEligibility, type Eligibility } from "@/lib/eligibility";
+import { fmtMoney, fullName, MONTHS } from "@/lib/format";
+import { isStaff } from "@/lib/permissions";
+import { readFilters } from "@/server/queries";
+import { Button, Card, Chip, EmptyState, Input, LinkButton, PageHeader, Select, Table, Td, Th, Toolbar, cn } from "@/components/ui";
+import { IconCheck, IconAlert, IconClock, IconGlobe, IconSearch, IconSpark } from "@/components/icons";
+
+export const metadata = { title: "Search programs" };
+
+const PAGE = 25;
+
+const LEVEL_LABEL: Record<string, string> = {
+  SCHOOL: "School",
+  UG_DIPLOMA: "Diploma",
+  UG: "Bachelor's",
+  PG_DIPLOMA: "PG diploma",
+  PG: "Master's",
+  PHD: "PhD",
+  VOCATIONAL: "Ausbildung",
+  REGISTRATION: "Registration route",
+};
+
+const QUICK = [
+  { key: "noAppFee", label: "No application fee" },
+  { key: "moi", label: "MOI accepted" },
+  { key: "lowDeposit", label: "Deposit under 1,500" },
+  { key: "noEnglish", label: "No English test needed" },
+  { key: "ausbildung", label: "Ausbildung" },
+  { key: "nursing", label: "Nurse registration" },
+] as const;
+
+export default async function SearchPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const user = await requireUser(["ADMIN", "MANAGEMENT", "PARTNER", "COUNSELLOR"]);
+  const f = readFilters(await searchParams) as Record<string, string>;
+  const page = Math.max(1, Number(f.page ?? 1));
+  const { programs: p, universities: u, countries: c, students: s } = schema;
+
+  const conds: (SQL | undefined)[] = [eq(p.status, "LIVE")];
+  if (f.q) conds.push(or(ilike(p.name, `%${f.q}%`), ilike(u.name, `%${f.q}%`), ilike(p.studyArea, `%${f.q}%`)));
+  if (f.country) conds.push(eq(c.code, f.country));
+  if (f.pathway) conds.push(eq(p.pathway, f.pathway as schema.Pathway));
+  if (f.level) conds.push(eq(p.level, f.level as "PG"));
+  if (f.intakeMonth) conds.push(sql`${Number(f.intakeMonth)} = any(${p.intakeMonths})`);
+  if (f.maxTuition) conds.push(or(lte(p.tuitionPerYear, Number(f.maxTuition)), sql`${p.tuitionPerYear} is null`));
+  if (f.minIelts) conds.push(or(lte(p.minIelts, Number(f.minIelts)), sql`${p.minIelts} is null`));
+  if (f.noAppFee) conds.push(eq(p.applicationFee, 0));
+  if (f.moi) conds.push(eq(p.moiAccepted, true));
+  if (f.lowDeposit) conds.push(or(lte(p.initialDeposit, 1500), sql`${p.initialDeposit} is null`));
+  if (f.noEnglish) conds.push(and(sql`${p.minIelts} is null`, sql`${p.minPte} is null`, sql`${p.minOetGrade} is null`));
+  if (f.ausbildung) conds.push(eq(p.pathway, "AUSBILDUNG"));
+  if (f.nursing) conds.push(eq(p.pathway, "NURSING"));
+  const where = and(...conds);
+
+  const rows = await db
+    .select({
+      id: p.id,
+      name: p.name,
+      pathway: p.pathway,
+      level: p.level,
+      studyArea: p.studyArea,
+      durationMonths: p.durationMonths,
+      tuition: p.tuitionPerYear,
+      applicationFee: p.applicationFee,
+      deposit: p.initialDeposit,
+      intakeMonths: p.intakeMonths,
+      minIelts: p.minIelts,
+      minPte: p.minPte,
+      minOetGrade: p.minOetGrade,
+      minGermanLevel: p.minGermanLevel,
+      maxBacklogs: p.maxBacklogs,
+      maxGapYears: p.maxGapYears,
+      moiAccepted: p.moiAccepted,
+      university: u.name,
+      city: u.city,
+      isPublic: u.isPublic,
+      country: c.name,
+      countryCode: c.code,
+      currency: c.currency,
+    })
+    .from(p)
+    .innerJoin(u, eq(p.universityId, u.id))
+    .innerJoin(c, eq(u.countryId, c.id))
+    .where(where)
+    .orderBy(asc(c.name), asc(u.name), asc(p.name))
+    .limit(PAGE + 1)
+    .offset((page - 1) * PAGE);
+
+  const hasNext = rows.length > PAGE;
+  const list = rows.slice(0, PAGE);
+  const [{ total }] = await db
+    .select({ total: count() })
+    .from(p)
+    .innerJoin(u, eq(p.universityId, u.id))
+    .innerJoin(c, eq(u.countryId, c.id))
+    .where(where);
+
+  const countries = await db.select().from(c).orderBy(asc(c.name));
+  const students = await db
+    .select({ id: s.id, firstName: s.firstName, lastName: s.lastName })
+    .from(s)
+    .where(and(eq(s.archived, false), isStaff(user) ? undefined : eq(s.orgId, user.orgId)))
+    .orderBy(asc(s.firstName))
+    .limit(300);
+
+  const student = f.student
+    ? await db.query.students.findFirst({ where: and(eq(s.id, f.student), isStaff(user) ? undefined : eq(s.orgId, user.orgId)), with: { tests: true } })
+    : null;
+
+  const eligibility = new Map<string, Eligibility>();
+  if (student) {
+    for (const row of list) {
+      eligibility.set(row.id, checkEligibility({ backlogs: student.backlogs, gapYears: student.gapYears, tests: student.tests }, row));
+    }
+  }
+
+  const qs = (extra: Record<string, string | undefined>) => {
+    const params = new URLSearchParams(f);
+    for (const [k, v] of Object.entries(extra)) {
+      if (v === undefined) params.delete(k);
+      else params.set(k, v);
+    }
+    params.delete("page");
+    return params.toString();
+  };
+  const years = [new Date().getFullYear(), new Date().getFullYear() + 1, new Date().getFullYear() + 2];
+
+  return (
+    <>
+      <PageHeader
+        eyebrow="Phase 2"
+        title="Search programs"
+        subtitle={`${total} live program${total === 1 ? "" : "s"} across ${countries.length} destinations`}
+        actions={
+          student ? (
+            <LinkButton href={`/students/${student.id}/profile`} variant="secondary">
+              Open {fullName(student)}
+            </LinkButton>
+          ) : undefined
+        }
+      />
+
+      <Toolbar className="mb-3">
+        <form className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4 [&>*]:min-w-0">
+          {Object.entries(f)
+            .filter(([k]) => QUICK.some((q) => q.key === k))
+            .map(([k, v]) => (
+              <input key={k} type="hidden" name={k} value={v} />
+            ))}
+          <div className="relative sm:col-span-2">
+            <IconSearch className="pointer-events-none absolute left-3 top-1/2 size-[18px] -translate-y-1/2 text-muted" />
+            <Input name="q" defaultValue={f.q} placeholder="Program, university or study area" aria-label="Search" className="pl-10" />
+          </div>
+          <Select name="country" aria-label="Country" defaultValue={f.country ?? ""}>
+            <option value="">All destinations</option>
+            {countries.map((x) => (
+              <option key={x.id} value={x.code}>{x.name}</option>
+            ))}
+          </Select>
+          <Select name="level" aria-label="Level" defaultValue={f.level ?? ""}>
+            <option value="">Any level</option>
+            <option value="UG">Bachelor&apos;s</option>
+            <option value="PG">Master&apos;s</option>
+            <option value="PG_DIPLOMA">PG diploma</option>
+            <option value="UG_DIPLOMA">Diploma</option>
+            <option value="PHD">PhD</option>
+            <option value="VOCATIONAL">Vocational (Ausbildung)</option>
+            <option value="REGISTRATION">Registration route</option>
+          </Select>
+          <Select name="intakeMonth" aria-label="Intake month" defaultValue={f.intakeMonth ?? ""}>
+            <option value="">Any intake</option>
+            {MONTHS.map((m, i) => (
+              <option key={m} value={i + 1}>{m} intake</option>
+            ))}
+          </Select>
+          <Select name="intakeYear" aria-label="Intake year" defaultValue={f.intakeYear ?? ""}>
+            <option value="">Any year</option>
+            {years.map((y) => (
+              <option key={y}>{y}</option>
+            ))}
+          </Select>
+          <Select name="minIelts" aria-label="Student's IELTS" defaultValue={f.minIelts ?? ""}>
+            <option value="">Any English requirement</option>
+            <option value="5.5">Needs IELTS 5.5 or less</option>
+            <option value="6">Needs IELTS 6.0 or less</option>
+            <option value="6.5">Needs IELTS 6.5 or less</option>
+            <option value="7">Needs IELTS 7.0 or less</option>
+          </Select>
+          <Input name="maxTuition" defaultValue={f.maxTuition} placeholder="Max tuition per year" aria-label="Maximum tuition" inputMode="numeric" />
+          <Select name="student" aria-label="Check against student" defaultValue={f.student ?? ""}>
+            <option value="">Check eligibility for…</option>
+            {students.map((x) => (
+              <option key={x.id} value={x.id}>{fullName(x)}</option>
+            ))}
+          </Select>
+          <div className="flex justify-end gap-2 sm:col-span-2 xl:col-span-4">
+            <LinkButton href="/search" variant="quiet" size="sm">Clear all</LinkButton>
+            <Button type="submit" size="sm">Search</Button>
+          </div>
+        </form>
+      </Toolbar>
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <span className="text-[13px] font-medium text-muted">Quick filters</span>
+        {QUICK.map((q) => {
+          const on = !!f[q.key];
+          return (
+            <Link
+              key={q.key}
+              href={`/search?${qs({ [q.key]: on ? undefined : "1" })}`}
+              className={cn(
+                "rounded-full border px-3 py-1 text-[13px] font-medium transition-colors",
+                on ? "border-brand-600 bg-brand-600 text-white" : "border-line-strong bg-surface text-ink-soft hover:border-brand-300 hover:text-brand-700",
+              )}
+            >
+              {q.label}
+            </Link>
+          );
+        })}
+      </div>
+
+      {student && (
+        <Card className="mb-4 border-brand-200 bg-brand-50/50 p-3.5">
+          <p className="text-sm">
+            Checking against <span className="font-semibold">{fullName(student)}</span>
+            {student.tests.length > 0 && (
+              <>
+                {" · "}
+                {student.tests.map((t) => (
+                  <Chip key={t.id} tone={t.isMock ? "info" : "ok"} className="mr-1">
+                    {t.test === "GERMAN" ? "German" : t.test} {t.overall}
+                    {t.isMock ? " (practice)" : ""}
+                  </Chip>
+                ))}
+              </>
+            )}
+            {student.backlogs != null && <span className="text-muted"> · {student.backlogs} backlogs</span>}
+            {student.gapYears != null && <span className="text-muted"> · {student.gapYears}-year gap</span>}
+          </p>
+          <p className="mt-1 text-[13px] text-muted">
+            Practice scores come from Medcity&apos;s own test platform, so a student still in class shows as on track rather than blocked.
+          </p>
+        </Card>
+      )}
+
+      <Card>
+        {list.length === 0 ? (
+          <EmptyState icon={<IconSearch />} title="No programs match these filters">
+            Try removing a quick filter, or widen the destination and level.
+          </EmptyState>
+        ) : (
+          <Table tableClassName="min-w-[1080px]">
+            <thead>
+              <tr>
+                <Th>Program</Th>
+                <Th>University</Th>
+                <Th>Intakes</Th>
+                <Th>Tuition / yr</Th>
+                <Th>Entry requirements</Th>
+                {student && <Th>Fit</Th>}
+                <Th><span className="sr-only">Apply</span></Th>
+              </tr>
+            </thead>
+            <tbody>
+              {list.map((r) => {
+                const fit = eligibility.get(r.id);
+                return (
+                  <tr key={r.id} className="hover:bg-surface-2/60">
+                    <Td>
+                      <p className="font-medium text-ink">{r.name}</p>
+                      <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
+                        <span>{LEVEL_LABEL[r.level] ?? r.level}</span>
+                        {r.studyArea && <span>· {r.studyArea}</span>}
+                        {r.durationMonths && <span>· {r.durationMonths} months</span>}
+                        {r.pathway !== "DEGREE" && <Chip tone="brand">{r.pathway === "AUSBILDUNG" ? "Ausbildung" : "Nursing"}</Chip>}
+                      </p>
+                    </Td>
+                    <Td>
+                      <p>{r.university}</p>
+                      <p className="flex items-center gap-1 text-xs text-muted">
+                        <IconGlobe className="size-3.5" /> {r.city ? `${r.city}, ` : ""}{r.country}
+                        {r.isPublic && <Chip className="ml-1">Public</Chip>}
+                      </p>
+                    </Td>
+                    <Td className="whitespace-nowrap text-[13px]">{r.intakeMonths.map((m) => MONTHS[m - 1]).join(", ")}</Td>
+                    <Td className="whitespace-nowrap tabular">
+                      {r.tuition ? fmtMoney(r.tuition, r.currency) : "No tuition fee"}
+                      <p className="text-xs text-muted">
+                        {r.applicationFee > 0 ? `App. fee ${fmtMoney(r.applicationFee, r.currency)}` : "No application fee"}
+                        {r.deposit ? ` · deposit ${fmtMoney(r.deposit, r.currency)}` : ""}
+                      </p>
+                    </Td>
+                    <Td>
+                      <div className="flex max-w-[15rem] flex-wrap gap-1">
+                        {r.minIelts && <Chip>IELTS {r.minIelts}</Chip>}
+                        {r.minPte && <Chip>PTE {r.minPte}</Chip>}
+                        {r.minOetGrade && <Chip>OET {r.minOetGrade}</Chip>}
+                        {r.minGermanLevel && <Chip>German {r.minGermanLevel}</Chip>}
+                        {r.maxBacklogs != null && <Chip>Backlogs ≤ {r.maxBacklogs}</Chip>}
+                        {r.moiAccepted && <Chip tone="ok">MOI</Chip>}
+                        {!r.minIelts && !r.minPte && !r.minOetGrade && !r.minGermanLevel && <span className="text-xs text-muted">No test requirement recorded</span>}
+                      </div>
+                    </Td>
+                    {student && fit && (
+                      <Td>
+                        {fit.verdict === "eligible" && <Chip tone="ok"><IconCheck className="size-3.5" /> Eligible</Chip>}
+                        {fit.verdict === "on-track" && <Chip tone="warn"><IconClock className="size-3.5" /> On track</Chip>}
+                        {fit.verdict === "blocked" && <Chip tone="bad"><IconAlert className="size-3.5" /> Not yet</Chip>}
+                        {fit.verdict === "unknown" && <Chip>No rules</Chip>}
+                        <ul className="mt-1 space-y-0.5 text-xs text-muted">
+                          {fit.missing.map((m) => <li key={m}>{m}</li>)}
+                          {fit.onTrack.map((m) => <li key={m}>{m}</li>)}
+                        </ul>
+                      </Td>
+                    )}
+                    <Td>
+                      {student ? (
+                        <LinkButton
+                          size="sm"
+                          variant={fit?.verdict === "blocked" ? "secondary" : "primary"}
+                          href={`/students/${student.id}/applications?tab=apply&program=${r.id}`}
+                        >
+                          Apply
+                        </LinkButton>
+                      ) : (
+                        <span className="text-xs text-muted">Pick a student to apply</span>
+                      )}
+                    </Td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </Table>
+        )}
+        {(page > 1 || hasNext) && (
+          <div className="flex items-center justify-between border-t border-line px-4 py-3">
+            <span className="text-[13px] text-muted">
+              Showing {(page - 1) * PAGE + 1} to {(page - 1) * PAGE + list.length} of {total}
+            </span>
+            <div className="flex gap-2">
+              {page > 1 && (
+                <LinkButton variant="secondary" size="sm" href={`/search?${new URLSearchParams({ ...f, page: String(page - 1) })}`}>
+                  Previous
+                </LinkButton>
+              )}
+              {hasNext && (
+                <LinkButton variant="secondary" size="sm" href={`/search?${new URLSearchParams({ ...f, page: String(page + 1) })}`}>
+                  Next
+                </LinkButton>
+              )}
+            </div>
+          </div>
+        )}
+      </Card>
+
+      {!student && (
+        <p className="mt-4 flex items-center gap-2 text-[13px] text-muted">
+          <IconSpark className="size-4 text-brand-600" />
+          Pick a student in &ldquo;Check eligibility for…&rdquo; to see which programs they already qualify for, and which ones they are on track for.
+        </p>
+      )}
+    </>
+  );
+}

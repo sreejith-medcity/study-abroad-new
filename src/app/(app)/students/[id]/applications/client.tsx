@@ -18,10 +18,21 @@ type ProgramOption = {
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-export function ApplyForm({ studentId, programs, defaultPathway }: { studentId: string; programs: ProgramOption[]; defaultPathway: string }) {
-  const [pathway, setPathway] = useState(defaultPathway);
-  const [country, setCountry] = useState("");
-  const [programId, setProgramId] = useState("");
+export function ApplyForm({
+  studentId,
+  programs,
+  defaultPathway,
+  preselectProgramId,
+}: {
+  studentId: string;
+  programs: ProgramOption[];
+  defaultPathway: string;
+  preselectProgramId?: string;
+}) {
+  const preselected = programs.find((x) => x.id === preselectProgramId);
+  const [pathway, setPathway] = useState(preselected?.pathway ?? defaultPathway);
+  const [country, setCountry] = useState(preselected?.country ?? "");
+  const [programId, setProgramId] = useState(preselected?.id ?? "");
   const countries = useMemo(() => [...new Set(programs.map((p) => p.country))].sort(), [programs]);
   const visible = programs.filter((p) => (!pathway || p.pathway === pathway) && (!country || p.country === country));
   const program = programs.find((p) => p.id === programId);

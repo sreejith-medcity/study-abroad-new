@@ -13,7 +13,7 @@ import { ApplyForm, CommentComposer, StatusForm } from "./client";
 
 export const metadata = { title: "Applications" };
 
-export default async function StudentApplicationsPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ app?: string; tab?: string; ch?: string }> }) {
+export default async function StudentApplicationsPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ app?: string; tab?: string; ch?: string; program?: string }> }) {
   const { id } = await params;
   const sp = await searchParams;
   const user = await requireUser(["ADMIN", "MANAGEMENT", "PARTNER", "COUNSELLOR"]);
@@ -26,7 +26,7 @@ export default async function StudentApplicationsPage({ params, searchParams }: 
     orderBy: desc(schema.applications.createdAt),
   });
 
-  const tab = sp.tab === "apply" || apps.length === 0 ? "apply" : "applied";
+  const tab = sp.tab === "apply" || sp.program || apps.length === 0 ? "apply" : "applied";
   const selected = apps.find((a) => a.id === sp.app) ?? apps[0];
   const channel = sp.ch === "STUDENT" ? "STUDENT" : "TEAM";
 
@@ -39,7 +39,7 @@ export default async function StudentApplicationsPage({ params, searchParams }: 
 
       {tab === "apply" ? (
         <div className="mx-auto max-w-2xl p-5">
-          {canWrite ? <ApplyPanel studentId={id} defaultPathway={student.preferredPathway ?? ""} /> : <EmptyState title="Read-only access" />}
+          {canWrite ? <ApplyPanel studentId={id} defaultPathway={student.preferredPathway ?? ""} preselectProgramId={sp.program} /> : <EmptyState title="Read-only access" />}
         </div>
       ) : selected ? (
         <div className="grid gap-4 p-4 lg:grid-cols-[320px_minmax(0,1fr)]">
@@ -77,7 +77,7 @@ function TabLink({ href, active, children }: { href: string; active: boolean; ch
   );
 }
 
-async function ApplyPanel({ studentId, defaultPathway }: { studentId: string; defaultPathway: string }) {
+async function ApplyPanel({ studentId, defaultPathway, preselectProgramId }: { studentId: string; defaultPathway: string; preselectProgramId?: string }) {
   const rows = await db.query.programs.findMany({
     where: eq(schema.programs.status, "LIVE"),
     with: { university: { with: { country: true } } },
@@ -103,7 +103,7 @@ async function ApplyPanel({ studentId, defaultPathway }: { studentId: string; de
   return (
     <>
       <h2 className="mb-3 text-base font-semibold">Start a new application</h2>
-      <ApplyForm studentId={studentId} programs={programs} defaultPathway={defaultPathway} />
+      <ApplyForm studentId={studentId} programs={programs} defaultPathway={defaultPathway} preselectProgramId={preselectProgramId} />
     </>
   );
 }

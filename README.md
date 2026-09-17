@@ -22,7 +22,18 @@ This repository currently contains **Phase 0 basics and Phase 1 (core pipeline)*
 | Notifications | All | Bell with unread count, list, mark read. Raised on new applications, status changes, comments and WhatsApp replies. |
 | WhatsApp | System | Outbound adapter (`console` for development, `meta` for WhatsApp Cloud API) and an inbound webhook that verifies Meta's signature and posts student replies into the Student channel. |
 
-Nav items marked P2 / P3 / P4 are placeholders for later phases (program search, enquiries, wallet, commission, learning, insights).
+| Program search | All | Search the catalogue by keyword, destination, level, intake and English requirement, with quick filters. Pick a student and every row shows eligible, on track (including practice scores from Medcity's own test platform) or not yet, with the reason. Apply straight from a result. |
+| Password safety | All | Temporary passwords force a change on first sign in; sign in is rate limited per account and per caller. |
+| Document storage | All | Supabase Storage in production, local disk in development. |
+
+Nav items marked P3 / P4 are placeholders for later phases (wallet, commission, learning, insights). Enquiries is the remaining Phase 2 module.
+
+## Design
+
+Brand crimson and gold from Medcity's own identity, warm neutrals, Poppins for
+headings and DM Sans for text. Status colours (amber, indigo, green, red) are kept
+distinct from the brand red so a "closed" case never reads as chrome. Tokens live in
+`src/app/globals.css`; shared components in `src/components/ui.tsx`.
 
 ## Stack
 
