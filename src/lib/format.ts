@@ -30,3 +30,9 @@ export function financialYear(d = new Date()) {
 export function fullName(s: { firstName: string; lastName: string }) {
   return `${s.firstName} ${s.lastName}`.trim();
 }
+
+/** First name for greetings. Desk-style accounts ("UK Documentation") keep the full name. */
+export function greetingName(name: string) {
+  const first = name.trim().split(/\s+/)[0] ?? name;
+  return first.length >= 4 ? first : name;
+}

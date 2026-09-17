@@ -6,6 +6,8 @@ import { LoginForm } from "./login-form";
 
 export const metadata = { title: "Sign in" };
 
+const AUDIENCE = ["Overseas team", "Management", "Branch owners", "Counsellors", "Sub-agents"];
+
 const POINTS = [
   "Register students and apply to universities, Ausbildung and nursing routes in one place",
   "See exactly what each application is waiting on, and who has it",
@@ -34,7 +36,17 @@ export default async function LoginPage() {
             ))}
           </ul>
         </div>
-        <p className="relative z-10 text-[13px] text-white/60">Medcity International Overseas Corporation · Kerala</p>
+        <div className="relative z-10">
+          <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/50">One sign in, five views</p>
+          <ul className="mb-5 flex flex-wrap gap-1.5">
+            {AUDIENCE.map((who) => (
+              <li key={who} className="rounded-full bg-white/12 px-2.5 py-1 text-[12px] font-medium text-white/85 ring-1 ring-inset ring-white/15">
+                {who}
+              </li>
+            ))}
+          </ul>
+          <p className="text-[13px] text-white/60">Medcity International Overseas Corporation · Kerala</p>
+        </div>
       </section>
 
       <section className="flex items-center justify-center px-4 py-12">
@@ -43,13 +55,22 @@ export default async function LoginPage() {
             <Logo tone="dark" />
           </div>
           <h2 className="font-display text-[22px] font-semibold text-ink">Sign in</h2>
-          <p className="mt-1 text-[14px] text-muted">Partners, counsellors and the Medcity Overseas team.</p>
+          <p className="mt-1 text-[14px] text-muted">
+            Your dashboard is built around your role, so sign in and you land on the work that is yours.
+          </p>
           <Card className="mt-5 p-5">
             <LoginForm />
           </Card>
-          <p className="mt-4 text-center text-[13px] text-muted">
-            Trouble signing in? Ask your Medcity Overseas relationship manager to reset your password.
-          </p>
+          <div className="mt-4 space-y-2 text-[13px] text-muted">
+            <p>
+              <span className="font-medium text-ink">First time here?</span> Your one-time password works once, then the portal asks you
+              to set your own.
+            </p>
+            <p>
+              <span className="font-medium text-ink">Locked out?</span> Ask your Medcity Overseas relationship manager to issue a new
+              one. Repeated wrong attempts pause sign in for ten minutes.
+            </p>
+          </div>
         </div>
       </section>
     </main>

@@ -1,9 +1,8 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { isAdmin } from "@/lib/permissions";
 
+/** Every role now has its own dashboard, so home is the same address for all of them. */
 export default async function Home() {
-  const user = await requireUser();
-  if (isAdmin(user)) redirect("/admin/queue");
+  await requireUser();
   redirect("/dashboard");
 }

@@ -28,6 +28,7 @@ const as = (role: SessionUser["role"], orgId = "org-1"): SessionUser => ({
   orgId,
   orgName: "Org",
   orgType: role === "PARTNER" || role === "COUNSELLOR" ? "BRANCH" : "HQ",
+  deskLabel: null,
   mustChangePassword: false,
 });
 

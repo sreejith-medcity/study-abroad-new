@@ -26,6 +26,7 @@ export type SessionUser = {
   orgId: string;
   orgName: string;
   orgType: "HQ" | "BRANCH" | "SUB_AGENT";
+  deskLabel: string | null;
   mustChangePassword: boolean;
 };
 
@@ -91,6 +92,7 @@ export const getSession = cache(async (): Promise<SessionUser | null> => {
       orgId: user.orgId,
       orgName: user.org.name,
       orgType: user.org.type,
+      deskLabel: user.deskLabel,
       mustChangePassword: user.mustChangePassword,
     };
   } catch {

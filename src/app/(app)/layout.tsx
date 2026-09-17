@@ -9,11 +9,11 @@ import { IconBell, IconLogout } from "@/components/icons";
 import { logoutAction } from "@/app/login/actions";
 import { APP_ROLES, isAdmin, isSuperAdmin, ROLE_LABEL } from "@/lib/permissions";
 
-const PARTNER_NAV: NavGroup[] = [
+const partnerNav = (home: string): NavGroup[] => [
   {
     title: "Work",
     items: [
-      { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
+      { href: "/dashboard", label: home, icon: "dashboard" },
       { href: "/students", label: "Students", icon: "students" },
       { href: "/applications", label: "Applications", icon: "applications" },
     ],
@@ -35,14 +35,17 @@ const PARTNER_NAV: NavGroup[] = [
   { title: "Support", items: [{ href: "/learning", label: "Learning resources", icon: "learning", soon: "P4" }] },
 ];
 
+const PARTNER_NAV = partnerNav("Dashboard");
+const COUNSELLOR_NAV = partnerNav("My desk");
+
 const ADMIN_NAV: NavGroup[] = [
   {
     title: "Processing",
     items: [
+      { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
       { href: "/admin/queue", label: "Work queue", icon: "queue" },
       { href: "/applications", label: "Applications", icon: "applications" },
       { href: "/students", label: "Students", icon: "students" },
-      { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
     ],
   },
   {
@@ -71,7 +74,7 @@ const MANAGEMENT_NAV: NavGroup[] = [
   {
     title: "Overview",
     items: [
-      { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
+      { href: "/dashboard", label: "Performance", icon: "dashboard" },
       { href: "/applications", label: "Applications", icon: "applications" },
       { href: "/students", label: "Students", icon: "students" },
       { href: "/admin/insights", label: "Insights", icon: "insights", soon: "P4" },
@@ -87,7 +90,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       ? ADMIN_NAV
       : user.role === "MANAGEMENT"
         ? MANAGEMENT_NAV
-        : PARTNER_NAV;
+        : user.role === "PARTNER"
+          ? PARTNER_NAV
+          : COUNSELLOR_NAV;
 
   const [{ unread }] = await db
     .select({ unread: count() })
@@ -159,6 +164,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <p className="truncate text-xs text-muted">{user.email}</p>
               <p className="mt-1 text-xs text-muted">
                 {user.orgName} · {ROLE_LABEL[user.role]}
+                {user.deskLabel ? ` · ${user.deskLabel}` : ""}
               </p>
               <Link href="/change-password" className="mt-3 block rounded-lg border border-line px-3 py-1.5 text-center text-[13px] font-medium hover:bg-surface-2">
                 Change password
@@ -174,11 +180,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </header>
 
       <div className="flex">
-        <aside className="thin-scroll sticky top-16 hidden h-[calc(100vh-4rem)] w-60 shrink-0 overflow-y-auto border-r border-line bg-surface md:block">
-          <SideNav groups={groups} />
-          <p className="px-5 pb-6 pt-2 text-[11px] leading-relaxed text-muted/70">
-            Phase 1 and 2 are live. Items marked P2 to P4 arrive with later phases.
-          </p>
+        <aside className="hidden w-60 shrink-0 border-r border-line bg-surface md:block">
+          <div className="thin-scroll sticky top-16 max-h-[calc(100vh-4rem)] overflow-y-auto">
+            <SideNav groups={groups} />
+            <p className="px-5 pb-6 pt-2 text-[11px] leading-relaxed text-muted/70">
+              Phase 1 and 2 are live. Items marked P2 to P4 arrive with later phases.
+            </p>
+          </div>
         </aside>
         <main className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">
           <div className="mx-auto max-w-[1400px]">{children}</div>

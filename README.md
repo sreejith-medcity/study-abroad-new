@@ -9,7 +9,7 @@ This repository currently contains **Phase 0 basics and Phase 1 (core pipeline)*
 | Area | Who | What |
 | --- | --- | --- |
 | Sign in and roles | All | Super admin, Overseas admin, Management (read-only), Partner owner, Counsellor. Partners only ever see their own organisation's data. |
-| Dashboard | Partners, staff | KPI tiles (all, offers, payments, visa received / rejected, non-enrolment, deferrals, pending from partner) with date, intake and country filters. Each tile opens a filtered list. Tier progress, upcoming deadlines, relationship manager. |
+| Dashboards | All | One address, five dashboards. Super admin sees the platform (accounts, access, storage, audit activity); Overseas admin sees the processing desk (lane health against SLA, own files, unassigned work, partner activity); Management sees outcomes (funnel, conversion rates, partner performance, twelve month trend); a partner owner sees the branch (KPI tiles, tier progress, team load, deadlines); a counsellor sees their own desk (what is waiting on them, unread student replies, their students). |
 | Students | Partners, staff | List with filters, inline reassignment, archive / delete. Registration requires recorded consent. |
 | Student file | Partners, staff | Three steps: **Profile** (personal, address, passport, academics, work, tests), **Applications**, **Documents**. Profile locks once the team starts working an application; partners send edit requests. Passport numbers are masked for counsellors and every reveal and download is logged. |
 | Applications | Partners, staff | Create against the program catalogue with valid intakes only. Acknowledgement numbers like `144472/26-27`. List with 12 filters, pagination, CSV export (formula-injection safe). |
