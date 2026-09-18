@@ -10,7 +10,8 @@ import { audit } from "@/lib/audit";
 import { ADMIN_ROLES, HQ_ROLES, canManageSuperAdmins, canManageUsers, canResetPasswords, ROLE_LABEL } from "@/lib/permissions";
 import { makeSlug } from "@/server/public-form";
 
-export type FormState = { error?: string; ok?: string; fieldErrors?: Record<string, string[] | undefined> };
+import type { FormState } from "@/lib/form-state";
+export type { FormState };
 
 function tempPassword() {
   return `Mc-${randomBytes(6).toString("base64url")}`;
@@ -44,7 +45,7 @@ export async function invitePartnerAction(_: FormState, formData: FormData): Pro
   });
   await audit(user.id, "partner.invite", "organization", org.id, { ownerEmail: d.ownerEmail });
   revalidatePath("/admin/partners");
-  return { ok: `${d.orgName} created. Share these sign-in details securely: ${d.ownerEmail} / ${password} (shown once).` };
+  return { keep: true, ok: `${d.orgName} created. Sign-in details for ${d.ownerEmail}: ${password}` };
 }
 
 const addUser = z.object({
@@ -83,7 +84,7 @@ export async function addUserAction(_: FormState, formData: FormData): Promise<F
   const [created] = await db.insert(schema.users).values({ name: d.name, email: d.email, deskLabel: d.deskLabel || null, role: d.role, orgId: org.id, passwordHash: await hashPassword(password) }).returning();
   await audit(user.id, "user.create", "user", created.id, { orgId: org.id, role: d.role });
   revalidatePath("/admin/partners");
-  return { ok: `User added. Temporary password for ${d.email}: ${password} (shown once).` };
+  return { keep: true, ok: `User added. Temporary password for ${d.email}: ${password}` };
 }
 
 export async function updateOrgAction(formData: FormData) {
@@ -158,7 +159,7 @@ export async function resetPasswordAction(_: FormState, formData: FormData): Pro
     .where(eq(schema.users.id, userId));
   await audit(actor.id, "user.password_reset", "user", userId, { email: target.email });
   revalidatePath("/admin/partners");
-  return { ok: `Temporary password for ${target.email}: ${password}. Shown once, and they must change it at sign in.` };
+  return { keep: true, ok: `Temporary password for ${target.email}: ${password}. They must change it at sign in.` };
 }
 
 /**

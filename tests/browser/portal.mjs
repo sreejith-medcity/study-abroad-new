@@ -141,7 +141,8 @@ async function signIn(page, email, password = "Password@123") {
     const invite = page.getByRole("button", { name: /Give portal access/i }).first();
     if (await invite.count()) {
       await invite.click();
-      await page.locator('[role="status"]').getByText(/One-time password/i).first().waitFor({ timeout: 15000 })
+      // The password stays on the page, so a counsellor can read it to the student.
+      await page.locator("main").getByText(/One-time password/i).first().waitFor({ timeout: 15000 })
         .then(() => ok("invite issues a one-time password"))
         .catch(() => bad("invite gave no password"));
     } else {

@@ -9,7 +9,8 @@ import { getStudentForUser } from "@/server/queries";
 import { deleteUpload, saveUpload, UploadError } from "@/server/storage";
 import { PROCESSING_ROLES, isAdmin } from "@/lib/permissions";
 
-export type FormState = { error?: string; ok?: string };
+import type { FormState } from "@/lib/form-state";
+export type { FormState };
 
 export async function uploadDocumentAction(_: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);

@@ -11,7 +11,8 @@ import { ADMIN_ROLES, isStaff } from "@/lib/permissions";
 import { notifyUsers } from "@/server/notify";
 import { getEnquiryForUser, STAGE_LABEL } from "@/server/enquiries";
 
-export type FormState = { error?: string; ok?: string; fieldErrors?: Record<string, string[] | undefined> };
+import type { FormState } from "@/lib/form-state";
+export type { FormState };
 
 const ROLES = ["PARTNER", "COUNSELLOR", ...ADMIN_ROLES] as const;
 

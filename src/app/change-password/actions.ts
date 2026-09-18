@@ -9,7 +9,8 @@ import { hashPassword, requireUserAllowingPasswordChange } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { MIN_PASSWORD_LENGTH, passwordProblem } from "@/lib/password";
 
-export type FormState = { error?: string; ok?: string; fieldErrors?: Record<string, string[] | undefined> };
+import type { FormState } from "@/lib/form-state";
+export type { FormState };
 
 const schemaShape = z
   .object({

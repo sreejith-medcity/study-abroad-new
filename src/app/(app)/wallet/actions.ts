@@ -9,7 +9,8 @@ import { audit } from "@/lib/audit";
 import { adminIds, notifyUsers } from "@/server/notify";
 import { inr, walletBalance } from "@/server/commission";
 
-export type FormState = { error?: string; ok?: string; fieldErrors?: Record<string, string[] | undefined> };
+import type { FormState } from "@/lib/form-state";
+export type { FormState };
 
 const requestShape = z.object({
   amountInr: z
