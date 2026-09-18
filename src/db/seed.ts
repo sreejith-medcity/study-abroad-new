@@ -76,6 +76,15 @@ async function main() {
       { code: "DE", name: "Germany", currency: "EUR" },
       { code: "MT", name: "Malta", currency: "EUR" },
       { code: "CA", name: "Canada", currency: "CAD" },
+      // The rest of the destinations KC Overseas covers, so the catalogue can
+      // carry them without a code change each time.
+      { code: "US", name: "United States", currency: "USD" },
+      { code: "NZ", name: "New Zealand", currency: "NZD" },
+      { code: "NL", name: "Netherlands", currency: "EUR" },
+      { code: "FR", name: "France", currency: "EUR" },
+      { code: "IT", name: "Italy", currency: "EUR" },
+      { code: "SE", name: "Sweden", currency: "SEK" },
+      { code: "CH", name: "Switzerland", currency: "CHF" },
     ])
     .returning();
   const c = Object.fromEntries(countryRows.map((r) => [r.code, r.id]));

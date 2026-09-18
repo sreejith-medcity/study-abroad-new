@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { fmtMoney, MONTHS } from "@/lib/format";
 import { readFilters } from "@/server/queries";
 import { Button, Card, Chip, EmptyState, Input, PageHeader, Select, Table, Td, Th } from "@/components/ui";
-import { setProgramStatusAction } from "./actions";
+import { bulkStatusAction, setProgramStatusAction } from "./actions";
 import { ImportForm } from "./import-form";
 import { ADMIN_ROLES } from "@/lib/permissions";
 
@@ -31,7 +31,25 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
 
   return (
     <>
-      <PageHeader title="Programs" subtitle={`${rows.length} shown. Structured requirements drive the pre-submission check.`} />
+      <PageHeader
+        title="Programs"
+        subtitle={`${rows.length} shown. Structured requirements drive the pre-submission check.`}
+        actions={
+          rows.length > 0 ? (
+            // Acts on exactly what the filters above have selected, so a country
+            // or a pathway can be reviewed and published as one batch.
+            <form action={bulkStatusAction} className="flex flex-wrap items-center gap-2">
+              <input type="hidden" name="q" value={f.q ?? ""} />
+              <input type="hidden" name="country" value={f.country ?? ""} />
+              <input type="hidden" name="pathway" value={f.pathway ?? ""} />
+              <input type="hidden" name="from" value={f.status ?? ""} />
+              <span className="text-[13px] text-muted">These {rows.length}:</span>
+              <Button name="to" value="LIVE" size="sm" variant="secondary">Publish</Button>
+              <Button name="to" value="DRAFT" size="sm" variant="quiet">Back to draft</Button>
+            </form>
+          ) : undefined
+        }
+      />
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="space-y-4">
           <Card className="p-4">

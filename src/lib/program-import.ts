@@ -81,7 +81,9 @@ export function parseProgramCsv(text: string, validDocCodes: string[]): { rows: 
     if (!LEVELS.includes(level)) e.push(`level must be one of ${LEVELS.join(", ")}`);
     if (!STATUSES.includes(status)) e.push(`status must be one of ${STATUSES.join(", ")}`);
     const intakeMonths = parseIntakes(r.intakes ?? "", e);
-    if (!intakeMonths.length) e.push("at least one intake month is required");
+    // A draft may still be missing its intake months; a live program may not,
+    // because nobody can apply to a program with no intake.
+    if (!intakeMonths.length && status !== "DRAFT") e.push("at least one intake month is required");
     const requiredDocs = (r.required_docs ?? "").split(/[|;]+/).map((x) => x.trim().toUpperCase()).filter(Boolean);
     const badDocs = requiredDocs.filter((d) => !validDocCodes.includes(d));
     if (badDocs.length) e.push(`unknown document codes: ${badDocs.join(", ")}`);

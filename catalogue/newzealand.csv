@@ -1,0 +1,33 @@
+program,university,city,country_code,pathway,level,study_area,duration_months,tuition_per_year,application_fee,initial_deposit,intakes,min_ielts,min_pte,min_oet_grade,min_german_level,max_backlogs,max_gap_years,moi_accepted,required_docs,status
+Master of Information Technology,University of Auckland,Auckland,NZ,DEGREE,PG,Information Technology,18,55214,,,3|7,6.5,,,,,,,,DRAFT
+Master of Professional Accounting,University of Auckland,Auckland,NZ,DEGREE,PG,Professional Accounting,15,,,,4|9,6.5,,,,,,,,DRAFT
+Master of Engineering Studies,University of Auckland,Auckland,NZ,DEGREE,PG,Engineering,,55484,,,3|7,6.5,,,,,,,,DRAFT
+Master of Computer and Information Sciences,Auckland University of Technology,Auckland,NZ,DEGREE,PG,Information Technology,18,48200,,,2|7,6.5,,,,,,,,DRAFT
+Master of Engineering Project Management,Auckland University of Technology,Auckland,NZ,DEGREE,PG,Engineering,12,51600,,,2|7,6.5,,,,,,,,DRAFT
+Master of Business Management,Auckland University of Technology,Auckland,NZ,DEGREE,PG,Business,18,40600,,,3|10,6.5,,,,,,,,DRAFT
+Master of Professional Accounting,Auckland University of Technology,Auckland,NZ,DEGREE,PG,Professional Accounting,18,40600,,,3|10,6.5,,,,,,,,DRAFT
+Postgraduate Diploma in Business Management,Auckland University of Technology,Auckland,NZ,DEGREE,PG_DIPLOMA,Business,12,40600,,,3|10,6.5,,,,,,,,DRAFT
+Master of Data Science,University of Waikato,Hamilton,NZ,DEGREE,PG,Data Science,,,,,3|7,6.5,58,,,,,,,DRAFT
+Master of Management,University of Waikato,Hamilton,NZ,DEGREE,PG,Business,12,62748,,,3|7,6.5,58,,,,,,,DRAFT
+Master of Professional Accounting,University of Waikato,Hamilton,NZ,DEGREE,PG,Professional Accounting,12,62738,,,1|11,6.5,58,,,,,,,DRAFT
+Master of Information Sciences,Massey University,,NZ,DEGREE,PG,Information Technology,,46100,,,,6.5,58,,,,,,,DRAFT
+Master of Analytics,Massey University,Auckland,NZ,DEGREE,PG,Data Science,,39840,,,,6.5,58,,,,,,,DRAFT
+Master of Business Studies,Massey University,,NZ,DEGREE,PG,Business,,39840,,,,6.5,58,,,,,,,DRAFT
+Master of Professional Accountancy,Massey University,,NZ,DEGREE,PG,Professional Accounting,,42350,,,,6.5,58,,,,,,,DRAFT
+Master of Software Development,Victoria University of Wellington,Wellington,NZ,DEGREE,PG,Information Technology,,,,,,6.5,58,,,,,,,DRAFT
+Master of Data Science,Victoria University of Wellington,Wellington,NZ,DEGREE,PG,Data Science,,,,,,6.5,58,,,,,,,DRAFT
+Master of Professional Accounting,Victoria University of Wellington,Wellington,NZ,DEGREE,PG,Professional Accounting,,,,,,6.5,58,,,,,,,DRAFT
+Master of Applied Data Science,University of Canterbury,Christchurch,NZ,DEGREE,PG,Data Science,,,,,2|7,6.5,58,,,,,,,DRAFT
+Master of Business Information Systems,University of Canterbury,Christchurch,NZ,DEGREE,PG,Information Technology,17,,,,2|7,6.5,58,,,,,,,DRAFT
+Master of Engineering Management,University of Canterbury,Christchurch,NZ,DEGREE,PG,Engineering,,,,,2|4|7|9,6.5,58,,,,,,,DRAFT
+Master of Applied Computing,Lincoln University,Lincoln,NZ,DEGREE,PG,Information Technology,18,42000,,,2|7|11,,,,,,,,,DRAFT
+Master of Business (Finance),Lincoln University,Lincoln,NZ,DEGREE,PG,Business,18,38000,,,,,,,,,,,,DRAFT
+Master of Professional Accounting (CPA),Lincoln University,Lincoln,NZ,DEGREE,PG,Professional Accounting,18,38000,,,,,,,,,,,,DRAFT
+Postgraduate Diploma in Commerce,Lincoln University,Lincoln,NZ,DEGREE,PG_DIPLOMA,Business,12,38000,,,,,,,,,,,,DRAFT
+Master of Business Data Science,University of Otago,Dunedin,NZ,DEGREE,PG,Data Science,12,,,,2,,,,,,,,,DRAFT
+Master of Professional Accounting,University of Otago,Dunedin,NZ,DEGREE,PG,Professional Accounting,18,,,,2,,,,,,,,,DRAFT
+Master of Applied Management - Business Management,Otago Polytechnic,Dunedin,NZ,DEGREE,PG,Business,,44400,,,,,,,,,,,,DRAFT
+Master of Applied Management - Business Information Systems,Otago Polytechnic,Dunedin,NZ,DEGREE,PG,Information Technology,,42885,,,,,,,,,,,,DRAFT
+Graduate Diploma in Information Technology,Otago Polytechnic,Dunedin,NZ,DEGREE,UG_DIPLOMA,Information Technology,,26900,,,,,,,,,,,,DRAFT
+Bachelor of Nursing,Otago Polytechnic,Dunedin,NZ,NURSING,UG,Nursing,,29000,,,,,,,,,,,,DRAFT
+Bachelor of Nursing,Manukau Institute of Technology,Auckland,NZ,NURSING,UG,Nursing,36,31556,,,2|7,6.5,,,,,,,,DRAFT

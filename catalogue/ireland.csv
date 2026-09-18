@@ -1,0 +1,33 @@
+program,university,city,country_code,pathway,level,study_area,duration_months,tuition_per_year,application_fee,initial_deposit,intakes,min_ielts,min_pte,min_oet_grade,min_german_level,max_backlogs,max_gap_years,moi_accepted,required_docs,status
+MSc Computer Science (Data Science),Trinity College Dublin,Dublin,IE,DEGREE,PG,Computer Science,12,,,,9,6.5,69,,,,,,DEGREE_MARKSHEETS|ENGLISH_TEST|OTHER,DRAFT
+MSc Computer Science (Intelligent Systems),Trinity College Dublin,Dublin,IE,DEGREE,PG,Computer Science,12,,,,9,6.5,69,,,,,,DEGREE_MARKSHEETS|ENGLISH_TEST|OTHER,DRAFT
+MSc Computer Science (Negotiated Learning),University College Dublin,Dublin,IE,DEGREE,PG,Computer Science,12,31780,70,,9,6.5,,,,,,,,DRAFT
+MSc Computer Science (Conversion),University College Dublin,Dublin,IE,DEGREE,PG,Computer Science,16,,70,,9,6.5,,,,,,,,DRAFT
+MSc Data and Computational Science,University College Dublin,Dublin,IE,DEGREE,PG,Data Analytics,12,27720,70,,9,6.5,,,,,,,,DRAFT
+MSc Business Analytics,University College Dublin,Dublin,IE,DEGREE,PG,Business Analytics,12,26180,70,,9,,,,,,,,,DRAFT
+Master of Public Health,University College Dublin,Dublin,IE,DEGREE,PG,Public Health,12,22765,70,,9,6.5,,,,,,,,DRAFT
+MSc Computer Science (Data Analytics),University of Galway,Galway,IE,DEGREE,PG,Data Analytics,12,28140,,,9,,,,,,,,,DRAFT
+MSc Computer Science (Artificial Intelligence),University of Galway,Galway,IE,DEGREE,PG,Artificial Intelligence,12,28640,,,9,,,,,,,,,DRAFT
+MSc Business Analytics,University of Galway,Galway,IE,DEGREE,PG,Business Analytics,12,21640,,,9,,,,,,,,,DRAFT
+MSc Data Science and Artificial Intelligence,University College Cork,Cork,IE,DEGREE,PG,Artificial Intelligence,12,28000,,,9,6.5,63,,,,,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+MSc Business Analytics,University College Cork,Cork,IE,DEGREE,PG,Business Analytics,12,22300,,,9,6.5,63,,,,,,DEGREE_MARKSHEETS|CV|SOP,DRAFT
+MSc Nursing (Non-EU),University College Cork,Cork,IE,NURSING,PG,Nursing,12,20100,,,9,6.5,63,,,,,,DEGREE_MARKSHEETS|NURSING_LICENSE|ENGLISH_TEST,DRAFT
+MSc Artificial Intelligence and Machine Learning,University of Limerick,Limerick,IE,DEGREE,PG,Artificial Intelligence,12,20800,,,9,6.5,,,,,,,,DRAFT
+MSc Business Analytics,University of Limerick,Limerick,IE,DEGREE,PG,Business Analytics,12,20400,,,9,6.5,,,,,,,,DRAFT
+MSc International Management,University of Limerick,Limerick,IE,DEGREE,PG,Management,12,18400,,,9,6.5,,,,,,,,DRAFT
+BSc Nursing Studies (for international students),University of Limerick,Limerick,IE,NURSING,UG,Nursing,12,,,,9,,,,,,,,DEGREE_CERTIFICATE|NURSING_LICENSE|ENGLISH_TEST,DRAFT
+MSc in Computing,Dublin City University,Dublin,IE,DEGREE,PG,Computer Science,12,25000,,,9|1,6.5,63,,,,,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+MSc in Management (Business),Dublin City University,Dublin,IE,DEGREE,PG,Management,12,23000,,,9,6.5,63,,,,,,,DRAFT
+MSc in Bioprocess Engineering,Dublin City University,Dublin,IE,DEGREE,PG,Pharmaceutical,,23000,,,,6.5,63,,,,,,,DRAFT
+MSc Computer Science (Software Engineering),Maynooth University,Maynooth,IE,DEGREE,PG,Computer Science,12,18000,,,,,,,,,,,,DRAFT
+MSc Data Science and Analytics,Maynooth University,Maynooth,IE,DEGREE,PG,Data Analytics,,17000,,,,,,,,,,,,DRAFT
+MSc Data Analytics,TU Dublin,Dublin,IE,DEGREE,PG,Data Analytics,12,21750,,,9,6.5,,,,,,,,DRAFT
+MSc Computer Science (Data Science),TU Dublin,Dublin,IE,DEGREE,PG,Computer Science,12,21750,,,9,6.5,,,,,,,,DRAFT
+MSc Artificial Intelligence,Munster Technological University,Cork,IE,DEGREE,PG,Artificial Intelligence,12,15000,,1000,,6.5,63,,,,,,,DRAFT
+MSc Computing,Atlantic Technological University,Galway,IE,DEGREE,PG,Computer Science,12,14000,30,1500,1,6.0,,,,,,,,DRAFT
+BSc (Hons) Nursing and Midwifery International,Atlantic Technological University,Sligo,IE,NURSING,UG,Nursing,12,12000,0,1000,,6.0,,,,,,,DEGREE_CERTIFICATE|NURSING_LICENSE|DEGREE_MARKSHEETS|CV|SOP,DRAFT
+MSc Applied Artificial Intelligence,South East Technological University,Carlow,IE,DEGREE,PG,Artificial Intelligence,,,,,9|1,6.0,55,,,,,,,DRAFT
+MSc Computing,Griffith College,Dublin,IE,DEGREE,PG,Computer Science,12,16000,,,9|2,6.5,,,,,,,DEGREE_MARKSHEETS|PASSPORT,DRAFT
+BSc (Hons) Computing Science,Griffith College,Dublin,IE,DEGREE,UG,Computer Science,48,13500,,,9,6.0,,,,,,,,DRAFT
+MSc Pharmaceutical Business and Technology,Griffith College,Dublin,IE,DEGREE,PG,Pharmaceutical,,17500,,,,6.5,,,,,,,,DRAFT
+MSc Business Analytics,Dublin Business School,Dublin,IE,DEGREE,PG,Business Analytics,12,15575,,,4|9,6.0,52,,,,,,,DRAFT
