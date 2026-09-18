@@ -7,14 +7,18 @@ import { z } from "zod";
 import { db, schema } from "@/db";
 import { hashPassword, requireUserAllowingPasswordChange } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { MIN_PASSWORD_LENGTH, passwordProblem } from "@/lib/password";
 
 export type FormState = { error?: string; ok?: string; fieldErrors?: Record<string, string[] | undefined> };
 
 const schemaShape = z
   .object({
     currentPassword: z.string().min(1, "Enter your current password"),
-    newPassword: z.string().min(MIN_PASSWORD_LENGTH, `Use at least ${MIN_PASSWORD_LENGTH} characters`),
+    newPassword: z
+      .string()
+      .min(12, "Use at least 12 characters")
+      .regex(/[a-z]/, "Include a lowercase letter")
+      .regex(/[A-Z]/, "Include an uppercase letter")
+      .regex(/\d/, "Include a number"),
     confirmPassword: z.string(),
   })
   .refine((v) => v.newPassword === v.confirmPassword, { message: "The two new passwords don't match", path: ["confirmPassword"] })
@@ -24,9 +28,6 @@ export async function changePasswordAction(_: FormState, formData: FormData): Pr
   const session = await requireUserAllowingPasswordChange();
   const parsed = schemaShape.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Check the highlighted fields." };
-
-  const problem = passwordProblem(parsed.data.newPassword, [session.email, session.name]);
-  if (problem) return { error: problem, fieldErrors: { newPassword: [problem] } };
 
   const user = await db.query.users.findFirst({ where: eq(schema.users.id, session.id) });
   if (!user) return { error: "Account not found." };

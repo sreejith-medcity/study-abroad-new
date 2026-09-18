@@ -2,9 +2,8 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { fmtDateTime } from "@/lib/format";
 import { actionLabel, actionTone, auditBase, auditCount, auditFacets, auditOrder, auditWhere, metaPairs, readAuditFilters } from "@/server/audit-query";
-import { Button, Card, Chip, EmptyState, DateInput, Input, LinkButton, PageHeader, Select, Table, Td, Th } from "@/components/ui";
+import { Button, Card, Chip, EmptyState, Input, LinkButton, PageHeader, Select, Table, Td, Th } from "@/components/ui";
 import { IconExport, IconShield } from "@/components/icons";
-import { FailedSignIns } from "./sign-ins";
 
 export const metadata = { title: "Audit log" };
 
@@ -60,8 +59,6 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
         }
       />
 
-      <FailedSignIns />
-
       <Card className="mb-4 p-4">
         <form className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-7 [&>*]:min-w-0">
           <Input name="q" placeholder="Search person or record" aria-label="Search" defaultValue={f.q} className="xl:col-span-2" />
@@ -91,8 +88,8 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
             ))}
           </Select>
           <div className="grid grid-cols-2 gap-2 sm:col-span-2 xl:col-span-2 [&>*]:min-w-0">
-            <DateInput label="From" name="from" defaultValue={f.from} />
-            <DateInput label="To" name="to" defaultValue={f.to} />
+            <Input type="date" name="from" aria-label="From" defaultValue={f.from} />
+            <Input type="date" name="to" aria-label="To" defaultValue={f.to} />
           </div>
           <div className="flex gap-2 sm:col-span-2 xl:col-span-7 xl:justify-end">
             <Button type="submit">Filter</Button>

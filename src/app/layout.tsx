@@ -4,9 +4,6 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: { default: "Medcity Overseas Portal", template: "%s · Medcity Overseas" },
   description: "Study abroad application platform for Medcity Overseas partners, counsellors and students",
-  // Served from the brand route, so an uploaded favicon takes effect without a deploy.
-  icons: { icon: [{ url: "/api/brand/favicon" }], apple: [{ url: "/api/brand/favicon" }] },
-  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

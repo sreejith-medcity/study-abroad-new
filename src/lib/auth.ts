@@ -39,67 +39,26 @@ export async function hashPassword(password: string) {
   return bcrypt.hash(password, 10);
 }
 
-export async function verifyPassword(password: string, hash: string) {
-  return bcrypt.compare(password, hash);
-}
-
-export type SignInContext = { clientKey?: string; ipAddress?: string | null; userAgent?: string | null };
-
-/** Keeps a short history of who signed in from where, for the security tab. */
-async function record(email: string, outcome: string, userId: string | null, ctx: SignInContext) {
-  try {
-    await db.insert(schema.signInEvents).values({
-      userId,
-      email,
-      outcome,
-      ipAddress: ctx.ipAddress ?? (ctx.clientKey && ctx.clientKey !== "unknown" ? ctx.clientKey : null),
-      userAgent: ctx.userAgent ?? null,
-    });
-  } catch {
-    // Never let bookkeeping stop someone signing in.
-  }
-}
-
-export async function signIn(email: string, password: string, ctx: SignInContext = {}): Promise<SignInResult> {
+export async function signIn(email: string, password: string, clientKey = "unknown"): Promise<SignInResult> {
   const address = email.trim().toLowerCase();
-  const clientKey = ctx.clientKey ?? "unknown";
   // Two limits: one per account, one per caller, so neither a single target nor a single source can be hammered.
   for (const key of [`login:email:${address}`, `login:client:${clientKey}`]) {
     const check = rateLimit(key, { limit: 8, windowMs: 10 * 60_000, blockMs: 10 * 60_000 });
-    if (!check.allowed) {
-      await record(address, "throttled", null, ctx);
-      return { ok: false, reason: "throttled", retryAfterSeconds: check.retryAfterSeconds };
-    }
+    if (!check.allowed) return { ok: false, reason: "throttled", retryAfterSeconds: check.retryAfterSeconds };
   }
 
   const user = await db.query.users.findFirst({ where: eq(schema.users.email, address) });
-  if (!user) {
-    await record(address, "unknown_email", null, ctx);
-    return { ok: false, reason: "invalid" };
-  }
-  if (!user.active) {
-    await record(address, "inactive", user.id, ctx);
-    return { ok: false, reason: "invalid" };
-  }
+  if (!user || !user.active) return { ok: false, reason: "invalid" };
   const matches = await bcrypt.compare(password, user.passwordHash);
-  if (!matches) {
-    await record(address, "wrong_password", user.id, ctx);
-    return { ok: false, reason: "invalid" };
-  }
+  if (!matches) return { ok: false, reason: "invalid" };
 
-  await issueSession(user.id, user.sessionVersion);
+  await issueSession(user.id);
   await db.update(schema.users).set({ lastSignInAt: new Date() }).where(eq(schema.users.id, user.id));
-  await record(address, "success", user.id, ctx);
   return { ok: true };
 }
 
-export async function issueSession(userId: string, sessionVersion?: number) {
-  let version = sessionVersion;
-  if (version === undefined) {
-    const row = await db.query.users.findFirst({ where: eq(schema.users.id, userId) });
-    version = row?.sessionVersion ?? 1;
-  }
-  const token = await new SignJWT({ sub: userId, v: version })
+export async function issueSession(userId: string) {
+  const token = await new SignJWT({ sub: userId })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${MAX_AGE}s`)
@@ -128,8 +87,6 @@ export const getSession = cache(async (): Promise<SessionUser | null> => {
       with: { org: true },
     });
     if (!user || !user.active) return null;
-    // "Sign out everywhere" bumps the stored version, which strands every older token.
-    if (typeof payload.v === "number" && payload.v !== user.sessionVersion) return null;
     return {
       id: user.id,
       name: user.name,

@@ -36,8 +36,6 @@ async function signIn(email, ip, password = "Password@123") {
   const { ctx, page, errors } = await signIn("sreejith@miak.in", "10.9.6.11");
   await page.goto(`${BASE}/admin/partners`);
   await page.waitForLoadState("domcontentloaded");
-  // Pages stream behind a skeleton now, so wait for the real content.
-  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   const summary = page.locator("main summary", { hasText: "Add user to Medcity International Overseas Corporation" }).first();
   await summary.click();
   await page.waitForTimeout(400);
@@ -60,21 +58,14 @@ async function signIn(email, ip, password = "Password@123") {
   await page.locator('main input[name="email"]').first().fill(`docs.person${tag}@medcityoverseas.test`);
   await page.locator('main input[aria-label="Job title for the new account"]').first().fill("Germany documentation");
   await page.getByRole("button", { name: "Add user" }).first().click();
-  // The confirmation is a toast; matching inside main would hit an existing
-  // "Temporary password" chip and let the test run on before the insert lands.
-  await page.locator('[role="status"]').getByText(/Temporary password for/i).first().waitFor({ timeout: 15000 })
+  await page.locator("main").getByText(/One-time password|temporary password/i).first().waitFor({ timeout: 15000 })
     .then(() => ok("a documentation account is created with a one-time password"))
     .catch(() => bad("no password confirmation after adding"));
 
   await page.goto(`${BASE}/admin/partners`);
   await page.waitForLoadState("domcontentloaded");
-  // Pages stream behind a skeleton now, so wait for the real content.
-  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
-  // The page streams, so wait for the row rather than reading the text once.
-  await page.locator("main").getByText(`Docs Person ${tag}`).first().waitFor({ timeout: 15000 })
-    .then(() => ok("the new account is listed"))
-    .catch(() => bad("new account missing from the list"));
   const listed = await page.locator("main").innerText();
+  listed.includes(`Docs Person ${tag}`) ? ok("the new account is listed") : bad("new account missing from the list");
   listed.includes("Germany documentation") ? ok("the job title shows beside the name") : bad("job title missing");
   listed.includes("Documentation team") ? ok("the role chip reads Documentation team") : bad("role chip missing");
   await page.screenshot({ path: `${OUT}/01-people.png`, fullPage: true });
@@ -83,8 +74,7 @@ async function signIn(email, ip, password = "Password@123") {
   const row = page.locator("main li").filter({ hasText: `docs.person${tag}@medcityoverseas.test` }).first();
   await row.locator('input[name="deskLabel"]').fill("Germany desk documentation");
   await row.getByRole("button", { name: "Save title" }).click();
-  // Assert the change itself rather than the toast, which fades after a few seconds.
-  await page.locator("main").getByText("Germany desk documentation").first().waitFor({ timeout: 12000 })
+  await page.locator("main").getByText(/is now "Germany desk documentation"/).first().waitFor({ timeout: 12000 })
     .then(() => ok("a title can be changed in place"))
     .catch(() => bad("title change not confirmed"));
   errors.length === 0 ? ok("people page: no client errors") : bad("errors: " + errors.slice(0, 2).join(" | "));
@@ -100,21 +90,17 @@ async function signIn(email, ip, password = "Password@123") {
   (await nav.getByText("Audit log").count()) === 0 ? ok("ops manager has no audit log") : bad("ops manager sees the audit log");
 
   await page.goto(`${BASE}/admin/audit`);
-  await page.waitForURL((u) => String(u).includes("/forbidden"), { timeout: 10000 }).catch(() => {});
+  await page.waitForLoadState("domcontentloaded");
   page.url().includes("/forbidden") ? ok("audit log is refused") : bad("ops manager reached " + page.url());
 
   await page.goto(`${BASE}/admin/partners`);
   await page.waitForLoadState("domcontentloaded");
-  // Pages stream behind a skeleton now, so wait for the real content.
-  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   (await page.locator('main select[aria-label="Change role"]').count()) ? ok("ops manager can change roles") : bad("no role control for ops manager");
   const opts = await page.locator('main select[aria-label="Change role"]').first().locator("option").evaluateAll((els) => els.map((e) => ({ v: e.value, d: e.disabled })));
   opts.find((o) => o.v === "SUPER_ADMIN")?.d ? ok("but cannot hand out super admin") : bad("ops manager could create a super admin");
 
   await page.goto(`${BASE}/admin/commission`);
   await page.waitForLoadState("domcontentloaded");
-  // Pages stream behind a skeleton now, so wait for the real content.
-  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   (await page.locator('main select[aria-label="Move to"]').count()) ? ok("ops manager can move commission") : bad("ops manager cannot move commission");
   errors.length === 0 ? ok("ops manager: no client errors") : bad("errors: " + errors.slice(0, 2).join(" | "));
   await ctx.close();
@@ -136,39 +122,29 @@ async function signIn(email, ip, password = "Password@123") {
 
   for (const [path, label] of [["/admin/commission", "commission"], ["/admin/partners", "partners"], ["/admin/audit", "the audit log"], ["/admin/programs", "programs"]]) {
     await page.goto(`${BASE}${path}`);
-    await page.waitForURL((u) => String(u).includes("/forbidden"), { timeout: 10000 }).catch(() => {});
+    await page.waitForLoadState("domcontentloaded");
     page.url().includes("/forbidden") ? ok(`${label} is refused`) : bad(`documentation reached ${path}`);
   }
 
   // the work queue is theirs to read, without the status control
   await page.goto(`${BASE}/admin/queue`);
   await page.waitForLoadState("domcontentloaded");
-  // Pages stream behind a skeleton now, so wait for the real content.
-  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   page.url().includes("/admin/queue") ? ok("the work queue opens") : bad("queue refused: " + page.url());
   (await page.locator("main").getByText("Change status").count()) === 0 ? ok("no status control in the queue") : bad("documentation can change status from the queue");
 
   // a student file: documents yes, status no
   await page.goto(`${BASE}/students`);
   await page.waitForLoadState("domcontentloaded");
-  // Pages stream behind a skeleton now, so wait for the real content.
-  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   const href = await page.locator('main a[href*="/students/"][href$="/profile"]').first().getAttribute("href");
   await page.goto(`${BASE}${href.replace("/profile", "/documents")}`);
   await page.waitForLoadState("domcontentloaded");
-  // Pages stream behind a skeleton now, so wait for the real content.
-  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   (await page.locator('input[type="file"]').count()) > 0 ? ok("documents can be uploaded") : bad("no upload control on the document tab");
   // Open a student who actually has an application, so the detail panel renders.
   await page.goto(`${BASE}/applications`);
   await page.waitForLoadState("domcontentloaded");
-  // Pages stream behind a skeleton now, so wait for the real content.
-  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   const appLink = await page.locator('main a[href*="/applications?app="]').first().getAttribute("href");
   await page.goto(`${BASE}${appLink}`);
   await page.waitForLoadState("domcontentloaded");
-  // Pages stream behind a skeleton now, so wait for the real content.
-  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   const appText = await page.locator("main").innerText();
   !appText.includes("Change status") ? ok("no status control on the application") : bad("documentation can change status");
   appText.includes("check and ask partner") || appText.includes("Open check") ? ok("the pre-submission check is offered") : bad("no check link");

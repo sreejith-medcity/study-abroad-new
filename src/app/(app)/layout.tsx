@@ -4,14 +4,10 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fmtDateTime } from "@/lib/format";
 import { MobileNav, SideNav, type NavGroup } from "@/components/nav";
-import { CommandPalette } from "@/components/palette";
-import { ToastHost } from "@/components/toast";
-import { cn } from "@/components/ui";
-import { BrandLogo, BrandStyle } from "@/components/brand";
+import { Logo, cn } from "@/components/ui";
 import { IconBell, IconLogout } from "@/components/icons";
 import { logoutAction } from "@/app/login/actions";
 import { APP_ROLES, isAdmin, isSuperAdmin, ROLE_LABEL } from "@/lib/permissions";
-import { getSettings } from "@/server/settings";
 
 const partnerNav = (home: string): NavGroup[] => [
   {
@@ -80,10 +76,7 @@ const ADMIN_NAV: NavGroup[] = [
 
 const PLATFORM_NAV: NavGroup = {
   title: "Platform",
-  items: [
-    { href: "/admin/audit", label: "Audit log", icon: "shield" },
-    { href: "/settings/platform", label: "Platform settings", icon: "settings" },
-  ],
+  items: [{ href: "/admin/audit", label: "Audit log", icon: "shield" }],
 };
 
 /** The documentation team works files, so they get the file screens and nothing else. */
@@ -134,13 +127,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             ? PARTNER_NAV
             : COUNSELLOR_NAV;
 
-  const navGroups: NavGroup[] = [
-    ...groups,
-    { title: "Account", items: [{ href: "/settings", label: "Settings", icon: "settings" }] },
-  ];
-
-  const settings = await getSettings();
-
   const [{ unread }] = await db
     .select({ unread: count() })
     .from(schema.notifications)
@@ -154,17 +140,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen">
-      <BrandStyle />
-      <ToastHost />
       <header className="brand-wash grain relative sticky top-0 z-30 flex h-16 items-center gap-3 px-3 md:px-5">
-        <MobileNav groups={navGroups} />
+        <MobileNav groups={groups} />
         <Link href="/" className="relative z-10 rounded-lg px-1 py-1">
-          <BrandLogo />
+          <Logo />
         </Link>
         <span className="relative z-10 ml-1 hidden text-[13px] text-white/70 lg:inline">{user.orgName}</span>
 
         <div className="relative z-10 ml-auto flex items-center gap-1.5">
-          <CommandPalette groups={navGroups} />
           <details className="group relative">
             <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-lg px-2.5 py-2 text-white/90 transition-colors hover:bg-white/10" aria-label={`Notifications, ${unread} unread`}>
               <IconBell />
@@ -216,14 +199,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 {user.orgName} · {ROLE_LABEL[user.role]}
                 {user.deskLabel ? ` · ${user.deskLabel}` : ""}
               </p>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <Link href="/settings" className="rounded-lg border border-line px-3 py-1.5 text-center text-[13px] font-medium hover:bg-surface-2">
-                  Settings
-                </Link>
-                <Link href="/settings/security" className="rounded-lg border border-line px-3 py-1.5 text-center text-[13px] font-medium hover:bg-surface-2">
-                  Password
-                </Link>
-              </div>
+              <Link href="/change-password" className="mt-3 block rounded-lg border border-line px-3 py-1.5 text-center text-[13px] font-medium hover:bg-surface-2">
+                Change password
+              </Link>
               <form action={logoutAction} className="mt-2">
                 <button className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-surface-2 px-3 py-1.5 text-[13px] font-medium hover:bg-brand-50 hover:text-brand-700">
                   <IconLogout className="size-4" /> Sign out
@@ -237,9 +215,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="flex">
         <aside className="hidden w-60 shrink-0 border-r border-line bg-surface md:block">
           <div className="thin-scroll sticky top-16 max-h-[calc(100vh-4rem)] overflow-y-auto">
-            <SideNav groups={navGroups} />
-            <p className="border-t border-line/70 px-4 py-4 text-[11px] leading-relaxed text-muted/70">
-              {settings.organisationName}
+            <SideNav groups={groups} />
+            <p className="px-5 pb-6 pt-2 text-[11px] leading-relaxed text-muted/70">
+              Medcity Overseas partner portal
             </p>
           </div>
         </aside>

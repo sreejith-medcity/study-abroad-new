@@ -4,7 +4,6 @@ import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { fmtDate, fullName, greetingName } from "@/lib/format";
 import { applicationWhere, type ApplicationFilters } from "@/server/queries";
-import { getSettings, tierTargets } from "@/server/settings";
 import { agingList, countryMix, deadlineList, funnel, kpiTotals, monthlyPoints, myWork, recentChanges, teamLoad } from "@/server/dashboard";
 import { STAGE_LABEL, STAGE_TONE, enquiryCounts, followUpQueue } from "@/server/enquiries";
 import { commissionTotals, inr, walletBalance } from "@/server/commission";
@@ -39,6 +38,7 @@ const TILES = [
   { key: "visa_rejected", label: "Visa rejected", tone: "stop" as const, icon: <IconAlert className="size-4" /> },
 ];
 
+const TIER_TARGETS = { SILVER: 10, GOLD: 20, ELITE: 50, PLATINUM: 50 } as const;
 const NEXT_TIER = { SILVER: "Gold", GOLD: "Elite", ELITE: "Platinum", PLATINUM: null } as const;
 
 function partOfDay() {
@@ -80,8 +80,6 @@ export default async function PartnerDashboard({
     walletBalance(user.orgId),
     commissionTotals(user),
   ]);
-
-  const targets = tierTargets(await getSettings());
 
   const yearAgo = new Date(Date.now() - 365 * 86400000);
   const [[{ visas12m }], [{ openStudents }], team, waiting] = await Promise.all([
@@ -282,21 +280,20 @@ export default async function PartnerDashboard({
         <div className="space-y-5">
           {org && (
             <Card className="overflow-hidden">
-              {/* The companion surface, so the hero stays the only block of crimson. */}
-              <div className="tier-wash grain relative px-4 py-3.5">
-                <p className="relative z-10 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/60">Benefits level</p>
-                <p className="relative z-10 font-display text-xl font-semibold text-gold-300">
+              <div className="brand-wash grain relative px-4 py-3.5">
+                <p className="relative z-10 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/70">Benefits level</p>
+                <p className="relative z-10 font-display text-xl font-semibold text-white">
                   {org.tier.charAt(0) + org.tier.slice(1).toLowerCase()}
                 </p>
               </div>
               <div className="p-4">
-                <Progress value={Number(visas12m)} max={targets[org.tier]} tone="gold" />
+                <Progress value={Number(visas12m)} max={TIER_TARGETS[org.tier]} tone="gold" />
                 <p className="mt-2 text-[13px] text-muted">
                   <span className="font-semibold text-ink tabular">{Number(visas12m)}</span> students with a visa in the last 12 months
                 </p>
                 {NEXT_TIER[org.tier] && (
                   <p className="mt-1 text-[13px] text-muted">
-                    {Math.max(0, targets[org.tier] - Number(visas12m))} more to unlock {NEXT_TIER[org.tier]}
+                    {Math.max(0, TIER_TARGETS[org.tier] - Number(visas12m))} more to unlock {NEXT_TIER[org.tier]}
                   </p>
                 )}
               </div>

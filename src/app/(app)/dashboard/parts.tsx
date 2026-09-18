@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { fmtDate, fmtDateTime, fullName, intakeLabel, MONTHS } from "@/lib/format";
-import { GROUP_LABEL, getSlaDays } from "@/server/dashboard";
+import { GROUP_LABEL, SLA_DAYS } from "@/server/dashboard";
 import type { StatusGroup } from "@/db/schema";
-import { Button, Card, CardHeader, Chip, DateInput, LinkButton, Select, StatusBadge, Table, Td, Th, Toolbar } from "@/components/ui";
+import { Button, Card, CardHeader, Chip, Input, LinkButton, Select, StatusBadge, Table, Td, Th, Toolbar } from "@/components/ui";
 import { IconClock } from "@/components/icons";
 
 /** Shared date, intake and destination filter used by the dashboards that report numbers. */
@@ -18,15 +18,13 @@ export function DashboardFilters({
 }) {
   const now = new Date();
   const years = [now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1, now.getFullYear() + 2];
-  const active = ["from", "to", "intakeMonth", "intakeYear", "country"].filter((k) => f[k]).length;
   return (
     <Toolbar>
       <form className={compact ? "grid gap-2.5 [&>*]:min-w-0" : "grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4 [&>*]:min-w-0"}>
         {compact && <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">Filter the numbers</p>}
-        {/* A bare date box shows only its format placeholder, so both get a small label. */}
         <div className={compact ? "grid grid-cols-2 gap-2 [&>*]:min-w-0" : "flex gap-2 sm:col-span-2 [&>*]:min-w-0"}>
-          <DateInput label="Created from" name="from" defaultValue={f.from} className="flex-1" />
-          <DateInput label="Created to" name="to" defaultValue={f.to} className="flex-1" />
+          <Input type="date" name="from" aria-label="Created from" defaultValue={f.from} />
+          <Input type="date" name="to" aria-label="Created to" defaultValue={f.to} />
         </div>
         <Select name="intakeMonth" aria-label="Intake month" defaultValue={f.intakeMonth ?? ""}>
           <option value="">Intake month</option>
@@ -46,13 +44,8 @@ export function DashboardFilters({
             <option key={x.id} value={x.code}>{x.name}</option>
           ))}
         </Select>
-        <div className={compact ? "flex items-center justify-end gap-2" : "flex items-center justify-end gap-2 sm:col-span-2 xl:col-span-3"}>
-          {active > 0 && (
-            <span className="mr-auto text-[12px] text-muted">
-              {active} {active === 1 ? "filter" : "filters"} on
-            </span>
-          )}
-          {active > 0 && <LinkButton href="/dashboard" variant="quiet" size="sm">Clear</LinkButton>}
+        <div className={compact ? "flex justify-end gap-2" : "flex justify-end gap-2 sm:col-span-2 xl:col-span-3"}>
+          <LinkButton href="/dashboard" variant="quiet" size="sm">Clear</LinkButton>
           <Button type="submit" variant="secondary" size="sm">Apply</Button>
         </div>
       </form>
@@ -134,7 +127,7 @@ export function DeadlinesCard({
 }
 
 /** Oldest untouched work, with the lane's SLA turned into a plain "late by" reading. */
-export async function AgingCard({
+export function AgingCard({
   rows,
   showOrg = false,
   title = "Waiting the longest",
@@ -156,7 +149,6 @@ export async function AgingCard({
   title?: string;
   subtitle?: string;
 }) {
-  const sla = await getSlaDays();
   const now = Date.now();
   return (
     <Card>
@@ -176,7 +168,7 @@ export async function AgingCard({
           <tbody>
             {rows.map((r) => {
               const days = Math.floor((now - r.changedAt.getTime()) / 86400000);
-              const late = days > (sla[r.statusGroup] ?? 9999);
+              const late = days > (SLA_DAYS[r.statusGroup] ?? 9999);
               return (
                 <tr key={r.id}>
                   <Td>
@@ -197,7 +189,7 @@ export async function AgingCard({
                   )}
                   <Td className="whitespace-nowrap">
                     <Chip tone={late ? "bad" : "neutral"}>{days} {days === 1 ? "day" : "days"}</Chip>
-                    {late && <p className="mt-1 text-xs text-stop-600">Past {sla[r.statusGroup]} day target</p>}
+                    {late && <p className="mt-1 text-xs text-stop-600">Past {SLA_DAYS[r.statusGroup]} day target</p>}
                   </Td>
                 </tr>
               );

@@ -64,27 +64,6 @@
       "when": 1789712225049,
       "tag": "0008_ops_and_documentation_roles",
       "breakpoints": true
-    },
-    {
-      "idx": 9,
-      "version": "7",
-      "when": 1789713901065,
-      "tag": "0009_settings_and_sessions",
-      "breakpoints": true
-    },
-    {
-      "idx": 10,
-      "version": "7",
-      "when": 1789720138512,
-      "tag": "0010_colour_palette",
-      "breakpoints": true
-    },
-    {
-      "idx": 11,
-      "version": "7",
-      "when": 1789720464355,
-      "tag": "0011_brand_artwork",
-      "breakpoints": true
     }
   ]
 }

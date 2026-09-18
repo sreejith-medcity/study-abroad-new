@@ -10,17 +10,7 @@ export function cn(...args: Parameters<typeof clsx>) {
 
 /* ---------------- Brand ---------------- */
 
-export function Logo({
-  tone = "light",
-  className,
-  primary = "MEDCITY",
-  secondary = "OVERSEAS",
-}: {
-  tone?: "light" | "dark";
-  className?: string;
-  primary?: string;
-  secondary?: string;
-}) {
+export function Logo({ tone = "light", className }: { tone?: "light" | "dark"; className?: string }) {
   return (
     <span className={cn("inline-flex items-center gap-2.5", className)}>
       <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true" className="shrink-0">
@@ -29,10 +19,10 @@ export function Logo({
       </svg>
       <span className="leading-none">
         <span className={cn("block font-display text-[15px] font-bold tracking-tight", tone === "light" ? "text-white" : "text-ink")}>
-          {primary.toUpperCase()}
+          MEDCITY
         </span>
         <span className={cn("block text-[10px] font-semibold tracking-[0.18em]", tone === "light" ? "text-white/80" : "text-brand-600")}>
-          {secondary.toUpperCase()}
+          OVERSEAS
         </span>
       </span>
     </span>
@@ -70,19 +60,6 @@ const field =
 
 export function Input({ className, ...props }: ComponentProps<"input">) {
   return <input className={cn(field, className)} {...props} />;
-}
-
-/**
- * A date box with a small label above it. A bare date input shows only its
- * format placeholder, which tells nobody which end of the range it is.
- */
-export function DateInput({ label, name, defaultValue, className }: { label: string; name: string; defaultValue?: string; className?: string }) {
-  return (
-    <label className={cn("block min-w-0", className)}>
-      <span className="mb-1 block text-[11px] font-medium text-muted">{label}</span>
-      <Input type="date" name={name} aria-label={label} defaultValue={defaultValue} />
-    </label>
-  );
 }
 
 export function Select({ className, ...props }: ComponentProps<"select">) {
@@ -147,8 +124,7 @@ export function PageHeader({ title, subtitle, actions, eyebrow }: { title: strin
 }
 
 export function Toolbar({ children, className }: { children: ReactNode; className?: string }) {
-  // Quieter than a card: filters frame the content, they are not the content.
-  return <div className={cn("rounded-xl border border-line bg-surface-2/70 p-3", className)}>{children}</div>;
+  return <div className={cn("rounded-xl border border-line bg-surface p-3 shadow-card", className)}>{children}</div>;
 }
 
 /* ---------------- Status and chips ---------------- */
@@ -182,7 +158,7 @@ const chipTone = {
 };
 
 export function Chip({ tone = "neutral", children, className }: { tone?: keyof typeof chipTone; children: ReactNode; className?: string }) {
-  return <span className={cn("inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset", chipTone[tone], className)}>{children}</span>;
+  return <span className={cn("inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset", chipTone[tone], className)}>{children}</span>;
 }
 
 export function Pill({ children, className }: { children: ReactNode; className?: string }) {
@@ -199,27 +175,18 @@ export function Stat({ label, value, tone = "brand", href, icon }: { label: stri
     stop: "text-stop-500 bg-stop-50",
     info: "text-info-500 bg-info-50",
   };
-  const nothing = value === 0 || value === "0";
   const body = (
     <>
       <div className="flex items-start justify-between gap-2">
         <p className="text-[13px] font-medium text-muted">{label}</p>
-        {icon && (
-          <span className={cn("grid size-7 place-items-center rounded-lg transition-opacity", tones[tone], nothing && "opacity-45")}>
-            {icon}
-          </span>
-        )}
+        {icon && <span className={cn("grid size-7 place-items-center rounded-lg", tones[tone])}>{icon}</span>}
       </div>
-      {/* A zero is dimmed so the eye lands on the figures that need attention. */}
-      <p className={cn("mt-2 font-display text-[26px] font-semibold leading-none tabular", nothing ? "text-muted/55" : "text-ink")}>{value}</p>
+      <p className="mt-2 font-display text-[26px] font-semibold leading-none tabular text-ink">{value}</p>
     </>
   );
   const shell = "rounded-xl border border-line bg-surface p-3.5 shadow-card";
   return href ? (
-    <Link
-      href={href}
-      className={cn(shell, "transition-all duration-150 hover:-translate-y-px hover:border-brand-200 hover:shadow-lift")}
-    >
+    <Link href={href} className={cn(shell, "transition-colors hover:border-brand-300 hover:bg-brand-50/40")}>
       {body}
     </Link>
   ) : (
@@ -227,24 +194,12 @@ export function Stat({ label, value, tone = "brand", href, icon }: { label: stri
   );
 }
 
-export function EmptyState({
-  title,
-  children,
-  icon,
-  action,
-}: {
-  title: string;
-  children?: ReactNode;
-  icon?: ReactNode;
-  /** A button or link offering the obvious next step. */
-  action?: ReactNode;
-}) {
+export function EmptyState({ title, children, icon }: { title: string; children?: ReactNode; icon?: ReactNode }) {
   return (
     <div className="px-6 py-14 text-center">
       {icon && <div className="mx-auto mb-3 grid size-11 place-items-center rounded-full bg-brand-50 text-brand-600">{icon}</div>}
       <p className="font-display text-base font-semibold text-ink">{title}</p>
       {children && <div className="mx-auto mt-1 max-w-md text-[13px] text-muted">{children}</div>}
-      {action && <div className="mt-4 flex flex-wrap items-center justify-center gap-2">{action}</div>}
     </div>
   );
 }
@@ -258,14 +213,13 @@ export function Table({ children, className, tableClassName }: { children: React
 }
 export function Th({ children, className }: { children?: ReactNode; className?: string }) {
   return (
-    <th className={cn("sticky top-0 z-10 whitespace-nowrap border-b border-line bg-surface-2/95 px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted backdrop-blur", className)}>
+    <th className={cn("sticky top-0 z-10 border-b border-line bg-surface-2/95 px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted backdrop-blur", className)}>
       {children}
     </th>
   );
 }
-export function Td({ children, className, title }: { children?: ReactNode; className?: string; title?: string }) {
-  // `title` carries the full text for a cell that has to be truncated.
-  return <td title={title} className={cn("border-b border-line px-3 py-3 align-top", className)}>{children}</td>;
+export function Td({ children, className }: { children?: ReactNode; className?: string }) {
+  return <td className={cn("border-b border-line px-3 py-3 align-top", className)}>{children}</td>;
 }
 
 export function Alert({ tone = "info", children, title }: { tone?: "info" | "bad" | "ok" | "warn"; children: ReactNode; title?: string }) {
@@ -444,10 +398,9 @@ export function DataList({ rows }: { rows: { label: string; value: ReactNode; hr
   return (
     <dl className="divide-y divide-line">
       {rows.map((r) => (
-        <div key={r.label} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 px-4 py-2.5 text-[13px]">
+        <div key={r.label} className="flex items-center justify-between gap-3 px-4 py-2.5 text-[13px]">
           <dt className="min-w-0 truncate text-muted">{r.label}</dt>
-          {/* Wraps onto its own line when the value is a sentence rather than a figure. */}
-          <dd className={cn("min-w-0 max-w-full break-words font-semibold tabular sm:text-right", r.tone ? tones[r.tone] : "text-ink")}>
+          <dd className={cn("shrink-0 font-semibold tabular", r.tone ? tones[r.tone] : "text-ink")}>
             {r.href ? <Link href={r.href} className="hover:underline">{r.value}</Link> : r.value}
           </dd>
         </div>
@@ -471,7 +424,7 @@ export function DashboardHero({
   meta?: { label: string; value: ReactNode }[];
 }) {
   return (
-    <div className="brand-wash grain relative mb-5 overflow-hidden rounded-2xl px-5 py-5 shadow-hero ring-1 ring-inset ring-white/10 md:px-6 md:py-6">
+    <div className="brand-wash grain relative mb-5 overflow-hidden rounded-2xl px-5 py-5 md:px-6 md:py-6">
       <div className="relative z-10 flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/70">{eyebrow}</p>
@@ -490,86 +443,6 @@ export function DashboardHero({
           ))}
         </dl>
       )}
-    </div>
-  );
-}
-
-/* ---------------- Loading skeletons ---------------- */
-
-/** One shimmering block. Width and height come from the caller's classes. */
-export function Skeleton({ className }: { className?: string }) {
-  return <span className={cn("block animate-pulse rounded-md bg-line/70", className)} />;
-}
-
-/** A page's worth of skeleton: a header, a row of figures and two panels. */
-export function PageSkeleton({ stats = 4, panels = 2 }: { stats?: number; panels?: number }) {
-  return (
-    <div className="space-y-5" aria-busy="true" aria-live="polite">
-      <span className="sr-only">Loading</span>
-      <div className="space-y-2">
-        <Skeleton className="h-3 w-40" />
-        <Skeleton className="h-7 w-72" />
-        <Skeleton className="h-3.5 w-96 max-w-full" />
-      </div>
-      {stats > 0 && (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {Array.from({ length: stats }).map((_, i) => (
-            <div key={i} className="rounded-xl border border-line bg-surface p-3.5 shadow-card">
-              <Skeleton className="h-3 w-20" />
-              <Skeleton className="mt-2.5 h-6 w-16" />
-            </div>
-          ))}
-        </div>
-      )}
-      <div className={cn("grid gap-4", panels > 1 && "lg:grid-cols-2")}>
-        {Array.from({ length: panels }).map((_, i) => (
-          <div key={i} className="overflow-hidden rounded-xl border border-line bg-surface shadow-card">
-            <div className="border-b border-line p-4">
-              <Skeleton className="h-4 w-44" />
-              <Skeleton className="mt-2 h-3 w-64 max-w-full" />
-            </div>
-            <div className="space-y-3 p-4">
-              {Array.from({ length: 5 }).map((_, row) => (
-                <div key={row} className="flex items-center gap-3">
-                  <Skeleton className="size-8 shrink-0 rounded-full" />
-                  <Skeleton className="h-3.5 flex-1" />
-                  <Skeleton className="h-3.5 w-16 shrink-0" />
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/** A skeleton shaped like a filter bar above a table. */
-export function TableSkeleton({ rows = 8 }: { rows?: number }) {
-  return (
-    <div className="space-y-5" aria-busy="true" aria-live="polite">
-      <span className="sr-only">Loading</span>
-      <div className="space-y-2">
-        <Skeleton className="h-7 w-64" />
-        <Skeleton className="h-3.5 w-96 max-w-full" />
-      </div>
-      <div className="rounded-xl border border-line bg-surface p-4 shadow-card">
-        <div className="grid gap-2.5 sm:grid-cols-3 xl:grid-cols-5">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-9" />
-          ))}
-        </div>
-      </div>
-      <div className="overflow-hidden rounded-xl border border-line bg-surface shadow-card">
-        {Array.from({ length: rows }).map((_, i) => (
-          <div key={i} className="flex items-center gap-3 border-b border-line p-3.5 last:border-0">
-            <Skeleton className="h-3.5 w-1/4" />
-            <Skeleton className="h-3.5 w-1/5" />
-            <Skeleton className="h-3.5 w-1/6" />
-            <Skeleton className="ml-auto h-6 w-20 rounded-full" />
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

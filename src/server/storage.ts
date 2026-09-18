@@ -8,10 +8,6 @@ const ALLOWED = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
 
 export class UploadError extends Error {}
 
-/** Artwork is smaller and allows the vector and icon formats a logo needs. */
-const BRAND_MAX_BYTES = 2 * 1024 * 1024;
-const BRAND_ALLOWED = ["image/png", "image/jpeg", "image/webp", "image/svg+xml", "image/x-icon", "image/vnd.microsoft.icon"];
-
 export type SavedFile = { storageKey: string; mimeType: string; sizeBytes: number };
 
 /** Supabase Storage when configured, local disk otherwise (development). */
@@ -36,44 +32,6 @@ export async function saveUpload(file: File, folder: string): Promise<SavedFile>
   validate(file);
   const ext = path.extname(file.name).toLowerCase().replace(/[^.a-z0-9]/g, "") || ".bin";
   const key = `${folder}/${createId()}${ext}`;
-  const config = supabaseConfig();
-
-  if (config) {
-    const res = await fetch(`${config.url}/storage/v1/object/${config.bucket}/${key}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${config.key}`,
-        apikey: config.key,
-        "Content-Type": file.type,
-        "x-upsert": "false",
-      },
-      body: new Uint8Array(await file.arrayBuffer()),
-    });
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      throw new UploadError(`Storage rejected the upload (${res.status}). ${detail.slice(0, 200)}`);
-    }
-  } else {
-    const full = path.join(localRoot(), key);
-    await mkdir(path.dirname(full), { recursive: true });
-    await writeFile(full, Buffer.from(await file.arrayBuffer()));
-  }
-
-  return { storageKey: key, mimeType: file.type, sizeBytes: file.size };
-}
-
-/**
- * The logo and the favicon. Kept apart from saveUpload because the rules differ:
- * artwork may be an SVG or an .ico, and it has to stay small enough to sit in the
- * page header without slowing every screen down.
- */
-export async function saveBrandImage(file: File, kind: "logo" | "favicon"): Promise<SavedFile> {
-  if (file.size === 0) throw new UploadError("The file is empty.");
-  if (file.size > BRAND_MAX_BYTES) throw new UploadError("Artwork must be 2 MB or smaller.");
-  if (!BRAND_ALLOWED.includes(file.type)) throw new UploadError("Upload a PNG, JPG, WebP, SVG or ICO file.");
-
-  const ext = path.extname(file.name).toLowerCase().replace(/[^.a-z0-9]/g, "") || ".png";
-  const key = `brand/${kind}-${createId()}${ext}`;
   const config = supabaseConfig();
 
   if (config) {

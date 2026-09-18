@@ -35,8 +35,6 @@ async function signIn(email, password = "Password@123", ip = "10.9.1.5") {
   const { ctx, page, errors } = await signIn("uk.docs@medcity.test", "Password@123", "10.9.1.11");
   await page.goto(`${BASE}/enquiries`);
   await page.waitForLoadState("domcontentloaded");
-  // Pages stream behind a skeleton now, so wait for the real content.
-  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   const list = (await page.locator("main").innerText()).toLowerCase();
   list.includes("nandana prakash") ? ok("seeded enquiries listed") : bad("seed enquiries missing");
   list.includes("overdue") ? ok("overdue tile present") : bad("no overdue tile");
@@ -64,7 +62,7 @@ async function signIn(email, password = "Password@123", ip = "10.9.1.5") {
   await page.fill('textarea[name="body"]', "Called back, sending the UK fee structure on WhatsApp.");
   await page.selectOption('main select[name="stage"]', "QUALIFIED");
   await page.locator('main button[type="submit"]').first().click();
-  await page.locator('[role="status"]').getByText(/Logged\. Stage is now/i).first().waitFor({ timeout: 10000 })
+  await page.locator("main").getByText(/Logged\. Stage is now/i).first().waitFor({ timeout: 10000 })
     .then(() => ok("follow up logged"))
     .catch(() => bad("follow up not confirmed"));
   const after = await page.locator("main").innerText();
@@ -83,8 +81,6 @@ async function signIn(email, password = "Password@123", ip = "10.9.1.5") {
 
   await page.goto(enquiryUrl);
   await page.waitForLoadState("domcontentloaded");
-  // Pages stream behind a skeleton now, so wait for the real content.
-  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   const converted = (await page.locator("main").innerText()).toLowerCase();
   converted.includes("converted") ? ok("enquiry closed as converted") : bad("enquiry not marked converted");
   converted.includes("became a student") ? ok("detail links to the student") : bad("no student link");
@@ -98,8 +94,6 @@ async function signIn(email, password = "Password@123", ip = "10.9.1.5") {
   const { ctx, page, errors } = await signIn("admin@medcityoverseas.test", "Password@123", "10.9.1.12");
   await page.goto(`${BASE}/enquiries`);
   await page.waitForLoadState("domcontentloaded");
-  // Pages stream behind a skeleton now, so wait for the real content.
-  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   const t = await page.locator("main").innerText();
   t.includes("Fahad Rahman") && t.includes("Sneha Rajan") ? ok("admin sees every branch") : bad("admin view is missing branches");
   (await page.locator('select[name="org"]').count()) ? ok("admin has the partner filter") : bad("no partner filter for admin");
@@ -113,8 +107,6 @@ async function signIn(email, password = "Password@123", ip = "10.9.1.5") {
   const { ctx, page } = await signIn("owner@horizon.test", "Password@123", "10.9.1.13");
   await page.goto(`${BASE}/enquiries`);
   await page.waitForLoadState("domcontentloaded");
-  // Pages stream behind a skeleton now, so wait for the real content.
-  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   const t = await page.locator("main").innerText();
   t.includes("Fahad Rahman") ? ok("sub-agent sees its own enquiry") : bad("sub-agent cannot see its own enquiry");
   !t.includes("Nandana Prakash") ? ok("sub-agent cannot see Kottayam's enquiries") : bad("org isolation broken");
@@ -125,7 +117,7 @@ async function signIn(email, password = "Password@123", ip = "10.9.1.5") {
 {
   const { ctx, page } = await signIn("management@medcityoverseas.test", "Password@123", "10.9.1.14");
   await page.goto(`${BASE}/enquiries`);
-  await page.waitForURL((u) => String(u).includes("/forbidden"), { timeout: 10000 }).catch(() => {});
+  await page.waitForLoadState("domcontentloaded");
   page.url().includes("/forbidden") ? ok("management is kept out of enquiries") : bad("management reached " + page.url());
   await ctx.close();
 }

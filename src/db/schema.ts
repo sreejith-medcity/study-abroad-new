@@ -81,9 +81,6 @@ export const organizations = pgTable("organizations", {
   /** Short code in the public enquiry link, printed on the branch QR code. */
   publicSlug: text("public_slug").unique(),
   publicFormEnabled: boolean("public_form_enabled").notNull().default(false),
-  addressLine: text("address_line"),
-  contactPhone: text("contact_phone"),
-  contactEmail: text("contact_email"),
   relationshipManagerId: text("relationship_manager_id"),
   active: boolean("active").notNull().default(true),
   createdAt: createdAt(),
@@ -105,8 +102,6 @@ export const users = pgTable(
     /** Set on STUDENT logins: the one student file this account may read. */
     studentId: text("student_id"),
     locale: text("locale").notNull().default("en"),
-    /** Raised to end every signed-in session for this account at once. */
-    sessionVersion: integer("session_version").notNull().default(1),
     active: boolean("active").notNull().default(true),
     mustChangePassword: boolean("must_change_password").notNull().default(false),
     passwordUpdatedAt: timestamp("password_updated_at", { withTimezone: true }),
@@ -514,73 +509,6 @@ export const payoutRequests = pgTable(
   (t) => [index("payout_requests_org_idx").on(t.orgId, t.status)],
 );
 
-// ---------- Settings ----------
-
-/**
- * One row, id "app". Everything here used to be a constant in the code:
- * keeping it in the database means the team can change how the portal behaves
- * without a deploy, and the audit log records who changed what.
- */
-export const appSettings = pgTable("app_settings", {
-  id: text("id").primaryKey().default("app"),
-
-  // What the portal calls itself, and how it looks
-  portalName: text("portal_name").notNull().default("Medcity Overseas"),
-  organisationName: text("organisation_name").notNull().default("Medcity International Overseas Corporation"),
-  // The four brand colours: crimson, maroon, yellow and blue.
-  brandColor: text("brand_color").notNull().default("#c01f53"),
-  deepColor: text("deep_color").notNull().default("#631a33"),
-  accentColor: text("accent_color").notNull().default("#f7ec22"),
-  infoColor: text("info_color").notNull().default("#0466af"),
-  // Uploaded artwork, served through /api/brand. Null falls back to the drawn mark.
-  logoKey: text("logo_key"),
-  logoMimeType: text("logo_mime_type"),
-  faviconKey: text("favicon_key"),
-  faviconMimeType: text("favicon_mime_type"),
-  signInHeadline: text("sign_in_headline").notNull().default("The workspace behind every Medcity student going abroad."),
-  signInPoints: text("sign_in_points").array().notNull().default(sql`'{}'::text[]`),
-
-  // How long work may sit in each lane before it counts as late
-  slaNewDays: integer("sla_new_days").notNull().default(2),
-  slaPendingPartnerDays: integer("sla_pending_partner_days").notNull().default(5),
-  slaInProgressDays: integer("sla_in_progress_days").notNull().default(7),
-  slaOfferDays: integer("sla_offer_days").notNull().default(10),
-  slaHoldDays: integer("sla_hold_days").notNull().default(60),
-
-  // Partner tiers: visas in the last twelve months needed for each level
-  tierTargets: jsonb("tier_targets").notNull().default(sql`'{"SILVER":10,"GOLD":20,"ELITE":50,"PLATINUM":50}'::jsonb`),
-
-  // Enquiries
-  followUpDays: integer("follow_up_days").notNull().default(1),
-  enquiryStaleDays: integer("enquiry_stale_days").notNull().default(30),
-
-  // Money: indicative rates, overwritten by the real figure at settlement
-  fxRates: jsonb("fx_rates").notNull().default(sql`'{"GBP":112,"EUR":96,"AUD":58,"CAD":62,"USD":88}'::jsonb`),
-
-  // Who a partner or student should contact
-  supportEmail: text("support_email"),
-  supportPhone: text("support_phone"),
-  supportHours: text("support_hours"),
-
-  updatedById: text("updated_by_id").references(() => users.id),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
-/** Every sign in, successful or not: the security tab and the audit log read this. */
-export const signInEvents = pgTable(
-  "sign_in_events",
-  {
-    id: id(),
-    userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
-    email: text("email").notNull(),
-    outcome: text("outcome").notNull(), // success | wrong_password | unknown_email | inactive | throttled
-    ipAddress: text("ip_address"),
-    userAgent: text("user_agent"),
-    createdAt: createdAt(),
-  },
-  (t) => [index("sign_in_events_user_idx").on(t.userId, t.createdAt)],
-);
-
 // ---------- Learning resources ----------
 
 /**
@@ -826,4 +754,3 @@ export type CommissionStatus = (typeof commissionStatus.enumValues)[number];
 export type WalletEntryKind = (typeof walletEntryKind.enumValues)[number];
 export type PayoutStatus = (typeof payoutStatus.enumValues)[number];
 export type ResourceKind = (typeof resourceKind.enumValues)[number];
-export type AppSettings = typeof appSettings.$inferSelect;

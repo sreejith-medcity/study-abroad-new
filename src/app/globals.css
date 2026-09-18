@@ -1,29 +1,26 @@
 @import "tailwindcss";
 
 /*
-  Medcity Study Abroad design tokens.
-
-  The four brand colours are fixed: crimson #C01F53, maroon #631A33, yellow
-  #F7EC22 and blue #0466AF. Crimson anchors the brand ramp and maroon closes it,
-  the yellow is the accent, and the blue carries the informational tone. Around
-  them sit warm neutrals and status colours chosen to stay legible next to the
-  crimson through a long working day.
+  Medcity Overseas portal design tokens.
+  Brand crimson and gold come from Medcity's own identity; everything else is
+  built for long working sessions in a data-heavy tool: warm neutrals, one
+  accent, and status colours that stay distinct from the brand red.
 */
 @theme {
-  --color-brand-50: #fdf1f5;
-  --color-brand-100: #fadfe8;
-  --color-brand-200: #f4bdcf;
-  --color-brand-300: #ec8fae;
-  --color-brand-400: #dd5580;
-  --color-brand-500: #d02e65;
-  --color-brand-600: #c01f53;
-  --color-brand-700: #9c1a44;
-  --color-brand-800: #7d1a3b;
-  --color-brand-900: #631a33;
+  --color-brand-50: #fdf2f6;
+  --color-brand-100: #fbdfe9;
+  --color-brand-200: #f6bccf;
+  --color-brand-300: #ef8dae;
+  --color-brand-400: #e1517f;
+  --color-brand-500: #cc2160;
+  --color-brand-600: #be1049;
+  --color-brand-700: #9d0b3c;
+  --color-brand-800: #7a0a30;
+  --color-brand-900: #5a0723;
 
-  --color-gold-300: #fbf46e;
-  --color-gold-400: #f7ec22;
-  --color-gold-500: #c9bf00;
+  --color-gold-300: #ffd85e;
+  --color-gold-400: #f5c518;
+  --color-gold-500: #d9a900;
 
   --color-ink: #1c1420;
   --color-ink-soft: #3b3242;
@@ -34,9 +31,9 @@
   --color-surface-2: #faf7f9;
   --color-ground: #f6f2f5;
 
-  --color-info-50: #e8f1fa;
-  --color-info-500: #0466af;
-  --color-info-700: #034b81;
+  --color-info-50: #eef2ff;
+  --color-info-500: #4353c4;
+  --color-info-700: #2f3a94;
   --color-good-50: #e9f7ef;
   --color-good-500: #12855a;
   --color-good-700: #0c6644;
@@ -51,11 +48,8 @@
   --font-sans: "DM Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* Two steps of depth only: cards sit on the page, pop-overs float above it. */
-  --shadow-card: 0 1px 1px rgba(28, 20, 32, 0.03), 0 1px 3px rgba(28, 20, 32, 0.05);
-  --shadow-lift: 0 1px 1px rgba(28, 20, 32, 0.03), 0 10px 24px -14px rgba(28, 20, 32, 0.3);
-  --shadow-pop: 0 16px 48px -16px rgba(28, 20, 32, 0.3), 0 2px 8px rgba(28, 20, 32, 0.06);
-  --shadow-hero: 0 20px 44px -28px rgba(99, 26, 51, 0.55);
+  --shadow-card: 0 1px 2px rgba(28, 20, 32, 0.04), 0 8px 24px -16px rgba(28, 20, 32, 0.18);
+  --shadow-pop: 0 12px 40px -12px rgba(28, 20, 32, 0.28);
 }
 
 html {
@@ -90,27 +84,10 @@ h4,
 }
 
 /* Brand gradient used on the sign-in panel and the app header. */
-/*
-  The one saturated surface: the app header and the hero strip at the top of a
-  dashboard. Nothing else on a page should use it, or the page reads as all brand
-  and no content.
-*/
 .brand-wash {
   background:
-    /* The warm highlight sits over the crimson end. Yellow over the maroon end
-       would mix to olive. */
-    radial-gradient(900px 420px at 88% -25%, rgba(247, 236, 34, 0.22), transparent 62%),
-    linear-gradient(115deg, var(--color-brand-900) 0%, var(--color-brand-700) 38%, var(--color-brand-600) 78%, var(--color-brand-500) 100%);
-}
-
-/*
-  The companion surface, for a panel that sits beside a hero: the same family,
-  carried by ink and gold rather than a second block of crimson.
-*/
-.tier-wash {
-  background:
-    radial-gradient(420px 180px at 92% -40%, color-mix(in oklab, var(--color-gold-400) 22%, transparent), transparent 70%),
-    linear-gradient(135deg, color-mix(in oklab, var(--color-ink) 70%, var(--color-brand-800)) 0%, var(--color-ink) 100%);
+    radial-gradient(1200px 400px at 10% -10%, rgba(245, 197, 24, 0.35), transparent 60%),
+    linear-gradient(135deg, var(--color-brand-700) 0%, var(--color-brand-600) 45%, var(--color-brand-500) 100%);
 }
 
 .grain::after {
@@ -141,26 +118,4 @@ h4,
 .thin-scroll {
   scrollbar-width: thin;
   scrollbar-color: var(--color-line-strong) transparent;
-}
-
-/* Toasts slide up a little as they arrive */
-@keyframes toast-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/*
- * A grid item's min-width is auto by default, so one wide child, usually a table
- * with a min width of its own, stretches its column and pushes the whole page
- * sideways on a phone. Every layout here would rather the item shrink and let the
- * table scroll inside its own pane.
- */
-.grid > * {
-  min-width: 0;
 }

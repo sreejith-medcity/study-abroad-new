@@ -33,16 +33,12 @@ async function signIn(email, ip, password = "Password@123") {
   const { ctx, page, errors } = await signIn("admin@medcityoverseas.test", "10.9.2.11");
   await page.goto(`${BASE}/admin/commission?tab=rules`);
   await page.waitForLoadState("domcontentloaded");
-  // Pages stream behind a skeleton now, so wait for the real content.
-  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   let t = await page.locator("main").innerText();
   t.includes("UK universities") ? ok("seeded rules listed") : bad("no seeded rules");
   await page.screenshot({ path: `${OUT}/01-rules.png`, fullPage: true });
 
   await page.goto(`${BASE}/admin/commission`);
   await page.waitForLoadState("domcontentloaded");
-  // Pages stream behind a skeleton now, so wait for the real content.
-  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   t = await page.locator("main").innerText();
   t.includes("Expected") ? ok("pipeline tiles render") : bad("pipeline tiles missing");
   const rowCount = await page.locator("main tbody tr").count();
@@ -55,8 +51,7 @@ async function signIn(email, ip, password = "Password@123") {
     await row.locator('select[name="status"]').selectOption("INVOICED");
     await row.locator('input[name="invoiceRef"]').fill("MIO/TEST/1");
     await row.getByRole("button", { name: "Apply" }).click();
-    // Assert the move itself: the toast fades, the invoice reference stays.
-    await page.locator("main tbody tr").filter({ hasText: "MIO/TEST/1" }).first().waitFor({ timeout: 12000 })
+    await page.locator("main").getByText(/Moved to invoiced/i).first().waitFor({ timeout: 10000 })
       .then(() => ok("commission moved to invoiced"))
       .catch(() => bad("commission did not move"));
   } else {
@@ -65,7 +60,7 @@ async function signIn(email, ip, password = "Password@123") {
 
   // backfill button
   await page.getByRole("button", { name: /Find missing commissions/i }).click();
-  await page.locator('[role="status"]').getByText(/commission|Nothing to add/i).first().waitFor({ timeout: 10000 })
+  await page.locator("main").getByText(/commission|Nothing to add/i).first().waitFor({ timeout: 10000 })
     .then(() => ok("backfill runs"))
     .catch(() => bad("backfill gave no answer"));
   errors.length === 0 ? ok("admin: no client errors") : bad("admin errors: " + errors.slice(0, 2).join(" | "));
@@ -77,16 +72,12 @@ async function signIn(email, ip, password = "Password@123") {
   const { ctx, page, errors } = await signIn("kochi@medcity.test", "10.9.2.12");
   await page.goto(`${BASE}/commission`);
   await page.waitForLoadState("domcontentloaded");
-  // Pages stream behind a skeleton now, so wait for the real content.
-  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   let t = await page.locator("main").innerText();
   t.includes("Paid to you") ? ok("partner statement renders") : bad("statement missing");
   await page.screenshot({ path: `${OUT}/03-partner-commission.png`, fullPage: true });
 
   await page.goto(`${BASE}/wallet`);
   await page.waitForLoadState("domcontentloaded");
-  // Pages stream behind a skeleton now, so wait for the real content.
-  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   t = await page.locator("main").innerText();
   t.includes("Available balance") ? ok("wallet renders") : bad("wallet missing");
   const hasLedger = (await page.locator("main tbody tr").count()) > 0;
@@ -98,7 +89,7 @@ async function signIn(email, ip, password = "Password@123") {
     await amount.fill("5000");
     await page.locator('textarea[name="note"]').fill("Smoke test request");
     await page.getByRole("button", { name: /Request payout/i }).click();
-    await page.locator('[role="status"]').getByText(/Requested|payout/i).first().waitFor({ timeout: 12000 })
+    await page.locator("main").getByText(/Requested/i).first().waitFor({ timeout: 10000 })
       .then(() => ok("payout requested"))
       .catch(() => bad("payout request gave no answer"));
   } else {
@@ -113,11 +104,7 @@ async function signIn(email, ip, password = "Password@123") {
   const { ctx, page } = await signIn("admin@medcityoverseas.test", "10.9.2.13");
   await page.goto(`${BASE}/admin/commission?tab=payouts`);
   await page.waitForLoadState("domcontentloaded");
-  // Pages stream behind a skeleton now, so wait for the real content.
-  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   const row = page.locator("main tbody tr").filter({ hasText: "Requested" }).first();
-  // The page streams, so wait for the row rather than counting once.
-  await row.waitFor({ timeout: 12000 }).catch(() => {});
   (await row.count()) ? ok("request reached the Overseas team") : bad("no pending request visible");
   if (await row.count()) {
     await row.locator('select[name="decision"]').selectOption("PAID");
@@ -136,8 +123,6 @@ async function signIn(email, ip, password = "Password@123") {
   const { ctx, page } = await signIn("kochi@medcity.test", "10.9.2.14");
   await page.goto(`${BASE}/wallet`);
   await page.waitForLoadState("domcontentloaded");
-  // Pages stream behind a skeleton now, so wait for the real content.
-  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   const t = await page.locator("main").innerText();
   t.includes("Payout") ? ok("payout shows in the ledger") : bad("no payout entry in the ledger");
   await ctx.close();
@@ -148,8 +133,6 @@ async function signIn(email, ip, password = "Password@123") {
   const { ctx, page } = await signIn("uk.docs@medcity.test", "10.9.2.15");
   await page.goto(`${BASE}/wallet`);
   await page.waitForLoadState("domcontentloaded");
-  // Pages stream behind a skeleton now, so wait for the real content.
-  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   (await page.locator('input[name="amountInr"]').count()) === 0 ? ok("counsellor cannot request a payout") : bad("counsellor sees the payout form");
   await ctx.close();
 }
@@ -157,8 +140,6 @@ async function signIn(email, ip, password = "Password@123") {
   const { ctx, page } = await signIn("management@medcityoverseas.test", "10.9.2.16");
   await page.goto(`${BASE}/admin/commission`);
   await page.waitForLoadState("domcontentloaded");
-  // Pages stream behind a skeleton now, so wait for the real content.
-  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   page.url().includes("/admin/commission") ? ok("management can read the commission console") : bad("management got " + page.url());
   (await page.locator('main select[aria-label="Move to"]').count()) === 0 ? ok("management has no move controls") : bad("management can move commissions");
   await ctx.close();

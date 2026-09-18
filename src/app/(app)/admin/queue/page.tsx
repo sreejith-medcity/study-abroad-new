@@ -9,17 +9,16 @@ import type { Pathway, StatusGroup } from "@/db/schema";
 import { Button, Card, Chip, LinkButton, PageHeader, Select, cn } from "@/components/ui";
 import { StatusForm } from "@/app/(app)/students/[id]/applications/client";
 import { PROCESSING_ROLES, canChangeStatus } from "@/lib/permissions";
-import { getSlaDays } from "@/server/dashboard";
 
 export const metadata = { title: "Work queue" };
 
-const LANE_LABEL: { group: StatusGroup; label: string }[] = [
-  { group: "NEW", label: "New / assessment" },
-  { group: "PENDING_PARTNER", label: "Pending from partner" },
-  { group: "IN_PROGRESS", label: "In progress" },
-  { group: "OFFER", label: "Offer / contract" },
-  { group: "HOLD", label: "On hold" },
-  { group: "SUCCESS", label: "Visa / done" },
+const LANES: { group: StatusGroup; label: string; slaDays: number }[] = [
+  { group: "NEW", label: "New / assessment", slaDays: 2 },
+  { group: "PENDING_PARTNER", label: "Pending from partner", slaDays: 5 },
+  { group: "IN_PROGRESS", label: "In progress", slaDays: 7 },
+  { group: "OFFER", label: "Offer / contract", slaDays: 10 },
+  { group: "HOLD", label: "On hold", slaDays: 60 },
+  { group: "SUCCESS", label: "Visa / done", slaDays: 9999 },
 ];
 const PATHWAYS: { key: Pathway; label: string }[] = [
   { key: "DEGREE", label: "Degree" },
@@ -48,10 +47,6 @@ export default async function QueuePage({ searchParams }: { searchParams: Promis
     .innerJoin(sd, eq(a.statusId, sd.id))
     .where(and(ne(sd.group, "CLOSED"), mine ? sql`(${a.officerId} = ${user.id} or ${a.officerId} is null)` : undefined))
     .groupBy(sd.pathway);
-
-  // Service levels come from platform settings, so a super admin can retune the queue.
-  const sla = await getSlaDays();
-  const LANES = LANE_LABEL.map((l) => ({ ...l, slaDays: sla[l.group] ?? 9999 }));
 
   const now = Date.now();
   const breaches = rows.filter((r) => {

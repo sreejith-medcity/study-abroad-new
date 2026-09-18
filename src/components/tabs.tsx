@@ -25,30 +25,3 @@ export function StepTabs({ steps }: { steps: { href: string; label: string; done
     </ol>
   );
 }
-
-/** Horizontal section tabs, used for settings and any page with a few panels. */
-export function SubTabs({ tabs, label = "Sections" }: { tabs: { href: string; label: string }[]; label?: string }) {
-  const path = usePathname();
-  return (
-    <div className="thin-scroll -mx-1 overflow-x-auto px-1">
-      <nav aria-label={label} className="inline-flex min-w-max gap-1 rounded-xl border border-line bg-surface p-1 shadow-card">
-        {tabs.map((tab) => {
-          const active = path === tab.href;
-          return (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "rounded-lg px-3.5 py-2 text-[13px] font-medium transition-colors",
-                active ? "bg-brand-600 text-white shadow-sm" : "text-ink-soft hover:bg-surface-2 hover:text-ink",
-              )}
-            >
-              {tab.label}
-            </Link>
-          );
-        })}
-      </nav>
-    </div>
-  );
-}

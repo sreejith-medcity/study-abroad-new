@@ -5,7 +5,6 @@ import type { SessionUser } from "@/lib/auth";
 import { orgScope } from "@/lib/permissions";
 import type { CommissionStatus } from "@/db/schema";
 import { amountsFor, fxToInr, inr, money } from "@/lib/money";
-import { fxRates, getSettings } from "./settings";
 
 export { amountsFor, fxToInr, inr, money };
 
@@ -111,7 +110,7 @@ export async function accrueCommission(applicationId: string) {
       grossAmount: gross,
       partnerAmount: partner,
       // An estimate until the real transfer amount is entered at settlement.
-      partnerAmountInr: Math.round(partner * fxToInr(currency, fxRates(await getSettings()))),
+      partnerAmountInr: Math.round(partner * fxToInr(currency)),
       status: "EXPECTED",
     })
     .returning();
