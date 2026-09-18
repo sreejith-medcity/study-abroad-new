@@ -3,6 +3,7 @@ import { and, asc, count, desc, eq, gte, inArray, isNotNull, isNull, lte, ne, sq
 import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { orgScope } from "@/lib/permissions";
+import { getSettings, slaDays } from "./settings";
 import { MONTHS } from "@/lib/format";
 import { KPI_WHERE } from "./queries";
 
@@ -25,7 +26,11 @@ const {
 /** Groups that still need someone to act. */
 export const ACTIVE_GROUPS = ["NEW", "PENDING_PARTNER", "IN_PROGRESS", "OFFER"] as const;
 
-/** Days a lane may sit untouched before it counts as late. Mirrors the work queue. */
+/**
+ * Days a lane may sit untouched before it counts as late. The real numbers live in
+ * platform settings; these are only the fallback for a database that has not been
+ * read yet. Call getSlaDays() wherever the figure is shown or compared.
+ */
 export const SLA_DAYS: Record<string, number> = {
   NEW: 2,
   PENDING_PARTNER: 5,
@@ -33,6 +38,11 @@ export const SLA_DAYS: Record<string, number> = {
   OFFER: 10,
   HOLD: 60,
 };
+
+/** The configured service levels, cached per request by getSettings. */
+export async function getSlaDays(): Promise<Record<string, number>> {
+  return slaDays(await getSettings());
+}
 
 export const GROUP_LABEL: Record<string, string> = {
   NEW: "New / assessment",
@@ -79,6 +89,7 @@ export async function groupCounts(user: SessionUser, extra?: SQL) {
 
 /** Applications sitting past the lane's SLA, per group and in total. */
 export async function lateWork(user: SessionUser) {
+  const sla = await getSlaDays();
   const rows = await db
     .select({ group: sd.group, changedAt: a.statusChangedAt })
     .from(a)
@@ -89,7 +100,7 @@ export async function lateWork(user: SessionUser) {
   let total = 0;
   for (const r of rows) {
     const days = (now - r.changedAt.getTime()) / 86400000;
-    if (days > (SLA_DAYS[r.group] ?? 9999)) {
+    if (days > (sla[r.group] ?? 9999)) {
       perGroup[r.group] = (perGroup[r.group] ?? 0) + 1;
       total++;
     }

@@ -2,7 +2,10 @@ import { notFound } from "next/navigation";
 import { asc } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { orgForPublicSlug } from "@/server/public-form";
-import { Card, Logo } from "@/components/ui";
+import { Card } from "@/components/ui";
+import { BrandLogo, BrandStyle } from "@/components/brand";
+import { ToastHost } from "@/components/toast";
+import { getSettings } from "@/server/settings";
 import { IconCheck } from "@/components/icons";
 import { PublicEnquiryForm } from "./form";
 
@@ -20,11 +23,14 @@ export default async function ApplyPage({ params }: { params: Promise<{ slug: st
   const org = await orgForPublicSlug(slug);
   if (!org) notFound();
   const countries = await db.select({ name: schema.countries.name }).from(schema.countries).orderBy(asc(schema.countries.name));
+  const settings = await getSettings();
 
   return (
     <main className="grid min-h-screen lg:grid-cols-[1fr_1.05fr]">
+      <BrandStyle />
+      <ToastHost />
       <section className="brand-wash grain relative hidden flex-col justify-between p-10 lg:flex">
-        <Logo className="relative z-10" />
+        <BrandLogo className="relative z-10" />
         <div className="relative z-10 max-w-md">
           <h1 className="font-display text-[32px] font-semibold leading-[1.15] text-white">
             Tell us what you want to study, and we will take it from there.
@@ -42,14 +48,14 @@ export default async function ApplyPage({ params }: { params: Promise<{ slug: st
         </div>
         <p className="relative z-10 text-[13px] text-white/60">
           {org.name}
-          {org.city ? ` · ${org.city}` : ""} · Medcity International Overseas Corporation
+          {org.city ? ` · ${org.city}` : ""} · {settings.organisationName}
         </p>
       </section>
 
       <section className="px-4 py-10 md:px-10">
         <div className="mx-auto w-full max-w-xl">
           <div className="mb-6 lg:hidden">
-            <Logo tone="dark" />
+            <BrandLogo tone="dark" />
           </div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-600">
             {org.name}
@@ -65,6 +71,13 @@ export default async function ApplyPage({ params }: { params: Promise<{ slug: st
           <p className="mt-4 text-[12px] leading-relaxed text-muted">
             We use your details only to answer this enquiry. Ask us at any time to correct or delete them.
           </p>
+          {(settings.supportEmail || settings.supportPhone) && (
+            <p className="mt-2 text-[12px] text-muted">
+              Questions before you send this? {settings.supportPhone}
+              {settings.supportEmail ? ` · ${settings.supportEmail}` : ""}
+              {settings.supportHours ? ` · ${settings.supportHours}` : ""}
+            </p>
+          )}
         </div>
       </section>
     </main>

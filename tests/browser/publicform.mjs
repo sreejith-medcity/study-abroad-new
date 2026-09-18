@@ -37,6 +37,8 @@ async function signIn(page, email, password = "Password@123") {
   const { ctx, page, errors } = await fresh("10.9.4.11");
   await page.goto(`${BASE}/apply/kottayam-7bq4`);
   await page.waitForLoadState("domcontentloaded");
+  // Pages stream behind a skeleton now, so wait for the real content.
+  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   const t = await page.locator("main").innerText();
   t.includes("Start your enquiry") ? ok("public form opens without signing in") : bad("public form did not render");
   t.includes("Medcity Kottayam") ? ok("names the branch") : bad("branch name missing");
@@ -75,6 +77,8 @@ async function signIn(page, email, password = "Password@123") {
   await signIn(page, "kottayam@medcity.test");
   await page.goto(`${BASE}/enquiries?q=Walk+In+${tag}`);
   await page.waitForLoadState("domcontentloaded");
+  // Pages stream behind a skeleton now, so wait for the real content.
+  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   const t = await page.locator("main").innerText();
   t.includes(`Walk In ${tag}`) ? ok("enquiry reached the branch") : bad("enquiry not visible to the branch");
   t.includes("Website") ? ok("source recorded as website") : bad("source not website");
@@ -88,6 +92,8 @@ async function signIn(page, email, password = "Password@123") {
   await signIn(page, "owner@horizon.test");
   await page.goto(`${BASE}/enquiries`);
   await page.waitForLoadState("domcontentloaded");
+  // Pages stream behind a skeleton now, so wait for the real content.
+  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   !(await page.locator("main").innerText()).includes(`Walk In ${tag}`) ? ok("other branches cannot see it") : bad("leaked to another branch");
   await ctx.close();
 }
@@ -98,6 +104,8 @@ async function signIn(page, email, password = "Password@123") {
   await signIn(page, "sreejith@miak.in");
   await page.goto(`${BASE}/admin/partners`);
   await page.waitForLoadState("domcontentloaded");
+  // Pages stream behind a skeleton now, so wait for the real content.
+  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   (await page.locator("main").getByText("Public enquiry form").count()) ? ok("QR panel is on the partner card") : bad("no QR panel");
   (await page.locator("main svg[viewBox]").count()) > 0 ? ok("a QR code is rendered") : bad("no QR svg");
   // The panels are collapsed <details>, so expand them before looking inside.

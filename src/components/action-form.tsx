@@ -2,6 +2,7 @@
 
 import { createContext, startTransition, useActionState, useContext, useEffect, useRef, type FormEvent, type ReactNode } from "react";
 import { Alert, Button, cn } from "./ui";
+import { toast } from "./toast";
 
 export type FormState = { error?: string; ok?: string; fieldErrors?: Record<string, string[] | undefined> };
 type Action = (state: FormState, formData: FormData) => Promise<FormState>;
@@ -30,7 +31,10 @@ export function ActionForm({
   const [state, formAction, pending] = useActionState<FormState, FormData>(action, {});
   const ref = useRef<HTMLFormElement>(null);
   useEffect(() => {
-    if (state.ok && resetOnSuccess) ref.current?.reset();
+    if (!state.ok) return;
+    if (resetOnSuccess) ref.current?.reset();
+    // A toast keeps the confirmation visible even when the form has scrolled away.
+    toast(state.ok);
   }, [state, resetOnSuccess]);
   // Submit through a transition instead of the form action prop, so React does not
   // clear what the user typed when the server returns a validation error.
@@ -45,7 +49,6 @@ export function ActionForm({
     <ErrorsContext.Provider value={state.fieldErrors ?? {}}>
       <form ref={ref} onSubmit={onSubmit} className={cn("space-y-3", className)} noValidate>
         {state.error && <Alert tone="bad">{state.error}</Alert>}
-        {state.ok && !pending && <Alert tone="ok">{state.ok}</Alert>}
         {children}
         {!hideSubmit && (
           <div>

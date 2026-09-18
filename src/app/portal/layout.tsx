@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { requireStudent } from "@/server/portal";
 import { translator, LOCALE_LABEL, LOCALES } from "@/lib/i18n";
-import { Logo, cn } from "@/components/ui";
+import { cn } from "@/components/ui";
+import { BrandLogo, BrandStyle } from "@/components/brand";
+import { ToastHost } from "@/components/toast";
+import { getSettings } from "@/server/settings";
 import { IconApplications, IconChat, IconDoc, IconLogout, IconStudents } from "@/components/icons";
 import { logoutAction } from "@/app/login/actions";
 import { setLocaleAction } from "./actions";
@@ -22,13 +25,16 @@ const NAV = [
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const { student, locale } = await requireStudent();
   const t = translator(locale);
+  const settings = await getSettings();
 
   return (
     <div className="min-h-screen bg-ground">
+      <BrandStyle />
+      <ToastHost />
       <header className="brand-wash grain relative sticky top-0 z-30 px-4 py-3 md:px-6">
         <div className="relative z-10 mx-auto flex max-w-4xl items-center gap-3">
           <Link href="/portal" className="rounded-lg py-1">
-            <Logo />
+            <BrandLogo />
           </Link>
           <span className="hidden text-[13px] text-white/70 sm:inline">{t("portal")}</span>
 
@@ -78,7 +84,7 @@ export default async function PortalLayout({ children }: { children: React.React
       <main className="mx-auto max-w-4xl px-4 py-6 md:px-6 md:py-8">{children}</main>
 
       <footer className="mx-auto max-w-4xl px-4 pb-10 text-center text-[12px] text-muted md:px-6">
-        {student.org.name} · Medcity International Overseas Corporation
+        {student.org.name} · {settings.organisationName}
       </footer>
     </div>
   );

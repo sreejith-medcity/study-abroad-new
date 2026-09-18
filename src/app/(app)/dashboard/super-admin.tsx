@@ -169,7 +169,7 @@ export default async function SuperAdminDashboard({ user, f }: { user: SessionUs
                           {ROLE_LABEL[r.role] ?? r.role}
                         </Chip>
                       </Td>
-                      <Td className="text-[13px]">{r.orgName}</Td>
+                      <Td className="max-w-[14rem] truncate text-[13px]" title={r.orgName}>{r.orgName}</Td>
                       <Td>
                         {!r.active ? (
                           <Chip tone="bad">Switched off</Chip>

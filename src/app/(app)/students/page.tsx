@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { APP_ROLES, isAdmin, isStaff } from "@/lib/permissions";
 import { fmtDate, fullName } from "@/lib/format";
 import { orgUsers, readFilters } from "@/server/queries";
-import { Button, Card, Chip, EmptyState, Input, LinkButton, PageHeader, Select, Table, Td, Th, Toolbar } from "@/components/ui";
+import { Button, Card, Chip, EmptyState, DateInput, Input, LinkButton, PageHeader, Select, Table, Td, Th, Toolbar } from "@/components/ui";
 import { IconPlus, IconStudents } from "@/components/icons";
 import { archiveStudentAction, reassignStudentAction } from "./actions";
 
@@ -59,6 +59,8 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
   const countries = await db.select().from(schema.countries).orderBy(asc(schema.countries.name));
   const orgs = staff ? await db.select().from(schema.organizations).where(sql`type <> 'HQ'`).orderBy(asc(schema.organizations.name)) : [];
   const canWrite = user.role !== "MANAGEMENT";
+  // A filtered search that finds nothing needs a different answer from an empty branch.
+  const filtered = Object.keys(f).some((k) => k !== "view" && f[k]);
 
   return (
     <>
@@ -87,8 +89,8 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
               {counsellors.map((c) => <option key={c.id} value={c.id}>{c.deskLabel ?? c.name}</option>)}
             </Select>
           )}
-          <Input type="date" name="from" aria-label="Created from" defaultValue={f.from} />
-          <Input type="date" name="to" aria-label="Created to" defaultValue={f.to} />
+          <DateInput label="Created from" name="from" defaultValue={f.from} />
+          <DateInput label="Created to" name="to" defaultValue={f.to} />
           <Select name="country" aria-label="Preferred country" defaultValue={f.country ?? ""}>
             <option value="">Country</option>
             {countries.map((c) => <option key={c.id}>{c.name}</option>)}
@@ -108,8 +110,26 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
 
       <Card>
         {rows.length === 0 ? (
-          <EmptyState icon={<IconStudents />} title={archived ? "No archived students" : "No students match these filters"}>
-            {!archived && canWrite && !staff && <Link className="text-brand-600 hover:underline" href="/students/new">Register a student</Link>}
+          <EmptyState
+            icon={<IconStudents />}
+            title={archived ? "No archived students" : filtered ? "No students match these filters" : "No students registered yet"}
+            action={
+              filtered ? (
+                <LinkButton variant="secondary" href={archived ? "/students?view=archived" : "/students"}>
+                  Clear the filters
+                </LinkButton>
+              ) : !archived && canWrite && !staff ? (
+                <LinkButton href="/students/new">
+                  <IconPlus className="size-4" /> Register your first student
+                </LinkButton>
+              ) : undefined
+            }
+          >
+            {archived
+              ? "Students you archive are kept here, and can be brought back at any time."
+              : filtered
+                ? "Try a wider date range, or clear the filters and start again."
+                : "Every student your branch registers appears here, with what each application is waiting on."}
           </EmptyState>
         ) : (
           <Table tableClassName="min-w-[980px]">
@@ -131,7 +151,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                   <Td>{staff ? r.orgName : r.createdByDesk}{r.source !== "partner" && <Chip className="ml-1">{r.source.toUpperCase()}</Chip>}</Td>
                   <Td className="whitespace-nowrap tabular">{fmtDate(r.createdAt)}</Td>
                   <Td><Link href={`/students/${r.id}/profile`} className="font-medium text-ink hover:text-brand-600 hover:underline">{fullName(r)}</Link></Td>
-                  <Td className="break-all text-muted">{r.email}</Td>
+                  <Td className="max-w-[16rem] truncate text-muted" title={r.email ?? undefined}>{r.email}</Td>
                   <Td className="whitespace-nowrap tabular">{r.phone}</Td>
                   {!staff && (
                     <Td>
