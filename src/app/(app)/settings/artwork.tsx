@@ -49,8 +49,9 @@ function Artwork({ kind, uploaded, version }: { kind: Kind; uploaded: boolean; v
       <p className="mt-0.5 text-xs leading-relaxed text-muted">{copy.blurb}</p>
 
       <div className={cn("mt-3 grid place-items-center rounded-lg border border-dashed border-line-strong bg-surface p-2", copy.frame)}>
+        {/* A fixed cap, because a percentage height cannot resolve inside a centred grid. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={src} alt={`Current ${copy.title.toLowerCase()}`} className="max-h-full max-w-full object-contain" />
+        <img src={src} alt={`Current ${copy.title.toLowerCase()}`} className="max-h-12 w-auto max-w-full object-contain" />
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -100,7 +101,7 @@ function UploadForm({ kind, onDone }: { kind: Kind; onDone: () => void }) {
         {preview ? (
           <div className="mx-auto grid max-h-28 place-items-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={preview} alt="What you are about to upload" className="max-h-28 max-w-full object-contain" />
+            <img src={preview} alt="What you are about to upload" className="h-28 w-full object-contain" />
           </div>
         ) : (
           <p className="text-[13px] text-muted">Drop a file here, or choose one below.</p>

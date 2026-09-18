@@ -75,7 +75,7 @@ const toast = async (page) => (await page.locator('[role="status"]').innerText()
   await page.goto(`${BASE}/settings/platform`);
   await page.fill('input[name="slaNewDays"]', "3");
   await page.fill('input[name="portalName"]', "Medcity Overseas");
-  await page.click('button[type="submit"]');
+  await page.getByRole("button", { name: "Save platform settings" }).click();
   await page.waitForTimeout(2500);
   (await toast(page)).includes("saved") ? ok("platform settings saved") : bad("platform save gave no confirmation");
 
@@ -84,13 +84,13 @@ const toast = async (page) => (await page.locator('[role="status"]').innerText()
 
   // Put it back so the rest of the suites see the usual numbers.
   await page.fill('input[name="slaNewDays"]', "2");
-  await page.click('button[type="submit"]');
+  await page.getByRole("button", { name: "Save platform settings" }).click();
   await page.waitForTimeout(2000);
 
   // A bad colour should be refused rather than saved.
   await page.goto(`${BASE}/settings/platform`);
   await page.fill('input[name="brandColor"]', "not-a-colour");
-  await page.click('button[type="submit"]');
+  await page.getByRole("button", { name: "Save platform settings" }).click();
   await page.waitForTimeout(2000);
   (await text(page)).includes("hex colour") ? ok("bad colour refused") : bad("bad colour was not refused");
 
