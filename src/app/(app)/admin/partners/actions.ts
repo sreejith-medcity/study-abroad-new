@@ -8,6 +8,7 @@ import { db, schema } from "@/db";
 import { hashPassword, requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { ADMIN_ROLES, canManageUsers, canResetPasswords, ROLE_LABEL } from "@/lib/permissions";
+import { makeSlug } from "@/server/public-form";
 
 export type FormState = { error?: string; ok?: string; fieldErrors?: Record<string, string[] | undefined> };
 
@@ -148,4 +149,35 @@ export async function resetPasswordAction(_: FormState, formData: FormData): Pro
   await audit(actor.id, "user.password_reset", "user", userId, { email: target.email });
   revalidatePath("/admin/partners");
   return { ok: `Temporary password for ${target.email}: ${password}. Shown once, and they must change it at sign in.` };
+}
+
+/**
+ * Opens or closes a branch's public enquiry form. The slug is generated once
+ * and then kept, so a printed QR code never stops working.
+ */
+export async function togglePublicFormAction(formData: FormData) {
+  const actor = await requireUser([...ADMIN_ROLES]);
+  const orgId = String(formData.get("orgId"));
+  const org = await db.query.organizations.findFirst({ where: eq(schema.organizations.id, orgId) });
+  if (!org || org.type === "HQ") return;
+
+  const slug = org.publicSlug ?? makeSlug(org.name);
+  await db
+    .update(schema.organizations)
+    .set({ publicSlug: slug, publicFormEnabled: !org.publicFormEnabled })
+    .where(eq(schema.organizations.id, orgId));
+  await audit(actor.id, org.publicFormEnabled ? "org.public_form_off" : "org.public_form_on", "organization", orgId, { slug });
+  revalidatePath("/admin/partners");
+}
+
+/** A fresh slug when a printed code has to be retired, for example after a leak. */
+export async function resetPublicSlugAction(formData: FormData) {
+  const actor = await requireUser([...ADMIN_ROLES]);
+  const orgId = String(formData.get("orgId"));
+  const org = await db.query.organizations.findFirst({ where: eq(schema.organizations.id, orgId) });
+  if (!org || org.type === "HQ") return;
+  const slug = makeSlug(org.name);
+  await db.update(schema.organizations).set({ publicSlug: slug }).where(eq(schema.organizations.id, orgId));
+  await audit(actor.id, "org.public_slug_reset", "organization", orgId, { from: org.publicSlug, to: slug });
+  revalidatePath("/admin/partners");
 }

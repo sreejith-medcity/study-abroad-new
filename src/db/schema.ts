@@ -78,6 +78,9 @@ export const organizations = pgTable("organizations", {
   tier: tier("tier").notNull().default("SILVER"),
   city: text("city"),
   counsellorSeats: integer("counsellor_seats").notNull().default(3),
+  /** Short code in the public enquiry link, printed on the branch QR code. */
+  publicSlug: text("public_slug").unique(),
+  publicFormEnabled: boolean("public_form_enabled").notNull().default(false),
   relationshipManagerId: text("relationship_manager_id"),
   active: boolean("active").notNull().default(true),
   createdAt: createdAt(),
@@ -96,6 +99,9 @@ export const users = pgTable(
       .notNull()
       .references(() => organizations.id),
     deskLabel: text("desk_label"),
+    /** Set on STUDENT logins: the one student file this account may read. */
+    studentId: text("student_id"),
+    locale: text("locale").notNull().default("en"),
     active: boolean("active").notNull().default(true),
     mustChangePassword: boolean("must_change_password").notNull().default(false),
     passwordUpdatedAt: timestamp("password_updated_at", { withTimezone: true }),

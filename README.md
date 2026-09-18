@@ -28,6 +28,7 @@ This repository currently contains **Phase 0 basics and Phase 1 (core pipeline)*
 | WhatsApp | System | Outbound adapter (`console` for development, `meta` for WhatsApp Cloud API) and an inbound webhook that verifies Meta's signature and posts student replies into the Student channel. |
 
 | Program search | All | Search the catalogue by keyword, destination, level, intake and English requirement, with quick filters. Pick a student and every row shows eligible, on track (including practice scores from Medcity's own test platform) or not yet, with the reason. Apply straight from a result. |
+| Public enquiry form | Anyone with the link | A branch-specific form at `/apply/<slug>`, with no sign in: name, number, what they want and consent. Submissions arrive as enquiries owned by that branch with a follow-up due the next day. Opened per branch from Partners and people, which also prints the QR code for the counter. Protected by a honeypot field, per-caller and per-number rate limits, and a same-day duplicate check. |
 | Enquiries | Partners, staff | Every walk-in, call, website form and referral before a student file exists. Owner, stage (new, contacted, qualified, in counselling, converted, lost), follow-up date with overdue highlighting, a history line per contact, and one click to register the person as a student, which closes the enquiry as converted. Partners see their own branch; the Overseas team sees every branch. |
 | Password safety | All | Temporary passwords force a change on first sign in; sign in is rate limited per account and per caller. |
 | Document storage | All | Supabase Storage in production, local disk in development. |
@@ -152,6 +153,7 @@ tests/                          node:test unit tests
 - Move the sign-in rate limiter from process memory to Redis or the database once more than one instance runs.
 - Email notifications alongside in-app ones.
 - Set `TZ=Asia/Kolkata` on the server.
+- Set `PUBLIC_BASE_URL` if the portal ever moves off `doc.medcityoverseas.com`: it is the address printed inside the branch QR codes.
 - Set `COMMISSION_FX` (for example `GBP:115,EUR:98,AUD:60`) so the rupee estimate on foreign-currency commission matches your bank's rate. The figure entered when a partner's share is settled always wins.
 
 ## Deploying a schema change

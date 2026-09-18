@@ -7,6 +7,7 @@ import { Button, Card, CardHeader, Chip, Input, PageHeader, Select, Alert } from
 import { IconPartners } from "@/components/icons";
 import { toggleUserAction, updateOrgAction } from "./actions";
 import { AddUserForm, InvitePartnerForm, ResetPasswordForm, RoleForm } from "./forms";
+import { PublicFormPanel } from "./public-form-panel";
 
 export const metadata = { title: "Partners and people" };
 
@@ -35,10 +36,11 @@ export default async function PartnersPage() {
     .select({ id: schema.users.id, name: schema.users.name })
     .from(schema.users)
     .where(sql`${schema.users.role} in ('ADMIN','SUPER_ADMIN')`);
-  const stats = await db.execute<{ org_id: string; students: number; apps: number }>(sql`
+  const stats = await db.execute<{ org_id: string; students: number; apps: number; web_enquiries: number }>(sql`
     select o.id as org_id,
       (select count(*)::int from students s where s.org_id = o.id) as students,
-      (select count(*)::int from applications a where a.org_id = o.id) as apps
+      (select count(*)::int from applications a where a.org_id = o.id) as apps,
+      (select count(*)::int from enquiries e where e.org_id = o.id and e.source = 'WEBSITE') as web_enquiries
     from organizations o`);
   const statFor = (id: string) => stats.find((s) => s.org_id === id);
 
@@ -126,6 +128,15 @@ export default async function PartnersPage() {
                     </li>
                   ))}
                 </ul>
+                {!hq && (
+                  <PublicFormPanel
+                    orgId={o.id}
+                    orgName={o.name}
+                    slug={o.publicSlug}
+                    enabled={o.publicFormEnabled}
+                    enquiries={statFor(o.id)?.web_enquiries ?? 0}
+                  />
+                )}
                 <details className="border-t border-line px-4 py-3">
                   <summary className="cursor-pointer text-[13px] font-medium text-brand-600">Add user to {o.name}</summary>
                   <div className="mt-3">

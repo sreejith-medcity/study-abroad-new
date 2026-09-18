@@ -3,7 +3,7 @@ import "dotenv/config";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import bcrypt from "bcryptjs";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
@@ -47,6 +47,11 @@ async function main() {
   const partnerTsr = await u("Horizon Owner", "owner@horizon.test", "PARTNER", thrissur.id);
 
   await db.update(schema.organizations).set({ relationshipManagerId: admin.id }).where(sql`type <> 'HQ'`);
+  // One branch with its public enquiry form open, so the QR panel has something to show.
+  await db
+    .update(schema.organizations)
+    .set({ publicSlug: "kottayam-7bq4", publicFormEnabled: true })
+    .where(eq(schema.organizations.id, kottayam.id));
 
   // Status dictionary
   const statusIds: Record<string, string> = {};
