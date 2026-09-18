@@ -1,0 +1,31 @@
+program,university,city,country_code,pathway,level,study_area,duration_months,tuition_per_year,application_fee,initial_deposit,intakes,min_ielts,min_pte,min_oet_grade,min_german_level,max_backlogs,max_gap_years,moi_accepted,required_docs,status
+MS in Computer Science,Northeastern University,Boston,US,DEGREE,PG,Computer Science,24,,,,9|1,,,,,,,,DEGREE_MARKSHEETS|SOP|LOR|ENGLISH_TEST,DRAFT
+MS in Data Analytics Engineering,Northeastern University,Boston,US,DEGREE,PG,Data Science,,,,,,,,,,,,,,DRAFT
+MS in Information Systems,Northeastern University,Boston,US,DEGREE,PG,Information Systems,,,,,,,,,,,,,,DRAFT
+MS in Computer Science,Arizona State University,Tempe,US,DEGREE,PG,Computer Science,,,,,,,,,,,,,,DRAFT
+MS in Business Analytics,Arizona State University,Tempe,US,DEGREE,PG,Business Analytics,,,,,,,,,,,,,,DRAFT
+MS in Industrial Engineering,Arizona State University,Tempe,US,DEGREE,PG,Industrial Engineering,,,,,,,,,,,,,,DRAFT
+MS in Computer Science,The University of Texas at Dallas,Richardson,US,DEGREE,PG,Computer Science,,,75,,,6.5,67,,,,,,DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|OTHER,DRAFT
+MS in Information Technology and Management,The University of Texas at Dallas,Richardson,US,DEGREE,PG,Information Systems,,,75,,,6.5,67,,,,,,DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|OTHER,DRAFT
+MS in Computer Engineering,The University of Texas at Dallas,Richardson,US,DEGREE,PG,Electrical Engineering,,,75,,,6.5,67,,,,,,DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|OTHER,DRAFT
+Master of Applied Science in Computer Science,Illinois Institute of Technology,Chicago,US,DEGREE,PG,Computer Science,,,,,,6.5,,,,,,,DEGREE_MARKSHEETS|SOP|LOR|ENGLISH_TEST|PASSPORT|FINANCIAL_PROOF,DRAFT
+MS in Computer Science,Illinois Institute of Technology,Chicago,US,DEGREE,PG,Computer Science,,,,,,6.5,,,,,,,DEGREE_MARKSHEETS|SOP|LOR|ENGLISH_TEST|PASSPORT|FINANCIAL_PROOF,DRAFT
+MS in Electrical Engineering,Illinois Institute of Technology,Chicago,US,DEGREE,PG,Electrical Engineering,,,,,,6.5,,,,,,,DEGREE_MARKSHEETS|SOP|LOR|ENGLISH_TEST|PASSPORT|FINANCIAL_PROOF,DRAFT
+MS in Computer Science,Stevens Institute of Technology,Hoboken,US,DEGREE,PG,Computer Science,,,60,,,6.0,,,,,,,DEGREE_MARKSHEETS|SOP|LOR|ENGLISH_TEST,DRAFT
+MS in Computer Science and Engineering,University at Buffalo SUNY,Buffalo,US,DEGREE,PG,Computer Science,,32300,100,,8|1,6.5,55,,,,,,DEGREE_MARKSHEETS|CV|SOP|LOR|ENGLISH_TEST,DRAFT
+MS in Management Information Systems,University at Buffalo SUNY,Buffalo,US,DEGREE,PG,Information Systems,,36700,,,1,,,,,,,,,DRAFT
+MS in Information Systems,University of Cincinnati,Cincinnati,US,DEGREE,PG,Information Systems,,33320,70,,8,7.0,,,,,,,CV|DEGREE_MARKSHEETS|SOP|LOR|ENGLISH_TEST,DRAFT
+MS in Business Analytics,University of Cincinnati,Cincinnati,US,DEGREE,PG,Business Analytics,,33320,70,,8,7.0,,,,,,,CV|DEGREE_MARKSHEETS|SOP|LOR|ENGLISH_TEST,DRAFT
+MS in Computer Science,Texas A&M University,College Station,US,DEGREE,PG,Computer Science,,,90,,,6.0,,,,,,,DEGREE_MARKSHEETS|ENGLISH_TEST|OTHER,DRAFT
+MS in Computer Engineering,Texas A&M University,College Station,US,DEGREE,PG,Electrical Engineering,,,90,,,6.0,,,,,,,DEGREE_MARKSHEETS|ENGLISH_TEST|OTHER,DRAFT
+MS in Computer Science,Clemson University,Clemson,US,DEGREE,PG,Computer Science,,,,,,6.5,54,,,,,,,DRAFT
+MS in Industrial Engineering,Clemson University,Clemson,US,DEGREE,PG,Industrial Engineering,,,,,,6.5,54,,,,,,,DRAFT
+MS in Computer Science,San Jose State University,San Jose,US,DEGREE,PG,Computer Science,,,,,,,,,,,,,,DRAFT
+MS in Computer Science,Rutgers University New Brunswick,New Brunswick,US,DEGREE,PG,Computer Science,,,,,,,,,,,,,,DRAFT
+MS in Electrical and Computer Engineering,Rutgers University New Brunswick,New Brunswick,US,DEGREE,PG,Electrical Engineering,,,,,,,,,,,,,,DRAFT
+MS in Computer Science,George Mason University,Fairfax,US,DEGREE,PG,Computer Science,,,,,,,,,,,,,,DRAFT
+MS in Data Analytics Engineering,George Mason University,Fairfax,US,DEGREE,PG,Data Science,,,,,,,,,,,,,,DRAFT
+MS in Computer Science,Pace University,New York,US,DEGREE,PG,Computer Science,,,,,,,,,,,,,,DRAFT
+MS in Information Systems,Pace University,New York,US,DEGREE,PG,Information Systems,,,,,,,,,,,,,,DRAFT
+MS in Computer Science,Wichita State University,Wichita,US,DEGREE,PG,Computer Science,,,,,,,,,,,,,,DRAFT
+MS in Industrial Engineering,Wichita State University,Wichita,US,DEGREE,PG,Industrial Engineering,,,,,,,,,,,,,,DRAFT

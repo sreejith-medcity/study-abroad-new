@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { and, eq, ilike, inArray, or } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
@@ -50,7 +50,13 @@ export async function importProgramsAction(prev: ImportState, formData: FormData
         const [uni] = await tx
           .insert(schema.universities)
           .values({ name: r.university, city: r.city, countryId })
-          .onConflictDoUpdate({ target: [schema.universities.name, schema.universities.countryId], set: { city: r.city ?? undefined } })
+          // A row with no city leaves nothing to update, and an empty set is an
+          // error rather than a no-op, so the name is rewritten to itself to keep
+          // the upsert returning the existing row.
+          .onConflictDoUpdate({
+            target: [schema.universities.name, schema.universities.countryId],
+            set: r.city ? { city: r.city } : { name: r.university },
+          })
           .returning();
         universityId = uni.id;
         uniCache.set(key, universityId);
@@ -84,4 +90,45 @@ export async function setProgramStatusAction(formData: FormData) {
   await db.update(schema.programs).set({ status, updatedAt: new Date() }).where(eq(schema.programs.id, id));
   await audit(user.id, "program.status", "program", id, { status });
   revalidatePath("/admin/programs");
+}
+
+/**
+ * Publishes, or withdraws, every program matching the filters currently on
+ * screen. An import lands 255 rows as drafts on purpose, and approving those one
+ * at a time is not a review, it is data entry.
+ */
+export async function bulkStatusAction(formData: FormData) {
+  const user = await requireUser([...ADMIN_ROLES]);
+  const to = String(formData.get("to"));
+  if (!["LIVE", "DRAFT", "ARCHIVED"].includes(to)) return;
+
+  const q = String(formData.get("q") ?? "").trim();
+  const country = String(formData.get("country") ?? "").trim();
+  const pathway = String(formData.get("pathway") ?? "").trim();
+  const from = String(formData.get("from") ?? "").trim();
+
+  const { programs: p, universities: u, countries: c } = schema;
+  const matching = await db
+    .select({ id: p.id })
+    .from(p)
+    .innerJoin(u, eq(p.universityId, u.id))
+    .innerJoin(c, eq(u.countryId, c.id))
+    .where(
+      and(
+        q ? or(ilike(p.name, `%${q}%`), ilike(u.name, `%${q}%`)) : undefined,
+        country ? eq(c.code, country) : undefined,
+        pathway ? eq(p.pathway, pathway as schema.Pathway) : undefined,
+        from ? eq(p.status, from as "DRAFT") : undefined,
+      ),
+    );
+  if (!matching.length) return;
+
+  await db
+    .update(schema.programs)
+    .set({ status: to as "LIVE", updatedAt: new Date() })
+    .where(inArray(schema.programs.id, matching.map((r) => r.id)));
+
+  await audit(user.id, "programs.bulk_status", "program", "*", { to, from: from || "any", country: country || "any", pathway: pathway || "any", count: matching.length });
+  revalidatePath("/admin/programs");
+  revalidatePath("/search");
 }

@@ -75,6 +75,15 @@ export const DOCUMENT_TYPES = [
   { code: "LOR", label: "Letter of recommendation", labelMl: "ശുപാർശ കത്ത്", uploadedBy: "partner", sortOrder: 80 },
   { code: "CV", label: "CV / resume", labelMl: "സി വി / റെസ്യൂമെ", uploadedBy: "partner", sortOrder: 90 },
   { code: "NURSING_LICENSE", label: "Nursing council registration", labelMl: "നഴ്സിങ് കൗൺസിൽ രജിസ്ട്രേഷൻ", uploadedBy: "partner", sortOrder: 95 },
+  // Added once the real catalogue showed these are recurring gates for Indian
+  // applicants rather than miscellany: APS for Germany, financial proof for the
+  // German blocked account and the Canadian GIC, the Ausbildung training
+  // contract, and credential evaluation for Canada.
+  { code: "APS_CERTIFICATE", label: "APS certificate (Germany)", labelMl: "APS സർട്ടിഫിക്കറ്റ് (ജർമനി)", uploadedBy: "partner", sortOrder: 66 },
+  { code: "FINANCIAL_PROOF", label: "Proof of funds (blocked account / GIC)", labelMl: "സാമ്പത്തിക തെളിവ് (ബ്ലോക്ക്ഡ് അക്കൗണ്ട് / GIC)", uploadedBy: "partner", sortOrder: 96 },
+  { code: "TRAINING_CONTRACT", label: "Ausbildung training contract", labelMl: "ഔസ്ബിൽഡുങ് പരിശീലന കരാർ", uploadedBy: "team", sortOrder: 97 },
+  { code: "CREDENTIAL_EVALUATION", label: "Credential evaluation (WES and similar)", labelMl: "ക്രെഡൻഷ്യൽ മൂല്യനിർണയം (WES)", uploadedBy: "partner", sortOrder: 98 },
+  { code: "SCHOOL_LEAVING", label: "School leaving certificate", labelMl: "സ്കൂൾ വിടുതൽ സർട്ടിഫിക്കറ്റ്", uploadedBy: "partner", sortOrder: 35 },
   { code: "OFFER_LETTER", label: "Offer letter", labelMl: "ഓഫർ ലെറ്റർ", uploadedBy: "team", sortOrder: 200 },
   { code: "CAS_COE", label: "CAS / COE", labelMl: "CAS / COE", uploadedBy: "team", sortOrder: 210 },
   { code: "VISA", label: "Visa", labelMl: "വിസ", uploadedBy: "team", sortOrder: 220 },

@@ -1,0 +1,32 @@
+program,university,city,country_code,pathway,level,study_area,duration_months,tuition_per_year,application_fee,initial_deposit,intakes,min_ielts,min_pte,min_oet_grade,min_german_level,max_backlogs,max_gap_years,moi_accepted,required_docs,status
+Master of Information Technology,Deakin University,Melbourne,AU,DEGREE,PG,Information Technology; CRICOS 102805C,24,45800,,,3|7|11,,,,,,,,,DRAFT
+Master of Data Science,Deakin University,Melbourne,AU,DEGREE,PG,Data Science; CRICOS 099225J,24,45800,,,3|7|11,,,,,,,,,DRAFT
+Master of Business Analytics,Deakin University,Melbourne,AU,DEGREE,PG,Business Analytics; CRICOS 088856B,24,45800,,,3|7|11,,,,,,,,,DRAFT
+Master of Professional Accounting,Deakin University,Melbourne,AU,DEGREE,PG,Professional Accounting; CRICOS 102876K,24,48000,,,3|7|11,,,,,,,,,DRAFT
+Bachelor of Nursing,Deakin University,Melbourne,AU,NURSING,UG,"Nursing (NMBA approved, leads to RN registration); CRICOS 018327G",36,45800,,,3,7.0,,,,,,,ENGLISH_TEST|OTHER,DRAFT
+Master of Data Science,RMIT University,Melbourne,AU,DEGREE,PG,Data Science; CRICOS 093313B,24,47040,,,2|7,6.5,58,,,,,,,DRAFT
+Master of Information Technology,RMIT University,Melbourne,AU,DEGREE,PG,Information Technology; CRICOS 079795G,24,47040,,,2|7,6.5,58,,,,,,,DRAFT
+Master of Business Analytics,Monash University,Melbourne,AU,DEGREE,PG,Business Analytics; course code B6022,24,,,,2,,,,,,,,,DRAFT
+Master of Information Technology,University of Technology Sydney,Sydney,AU,DEGREE,PG,Information Technology; CRICOS 084256C,24,,,,,6.5,58,,,,,,,DRAFT
+Master of Data Science and Innovation,University of Technology Sydney,Sydney,AU,DEGREE,PG,Data Science; CRICOS 084268K,24,,,,,6.5,58,,,,,,,DRAFT
+Master of Professional Accounting,Curtin University,Perth,AU,DEGREE,PG,Professional Accounting; CRICOS 107625M,24,,,,,6.5,,,,,,,,DRAFT
+Master of Predictive Analytics,Curtin University,Perth,AU,DEGREE,PG,Predictive Analytics; CRICOS 092977C,24,,,,,6.0,,,,,,,,DRAFT
+Master of Information Technology,Swinburne University of Technology,Melbourne,AU,DEGREE,PG,Information Technology; CRICOS 001742J,24,43930,,,3|8,6.5,,,,,,,,DRAFT
+Master of Data Science,Swinburne University of Technology,Melbourne,AU,DEGREE,PG,Data Science; CRICOS 099117B,24,45010,,,3|8,6.5,,,,,,,,DRAFT
+Master of Professional Accounting,Swinburne University of Technology,Melbourne,AU,DEGREE,PG,Professional Accounting; CRICOS 116706B,24,48420,,,,6.5,,,,,,,,DRAFT
+Master of Information Technology,Macquarie University,Sydney,AU,DEGREE,PG,Information Technology,24,,,,2|7,6.5,,,,,,,,DRAFT
+Master of Computer Science,University of Wollongong,Wollongong,AU,DEGREE,PG,Computer Science; CRICOS 083839K,24,,,,3|7,6.5,,,,,,,,DRAFT
+Master of Information Technology,University of Wollongong,Wollongong,AU,DEGREE,PG,Information Technology; CRICOS 083840F,24,,,,3|7,6.5,,,,,,,,DRAFT
+Master of Public Health,University of Wollongong,Wollongong,AU,DEGREE,PG,Public Health; CRICOS 109392G,12,39024,,,3|7,6.5,,,,,,,,DRAFT
+Bachelor of Nursing,University of Wollongong,Wollongong,AU,NURSING,UG,Nursing (leads to NMBA/AHPRA RN registration); CRICOS 113585H,36,,,,,7.0,,,,,,,ENGLISH_TEST,DRAFT
+Master of Public Health,Flinders University,Adelaide,AU,DEGREE,PG,Public Health; CRICOS 0100951,24,41400,,,3|7,6.5,58,,,,,,,DRAFT
+Master of Information Technology,Flinders University,Adelaide,AU,DEGREE,PG,Information Technology; CRICOS 038636F,,42900,,,,,,,,,,,,DRAFT
+Master of Data Science,Flinders University,Adelaide,AU,DEGREE,PG,Data Science; CRICOS 105119A,,42900,,,,,,,,,,,,DRAFT
+Master of Nursing,Flinders University,Adelaide,AU,DEGREE,PG,"Nursing (post-registration, not entry to practice); CRICOS 113748E",,41200,,,,,,,,,,,,DRAFT
+Bachelor of Nursing (Preregistration),Flinders University,Adelaide,AU,NURSING,UG,Nursing (leads to NMBA/AHPRA RN registration); CRICOS 005195K,36,44300,,,3|7,7.0,63,,,,,,ENGLISH_TEST,DRAFT
+Master of Information and Communications Technology,Western Sydney University,Sydney,AU,DEGREE,PG,Information and Communications Technology; CRICOS 063546M,24,,,,,,,,,,,,,DRAFT
+Master of Data Science,Western Sydney University,Sydney,AU,DEGREE,PG,Data Science; CRICOS 089442E,,,,,,,,,,,,,,DRAFT
+Master of Public Health,Western Sydney University,Sydney,AU,DEGREE,PG,Public Health; CRICOS 014002E,,,,,,,,,,,,,,DRAFT
+Master of Business Analytics,Victoria University,Melbourne,AU,DEGREE,PG,Business Analytics; CRICOS 103256H,24,,,,,6.5,,,,,,,,DRAFT
+Master of Applied Information Technology,Victoria University,Melbourne,AU,DEGREE,PG,Information Technology; CRICOS 083307E,24,,,,2|9,6.5,,,,,,,,DRAFT
+Master of Data Science,Queensland University of Technology,Brisbane,AU,DEGREE,PG,Data Science; CRICOS 116754E,24,44200,,,2|7,6.5,,,,,,,,DRAFT
