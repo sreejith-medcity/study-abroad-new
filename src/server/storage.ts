@@ -39,6 +39,7 @@ export async function saveUpload(file: File, folder: string): Promise<SavedFile>
       method: "POST",
       headers: {
         Authorization: `Bearer ${config.key}`,
+        apikey: config.key,
         "Content-Type": file.type,
         "x-upsert": "false",
       },
@@ -61,7 +62,7 @@ export async function readUpload(storageKey: string): Promise<Buffer> {
   const config = supabaseConfig();
   if (config) {
     const res = await fetch(`${config.url}/storage/v1/object/${config.bucket}/${storageKey}`, {
-      headers: { Authorization: `Bearer ${config.key}` },
+      headers: { Authorization: `Bearer ${config.key}`, apikey: config.key },
       cache: "no-store",
     });
     if (!res.ok) throw new Error(`Storage returned ${res.status} for ${storageKey}`);
@@ -77,7 +78,7 @@ export async function deleteUpload(storageKey: string): Promise<void> {
   if (config) {
     await fetch(`${config.url}/storage/v1/object/${config.bucket}/${storageKey}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${config.key}` },
+      headers: { Authorization: `Bearer ${config.key}`, apikey: config.key },
     });
     return;
   }
@@ -88,4 +89,41 @@ export async function deleteUpload(storageKey: string): Promise<void> {
 
 export function storageBackend() {
   return supabaseConfig() ? "supabase" : "local-disk";
+}
+
+/**
+ * Writes a tiny object and deletes it again, so an admin can confirm the
+ * storage credentials really work rather than only that they are set.
+ */
+export async function probeStorage(): Promise<{ backend: string; write: "ok"; } | { backend: string; write: "failed"; detail: string }> {
+  const backend = storageBackend();
+  const key = `_probe/${createId()}.txt`;
+  const config = supabaseConfig();
+  try {
+    if (config) {
+      const put = await fetch(`${config.url}/storage/v1/object/${config.bucket}/${key}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${config.key}`,
+          apikey: config.key,
+          "Content-Type": "text/plain",
+          "x-upsert": "true",
+        },
+        body: "probe",
+      });
+      if (!put.ok) return { backend, write: "failed", detail: `${put.status} ${(await put.text().catch(() => "")).slice(0, 160)}` };
+      await fetch(`${config.url}/storage/v1/object/${config.bucket}/${key}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${config.key}`, apikey: config.key },
+      });
+    } else {
+      const full = path.join(localRoot(), key);
+      await mkdir(path.dirname(full), { recursive: true });
+      await writeFile(full, "probe");
+      await unlink(full);
+    }
+    return { backend, write: "ok" };
+  } catch (e) {
+    return { backend, write: "failed", detail: e instanceof Error ? e.message : String(e) };
+  }
 }

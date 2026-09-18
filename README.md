@@ -146,7 +146,7 @@ tests/                          node:test unit tests
 ## Before going live
 
 - Run `npm run db:demo-off` so the seeded `.test` accounts (which all share one password) can no longer sign in.
-- Set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` with a private `student-documents` bucket, so uploads survive a deploy (`src/server/storage.ts` falls back to local disk).
+- Set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` with a private `student-documents` bucket, so uploads survive a deploy (`src/server/storage.ts` falls back to local disk). Confirm it with `/api/health?probe=storage` signed in as an admin: it writes a file and deletes it again, and reports `probe.write: "ok"`. Either key style works, the legacy `service_role` JWT or a newer `sb_secret_...` secret key.
 - Set `WHATSAPP_PROVIDER=meta` with approved message templates (free text only works inside the 24-hour window).
 - Email the one-time password to the user instead of showing it to the person doing the reset.
 - Move the sign-in rate limiter from process memory to Redis or the database once more than one instance runs.
