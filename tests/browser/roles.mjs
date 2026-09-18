@@ -139,7 +139,11 @@ async function signIn(email, ip, password = "Password@123") {
   await page.goto(`${BASE}${href.replace("/profile", "/documents")}`);
   await page.waitForLoadState("domcontentloaded");
   (await page.locator('input[type="file"]').count()) > 0 ? ok("documents can be uploaded") : bad("no upload control on the document tab");
-  await page.goto(`${BASE}${href.replace("/profile", "/applications")}`);
+  // Open a student who actually has an application, so the detail panel renders.
+  await page.goto(`${BASE}/applications`);
+  await page.waitForLoadState("domcontentloaded");
+  const appLink = await page.locator('main a[href*="/applications?app="]').first().getAttribute("href");
+  await page.goto(`${BASE}${appLink}`);
   await page.waitForLoadState("domcontentloaded");
   const appText = await page.locator("main").innerText();
   !appText.includes("Change status") ? ok("no status control on the application") : bad("documentation can change status");

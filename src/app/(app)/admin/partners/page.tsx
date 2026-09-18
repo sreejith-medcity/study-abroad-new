@@ -1,4 +1,4 @@
-import { asc, sql } from "drizzle-orm";
+import { asc, eq, ne, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fmtDate } from "@/lib/format";
@@ -30,12 +30,20 @@ export default async function PartnersPage() {
   const orgs = await db.query.organizations.findMany({
     with: {
       users: {
+        // Student portal logins belong to the student file, not to the staff list.
+        where: ne(schema.users.role, "STUDENT"),
         columns: { id: true, name: true, email: true, role: true, deskLabel: true, active: true, lastSignInAt: true, mustChangePassword: true },
         orderBy: asc(schema.users.name),
       },
     },
     orderBy: [sql`case when ${schema.organizations.type} = 'HQ' then 0 else 1 end`, asc(schema.organizations.name)],
   });
+  const studentLoginRows = await db
+    .select({ orgId: schema.users.orgId, n: sql<number>`count(*)::int` })
+    .from(schema.users)
+    .where(eq(schema.users.role, "STUDENT"))
+    .groupBy(schema.users.orgId);
+  const studentLogins = Object.fromEntries(studentLoginRows.map((r) => [r.orgId, Number(r.n)])) as Record<string, number>;
   const admins = await db
     .select({ id: schema.users.id, name: schema.users.name })
     .from(schema.users)
@@ -143,6 +151,11 @@ export default async function PartnersPage() {
                     enabled={o.publicFormEnabled}
                     enquiries={statFor(o.id)?.web_enquiries ?? 0}
                   />
+                )}
+                {!hq && (studentLogins[o.id] ?? 0) > 0 && (
+                  <p className="border-t border-line px-4 py-2 text-xs text-muted">
+                    {studentLogins[o.id]} student portal {studentLogins[o.id] === 1 ? "login" : "logins"}, managed from each student&apos;s file.
+                  </p>
                 )}
                 <details className="border-t border-line px-4 py-3">
                   <summary className="cursor-pointer text-[13px] font-medium text-brand-600">Add user to {o.name}</summary>
