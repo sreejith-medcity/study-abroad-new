@@ -49,10 +49,7 @@ export async function saveUpload(file: File, folder: string): Promise<SavedFile>
       },
       body: new Uint8Array(await file.arrayBuffer()),
     });
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      throw new UploadError(`Storage rejected the upload (${res.status}). ${detail.slice(0, 200)}`);
-    }
+    if (!res.ok) throw storageError(res.status, await res.text().catch(() => ""));
   } else {
     const full = path.join(localRoot(), key);
     await mkdir(path.dirname(full), { recursive: true });
@@ -87,10 +84,7 @@ export async function saveBrandImage(file: File, kind: "logo" | "favicon"): Prom
       },
       body: new Uint8Array(await file.arrayBuffer()),
     });
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      throw new UploadError(`Storage rejected the upload (${res.status}). ${detail.slice(0, 200)}`);
-    }
+    if (!res.ok) throw storageError(res.status, await res.text().catch(() => ""));
   } else {
     const full = path.join(localRoot(), key);
     await mkdir(path.dirname(full), { recursive: true });
@@ -98,6 +92,27 @@ export async function saveBrandImage(file: File, kind: "logo" | "favicon"): Prom
   }
 
   return { storageKey: key, mimeType: file.type, sizeBytes: file.size };
+}
+
+/**
+ * Turns a storage refusal into something a super admin can act on. A row-level
+ * security refusal always means the same thing: the key in use is not the service
+ * role key, because that one bypasses the bucket's policies.
+ */
+function storageError(status: number, detail: string) {
+  if (/row-level security|AccessDenied|Unauthorized/i.test(detail)) {
+    return new UploadError(
+      "Supabase refused the upload because the key in use is not the service role key. " +
+        "In Supabase, open Project settings, API keys, copy the service_role key, and set it as " +
+        "SUPABASE_SERVICE_ROLE_KEY in Hostinger, then redeploy.",
+    );
+  }
+  if (status === 404) {
+    return new UploadError(
+      `Supabase has no bucket named "${supabaseConfig()?.bucket}". Create it as a private bucket, or set SUPABASE_STORAGE_BUCKET to the right name.`,
+    );
+  }
+  return new UploadError(`Storage rejected the upload (${status}). ${detail.slice(0, 200)}`);
 }
 
 export async function readUpload(storageKey: string): Promise<Buffer> {
@@ -153,7 +168,11 @@ export async function probeStorage(): Promise<{ backend: string; write: "ok"; } 
         },
         body: "probe",
       });
-      if (!put.ok) return { backend, write: "failed", detail: `${put.status} ${(await put.text().catch(() => "")).slice(0, 160)}` };
+      if (!put.ok) {
+        // Same plain-language reading as an upload, so ?probe=storage is useful on its own.
+        const body = await put.text().catch(() => "");
+        return { backend, write: "failed", detail: storageError(put.status, body).message };
+      }
       await fetch(`${config.url}/storage/v1/object/${config.bucket}/${key}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${config.key}`, apikey: config.key },
