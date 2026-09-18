@@ -92,6 +92,26 @@ fs.writeFileSync(FAVICON, PNG);
   const icon = await page.request.get(`${BASE}/api/brand/favicon`);
   (icon.headers()["content-type"] ?? "").includes("png") ? ok("the favicon is served as a PNG") : bad("favicon not served as a PNG");
 
+  // A browser asks for /favicon.ico on its own, so that has to reach the upload too.
+  const ico = await page.request.get(`${BASE}/favicon.ico`);
+  (ico.headers()["content-type"] ?? "").includes("png")
+    ? ok("/favicon.ico serves the uploaded icon")
+    : bad(`/favicon.ico served ${ico.headers()["content-type"]}`);
+
+  // And it must be allowed to change: no immutable caching on the plain URL.
+  const control = icon.headers()["cache-control"] ?? "";
+  control.includes("must-revalidate") && !control.includes("immutable")
+    ? ok("the plain favicon URL revalidates, so a replacement shows at once")
+    : bad(`favicon cache-control is "${control}"`);
+  (await page.request.get(`${BASE}/api/brand/favicon?v=1`)).headers()["cache-control"]?.includes("immutable")
+    ? ok("the versioned URL still caches hard")
+    : bad("versioned favicon is not cached");
+
+  // An unchanged icon should answer 304 rather than resend itself.
+  const tag = icon.headers()["etag"];
+  const again = await page.request.get(`${BASE}/api/brand/favicon`, { headers: { "if-none-match": tag } });
+  again.status() === 304 ? ok("an unchanged favicon answers 304") : bad(`revalidation returned ${again.status()}`);
+
   // Clearing puts the drawn mark back.
   await page.goto(`${BASE}/settings/platform`);
   await settle(page);

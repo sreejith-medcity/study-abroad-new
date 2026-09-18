@@ -42,6 +42,11 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
+  async rewrites() {
+    // Browsers ask for /favicon.ico on their own, whatever the page declares, so
+    // that request has to reach the uploaded artwork too.
+    return [{ source: "/favicon.ico", destination: "/api/brand/favicon" }];
+  },
 };
 
 export default nextConfig;
