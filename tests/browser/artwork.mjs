@@ -36,6 +36,7 @@ const PNG = Buffer.from(
   "base64",
 );
 const LOGO = `${OUT}/logo.svg`;
+const BIG = `${OUT}/big-logo.png`;
 const FAVICON = `${OUT}/favicon.png`;
 fs.writeFileSync(LOGO, '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 64"><rect width="240" height="64" fill="#0466af"/><text x="16" y="40" fill="#fff" font-size="26" font-family="sans-serif">SMOKE</text></svg>');
 fs.writeFileSync(FAVICON, PNG);
@@ -80,6 +81,24 @@ fs.writeFileSync(FAVICON, PNG);
   await settle(page);
   (await page.locator('header img[src*="/api/brand/logo"]').count()) ? ok("the header shows the uploaded logo") : bad("header still shows the drawn mark");
   await page.screenshot({ path: `${OUT}/02-header.png` });
+
+  // A big picture should be shrunk in the browser before it is uploaded, so the
+  // header does not cost every visitor most of a megabyte.
+  await page.goto(`${BASE}/settings/platform`);
+  await settle(page);
+  await page.getByRole("button", { name: /Upload|Replace/ }).first().click();
+  await dialog.first().waitFor({ timeout: 8000 });
+  await page.locator('input[type="file"]').first().setInputFiles(BIG);
+  await page.waitForTimeout(2500);
+  const note = await dialog.innerText();
+  /resized, down from/i.test(note) ? ok("a large upload is resized in the browser") : bad(`no resize note, saw: ${note.slice(0, 120)}`);
+  await dialog.getByRole("button", { name: "Upload" }).click();
+  await page.waitForTimeout(3000);
+  const stored = await page.request.get(`${BASE}/api/brand/logo`);
+  const size = (await stored.body()).length;
+  size < 120_000
+    ? ok(`the stored logo is ${Math.round(size / 1024)} KB, not the original`)
+    : bad(`the stored logo is ${Math.round(size / 1024)} KB, so it was not resized`);
 
   // Favicon next.
   await page.goto(`${BASE}/settings/platform`);

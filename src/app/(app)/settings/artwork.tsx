@@ -10,6 +10,51 @@ const ACCEPT = "image/png,image/jpeg,image/webp,image/svg+xml,image/x-icon,.ico"
 
 type Kind = "logo" | "favicon";
 
+/**
+ * The size each piece of artwork is actually drawn at, with headroom for a
+ * high-density screen. A logo sits about 32px tall in the header and a favicon
+ * 32px square, so anything beyond this is bytes every visitor pays for and
+ * nobody sees.
+ */
+const TARGET: Record<Kind, { w: number; h: number }> = {
+  logo: { w: 600, h: 150 },
+  favicon: { w: 256, h: 256 },
+};
+
+/**
+ * Shrinks a picture in the browser before it is uploaded, keeping its shape and
+ * its transparency. Vector and icon files are left alone: an SVG is already
+ * small and rasterising it would only make it worse.
+ */
+async function shrink(file: File, kind: Kind): Promise<File> {
+  if (file.type === "image/svg+xml" || file.type.includes("icon")) return file;
+
+  const target = TARGET[kind];
+  const source = await new Promise<HTMLImageElement | null>((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = URL.createObjectURL(file);
+  });
+  if (!source) return file;
+
+  const scale = Math.min(target.w / source.naturalWidth, target.h / source.naturalHeight, 1);
+  if (scale === 1 && file.size < 120_000) return file;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(source.naturalWidth * scale));
+  canvas.height = Math.max(1, Math.round(source.naturalHeight * scale));
+  const context = canvas.getContext("2d");
+  if (!context) return file;
+  context.imageSmoothingQuality = "high";
+  context.drawImage(source, 0, 0, canvas.width, canvas.height);
+  URL.revokeObjectURL(source.src);
+
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+  if (!blob || blob.size >= file.size) return file;
+  return new File([blob], file.name.replace(/\.[^.]+$/, "") + ".png", { type: "image/png" });
+}
+
 const COPY: Record<Kind, { title: string; blurb: string; hint: string; frame: string }> = {
   logo: {
     title: "Logo",
@@ -72,12 +117,26 @@ function Artwork({ kind, uploaded, version }: { kind: Kind; uploaded: boolean; v
 function UploadForm({ kind, onDone }: { kind: Kind; onDone: () => void }) {
   const [preview, setPreview] = useState<string | null>(null);
   const [name, setName] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const input = useRef<HTMLInputElement>(null);
 
-  function choose(file: File | undefined) {
+  async function choose(file: File | undefined) {
     if (!file) return;
-    setName(`${file.name} · ${(file.size / 1024).toFixed(0)} KB`);
-    setPreview(URL.createObjectURL(file));
+    setBusy(true);
+    const smaller = await shrink(file, kind);
+    // Put the smaller picture back on the input, so that is what gets uploaded.
+    if (smaller !== file && input.current) {
+      const list = new DataTransfer();
+      list.items.add(smaller);
+      input.current.files = list.files;
+    }
+    const saved = file.size - smaller.size;
+    setName(
+      `${file.name} · ${(smaller.size / 1024).toFixed(0)} KB` +
+        (saved > 1024 ? ` (resized, down from ${(file.size / 1024).toFixed(0)} KB)` : ""),
+    );
+    setPreview(URL.createObjectURL(smaller));
+    setBusy(false);
   }
 
   return (
@@ -93,7 +152,7 @@ function UploadForm({ kind, onDone }: { kind: Kind; onDone: () => void }) {
             const list = new DataTransfer();
             list.items.add(file);
             input.current.files = list.files;
-            choose(file);
+            void choose(file);
           }
         }}
         className="rounded-xl border border-dashed border-line-strong bg-surface-2/50 p-5 text-center"
@@ -113,7 +172,7 @@ function UploadForm({ kind, onDone }: { kind: Kind; onDone: () => void }) {
           name="file"
           accept={ACCEPT}
           required
-          onChange={(e) => choose(e.target.files?.[0])}
+          onChange={(e) => void choose(e.target.files?.[0])}
           aria-label={`${kind === "logo" ? "Logo" : "Favicon"} file`}
           className="mt-3 block w-full text-[13px] file:mr-3 file:rounded-lg file:border-0 file:bg-brand-600 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-brand-700"
         />
@@ -123,7 +182,9 @@ function UploadForm({ kind, onDone }: { kind: Kind; onDone: () => void }) {
         <Button type="button" variant="secondary" onClick={onDone}>
           Cancel
         </Button>
-        <Button type="submit">Upload</Button>
+        <Button type="submit" disabled={busy}>
+          {busy ? "Preparing…" : "Upload"}
+        </Button>
       </div>
     </ActionForm>
   );
