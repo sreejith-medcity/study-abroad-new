@@ -85,6 +85,9 @@ async function main() {
       { code: "IT", name: "Italy", currency: "EUR" },
       { code: "SE", name: "Sweden", currency: "SEK" },
       { code: "CH", name: "Switzerland", currency: "CHF" },
+      { code: "FI", name: "Finland", currency: "EUR" },
+      { code: "PT", name: "Portugal", currency: "EUR" },
+      { code: "ES", name: "Spain", currency: "EUR" },
     ])
     .returning();
   const c = Object.fromEntries(countryRows.map((r) => [r.code, r.id]));

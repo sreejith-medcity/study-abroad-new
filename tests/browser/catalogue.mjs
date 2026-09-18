@@ -35,11 +35,21 @@ const countOf = (text) => Number((text.match(/([\d,]+) match/) || [])[1]?.replac
 // Waiting for the range line to actually change is both simpler and truer to
 // what a person sees.
 const rangeLine = async () => ((await page.locator("main").innerText()).match(/Showing[^\n]*/) || [""])[0];
-async function waitForRange(previous, timeout = 15000) {
+async function waitForRange(previous, timeout = 20000) {
   const until = Date.now() + timeout;
   while (Date.now() < until) {
     const now = await rangeLine();
     if (now && now !== previous) return now;
+    await page.waitForTimeout(250);
+  }
+  return null;
+}
+/** Waits for the range line the navigation is supposed to land on. */
+async function waitForRangeMatching(re, timeout = 20000) {
+  const until = Date.now() + timeout;
+  while (Date.now() < until) {
+    const now = await rangeLine();
+    if (re.test(now)) return now;
     await page.waitForTimeout(250);
   }
   return null;
@@ -69,13 +79,16 @@ const rowText = async () => (await page.locator("main tbody tr").first().innerTe
 const firstRowOnPage1 = await rowText();
 const rangeOnPage1 = await rangeLine();
 await page.getByRole("link", { name: "Next" }).click();
-const rangeOnPage2 = await waitForRange(rangeOnPage1);
+const rangeOnPage2 = (await waitForRangeMatching(/Showing 51 to/)) ?? (await waitForRange(rangeOnPage1));
+await settle(page);
+await page.waitForTimeout(600);
 firstRowOnPage1 !== (await rowText()) ? ok("Next moves to different rows") : bad("Next showed the same rows");
 /Showing 51 to/.test(rangeOnPage2 ?? "") ? ok("the range advances") : bad(`the range did not advance, saw ${rangeOnPage2}`);
 await page.getByRole("link", { name: "Previous" }).click();
-await waitForRange(rangeOnPage2);
+const backRange = await waitForRangeMatching(/Showing 1 to/);
+backRange || bad("Previous never showed the first page's range");
 await settle(page);
-await page.waitForTimeout(1200);
+await page.waitForTimeout(600);
 const backAgain = await rowText();
 backAgain === firstRowOnPage1
   ? ok("Previous comes back")

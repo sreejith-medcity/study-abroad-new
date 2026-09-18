@@ -6,10 +6,33 @@ list, TEQSA, NZQA, Hochschulkompass, BIBB, the Bundesagentur fuer Arbeit).
 No aggregator or agency source was used, and nothing here came from
 KC Overseas or coursefinder.ai.
 
-746 rows across thirteen destinations, in the importer's own format, on a
-23-column header. Everything lands as `DRAFT`, so it is reviewed on the Programs
-screen and published per country or per pathway with the bulk control there,
-which acts on every row matching the filters rather than the visible page.
+897 rows across fourteen destinations and 279 institutions, in the importer's
+own format, on a 23-column header. Everything lands as `DRAFT`, so it is
+reviewed on the Programs screen and published per country or per pathway with
+the bulk control there, which acts on every row matching the filters rather than
+the visible page.
+
+| destination | programmes | institutions | work rights known |
+|---|---|---|---|
+| United Kingdom | 165 | 63 | 95 |
+| Canada | 149 | 40 | 92 |
+| Germany | 126 | 59 | 0 |
+| United States | 120 | 32 | 20 |
+| Australia | 98 | 20 | 92 |
+| New Zealand | 92 | 17 | 85 |
+| Ireland | 77 | 20 | 49 |
+| Netherlands | 31 | 12 | 0 |
+| Sweden | 10 | 4 | 0 |
+| France | 7 | 3 | 0 |
+| Finland | 7 | 3 | 0 |
+| Italy | 6 | 3 | 0 |
+| Portugal | 6 | 1 | 0 |
+| Switzerland | 3 | 2 | 0 |
+| **total** | **897** | **279** | **433** |
+
+Three waves so far. Wave 1 is the eight original files, wave 2 the `*2.csv`
+files, wave 3 the `*3.csv` files. No institution appears in more than one wave
+and no programme is duplicated across the set.
 
 ## The rule these were gathered under
 
@@ -21,21 +44,11 @@ tuition cells are mostly blank rather than mostly wrong.
 
 Blank is an instruction to go and check, not a defect.
 
-## The files
+## Adding to it
 
-Wave 1 is the eight original files. Wave 2 is the `*2.csv` files, a second
-pass across a wider set of institutions with no overlap with wave 1.
-
-| destination | wave 1 | wave 2 | institutions added in wave 2 |
-|---|---|---|---|
-| uk | 40 | 67 | 26 |
-| ireland | 32 | 45 | 7 |
-| canada | 29 | 67 | 14 |
-| australia | 31 | 67 | 8 |
-| germany | 31 | 95 | 30 providers and institutions |
-| usa | 30 | 90 | 18 |
-| newzealand | 32 | 60 | 7 |
-| europe (NL, FR, IT, SE, CH) | 30 | - | - |
+New destinations need a row in `countries` before their programmes will import,
+or the rows are dropped without an error. Finland, Portugal and Spain were added
+for wave 3 (`supabase-part9-countries.sql`); Spain has no rows yet.
 
 ## Checking a file before importing
 
@@ -72,18 +85,18 @@ rows only, never the unknowns.
 
 | | eligible | ineligible | unknown |
 |---|---|---|---|
-| United Kingdom | 95 | 0 | 12 |
+| United Kingdom | 95 | 0 | 70 |
+| Canada | 84 | 8 | 57 |
+| Australia | 76 | 16 | 6 |
 | New Zealand | 72 | 13 | 7 |
 | Ireland | 49 | 0 | 28 |
-| Canada | 40 | 8 | 48 |
-| Australia | 28 | 13 | 57 |
 | United States | 20 | 0 | 100 |
-| Germany, Europe, Malta | 0 | 0 | 176 |
+| Germany and the rest of Europe | 0 | 0 | 196 |
 
 Every verdict names its source in the note: an institution's own PGWP or
 STEM-designated list, its own Graduate Route statement, or an official register
 (INZ's post-study work qualification list, CRICOS registration, the Irish Third
-Level Graduate Programme award levels). 408 rows stay `UNKNOWN`, which is the
+Level Graduate Programme award levels). 464 rows stay `UNKNOWN`, which is the
 honest state rather than a gap to paper over.
 
 ### The ones that change what a counsellor should say
@@ -132,21 +145,26 @@ read those rows as "no work rights at all".
 
 ### Where the remaining unknowns are, and why
 
+- **Germany and the rest of Europe, 196 rows.** Not researched. Germany's
+  18-month post-graduation job-seeking permit and the rights that follow an
+  Ausbildung are statutory rather than per-institution, so they need a different
+  approach from reading course pages.
 - **United States, 100 rows.** Most universities point at the DHS CIP list and
   tell the student to read their own I-20. A student at NJIT, Texas Tech, UT
   Arlington, Buffalo, Stony Brook, Binghamton, Cleveland State or Missouri S&T
   almost certainly does get STEM OPT in practice, but no page on those sites
   says so. Get it in writing from each DSO, or stop stating it.
-- **Australia, 57 rows.** Every one is in `australia2.csv`, which has no CRICOS
-  codes. Adding the CRICOS code to those rows would settle roughly 45 of them in
-  one pass. That is the single highest-value piece of data entry left here.
-- **Ireland, 28 rows.** Nineteen of them are National College of Ireland, whose
+- **United Kingdom, 70 rows.** Sixty of them are wave 3 institutions that were
+  gathered before the Graduate Route pass ran. Most will resolve the same way
+  the other 95 did. Three are genuine gaps: University of East London,
+  Edinburgh Napier and Sunderland publish no Graduate Route statement at all,
+  and all three recruit heavily from India.
+- **Canada, 57 rows.** Mostly wave 3 colleges whose PGWP position is published
+  but was not read, plus Seneca, Sheridan and Humber below. Canadian business
+  and hospitality diplomas are where the misses cluster; treat those as "verify
+  before selling" rather than assuming.
+- **Ireland, 28 rows.** Nineteen are National College of Ireland, whose
   stay-back page would not render. NCI is a volume recruiter and worth one email.
-- **UK, 12 rows.** University of East London, Edinburgh Napier and Sunderland do
-  not publish a Graduate Route statement. All three recruit heavily from India.
-- **Germany and the rest of Europe, 176 rows.** Not researched yet. Germany's
-  18-month post-graduation job-seeking permit and the Ausbildung route are
-  statutory rather than per-institution, so they need a different approach.
 
 ### Seneca, Sheridan and Humber
 

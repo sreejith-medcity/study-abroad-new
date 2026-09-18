@@ -1,0 +1,54 @@
+program,university,city,country_code,pathway,level,study_area,duration_months,tuition_per_year,application_fee,initial_deposit,intakes,min_ielts,min_pte,min_oet_grade,min_german_level,max_backlogs,max_gap_years,moi_accepted,work_rights,work_rights_note,required_docs,status
+Computer Programming,Confederation College,Thunder Bay,CA,DEGREE,UG_DIPLOMA,Computer Science,24,18586,,,9|1,6.0,,,,,,,ELIGIBLE,Page states program meets IRCC PGWP criteria,,DRAFT
+Health Informatics,Confederation College,Thunder Bay,CA,DEGREE,PG_DIPLOMA,Computer Science,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-eligible list,,DRAFT
+Health Administration and Leadership,Confederation College,Thunder Bay,CA,DEGREE,PG_DIPLOMA,Public Health,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-eligible list,,DRAFT
+Honours Bachelor of Science in Nursing,Confederation College,Thunder Bay,CA,NURSING,UG,Nursing,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-eligible list,,DRAFT
+Practical Nursing,Confederation College,Thunder Bay,CA,NURSING,UG_DIPLOMA,Nursing,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-eligible list,,DRAFT
+Civil Engineering Technician,Confederation College,Thunder Bay,CA,DEGREE,UG_DIPLOMA,Engineering,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-eligible list,,DRAFT
+Mechanical Engineering Technician,Confederation College,Thunder Bay,CA,DEGREE,UG_DIPLOMA,Engineering,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-eligible list,,DRAFT
+Electrical Engineering Technician,Confederation College,Thunder Bay,CA,DEGREE,UG_DIPLOMA,Engineering,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-eligible list,,DRAFT
+Interactive Media Development,Confederation College,Thunder Bay,CA,DEGREE,UG_DIPLOMA,Computer Science,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-eligible list,,DRAFT
+Computer Programming and Analysis,St. Lawrence College,Kingston,CA,DEGREE,UG_DIPLOMA,Computer Science,36,17428,,,1|9,,,,,,,,ELIGIBLE,On college's published PGWP-aligned list,,DRAFT
+Computer Programming,St. Lawrence College,Kingston,CA,DEGREE,UG_DIPLOMA,Computer Science,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-aligned list,,DRAFT
+Computer Systems Technician,St. Lawrence College,Kingston,CA,DEGREE,UG_DIPLOMA,Computer Science,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-aligned list,,DRAFT
+Cybersecurity,St. Lawrence College,Kingston,CA,DEGREE,UG_DIPLOMA,Cybersecurity,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-aligned list,,DRAFT
+User Experience Design,St. Lawrence College,Kingston,CA,DEGREE,UG_DIPLOMA,Computer Science,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-aligned list,,DRAFT
+Digital Marketing Communications,St. Lawrence College,Kingston,CA,DEGREE,UG_DIPLOMA,Management,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-aligned list,,DRAFT
+Civil Engineering Technology,St. Lawrence College,Kingston,CA,DEGREE,UG_DIPLOMA,Engineering,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-aligned list,,DRAFT
+Health Care Administration,St. Lawrence College,Kingston,CA,DEGREE,UG_DIPLOMA,Public Health,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-aligned list,,DRAFT
+Practical Nursing,St. Lawrence College,Kingston,CA,NURSING,UG_DIPLOMA,Nursing,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-aligned list,,DRAFT
+Supply Chain Management,St. Lawrence College,Cornwall,CA,DEGREE,UG_DIPLOMA,Supply Chain,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-aligned list,,DRAFT
+Honours Bachelor of Science - Nursing,St. Lawrence College,Cornwall,CA,NURSING,UG,Nursing,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-aligned list,,DRAFT
+Bachelor of Commerce: Social Innovation,St. Lawrence College,Kingston,CA,DEGREE,UG,Management,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-aligned list,,DRAFT
+Artificial Intelligence and Machine Learning,Cambrian College,Sudbury,CA,DEGREE,PG_DIPLOMA,Artificial Intelligence,12,,,,1,,,,,,,,ELIGIBLE,Programme page PGWP eligibility field states Yes,,DRAFT
+Cybersecurity,Cambrian College,Sudbury,CA,DEGREE,PG_DIPLOMA,Cybersecurity,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-eligible list,,DRAFT
+IT Business Analysis,Cambrian College,Sudbury,CA,DEGREE,PG_DIPLOMA,Business Analytics,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-eligible list,,DRAFT
+Mobile Application Development,Cambrian College,Sudbury,CA,DEGREE,PG_DIPLOMA,Computer Science,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-eligible list,,DRAFT
+Marketing Management - Digital,Cambrian College,Sudbury,CA,DEGREE,PG_DIPLOMA,Management,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-eligible list,,DRAFT
+Bachelor of Applied Computing,Cambrian College,Sudbury,CA,DEGREE,UG,Computer Science,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-eligible list,,DRAFT
+Honours Bachelor of Business Administration,Cambrian College,Sudbury,CA,DEGREE,UG,Management,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-eligible list,,DRAFT
+Computer Systems Technology - Security,Cambrian College,Sudbury,CA,DEGREE,UG_DIPLOMA,Cybersecurity,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-eligible list,,DRAFT
+Computer Programming - Internet of Things,Cambrian College,Sudbury,CA,DEGREE,UG_DIPLOMA,Computer Science,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-eligible list,,DRAFT
+Honours Bachelor of Science in Nursing,Cambrian College,Sudbury,CA,NURSING,UG,Nursing,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-eligible list,,DRAFT
+Practical Nursing,Cambrian College,Sudbury,CA,NURSING,UG_DIPLOMA,Nursing,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-eligible list,,DRAFT
+Business Analytics,Lambton College,Sarnia,CA,DEGREE,PG_DIPLOMA,Business Analytics,24,,,,9|1|5,,,,,,,,UNKNOWN,,,DRAFT
+Artificial Intelligence & Machine Learning,Lambton College,Sarnia,CA,DEGREE,PG_DIPLOMA,Artificial Intelligence,24,,,,9|1|5,,,,,,,,UNKNOWN,,,DRAFT
+Computer Programmer,Lambton College,Sarnia,CA,DEGREE,UG_DIPLOMA,Computer Science,,,,,,,,,,,,,UNKNOWN,,,DRAFT
+Supply Chain Management,Lambton College,Sarnia,CA,DEGREE,PG_DIPLOMA,Supply Chain,,,,,,,,,,,,,UNKNOWN,,,DRAFT
+Master of Business Administration,Vancouver Island University,Nanaimo,CA,DEGREE,PG,Management,20,,,,9|1,,,,,,,,UNKNOWN,,,DRAFT
+Computer Systems Technology,Saskatchewan Polytechnic,Saskatoon,CA,DEGREE,UG_DIPLOMA,Computer Science,24,,,,8,,,,,,,,UNKNOWN,,,DRAFT
+Computer Information Systems,University of the Fraser Valley,Abbotsford,CA,DEGREE,UG_DIPLOMA,Computer Science,24,,,,,,,,,,,,UNKNOWN,,,DRAFT
+Cybersecurity,Bow Valley College,Calgary,CA,DEGREE,PG_DIPLOMA,Cybersecurity,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-eligible list,,DRAFT
+Data Management and Analytics,Bow Valley College,Calgary,CA,DEGREE,PG_DIPLOMA,Data Science,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-eligible list,,DRAFT
+Digital Marketing,Bow Valley College,Calgary,CA,DEGREE,PG_DIPLOMA,Management,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-eligible list,,DRAFT
+Information Technology Solutions,Bow Valley College,Calgary,CA,DEGREE,UG_DIPLOMA,Computer Science,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-eligible list,,DRAFT
+Information Technology Systems,Bow Valley College,Calgary,CA,DEGREE,UG_DIPLOMA,Computer Science,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-eligible list,,DRAFT
+Health Data Analytics,Bow Valley College,Calgary,CA,DEGREE,UG_DIPLOMA,Data Science,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-eligible list,,DRAFT
+Cybersecurity Solutions,Bow Valley College,Calgary,CA,DEGREE,UG_DIPLOMA,Cybersecurity,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-eligible list,,DRAFT
+Business Administration - Supply Chain Management Major,Bow Valley College,Calgary,CA,DEGREE,UG_DIPLOMA,Supply Chain,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-eligible list,,DRAFT
+Practical Nursing,Camosun College,Victoria,CA,NURSING,UG_DIPLOMA,Nursing,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-eligible list,,DRAFT
+Business Administration,Camosun College,Victoria,CA,DEGREE,UG_DIPLOMA,Management,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-eligible list,,DRAFT
+Post-Degree Diploma in Business Administration,Camosun College,Victoria,CA,DEGREE,PG_DIPLOMA,Management,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-eligible list,,DRAFT
+Dental Hygiene,Camosun College,Victoria,CA,DEGREE,UG_DIPLOMA,Public Health,,,,,,,,,,,,,ELIGIBLE,On college's published PGWP-eligible list,,DRAFT
+Master of Science in Big Data Analytics: Applied Modelling and Quantitative Methods,Trent University,Peterborough,CA,DEGREE,PG,Data Science,16,,,,,,,,,,,,UNKNOWN,,,DRAFT
+Master of Science in Computer Science,Lakehead University,Thunder Bay,CA,DEGREE,PG,Computer Science,,,,,9|1,,,,,,,,UNKNOWN,,,DRAFT

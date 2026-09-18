@@ -1,68 +1,68 @@
 program,university,city,country_code,pathway,level,study_area,duration_months,tuition_per_year,application_fee,initial_deposit,intakes,min_ielts,min_pte,min_oet_grade,min_german_level,max_backlogs,max_gap_years,moi_accepted,work_rights,work_rights_note,required_docs,status
-Bachelor of Information Technology (AI and Data Science),Federation University Australia,Ballarat,AU,DEGREE,UG,Artificial Intelligence,,41400,,,,,,,,,,,UNKNOWN,,,DRAFT
-Bachelor of Digital Transformation (IT),Federation University Australia,Ballarat,AU,DEGREE,UG,Computer Science,,41400,,,,,,,,,,,UNKNOWN,,,DRAFT
-Master of Data Science,Federation University Australia,Ballarat,AU,DEGREE,PG,Data Science,,41400,,,,,,,,,,,UNKNOWN,,,DRAFT
-Master of Applied Cyber Security,Federation University Australia,Ballarat,AU,DEGREE,PG,Computer Science,,41400,,,,,,,,,,,UNKNOWN,,,DRAFT
-Bachelor of Business (Accounting),Federation University Australia,Ballarat,AU,DEGREE,UG,Accounting,,39600,,,,,,,,,,,UNKNOWN,,,DRAFT
-Bachelor of Business (Management),Federation University Australia,Ballarat,AU,DEGREE,UG,Management,,39600,,,,,,,,,,,UNKNOWN,,,DRAFT
-Master of Professional Accounting,Federation University Australia,Ballarat,AU,DEGREE,PG,Accounting,,39600,,,,,,,,,,,UNKNOWN,,,DRAFT
-Master of Digital Business Transformation,Federation University Australia,Ballarat,AU,DEGREE,PG,Management,,39600,,,,,,,,,,,UNKNOWN,,,DRAFT
-Bachelor of Engineering (Civil) (Honours),Federation University Australia,Ballarat,AU,DEGREE,UG,Engineering,,43500,,,,,,,,,,,UNKNOWN,,,DRAFT
-Bachelor of Engineering (Mechanical) (Honours),Federation University Australia,Ballarat,AU,DEGREE,UG,Engineering,,43500,,,,,,,,,,,UNKNOWN,,,DRAFT
-Master of Engineering Project Management,Federation University Australia,Ballarat,AU,DEGREE,PG,Project Management,,43500,,,,,,,,,,,UNKNOWN,,,DRAFT
-Bachelor of Nursing,Federation University Australia,Ballarat,AU,NURSING,UG,Nursing,,41800,,,,,,,,,,,UNKNOWN,,,DRAFT
-Bachelor of Education (Early Childhood & Primary),Federation University Australia,Ballarat,AU,DEGREE,UG,Early Childhood Education,,31800,,,,,,,,,,,UNKNOWN,,,DRAFT
-Master of Teaching (Early Childhood),Federation University Australia,Ballarat,AU,DEGREE,PG,Early Childhood Education,,33500,,,,,,,,,,,UNKNOWN,,,DRAFT
-Bachelor of Information Technology,Murdoch University,Perth,AU,DEGREE,UG,Computer Science,,39600,,,,,,,,,,,UNKNOWN,,,DRAFT
-Bachelor of Information Technology and Business,Murdoch University,Perth,AU,DEGREE,UG,Computer Science,,39600,,,,,,,,,,,UNKNOWN,,,DRAFT
-Bachelor of Data Analytics,Murdoch University,Perth,AU,DEGREE,UG,Data Science,,39600,,,,,,,,,,,UNKNOWN,,,DRAFT
-Master of Information Technology,Murdoch University,Perth,AU,DEGREE,PG,Computer Science,,39600,,,,,,,,,,,UNKNOWN,,,DRAFT
-Bachelor of Engineering Technology,Murdoch University,Perth,AU,DEGREE,UG,Engineering,,44040,,,,,,,,,,,UNKNOWN,,,DRAFT
-Bachelor of Engineering Honours,Murdoch University,Perth,AU,DEGREE,UG,Engineering,,44040,,,,,,,,,,,UNKNOWN,,,DRAFT
-Bachelor of Nursing,Murdoch University,Perth,AU,NURSING,UG,Nursing,,44640,,,,,,,,,,,UNKNOWN,,,DRAFT
-Bachelor of Business,Murdoch University,Perth,AU,DEGREE,UG,Management,,37800,,,,,,,,,,,UNKNOWN,,,DRAFT
-Master of Business Administration,Murdoch University,Perth,AU,DEGREE,PG,Management,,40800,,,,,,,,,,,UNKNOWN,,,DRAFT
-Bachelor of Education (Secondary),Murdoch University,Perth,AU,DEGREE,UG,Education,,37800,,,,,,,,,,,UNKNOWN,,,DRAFT
-Master of Health Care Management,Murdoch University,Perth,AU,DEGREE,PG,Public Health,,40800,,,,,,,,,,,UNKNOWN,,,DRAFT
-Bachelor of Accounting,Charles Sturt University,Bathurst,AU,DEGREE,UG,Accounting,,33632,,,,,,,,,,,UNKNOWN,,,DRAFT
-Bachelor of Nursing,Charles Sturt University,Bathurst,AU,NURSING,UG,Nursing,,36096,,,,,,,,,,,UNKNOWN,,,DRAFT
-Bachelor of Engineering (Honours),Charles Sturt University,Bathurst,AU,DEGREE,UG,Engineering,,39440,,,,,,,,,,,UNKNOWN,,,DRAFT
+Bachelor of Information Technology (AI and Data Science),Federation University Australia,Ballarat,AU,DEGREE,UG,Artificial Intelligence; CRICOS 116468M,,41400,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Bachelor of Digital Transformation (IT),Federation University Australia,Ballarat,AU,DEGREE,UG,Computer Science; CRICOS 116408A,,41400,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Master of Data Science,Federation University Australia,Ballarat,AU,DEGREE,PG,Data Science; CRICOS 118376K,,41400,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Master of Applied Cyber Security,Federation University Australia,Ballarat,AU,DEGREE,PG,Computer Science; CRICOS 118539G,,41400,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Bachelor of Business (Accounting),Federation University Australia,Ballarat,AU,DEGREE,UG,Accounting; CRICOS 116438F,,39600,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Bachelor of Business (Management),Federation University Australia,Ballarat,AU,DEGREE,UG,Management; CRICOS 116451J,,39600,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Master of Professional Accounting,Federation University Australia,Ballarat,AU,DEGREE,PG,Accounting; CRICOS 119408K,,39600,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Master of Digital Business Transformation,Federation University Australia,Ballarat,AU,DEGREE,PG,Management; CRICOS 116394B,,39600,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Bachelor of Engineering (Civil) (Honours),Federation University Australia,Ballarat,AU,DEGREE,UG,Engineering; CRICOS 116395A,,43500,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Bachelor of Engineering (Mechanical) (Honours),Federation University Australia,Ballarat,AU,DEGREE,UG,Engineering; CRICOS 116397K,,43500,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Master of Engineering Project Management,Federation University Australia,Ballarat,AU,DEGREE,PG,Project Management; CRICOS 116470F,,43500,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Bachelor of Nursing,Federation University Australia,Ballarat,AU,NURSING,UG,Nursing; CRICOS 117557B,,41800,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Bachelor of Education (Early Childhood & Primary),Federation University Australia,Ballarat,AU,DEGREE,UG,Early Childhood Education; CRICOS 097978F,,31800,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Master of Teaching (Early Childhood),Federation University Australia,Ballarat,AU,DEGREE,PG,Early Childhood Education; CRICOS 0100320,,33500,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Bachelor of Information Technology,Murdoch University,Perth,AU,DEGREE,UG,Computer Science; CRICOS 102605M,,39600,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Bachelor of Information Technology and Business,Murdoch University,Perth,AU,DEGREE,UG,Computer Science; CRICOS 0101414,,39600,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Bachelor of Data Analytics,Murdoch University,Perth,AU,DEGREE,UG,Data Science; CRICOS 106085J,,39600,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Master of Information Technology,Murdoch University,Perth,AU,DEGREE,PG,Computer Science; CRICOS 057275B,,39600,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Bachelor of Engineering Technology,Murdoch University,Perth,AU,DEGREE,UG,Engineering; CRICOS 110889E,,44040,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Bachelor of Engineering Honours,Murdoch University,Perth,AU,DEGREE,UG,Engineering; CRICOS 110888F,,44040,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Bachelor of Nursing,Murdoch University,Perth,AU,NURSING,UG,Nursing; CRICOS 116844C,,44640,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Bachelor of Business,Murdoch University,Perth,AU,DEGREE,UG,Management; CRICOS 079326C,,37800,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Master of Business Administration,Murdoch University,Perth,AU,DEGREE,PG,Management; CRICOS 089548F,,40800,,,,,,,,,,,INELIGIBLE,"One-year master's, under the 2-year study rule",,DRAFT
+Bachelor of Education (Secondary),Murdoch University,Perth,AU,DEGREE,UG,Education; CRICOS 098365E,,37800,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Master of Health Care Management,Murdoch University,Perth,AU,DEGREE,PG,Public Health,,40800,,,,,,,,,,,INELIGIBLE,"1.5-year master's, under 2-year study rule",,DRAFT
+Bachelor of Accounting,Charles Sturt University,Bathurst,AU,DEGREE,UG,Accounting; CRICOS 074611E,,33632,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Bachelor of Nursing,Charles Sturt University,Bathurst,AU,NURSING,UG,Nursing; CRICOS 010599C,,36096,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Bachelor of Engineering (Honours),Charles Sturt University,Bathurst,AU,DEGREE,UG,Engineering; CRICOS 117609F,,39440,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
 Master of Professional Accounting,Charles Sturt University,Bathurst,AU,DEGREE,PG,Accounting,,36960,,,,,,,,,,,UNKNOWN,,,DRAFT
-Diploma of Information Technology - Advanced Networking and Cloud Engineering,TAFE Queensland,Brisbane,AU,DEGREE,VOCATIONAL,Computer Science,12,23000,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
-Certificate IV in Cyber Security,TAFE Queensland,Brisbane,AU,DEGREE,VOCATIONAL,Computer Science,12,18800,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
-Diploma of Graphic Design,TAFE Queensland,Brisbane,AU,DEGREE,VOCATIONAL,Design,12,24800,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
-Diploma of Hospitality Management,TAFE Queensland,Brisbane,AU,DEGREE,VOCATIONAL,Hospitality,12,23200,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
-Diploma of Nursing,TAFE Queensland,Brisbane,AU,NURSING,VOCATIONAL,Nursing,18,,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
-Certificate III in Carpentry,TAFE Queensland,Brisbane,AU,DEGREE,VOCATIONAL,Trades,24,,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
-Certificate III in Hospitality,TAFE Queensland,Brisbane,AU,DEGREE,VOCATIONAL,Hospitality,6,,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
-Certificate III in Dental Assisting,TAFE Queensland,Brisbane,AU,DEGREE,VOCATIONAL,Health,9,,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
-Certificate III in Accounts Administration,TAFE Queensland,Brisbane,AU,DEGREE,VOCATIONAL,Accounting,6,,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
-Bachelor of Nursing,TAFE Queensland,Brisbane,AU,NURSING,UG,Nursing,24,32000,,,,,,,,,,,UNKNOWN,,,DRAFT
-Master of Cyber Security,TAFE Queensland,Brisbane,AU,DEGREE,PG,Computer Science,18,32000,,,,,,,,,,,UNKNOWN,,,DRAFT
-Bachelor of Information Technology,Charles Sturt University,Bathurst,AU,DEGREE,UG,Computer Science,,35280,,,,,,,,,,,UNKNOWN,,,DRAFT
-Bachelor of Business Studies,Charles Sturt University,Bathurst,AU,DEGREE,UG,Management,,34400,,,,,,,,,,,UNKNOWN,,,DRAFT
+Diploma of Information Technology - Advanced Networking and Cloud Engineering,TAFE Queensland,Brisbane,AU,DEGREE,VOCATIONAL,Computer Science; CRICOS 107313E,12,23000,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
+Certificate IV in Cyber Security,TAFE Queensland,Brisbane,AU,DEGREE,VOCATIONAL,Computer Science; CRICOS 112094B,12,18800,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
+Diploma of Graphic Design,TAFE Queensland,Brisbane,AU,DEGREE,VOCATIONAL,Design; CRICOS 120669A,12,24800,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
+Diploma of Hospitality Management,TAFE Queensland,Brisbane,AU,DEGREE,VOCATIONAL,Hospitality; CRICOS 112779F,12,23200,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
+Diploma of Nursing,TAFE Queensland,Brisbane,AU,NURSING,VOCATIONAL,Nursing; CRICOS 109308H,18,,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
+Certificate III in Carpentry,TAFE Queensland,Brisbane,AU,DEGREE,VOCATIONAL,Trades; CRICOS 104863K,24,,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
+Certificate III in Hospitality,TAFE Queensland,Brisbane,AU,DEGREE,VOCATIONAL,Hospitality; CRICOS 112775K,6,,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
+Certificate III in Dental Assisting,TAFE Queensland,Brisbane,AU,DEGREE,VOCATIONAL,Health; CRICOS 108108B,9,,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
+Certificate III in Accounts Administration,TAFE Queensland,Brisbane,AU,DEGREE,VOCATIONAL,Accounting; CRICOS 110034H,6,,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
+Bachelor of Nursing,TAFE Queensland,Brisbane,AU,NURSING,UG,Nursing; CRICOS 114595J,24,32000,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Master of Cyber Security,TAFE Queensland,Brisbane,AU,DEGREE,PG,Computer Science; CRICOS 117454J,18,32000,,,,,,,,,,,INELIGIBLE,"1.5-year master's, under 2-year study rule",,DRAFT
+Bachelor of Information Technology,Charles Sturt University,Bathurst,AU,DEGREE,UG,Computer Science; CRICOS 012006F,,35280,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Bachelor of Business Studies,Charles Sturt University,Bathurst,AU,DEGREE,UG,Management; CRICOS 029254F,,34400,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
 Master of Project Management and Leadership,Charles Sturt University,Bathurst,AU,DEGREE,PG,Project Management,,35616,,,,,,,,,,,UNKNOWN,,,DRAFT
-Bachelor of Agricultural Business Management,Charles Sturt University,Bathurst,AU,DEGREE,UG,Agriculture,,39040,,,,,,,,,,,UNKNOWN,,,DRAFT
-Bachelor of Information Technology (Business Analysis),Federation University Australia,Ballarat,AU,DEGREE,UG,Business Analytics,,41400,,,,,,,,,,,UNKNOWN,,,DRAFT
-Bachelor of Information Technology (Cybersecurity),Federation University Australia,Ballarat,AU,DEGREE,UG,Computer Science,,41400,,,,,,,,,,,UNKNOWN,,,DRAFT
-Master of Technology (Software Engineering),Federation University Australia,Ballarat,AU,DEGREE,PG,Computer Science,,41400,,,,,,,,,,,UNKNOWN,,,DRAFT
-Master of Social Work (Qualifying),Federation University Australia,Ballarat,AU,DEGREE,PG,Social Work,,37800,,,,,,,,,,,UNKNOWN,,,DRAFT
-Bachelor of Science,Federation University Australia,Ballarat,AU,DEGREE,UG,Science,,38900,,,,,,,,,,,UNKNOWN,,,DRAFT
-Master of Information Technology,James Cook University,Townsville,AU,DEGREE,PG,Computer Science,24,,,,2|5|9,,,,,,,,UNKNOWN,,,DRAFT
-Master of Business Administration,James Cook University,Townsville,AU,DEGREE,PG,Management,24,,,,,,,,,,,,UNKNOWN,,,DRAFT
-Master of Data Science (Professional),James Cook University,Townsville,AU,DEGREE,PG,Data Science,,,,,,,,,,,,,UNKNOWN,,,DRAFT
+Bachelor of Agricultural Business Management,Charles Sturt University,Bathurst,AU,DEGREE,UG,Agriculture; CRICOS 057781F,,39040,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Bachelor of Information Technology (Business Analysis),Federation University Australia,Ballarat,AU,DEGREE,UG,Business Analytics; CRICOS 116469K,,41400,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Bachelor of Information Technology (Cybersecurity),Federation University Australia,Ballarat,AU,DEGREE,UG,Computer Science; CRICOS 116471E,,41400,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Master of Technology (Software Engineering),Federation University Australia,Ballarat,AU,DEGREE,PG,Computer Science; CRICOS 116467A,,41400,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Master of Social Work (Qualifying),Federation University Australia,Ballarat,AU,DEGREE,PG,Social Work; CRICOS 085213F,,37800,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Bachelor of Science,Federation University Australia,Ballarat,AU,DEGREE,UG,Science; CRICOS 116409M,,38900,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Master of Information Technology,James Cook University,Townsville,AU,DEGREE,PG,Computer Science; CRICOS 084823K,24,,,,2|5|9,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Master of Business Administration,James Cook University,Townsville,AU,DEGREE,PG,Management; CRICOS 107829K,24,,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Master of Data Science (Professional),James Cook University,Townsville,AU,DEGREE,PG,Data Science; CRICOS 102256E,,,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
 Master of Engineering Management,James Cook University,Townsville,AU,DEGREE,PG,Engineering,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-Master of Professional Accounting,James Cook University,Townsville,AU,DEGREE,PG,Accounting,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-Bachelor of Business,James Cook University,Townsville,AU,DEGREE,UG,Management,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-Bachelor of Information Technology,James Cook University,Townsville,AU,DEGREE,UG,Computer Science,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-Master of Information Technology,Australian Catholic University,North Sydney,AU,DEGREE,PG,Computer Science,24,,,,3|8,,,,,,,,UNKNOWN,,,DRAFT
-Diploma of Information Technology,TAFE NSW,Sydney,AU,DEGREE,VOCATIONAL,Computer Science,,,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
-Diploma of Business,TAFE NSW,Sydney,AU,DEGREE,VOCATIONAL,Management,,,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
-Diploma of Applied Commerce,TAFE NSW,Sydney,AU,DEGREE,VOCATIONAL,Accounting,,,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
-Diploma of Renewable Energy Engineering,TAFE NSW,Sydney,AU,DEGREE,VOCATIONAL,Engineering,,,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
-Bachelor of IT (Cyber and Network Security),TAFE NSW,Sydney,AU,DEGREE,UG,Computer Science,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-Bachelor of IT (Data Engineering),TAFE NSW,Sydney,AU,DEGREE,UG,Data Science,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-Bachelor of Business,TAFE NSW,Sydney,AU,DEGREE,UG,Management,36,,,,,,,,,,,,UNKNOWN,,,DRAFT
-Bachelor of Early Childhood Education,TAFE NSW,Sydney,AU,DEGREE,UG,Early Childhood Education,48,,,,,,,,,,,,UNKNOWN,,,DRAFT
-Master of Information Technology,CQUniversity,Rockhampton,AU,DEGREE,PG,Computer Science,24,,,,,,,,,,,,UNKNOWN,,,DRAFT
-Master of Information Systems,CQUniversity,Rockhampton,AU,DEGREE,PG,Computer Science,24,,,,,,,,,,,,UNKNOWN,,,DRAFT
+Master of Professional Accounting,James Cook University,Townsville,AU,DEGREE,PG,Accounting; CRICOS 081135C,,,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Bachelor of Business,James Cook University,Townsville,AU,DEGREE,UG,Management; CRICOS 026830C,,,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Bachelor of Information Technology,James Cook University,Townsville,AU,DEGREE,UG,Computer Science; CRICOS 010438J,,,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Master of Information Technology,Australian Catholic University,North Sydney,AU,DEGREE,PG,Computer Science; CRICOS 079874G,24,,,,3|8,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Diploma of Information Technology,TAFE NSW,Sydney,AU,DEGREE,VOCATIONAL,Computer Science; CRICOS 108791M,,,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
+Diploma of Business,TAFE NSW,Sydney,AU,DEGREE,VOCATIONAL,Management; CRICOS 108538B,,,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
+Diploma of Applied Commerce,TAFE NSW,Sydney,AU,DEGREE,VOCATIONAL,Accounting; CRICOS 094910F,,,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
+Diploma of Renewable Energy Engineering,TAFE NSW,Sydney,AU,DEGREE,VOCATIONAL,Engineering; CRICOS 107756M,,,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
+Bachelor of IT (Cyber and Network Security),TAFE NSW,Sydney,AU,DEGREE,UG,Computer Science; CRICOS 075370J,,,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Bachelor of IT (Data Engineering),TAFE NSW,Sydney,AU,DEGREE,UG,Data Science; CRICOS 095515J,,,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Bachelor of Business,TAFE NSW,Sydney,AU,DEGREE,UG,Management; CRICOS 092518G,36,,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Bachelor of Early Childhood Education,TAFE NSW,Sydney,AU,DEGREE,UG,Early Childhood Education; CRICOS 075653J,48,,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Master of Information Technology,CQUniversity,Rockhampton,AU,DEGREE,PG,Computer Science; CRICOS 083576F,24,,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
+Master of Information Systems,CQUniversity,Rockhampton,AU,DEGREE,PG,Computer Science; CRICOS 083580K,24,,,,,,,,,,,,ELIGIBLE,"485 Post-Higher Ed stream, CRICOS registered",,DRAFT
