@@ -83,6 +83,7 @@ const PLATFORM_NAV: NavGroup = {
   items: [
     { href: "/admin/audit", label: "Audit log", icon: "shield" },
     { href: "/settings/platform", label: "Platform settings", icon: "settings" },
+    { href: "/admin/go-live", label: "Go live", icon: "spark" },
   ],
 };
 
