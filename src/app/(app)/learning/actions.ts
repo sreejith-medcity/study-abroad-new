@@ -9,7 +9,8 @@ import { audit } from "@/lib/audit";
 import { ADMIN_ROLES } from "@/lib/permissions";
 import { UploadError, deleteUpload, saveUpload } from "@/server/storage";
 
-export type FormState = { error?: string; ok?: string; fieldErrors?: Record<string, string[] | undefined> };
+import type { FormState } from "@/lib/form-state";
+export type { FormState };
 
 const AUDIENCES = ["PARTNER", "COUNSELLOR", "ADMIN", "MANAGEMENT"] as const;
 

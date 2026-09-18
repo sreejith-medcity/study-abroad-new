@@ -10,7 +10,8 @@ import { ADMIN_ROLES } from "@/lib/permissions";
 import { notifyUsers, partnerRecipients } from "@/server/notify";
 import { accrueMissing, inr } from "@/server/commission";
 
-export type FormState = { error?: string; ok?: string; fieldErrors?: Record<string, string[] | undefined> };
+import type { FormState } from "@/lib/form-state";
+export type { FormState };
 
 const optionalText = z.string().trim().max(200).optional().transform((v) => v || null);
 const num = (msg: string) =>

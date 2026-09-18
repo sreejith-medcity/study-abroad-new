@@ -24,14 +24,17 @@ node tests/browser/dashboards.mjs
 | `settings.mjs` | The four settings tabs per role, a platform save that sticks, and the colour and password rules |
 | `polish.mjs` | The command palette and its scoping, toasts, and the shell at phone width |
 | `artwork.mjs` | The logo and favicon uploader, what it serves, and who may change it |
+| `golive.mjs` | The sample-data cleanup: what it lists, what it refuses, what survives |
 
 Screenshots land in `/tmp/smoke-*`. Each script exits non-zero if a check fails.
 
 Two things to know: every context sends its own `x-forwarded-for`, because the
 sign-in rate limiter would otherwise count one role's attempts against the next,
 and external requests are blocked so a page never waits on Google Fonts.
-`super-actions.mjs` changes a seeded password and `money.mjs` settles a commission,
-so re-seed before running either a second time.
+`super-actions.mjs` changes a seeded password, `money.mjs` settles a commission,
+and `golive.mjs` deletes the sample data outright, so re-seed before running any
+of those a second time. `golive.mjs` in particular leaves the database with one
+organisation and one account, which is the point of it.
 
 Two more things, both consequences of the polish pass:
 

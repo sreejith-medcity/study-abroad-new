@@ -42,13 +42,17 @@ await page.waitForLoadState("networkidle");
   await waitText(page, "is now Overseas admin", "demoted back to admin");
 }
 
+/** Passes the password rules: long, memorable, and not built on a common word. */
+const NEW_PASSWORD = "Rainy-Kochi-Bus-72";
+
 // 2. reset a password and walk the forced change
 let temp = null;
 {
   const row = rowOf(page, "uk.docs@medcity.test");
   await row.getByRole("button", { name: "Reset password" }).click();
   await waitText(page, /Temporary password for/, "reset password confirmation shown");
-  const msg = await page.locator('[role="status"]').getByText(/Temporary password for/).first().textContent().catch(() => null);
+  // Read it from the page, where it now stays until dismissed.
+  const msg = await page.locator("main").getByText(/Temporary password for/).first().textContent().catch(() => null);
   const m = msg?.match(/:\s*([A-Za-z0-9#@_-]{8,})/);
   temp = m?.[1] ?? null;
   temp ? ok(`temp password issued (${temp.length} chars)`) : bad("no temp password in the confirmation: " + msg);
@@ -70,7 +74,7 @@ if (temp) {
   const names = await p2.locator("main input[type=password]").evaluateAll((els) => els.map((e) => e.name));
   console.log("      password fields:", names.join(", "));
   for (const [i, n] of names.entries()) {
-    await p2.locator("main input[type=password]").nth(i).fill(n.includes("current") || n.includes("old") ? temp : "Medcity#2026a");
+    await p2.locator("main input[type=password]").nth(i).fill(n.includes("current") || n.includes("old") ? temp : NEW_PASSWORD);
   }
   await p2.locator("main button[type=submit]").first().click();
   try {
@@ -84,7 +88,7 @@ if (temp) {
   // the new password works and no longer forces a change
   const c4 = await browser.newContext();
   const p4 = await c4.newPage();
-  await login(p4, "uk.docs@medcity.test", "Medcity#2026a");
+  await login(p4, "uk.docs@medcity.test", NEW_PASSWORD);
   !p4.url().includes("/login") && !p4.url().includes("/change-password")
     ? ok("new password signs in straight to the app (" + p4.url() + ")")
     : bad("new password landed on " + p4.url());

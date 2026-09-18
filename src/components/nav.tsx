@@ -19,6 +19,7 @@ import {
   IconSearch,
   IconSettings,
   IconShield,
+  IconSpark,
   IconStudents,
   IconWallet,
 } from "./icons";
@@ -39,6 +40,7 @@ const ICONS = {
   insights: IconInsights,
   shield: IconShield,
   settings: IconSettings,
+  spark: IconSpark,
 } as const;
 
 export type NavItem = { href: string; label: string; icon: keyof typeof ICONS; soon?: string };

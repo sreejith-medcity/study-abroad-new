@@ -17,7 +17,8 @@ import { getApplicationForUser, getStudentForUser } from "@/server/queries";
 import { saveUpload, UploadError } from "@/server/storage";
 import { sendWhatsApp } from "@/server/whatsapp";
 
-export type FormState = { error?: string; ok?: string; fieldErrors?: Record<string, string[] | undefined> };
+import type { FormState } from "@/lib/form-state";
+export type { FormState };
 
 const createSchema = z.object({
   studentId: z.string().min(1),

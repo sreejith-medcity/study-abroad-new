@@ -12,7 +12,8 @@ import { getSettings } from "@/server/settings";
 import { UploadError, deleteUpload, saveBrandImage } from "@/server/storage";
 import { passwordProblem } from "@/lib/password";
 
-export type FormState = { error?: string; ok?: string; fieldErrors?: Record<string, string[] | undefined> };
+import type { FormState } from "@/lib/form-state";
+export type { FormState };
 
 const optional = (max: number) => z.string().trim().max(max).optional().transform((v) => v || null);
 

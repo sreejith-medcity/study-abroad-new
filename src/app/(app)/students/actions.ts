@@ -12,7 +12,8 @@ import { ADMIN_ROLES, isAdmin, isStaff } from "@/lib/permissions";
 import { adminIds, notifyUsers } from "@/server/notify";
 import { getStudentForUser } from "@/server/queries";
 
-export type FormState = { error?: string; ok?: string; fieldErrors?: Record<string, string[] | undefined> };
+import type { FormState } from "@/lib/form-state";
+export type { FormState };
 
 const CONSENT_TEXT =
   "I agree to Medcity Overseas collecting and processing my personal data, including passport and academic documents, to assess my eligibility and apply to institutions and employers on my behalf.";
@@ -319,7 +320,8 @@ export async function invitePortalAction(_: FormState, formData: FormData): Prom
 
   revalidatePath(`/students/${studentId}`, "layout");
   return {
-    ok: `Portal access for ${student.email}. One-time password: ${password}. Shown once, and they must change it at sign in.`,
+    keep: true,
+    ok: `Portal access for ${student.email}. One-time password: ${password}. They must change it at sign in.`,
   };
 }
 

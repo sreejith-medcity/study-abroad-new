@@ -60,11 +60,19 @@ async function signIn(email, ip, password = "Password@123") {
   await page.locator('main input[name="email"]').first().fill(`docs.person${tag}@medcityoverseas.test`);
   await page.locator('main input[aria-label="Job title for the new account"]').first().fill("Germany documentation");
   await page.getByRole("button", { name: "Add user" }).first().click();
-  // The confirmation is a toast; matching inside main would hit an existing
-  // "Temporary password" chip and let the test run on before the insert lands.
-  await page.locator('[role="status"]').getByText(/Temporary password for/i).first().waitFor({ timeout: 15000 })
+  // A one-time password stays on the page rather than riding a toast that fades,
+  // because somebody has to read it out or copy it before it is gone for good.
+  const credential = page.locator("main").getByText(/Temporary password for .*@/i).first();
+  await credential.waitFor({ timeout: 15000 })
     .then(() => ok("a documentation account is created with a one-time password"))
     .catch(() => bad("no password confirmation after adding"));
+  await page.waitForTimeout(6000);
+  (await credential.isVisible())
+    ? ok("the password is still on screen six seconds later")
+    : bad("the one-time password disappeared before it could be used");
+  (await page.getByRole("button", { name: "Copy" }).first().count())
+    ? ok("the password can be copied")
+    : bad("no copy button beside the password");
 
   await page.goto(`${BASE}/admin/partners`);
   await page.waitForLoadState("domcontentloaded");
