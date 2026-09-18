@@ -376,8 +376,10 @@ export async function platformSnapshot() {
     db
       .select({
         inactive: sql<number>`(count(*) filter (where ${us.active} = false))::int`,
-        temporary: sql<number>`(count(*) filter (where ${us.mustChangePassword} = true))::int`,
-        neverSignedIn: sql<number>`(count(*) filter (where ${us.lastSignInAt} is null))::int`,
+        // Switched-off accounts are nobody's problem, so they stay out of both
+        // of these: the tiles are a to-do list, not a census.
+        temporary: sql<number>`(count(*) filter (where ${us.mustChangePassword} = true and ${us.active} = true))::int`,
+        neverSignedIn: sql<number>`(count(*) filter (where ${us.lastSignInAt} is null and ${us.active} = true))::int`,
         signedInWeek: sql<number>`(count(*) filter (where ${us.lastSignInAt} > now() - interval '7 days'))::int`,
         total: sql<number>`count(*)::int`,
       })

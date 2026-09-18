@@ -47,7 +47,13 @@ export default async function SuperAdminDashboard({ user, f }: { user: SessionUs
       .select({ id: us.id, name: us.name, email: us.email, role: us.role, active: us.active, mustChangePassword: us.mustChangePassword, lastSignInAt: us.lastSignInAt, orgName: og.name })
       .from(us)
       .innerJoin(og, eq(us.orgId, og.id))
-      .where(or(eq(us.mustChangePassword, true), and(isNull(us.lastSignInAt), eq(us.active, true)), eq(us.active, false)))
+      .where(
+        or(
+          and(eq(us.mustChangePassword, true), eq(us.active, true)),
+          and(isNull(us.lastSignInAt), eq(us.active, true)),
+          eq(us.active, false),
+        ),
+      )
       .orderBy(desc(us.mustChangePassword), us.name)
       .limit(8),
     db
