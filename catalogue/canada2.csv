@@ -1,68 +1,68 @@
-program,university,city,country_code,pathway,level,study_area,duration_months,tuition_per_year,application_fee,initial_deposit,intakes,min_ielts,min_pte,min_oet_grade,min_german_level,max_backlogs,max_gap_years,moi_accepted,required_docs,status
-"Artificial Intelligence Analysis, Design and Implementation",Durham College,Oshawa,CA,DEGREE,PG_DIPLOMA,Artificial Intelligence,8,15572,,,9|1|5,,,,,,,,,DRAFT
-Project Management,Durham College,Oshawa,CA,DEGREE,PG_DIPLOMA,Project Management,8,16347,,,9|1|5,,,,,,,,,DRAFT
-Cybersecurity,Durham College,Oshawa,CA,DEGREE,PG_DIPLOMA,Computer Science,8,15489,,,9|1|5,,,,,,,,,DRAFT
-Computer Programming and Analysis,Durham College,Oshawa,CA,DEGREE,UG_DIPLOMA,Computer Science,36,15489,,,9|1|5,,,,,,,,,DRAFT
-Human Resources Management,Durham College,Oshawa,CA,DEGREE,PG_DIPLOMA,Management,8,16337,,,9,,,,,,,,,DRAFT
-Computer Systems Technology,Durham College,Oshawa,CA,DEGREE,UG_DIPLOMA,Computer Science,36,15489,,,9|1|5,,,,,,,,,DRAFT
-Early Childhood Education,Durham College,Oshawa,CA,DEGREE,UG_DIPLOMA,Early Childhood Education,24,15489,,,1|5|9,,,,,,,,,DRAFT
-Bachelor of Business Administration (Human Resources Management),Durham College,Oshawa,CA,DEGREE,UG,Management,36,18934,,,9|1|5,,,,,,,,,DRAFT
-Applied Data Analytics,Durham College,Oshawa,CA,DEGREE,PG_DIPLOMA,Data Science,8,,,,1|9|5,,,,,,,,,DRAFT
-Supply Chain Management - Global,Durham College,Oshawa,CA,DEGREE,PG_DIPLOMA,Supply Chain and Logistics,8,,,,1|9|5,,,,,,,,,DRAFT
-Applied Data Science and Artificial Intelligence,RRC Polytech,Winnipeg,CA,DEGREE,UG_DIPLOMA,Data Science,24,23865,,,1,,,,,,,,,DRAFT
-Cybersecurity,RRC Polytech,Winnipeg,CA,DEGREE,UG_DIPLOMA,Computer Science,24,22614,,,1|9,,,,,,,,,DRAFT
-Application Development and Delivery,RRC Polytech,Winnipeg,CA,DEGREE,UG_DIPLOMA,Computer Science,24,19619,,,1,,,,,,,,,DRAFT
-IT Operations,RRC Polytech,Winnipeg,CA,DEGREE,UG_DIPLOMA,Computer Science,24,23865,,,9,,,,,,,,,DRAFT
-Network and Systems Administrator,RRC Polytech,Winnipeg,CA,DEGREE,UG_DIPLOMA,Computer Science,24,30393,,,5|9,,,,,,,,,DRAFT
-Civil Engineering Technology,RRC Polytech,Winnipeg,CA,DEGREE,UG_DIPLOMA,Engineering,30,21595,,,9,,,,,,,,,DRAFT
-International Business,RRC Polytech,Winnipeg,CA,DEGREE,UG_DIPLOMA,Management,,19929,,,,,,,,,,,,DRAFT
-"Business, Accounting and Management",RRC Polytech,Winnipeg,CA,DEGREE,UG_DIPLOMA,Accounting,,17739,,,,,,,,,,,,DRAFT
-Computer Systems Technology - Software Development and Network Engineering,Sheridan College,Oakville,CA,DEGREE,UG_DIPLOMA,Computer Science,36,19700,,,,,,,,,,,,DRAFT
-Project Management,Sheridan College,Oakville,CA,DEGREE,PG_DIPLOMA,Project Management,12,18172,,,,,,,,,,,,DRAFT
-Applied Data Analytics and Visualization,Sheridan College,Oakville,CA,DEGREE,PG_DIPLOMA,Data Science,12,19767,,,9|1|5,,,,,,,,,DRAFT
-Business Analysis and Process Management,Sheridan College,Oakville,CA,DEGREE,PG_DIPLOMA,Business Analytics,12,,,,,,,,,,,,,DRAFT
-International Business Management,Sheridan College,Oakville,CA,DEGREE,PG_DIPLOMA,Management,8,,,,,,,,,,,,,DRAFT
-Supply Chain Management,Mohawk College,Hamilton,CA,DEGREE,PG_DIPLOMA,Supply Chain and Logistics,8,20275,100,,5|9|1,6.5,,,,,,,,DRAFT
-Computer Science,Brock University,St. Catharines,CA,DEGREE,UG,Computer Science,48,41646,,,,,,,,,,,,DRAFT
-Business Administration,Brock University,St. Catharines,CA,DEGREE,UG,Management,48,41646,,,,,,,,,,,,DRAFT
-Sport Management,Brock University,St. Catharines,CA,DEGREE,UG,Management,48,41646,,,,,,,,,,,,DRAFT
-Cybersecurity,Niagara College,Welland,CA,DEGREE,PG_DIPLOMA,Computer Science,12,21766,,,,,,,,,,,,DRAFT
-Data Analytics,Niagara College,Welland,CA,DEGREE,PG_DIPLOMA,Data Science,8,21486,,,9|1,,,,,,,,,DRAFT
-Business - International Business,Niagara College,Welland,CA,DEGREE,UG_DIPLOMA,Management,24,,,,,,,,,,,,,DRAFT
-Supply Chain Management (Mississauga Campus - International),Mohawk College,Mississauga,CA,DEGREE,PG_DIPLOMA,Supply Chain and Logistics,8,18415,100,,,6.5,,,,,,,,DRAFT
-Big Data Analytics,Georgian College,Barrie,CA,DEGREE,PG_DIPLOMA,Data Science,12,,100,2500,9,,,,,,,,,DRAFT
-Artificial Intelligence and Data Science,Loyalist College,Belleville,CA,DEGREE,PG_DIPLOMA,Artificial Intelligence,8,,,,9,,,,,,,,,DRAFT
-Accounting,Vancouver Community College,Vancouver,CA,DEGREE,UG_DIPLOMA,Accounting,,,,,,,,,,,,,,DRAFT
-Associate of Science (Computer Science),Vancouver Community College,Vancouver,CA,DEGREE,UG_DIPLOMA,Computer Science,,,,,,,,,,,,,,DRAFT
-Associate of Science (Data Science),Vancouver Community College,Vancouver,CA,DEGREE,UG_DIPLOMA,Data Science,,,,,,,,,,,,,,DRAFT
-Access to Practical Nursing,Vancouver Community College,Vancouver,CA,NURSING,UG_DIPLOMA,Nursing,,,,,,,,,,,,,,DRAFT
-Software Development,SAIT,Calgary,CA,DEGREE,UG_DIPLOMA,Computer Science,24,,,,,,,,,,,,,DRAFT
-Bachelor of Business Administration,SAIT,Calgary,CA,DEGREE,UG,Management,,,,,,,,,,,,,,DRAFT
-Accounting,SAIT,Calgary,CA,DEGREE,UG_DIPLOMA,Accounting,,,,,,,,,,,,,,DRAFT
-Bachelor of Hospitality and Tourism Management,SAIT,Calgary,CA,DEGREE,UG,Hospitality,,,,,,,,,,,,,,DRAFT
-Data Analytics,SAIT,Calgary,CA,DEGREE,UG_DIPLOMA,Data Science,,,,,,,,,,,,,,DRAFT
-Architectural Technologies,SAIT,Calgary,CA,DEGREE,UG_DIPLOMA,Engineering,,,,,,,,,,,,,,DRAFT
-Computer Engineering Technology,NAIT,Edmonton,CA,DEGREE,UG_DIPLOMA,Computer Science,24,,,,,,,,,,,,,DRAFT
-Business Administration - Accounting,St. Clair College,Windsor,CA,DEGREE,UG_DIPLOMA,Accounting,,,125,,,,,,,,,,,DRAFT
-Data Analytics,St. Clair College,Windsor,CA,DEGREE,UG_DIPLOMA,Data Science,,,125,,,,,,,,,,,DRAFT
-Data Analytics for Business,St. Clair College,Windsor,CA,DEGREE,PG_DIPLOMA,Business Analytics,24,,125,,9,,,,,,,,,DRAFT
-Computer Programming,St. Clair College,Windsor,CA,DEGREE,UG_DIPLOMA,Computer Science,,,125,,,,,,,,,,,DRAFT
-Cybersecurity,St. Clair College,Windsor,CA,DEGREE,UG_DIPLOMA,Computer Science,,,125,,,,,,,,,,,DRAFT
-Supply Chain Management,St. Clair College,Windsor,CA,DEGREE,UG_DIPLOMA,Supply Chain and Logistics,,,125,,,,,,,,,,,DRAFT
-International Business Management - Logistics Systems,St. Clair College,Windsor,CA,DEGREE,UG,Supply Chain and Logistics,,,125,,,,,,,,,,,DRAFT
-Practical Nursing,St. Clair College,Windsor,CA,NURSING,UG_DIPLOMA,Nursing,,,125,,,,,,,,,,,DRAFT
-"Artificial Intelligence - Architecture, Design, and Implementation",Georgian College,Barrie,CA,DEGREE,PG_DIPLOMA,Artificial Intelligence,,,100,2500,,,,,,,,,,DRAFT
-Computer Programming,Georgian College,Barrie,CA,DEGREE,UG_DIPLOMA,Computer Science,,,100,2500,,,,,,,,,,DRAFT
-Project Management - Information Technology,Georgian College,Barrie,CA,DEGREE,PG_DIPLOMA,Project Management,,,100,2500,,,,,,,,,,DRAFT
-Human Resources Management,Georgian College,Barrie,CA,DEGREE,PG_DIPLOMA,Management,,,100,2500,,,,,,,,,,DRAFT
-Hospitality - Hotel and Resort Operations Management,Georgian College,Barrie,CA,DEGREE,UG_DIPLOMA,Hospitality,,,100,2500,,,,,,,,,,DRAFT
-Early Childhood Education,Georgian College,Barrie,CA,DEGREE,UG_DIPLOMA,Early Childhood Education,,,100,2500,,,,,,,,,,DRAFT
-Honours Bachelor of Science - Nursing,Georgian College,Barrie,CA,NURSING,UG,Nursing,,,100,2500,,,,,,,,,,DRAFT
-Business,Georgian College (Georgian@ILAC Toronto),Toronto,CA,DEGREE,UG_DIPLOMA,Management; PGWP-ineligible,,,100,2500,,,,,,,,,,DRAFT
-Global Business Management,Georgian College (Georgian@ILAC Toronto),Toronto,CA,DEGREE,PG_DIPLOMA,Management; PGWP-ineligible,,,100,2500,,,,,,,,,,DRAFT
-Project Management,Georgian College (Georgian@ILAC Toronto),Toronto,CA,DEGREE,PG_DIPLOMA,Project Management; PGWP-ineligible,,,100,2500,,,,,,,,,,DRAFT
-Human Resources Management,Georgian College (Georgian@ILAC Toronto),Toronto,CA,DEGREE,PG_DIPLOMA,Management; PGWP-ineligible,,,100,2500,,,,,,,,,,DRAFT
-Business - Accounting,Loyalist College,Belleville,CA,DEGREE,UG_DIPLOMA,Accounting,,,,,,,,,,,,,,DRAFT
-Child and Youth Care,Loyalist College,Belleville,CA,DEGREE,UG_DIPLOMA,Early Childhood Education,,,,,,,,,,,,,,DRAFT
-Biotechnology,Loyalist College,Belleville,CA,DEGREE,UG_DIPLOMA,Science,,,,,,,,,,,,,,DRAFT
-Civil Engineering Technician,Loyalist College,Belleville,CA,DEGREE,UG_DIPLOMA,Engineering,,,,,,,,,,,,,,DRAFT
+program,university,city,country_code,pathway,level,study_area,duration_months,tuition_per_year,application_fee,initial_deposit,intakes,min_ielts,min_pte,min_oet_grade,min_german_level,max_backlogs,max_gap_years,moi_accepted,work_rights,work_rights_note,required_docs,status
+"Artificial Intelligence Analysis, Design and Implementation",Durham College,Oshawa,CA,DEGREE,PG_DIPLOMA,Artificial Intelligence,8,15572,,,9|1|5,,,,,,,,UNKNOWN,,,DRAFT
+Project Management,Durham College,Oshawa,CA,DEGREE,PG_DIPLOMA,Project Management,8,16347,,,9|1|5,,,,,,,,UNKNOWN,,,DRAFT
+Cybersecurity,Durham College,Oshawa,CA,DEGREE,PG_DIPLOMA,Computer Science,8,15489,,,9|1|5,,,,,,,,UNKNOWN,,,DRAFT
+Computer Programming and Analysis,Durham College,Oshawa,CA,DEGREE,UG_DIPLOMA,Computer Science,36,15489,,,9|1|5,,,,,,,,UNKNOWN,,,DRAFT
+Human Resources Management,Durham College,Oshawa,CA,DEGREE,PG_DIPLOMA,Management,8,16337,,,9,,,,,,,,UNKNOWN,,,DRAFT
+Computer Systems Technology,Durham College,Oshawa,CA,DEGREE,UG_DIPLOMA,Computer Science,36,15489,,,9|1|5,,,,,,,,UNKNOWN,,,DRAFT
+Early Childhood Education,Durham College,Oshawa,CA,DEGREE,UG_DIPLOMA,Early Childhood Education,24,15489,,,1|5|9,,,,,,,,UNKNOWN,,,DRAFT
+Bachelor of Business Administration (Human Resources Management),Durham College,Oshawa,CA,DEGREE,UG,Management,36,18934,,,9|1|5,,,,,,,,UNKNOWN,,,DRAFT
+Applied Data Analytics,Durham College,Oshawa,CA,DEGREE,PG_DIPLOMA,Data Science,8,,,,1|9|5,,,,,,,,UNKNOWN,,,DRAFT
+Supply Chain Management - Global,Durham College,Oshawa,CA,DEGREE,PG_DIPLOMA,Supply Chain and Logistics,8,,,,1|9|5,,,,,,,,UNKNOWN,,,DRAFT
+Applied Data Science and Artificial Intelligence,RRC Polytech,Winnipeg,CA,DEGREE,UG_DIPLOMA,Data Science,24,23865,,,1,,,,,,,,UNKNOWN,,,DRAFT
+Cybersecurity,RRC Polytech,Winnipeg,CA,DEGREE,UG_DIPLOMA,Computer Science,24,22614,,,1|9,,,,,,,,UNKNOWN,,,DRAFT
+Application Development and Delivery,RRC Polytech,Winnipeg,CA,DEGREE,UG_DIPLOMA,Computer Science,24,19619,,,1,,,,,,,,UNKNOWN,,,DRAFT
+IT Operations,RRC Polytech,Winnipeg,CA,DEGREE,UG_DIPLOMA,Computer Science,24,23865,,,9,,,,,,,,UNKNOWN,,,DRAFT
+Network and Systems Administrator,RRC Polytech,Winnipeg,CA,DEGREE,UG_DIPLOMA,Computer Science,24,30393,,,5|9,,,,,,,,UNKNOWN,,,DRAFT
+Civil Engineering Technology,RRC Polytech,Winnipeg,CA,DEGREE,UG_DIPLOMA,Engineering,30,21595,,,9,,,,,,,,UNKNOWN,,,DRAFT
+International Business,RRC Polytech,Winnipeg,CA,DEGREE,UG_DIPLOMA,Management,,19929,,,,,,,,,,,UNKNOWN,,,DRAFT
+"Business, Accounting and Management",RRC Polytech,Winnipeg,CA,DEGREE,UG_DIPLOMA,Accounting,,17739,,,,,,,,,,,UNKNOWN,,,DRAFT
+Computer Systems Technology - Software Development and Network Engineering,Sheridan College,Oakville,CA,DEGREE,UG_DIPLOMA,Computer Science,36,19700,,,,,,,,,,,UNKNOWN,,,DRAFT
+Project Management,Sheridan College,Oakville,CA,DEGREE,PG_DIPLOMA,Project Management,12,18172,,,,,,,,,,,UNKNOWN,,,DRAFT
+Applied Data Analytics and Visualization,Sheridan College,Oakville,CA,DEGREE,PG_DIPLOMA,Data Science,12,19767,,,9|1|5,,,,,,,,UNKNOWN,,,DRAFT
+Business Analysis and Process Management,Sheridan College,Oakville,CA,DEGREE,PG_DIPLOMA,Business Analytics,12,,,,,,,,,,,,UNKNOWN,,,DRAFT
+International Business Management,Sheridan College,Oakville,CA,DEGREE,PG_DIPLOMA,Management,8,,,,,,,,,,,,UNKNOWN,,,DRAFT
+Supply Chain Management,Mohawk College,Hamilton,CA,DEGREE,PG_DIPLOMA,Supply Chain and Logistics,8,20275,100,,5|9|1,6.5,,,,,,,UNKNOWN,,,DRAFT
+Computer Science,Brock University,St. Catharines,CA,DEGREE,UG,Computer Science,48,41646,,,,,,,,,,,UNKNOWN,,,DRAFT
+Business Administration,Brock University,St. Catharines,CA,DEGREE,UG,Management,48,41646,,,,,,,,,,,UNKNOWN,,,DRAFT
+Sport Management,Brock University,St. Catharines,CA,DEGREE,UG,Management,48,41646,,,,,,,,,,,UNKNOWN,,,DRAFT
+Cybersecurity,Niagara College,Welland,CA,DEGREE,PG_DIPLOMA,Computer Science,12,21766,,,,,,,,,,,UNKNOWN,,,DRAFT
+Data Analytics,Niagara College,Welland,CA,DEGREE,PG_DIPLOMA,Data Science,8,21486,,,9|1,,,,,,,,UNKNOWN,,,DRAFT
+Business - International Business,Niagara College,Welland,CA,DEGREE,UG_DIPLOMA,Management,24,,,,,,,,,,,,UNKNOWN,,,DRAFT
+Supply Chain Management (Mississauga Campus - International),Mohawk College,Mississauga,CA,DEGREE,PG_DIPLOMA,Supply Chain and Logistics,8,18415,100,,,6.5,,,,,,,UNKNOWN,,,DRAFT
+Big Data Analytics,Georgian College,Barrie,CA,DEGREE,PG_DIPLOMA,Data Science,12,,100,2500,9,,,,,,,,UNKNOWN,,,DRAFT
+Artificial Intelligence and Data Science,Loyalist College,Belleville,CA,DEGREE,PG_DIPLOMA,Artificial Intelligence,8,,,,9,,,,,,,,UNKNOWN,,,DRAFT
+Accounting,Vancouver Community College,Vancouver,CA,DEGREE,UG_DIPLOMA,Accounting,,,,,,,,,,,,,UNKNOWN,,,DRAFT
+Associate of Science (Computer Science),Vancouver Community College,Vancouver,CA,DEGREE,UG_DIPLOMA,Computer Science,,,,,,,,,,,,,UNKNOWN,,,DRAFT
+Associate of Science (Data Science),Vancouver Community College,Vancouver,CA,DEGREE,UG_DIPLOMA,Data Science,,,,,,,,,,,,,UNKNOWN,,,DRAFT
+Access to Practical Nursing,Vancouver Community College,Vancouver,CA,NURSING,UG_DIPLOMA,Nursing,,,,,,,,,,,,,UNKNOWN,,,DRAFT
+Software Development,SAIT,Calgary,CA,DEGREE,UG_DIPLOMA,Computer Science,24,,,,,,,,,,,,UNKNOWN,,,DRAFT
+Bachelor of Business Administration,SAIT,Calgary,CA,DEGREE,UG,Management,,,,,,,,,,,,,UNKNOWN,,,DRAFT
+Accounting,SAIT,Calgary,CA,DEGREE,UG_DIPLOMA,Accounting,,,,,,,,,,,,,UNKNOWN,,,DRAFT
+Bachelor of Hospitality and Tourism Management,SAIT,Calgary,CA,DEGREE,UG,Hospitality,,,,,,,,,,,,,UNKNOWN,,,DRAFT
+Data Analytics,SAIT,Calgary,CA,DEGREE,UG_DIPLOMA,Data Science,,,,,,,,,,,,,UNKNOWN,,,DRAFT
+Architectural Technologies,SAIT,Calgary,CA,DEGREE,UG_DIPLOMA,Engineering,,,,,,,,,,,,,UNKNOWN,,,DRAFT
+Computer Engineering Technology,NAIT,Edmonton,CA,DEGREE,UG_DIPLOMA,Computer Science,24,,,,,,,,,,,,UNKNOWN,,,DRAFT
+Business Administration - Accounting,St. Clair College,Windsor,CA,DEGREE,UG_DIPLOMA,Accounting,,,125,,,,,,,,,,UNKNOWN,,,DRAFT
+Data Analytics,St. Clair College,Windsor,CA,DEGREE,UG_DIPLOMA,Data Science,,,125,,,,,,,,,,UNKNOWN,,,DRAFT
+Data Analytics for Business,St. Clair College,Windsor,CA,DEGREE,PG_DIPLOMA,Business Analytics,24,,125,,9,,,,,,,,UNKNOWN,,,DRAFT
+Computer Programming,St. Clair College,Windsor,CA,DEGREE,UG_DIPLOMA,Computer Science,,,125,,,,,,,,,,UNKNOWN,,,DRAFT
+Cybersecurity,St. Clair College,Windsor,CA,DEGREE,UG_DIPLOMA,Computer Science,,,125,,,,,,,,,,UNKNOWN,,,DRAFT
+Supply Chain Management,St. Clair College,Windsor,CA,DEGREE,UG_DIPLOMA,Supply Chain and Logistics,,,125,,,,,,,,,,UNKNOWN,,,DRAFT
+International Business Management - Logistics Systems,St. Clair College,Windsor,CA,DEGREE,UG,Supply Chain and Logistics,,,125,,,,,,,,,,UNKNOWN,,,DRAFT
+Practical Nursing,St. Clair College,Windsor,CA,NURSING,UG_DIPLOMA,Nursing,,,125,,,,,,,,,,UNKNOWN,,,DRAFT
+"Artificial Intelligence - Architecture, Design, and Implementation",Georgian College,Barrie,CA,DEGREE,PG_DIPLOMA,Artificial Intelligence,,,100,2500,,,,,,,,,UNKNOWN,,,DRAFT
+Computer Programming,Georgian College,Barrie,CA,DEGREE,UG_DIPLOMA,Computer Science,,,100,2500,,,,,,,,,UNKNOWN,,,DRAFT
+Project Management - Information Technology,Georgian College,Barrie,CA,DEGREE,PG_DIPLOMA,Project Management,,,100,2500,,,,,,,,,UNKNOWN,,,DRAFT
+Human Resources Management,Georgian College,Barrie,CA,DEGREE,PG_DIPLOMA,Management,,,100,2500,,,,,,,,,UNKNOWN,,,DRAFT
+Hospitality - Hotel and Resort Operations Management,Georgian College,Barrie,CA,DEGREE,UG_DIPLOMA,Hospitality,,,100,2500,,,,,,,,,UNKNOWN,,,DRAFT
+Early Childhood Education,Georgian College,Barrie,CA,DEGREE,UG_DIPLOMA,Early Childhood Education,,,100,2500,,,,,,,,,UNKNOWN,,,DRAFT
+Honours Bachelor of Science - Nursing,Georgian College,Barrie,CA,NURSING,UG,Nursing,,,100,2500,,,,,,,,,UNKNOWN,,,DRAFT
+Business,Georgian College (Georgian@ILAC Toronto),Toronto,CA,DEGREE,UG_DIPLOMA,Management,,,100,2500,,,,,,,,,INELIGIBLE,PGWP-ineligible,,DRAFT
+Global Business Management,Georgian College (Georgian@ILAC Toronto),Toronto,CA,DEGREE,PG_DIPLOMA,Management,,,100,2500,,,,,,,,,INELIGIBLE,PGWP-ineligible,,DRAFT
+Project Management,Georgian College (Georgian@ILAC Toronto),Toronto,CA,DEGREE,PG_DIPLOMA,Project Management,,,100,2500,,,,,,,,,INELIGIBLE,PGWP-ineligible,,DRAFT
+Human Resources Management,Georgian College (Georgian@ILAC Toronto),Toronto,CA,DEGREE,PG_DIPLOMA,Management,,,100,2500,,,,,,,,,INELIGIBLE,PGWP-ineligible,,DRAFT
+Business - Accounting,Loyalist College,Belleville,CA,DEGREE,UG_DIPLOMA,Accounting,,,,,,,,,,,,,UNKNOWN,,,DRAFT
+Child and Youth Care,Loyalist College,Belleville,CA,DEGREE,UG_DIPLOMA,Early Childhood Education,,,,,,,,,,,,,UNKNOWN,,,DRAFT
+Biotechnology,Loyalist College,Belleville,CA,DEGREE,UG_DIPLOMA,Science,,,,,,,,,,,,,UNKNOWN,,,DRAFT
+Civil Engineering Technician,Loyalist College,Belleville,CA,DEGREE,UG_DIPLOMA,Engineering,,,,,,,,,,,,,UNKNOWN,,,DRAFT

@@ -1,61 +1,61 @@
-program,university,city,country_code,pathway,level,study_area,duration_months,tuition_per_year,application_fee,initial_deposit,intakes,min_ielts,min_pte,min_oet_grade,min_german_level,max_backlogs,max_gap_years,moi_accepted,required_docs,status
-Graduate Diploma in Computing,Unitec Institute of Technology,Auckland,NZ,DEGREE,UG_DIPLOMA,Computing,12,27207,,,2|7,5.5,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE,DRAFT
-Postgraduate Diploma of Applied Technologies-Computing,Unitec Institute of Technology,Auckland,NZ,DEGREE,PG_DIPLOMA,Computing,12,31327,,,2|7,6.5,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE,DRAFT
-Master of Applied Technologies-Computing,Unitec Institute of Technology,Auckland,NZ,DEGREE,PG,Computing,18,31327,,,2|7,6.5,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE,DRAFT
-Bachelor of Computing Systems,Unitec Institute of Technology,Auckland,NZ,DEGREE,UG,Computing,36,27207,,,,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE,DRAFT
-Bachelor of Construction,Unitec Institute of Technology,Auckland,NZ,DEGREE,UG,Construction,36,27207,,,,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE,DRAFT
-New Zealand Diploma in Construction,Unitec Institute of Technology,Auckland,NZ,DEGREE,UG_DIPLOMA,Construction,,27207,,,,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE,DRAFT
-Bachelor of Applied Technology (Automotive Engineering),Unitec Institute of Technology,Auckland,NZ,DEGREE,UG,Automotive Engineering,36,27207,,,,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE,DRAFT
-Bachelor of Nursing,Unitec Institute of Technology,Auckland,NZ,NURSING,UG,Nursing,36,31983,,,2|7,6.5,,C+,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE,DRAFT
-Bachelor of Teaching (Early Childhood Education),Unitec Institute of Technology,Auckland,NZ,DEGREE,UG,Early Childhood Education,36,27207,,,,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE,DRAFT
-Master of Information Technology,Southern Institute of Technology,Invercargill,NZ,DEGREE,PG,Information Technology,18,31500,,,2|7,6.5,,,,,,,PASSPORT|DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-Master of Applied Management,Southern Institute of Technology,Invercargill,NZ,DEGREE,PG,Management,,31500,,,,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-Master of Applied Health Sciences (Wellness and Rehabilitation),Southern Institute of Technology,Invercargill,NZ,DEGREE,PG,Health Science,,31500,,,,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-Graduate Diploma in Information Technology,Southern Institute of Technology,Invercargill,NZ,DEGREE,UG_DIPLOMA,Information Technology,12,,,,2|7,6.0,,,,,,,PASSPORT|DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-Bachelor of Nursing,Southern Institute of Technology,Invercargill,NZ,NURSING,UG,Nursing,36,26000,,,2,6.5,,C+,,,,,PASSPORT|DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-Bachelor of Engineering Technology,Southern Institute of Technology,Invercargill,NZ,DEGREE,UG,Engineering,,19500,,,,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-Bachelor of Information Technology,Southern Institute of Technology,Invercargill,NZ,DEGREE,UG,Information Technology,,19000,,,,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-Bachelor of Hotel Management,Southern Institute of Technology,Invercargill,NZ,DEGREE,UG,Hospitality Management,,19000,,,,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-New Zealand Diploma in Enrolled Nursing,Southern Institute of Technology,Invercargill,NZ,NURSING,UG_DIPLOMA,Nursing,,29000,,,,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-New Zealand Diploma in Engineering (Civil),Southern Institute of Technology,Invercargill,NZ,DEGREE,UG_DIPLOMA,Civil Engineering,,19500,,,,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-New Zealand Diploma in Hospitality Management,Southern Institute of Technology,Invercargill,NZ,DEGREE,UG_DIPLOMA,Hospitality Management,,19000,,,,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-Diploma in Culinary Excellence,Southern Institute of Technology,Invercargill,NZ,DEGREE,UG_DIPLOMA,Culinary Arts,,19000,,,,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-New Zealand Diploma in Veterinary Nursing (Companion Animals),Southern Institute of Technology,Invercargill,NZ,DEGREE,UG_DIPLOMA,Veterinary Nursing,,23500,,,,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-Master of Management,Toi Ohomai Institute of Technology,Rotorua,NZ,DEGREE,PG,Management,12,,,,2|7|11,6.5,,,,,,,,DRAFT
-Postgraduate Diploma in Management (Business),Toi Ohomai Institute of Technology,Rotorua,NZ,DEGREE,PG_DIPLOMA,Management,,25740,,,,,,,,,,,,DRAFT
-Bachelor of Applied Information Technology,Toi Ohomai Institute of Technology,Tauranga,NZ,DEGREE,UG,Information Technology,36,25560,,,2|7,6.0,,,,,,,,DRAFT
-Bachelor of Nursing,Toi Ohomai Institute of Technology,Rotorua,NZ,NURSING,UG,Nursing,36,30600,,,,,,,,,,,,DRAFT
-Bachelor of Teaching Early Childhood Education,Toi Ohomai Institute of Technology,Rotorua,NZ,DEGREE,UG,Early Childhood Education,36,27360,,,,,,,,,,,,DRAFT
-New Zealand Diploma in Construction (Construction Management),Toi Ohomai Institute of Technology,Rotorua,NZ,DEGREE,UG_DIPLOMA,Construction Management,,27360,,,,,,,,,,,,DRAFT
-New Zealand Diploma in Construction (Quantity Surveying),Toi Ohomai Institute of Technology,Rotorua,NZ,DEGREE,UG_DIPLOMA,Quantity Surveying,,27360,,,,,,,,,,,,DRAFT
-New Zealand Diploma in Engineering (Civil),Toi Ohomai Institute of Technology,Rotorua,NZ,DEGREE,UG_DIPLOMA,Civil Engineering,,30720,,,,,,,,,,,,DRAFT
-New Zealand Diploma in Engineering (Electrical),Toi Ohomai Institute of Technology,Rotorua,NZ,DEGREE,UG_DIPLOMA,Electrical Engineering,,30720,,,,,,,,,,,,DRAFT
-New Zealand Diploma in Engineering (Mechanical),Toi Ohomai Institute of Technology,Rotorua,NZ,DEGREE,UG_DIPLOMA,Mechanical Engineering,,30720,,,,,,,,,,,,DRAFT
-New Zealand Diploma in Early Childhood Education and Care,Toi Ohomai Institute of Technology,Rotorua,NZ,DEGREE,UG_DIPLOMA,Early Childhood Education,,27360,,,,,,,,,,,,DRAFT
-New Zealand Diploma in Enrolled Nursing,Toi Ohomai Institute of Technology,Rotorua,NZ,NURSING,UG_DIPLOMA,Nursing,,27540,,,,,,,,,,,,DRAFT
-New Zealand Diploma in Hospitality Management,Toi Ohomai Institute of Technology,Rotorua,NZ,DEGREE,UG_DIPLOMA,Hospitality Management,,26520,,,,,,,,,,,,DRAFT
-New Zealand Certificate in Cookery,Toi Ohomai Institute of Technology,Rotorua,NZ,DEGREE,VOCATIONAL,Culinary Arts,,27360,,,,,,,,,,,,DRAFT
-New Zealand Certificate in Automotive Engineering,Toi Ohomai Institute of Technology,Rotorua,NZ,DEGREE,VOCATIONAL,Automotive Engineering,,27360,,,,,,,,,,,,DRAFT
-New Zealand Certificate in Construction Trade Skills (Carpentry),Toi Ohomai Institute of Technology,Rotorua,NZ,DEGREE,VOCATIONAL,Construction,,27360,,,,,,,,,,,,DRAFT
-New Zealand Certificate in Health and Wellbeing (Advanced Care and Support),Toi Ohomai Institute of Technology,Rotorua,NZ,DEGREE,VOCATIONAL,Aged Care,,27360,,,,,,,,,,,,DRAFT
-Graduate Diploma in Information and Communication Technologies,Ara Institute of Canterbury,Christchurch,NZ,DEGREE,UG_DIPLOMA,Information Technology,12,26572,,,2|7,6.0,,,,,,,,DRAFT
-New Zealand Diploma in Enrolled Nursing,Ara Institute of Canterbury,Christchurch,NZ,NURSING,UG_DIPLOMA,Nursing,18,,,,3,6.5,,C+,,,,,,DRAFT
-Master of Information Technology,Eastern Institute of Technology,Napier,NZ,DEGREE,PG,Information Technology,18,,,,2|4|7|10,6.5,58,,,,,,,DRAFT
-Postgraduate Diploma in Information Technology,Eastern Institute of Technology,Napier,NZ,DEGREE,PG_DIPLOMA,Information Technology,12,28000,,,2|4|7|10,6.5,58,,,,,,,DRAFT
-Master of Applied Management,Eastern Institute of Technology,Napier,NZ,DEGREE,PG,Management,,,,,,,,,,,,,,DRAFT
-Master of Digital Business,Eastern Institute of Technology,Napier,NZ,DEGREE,PG,Digital Business,,,,,,,,,,,,,,DRAFT
-Master of Logistics and Supply Chain Management,Eastern Institute of Technology,Napier,NZ,DEGREE,PG,Supply Chain Management,,,,,,,,,,,,,,DRAFT
-Master of Nursing Science,Eastern Institute of Technology,Napier,NZ,DEGREE,PG,Nursing,,,,,2|7,,,,,,,,,DRAFT
-Graduate Diploma in Applied Information Technology,Waikato Institute of Technology,Hamilton,NZ,DEGREE,UG_DIPLOMA,Information Technology,12,,,,2|7,6.0,,,,,,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-Postgraduate Diploma in Applied Information Technology,Waikato Institute of Technology,Hamilton,NZ,DEGREE,PG_DIPLOMA,Information Technology,,,,,,6.5,,,,,,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-Postgraduate Diploma in Applied Informatics,Waikato Institute of Technology,Hamilton,NZ,DEGREE,PG_DIPLOMA,Informatics,,,,,,6.5,,,,,,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-Master of Applied Information Technology,Waikato Institute of Technology,Hamilton,NZ,DEGREE,PG,Information Technology,,,,,,6.5,,,,,,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-Master of Applied Management,Waikato Institute of Technology,Hamilton,NZ,DEGREE,PG,Management,,,,,,6.5,,,,,,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-Graduate Diploma in Engineering Technology,Waikato Institute of Technology,Hamilton,NZ,DEGREE,UG_DIPLOMA,Engineering,,,,,,6.0,,,,,,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-Graduate Diploma in Supply Chain Logistics,Waikato Institute of Technology,Hamilton,NZ,DEGREE,UG_DIPLOMA,Supply Chain Management,,,,,,6.0,,,,,,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-Master of Nursing Science (Pre-registration),Waikato Institute of Technology,Hamilton,NZ,NURSING,PG,Nursing,,,,,,6.5,,,,,,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-Postgraduate Diploma in Nursing,Waikato Institute of Technology,Hamilton,NZ,DEGREE,PG_DIPLOMA,Nursing,,,,,,6.5,,,,,,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-Master of Information Technology,Universal College of Learning,Palmerston North,NZ,DEGREE,PG,Information Technology,18,,,,,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST,DRAFT
-Postgraduate Diploma in Information Technology,Universal College of Learning,Palmerston North,NZ,DEGREE,PG_DIPLOMA,Information Technology,12,,,,,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST,DRAFT
-Bachelor of Information and Communications Technology,Universal College of Learning,Palmerston North,NZ,DEGREE,UG,Information Technology,36,,,,,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST,DRAFT
-New Zealand Diploma in Information Technology Technical Support,Universal College of Learning,Palmerston North,NZ,DEGREE,UG_DIPLOMA,Information Technology,12,,,,,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST,DRAFT
+program,university,city,country_code,pathway,level,study_area,duration_months,tuition_per_year,application_fee,initial_deposit,intakes,min_ielts,min_pte,min_oet_grade,min_german_level,max_backlogs,max_gap_years,moi_accepted,work_rights,work_rights_note,required_docs,status
+Graduate Diploma in Computing,Unitec Institute of Technology,Auckland,NZ,DEGREE,UG_DIPLOMA,Computing,12,27207,,,2|7,5.5,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE,DRAFT
+Postgraduate Diploma of Applied Technologies-Computing,Unitec Institute of Technology,Auckland,NZ,DEGREE,PG_DIPLOMA,Computing,12,31327,,,2|7,6.5,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE,DRAFT
+Master of Applied Technologies-Computing,Unitec Institute of Technology,Auckland,NZ,DEGREE,PG,Computing,18,31327,,,2|7,6.5,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE,DRAFT
+Bachelor of Computing Systems,Unitec Institute of Technology,Auckland,NZ,DEGREE,UG,Computing,36,27207,,,,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE,DRAFT
+Bachelor of Construction,Unitec Institute of Technology,Auckland,NZ,DEGREE,UG,Construction,36,27207,,,,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE,DRAFT
+New Zealand Diploma in Construction,Unitec Institute of Technology,Auckland,NZ,DEGREE,UG_DIPLOMA,Construction,,27207,,,,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE,DRAFT
+Bachelor of Applied Technology (Automotive Engineering),Unitec Institute of Technology,Auckland,NZ,DEGREE,UG,Automotive Engineering,36,27207,,,,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE,DRAFT
+Bachelor of Nursing,Unitec Institute of Technology,Auckland,NZ,NURSING,UG,Nursing,36,31983,,,2|7,6.5,,C+,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE,DRAFT
+Bachelor of Teaching (Early Childhood Education),Unitec Institute of Technology,Auckland,NZ,DEGREE,UG,Early Childhood Education,36,27207,,,,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE,DRAFT
+Master of Information Technology,Southern Institute of Technology,Invercargill,NZ,DEGREE,PG,Information Technology,18,31500,,,2|7,6.5,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+Master of Applied Management,Southern Institute of Technology,Invercargill,NZ,DEGREE,PG,Management,,31500,,,,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+Master of Applied Health Sciences (Wellness and Rehabilitation),Southern Institute of Technology,Invercargill,NZ,DEGREE,PG,Health Science,,31500,,,,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+Graduate Diploma in Information Technology,Southern Institute of Technology,Invercargill,NZ,DEGREE,UG_DIPLOMA,Information Technology,12,,,,2|7,6.0,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+Bachelor of Nursing,Southern Institute of Technology,Invercargill,NZ,NURSING,UG,Nursing,36,26000,,,2,6.5,,C+,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+Bachelor of Engineering Technology,Southern Institute of Technology,Invercargill,NZ,DEGREE,UG,Engineering,,19500,,,,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+Bachelor of Information Technology,Southern Institute of Technology,Invercargill,NZ,DEGREE,UG,Information Technology,,19000,,,,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+Bachelor of Hotel Management,Southern Institute of Technology,Invercargill,NZ,DEGREE,UG,Hospitality Management,,19000,,,,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+New Zealand Diploma in Enrolled Nursing,Southern Institute of Technology,Invercargill,NZ,NURSING,UG_DIPLOMA,Nursing,,29000,,,,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+New Zealand Diploma in Engineering (Civil),Southern Institute of Technology,Invercargill,NZ,DEGREE,UG_DIPLOMA,Civil Engineering,,19500,,,,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+New Zealand Diploma in Hospitality Management,Southern Institute of Technology,Invercargill,NZ,DEGREE,UG_DIPLOMA,Hospitality Management,,19000,,,,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+Diploma in Culinary Excellence,Southern Institute of Technology,Invercargill,NZ,DEGREE,UG_DIPLOMA,Culinary Arts,,19000,,,,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+New Zealand Diploma in Veterinary Nursing (Companion Animals),Southern Institute of Technology,Invercargill,NZ,DEGREE,UG_DIPLOMA,Veterinary Nursing,,23500,,,,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+Master of Management,Toi Ohomai Institute of Technology,Rotorua,NZ,DEGREE,PG,Management,12,,,,2|7|11,6.5,,,,,,,UNKNOWN,,,DRAFT
+Postgraduate Diploma in Management (Business),Toi Ohomai Institute of Technology,Rotorua,NZ,DEGREE,PG_DIPLOMA,Management,,25740,,,,,,,,,,,UNKNOWN,,,DRAFT
+Bachelor of Applied Information Technology,Toi Ohomai Institute of Technology,Tauranga,NZ,DEGREE,UG,Information Technology,36,25560,,,2|7,6.0,,,,,,,UNKNOWN,,,DRAFT
+Bachelor of Nursing,Toi Ohomai Institute of Technology,Rotorua,NZ,NURSING,UG,Nursing,36,30600,,,,,,,,,,,UNKNOWN,,,DRAFT
+Bachelor of Teaching Early Childhood Education,Toi Ohomai Institute of Technology,Rotorua,NZ,DEGREE,UG,Early Childhood Education,36,27360,,,,,,,,,,,UNKNOWN,,,DRAFT
+New Zealand Diploma in Construction (Construction Management),Toi Ohomai Institute of Technology,Rotorua,NZ,DEGREE,UG_DIPLOMA,Construction Management,,27360,,,,,,,,,,,UNKNOWN,,,DRAFT
+New Zealand Diploma in Construction (Quantity Surveying),Toi Ohomai Institute of Technology,Rotorua,NZ,DEGREE,UG_DIPLOMA,Quantity Surveying,,27360,,,,,,,,,,,UNKNOWN,,,DRAFT
+New Zealand Diploma in Engineering (Civil),Toi Ohomai Institute of Technology,Rotorua,NZ,DEGREE,UG_DIPLOMA,Civil Engineering,,30720,,,,,,,,,,,UNKNOWN,,,DRAFT
+New Zealand Diploma in Engineering (Electrical),Toi Ohomai Institute of Technology,Rotorua,NZ,DEGREE,UG_DIPLOMA,Electrical Engineering,,30720,,,,,,,,,,,UNKNOWN,,,DRAFT
+New Zealand Diploma in Engineering (Mechanical),Toi Ohomai Institute of Technology,Rotorua,NZ,DEGREE,UG_DIPLOMA,Mechanical Engineering,,30720,,,,,,,,,,,UNKNOWN,,,DRAFT
+New Zealand Diploma in Early Childhood Education and Care,Toi Ohomai Institute of Technology,Rotorua,NZ,DEGREE,UG_DIPLOMA,Early Childhood Education,,27360,,,,,,,,,,,UNKNOWN,,,DRAFT
+New Zealand Diploma in Enrolled Nursing,Toi Ohomai Institute of Technology,Rotorua,NZ,NURSING,UG_DIPLOMA,Nursing,,27540,,,,,,,,,,,UNKNOWN,,,DRAFT
+New Zealand Diploma in Hospitality Management,Toi Ohomai Institute of Technology,Rotorua,NZ,DEGREE,UG_DIPLOMA,Hospitality Management,,26520,,,,,,,,,,,UNKNOWN,,,DRAFT
+New Zealand Certificate in Cookery,Toi Ohomai Institute of Technology,Rotorua,NZ,DEGREE,VOCATIONAL,Culinary Arts,,27360,,,,,,,,,,,UNKNOWN,,,DRAFT
+New Zealand Certificate in Automotive Engineering,Toi Ohomai Institute of Technology,Rotorua,NZ,DEGREE,VOCATIONAL,Automotive Engineering,,27360,,,,,,,,,,,UNKNOWN,,,DRAFT
+New Zealand Certificate in Construction Trade Skills (Carpentry),Toi Ohomai Institute of Technology,Rotorua,NZ,DEGREE,VOCATIONAL,Construction,,27360,,,,,,,,,,,UNKNOWN,,,DRAFT
+New Zealand Certificate in Health and Wellbeing (Advanced Care and Support),Toi Ohomai Institute of Technology,Rotorua,NZ,DEGREE,VOCATIONAL,Aged Care,,27360,,,,,,,,,,,UNKNOWN,,,DRAFT
+Graduate Diploma in Information and Communication Technologies,Ara Institute of Canterbury,Christchurch,NZ,DEGREE,UG_DIPLOMA,Information Technology,12,26572,,,2|7,6.0,,,,,,,UNKNOWN,,,DRAFT
+New Zealand Diploma in Enrolled Nursing,Ara Institute of Canterbury,Christchurch,NZ,NURSING,UG_DIPLOMA,Nursing,18,,,,3,6.5,,C+,,,,,UNKNOWN,,,DRAFT
+Master of Information Technology,Eastern Institute of Technology,Napier,NZ,DEGREE,PG,Information Technology,18,,,,2|4|7|10,6.5,58,,,,,,UNKNOWN,,,DRAFT
+Postgraduate Diploma in Information Technology,Eastern Institute of Technology,Napier,NZ,DEGREE,PG_DIPLOMA,Information Technology,12,28000,,,2|4|7|10,6.5,58,,,,,,UNKNOWN,,,DRAFT
+Master of Applied Management,Eastern Institute of Technology,Napier,NZ,DEGREE,PG,Management,,,,,,,,,,,,,UNKNOWN,,,DRAFT
+Master of Digital Business,Eastern Institute of Technology,Napier,NZ,DEGREE,PG,Digital Business,,,,,,,,,,,,,UNKNOWN,,,DRAFT
+Master of Logistics and Supply Chain Management,Eastern Institute of Technology,Napier,NZ,DEGREE,PG,Supply Chain Management,,,,,,,,,,,,,UNKNOWN,,,DRAFT
+Master of Nursing Science,Eastern Institute of Technology,Napier,NZ,DEGREE,PG,Nursing,,,,,2|7,,,,,,,,UNKNOWN,,,DRAFT
+Graduate Diploma in Applied Information Technology,Waikato Institute of Technology,Hamilton,NZ,DEGREE,UG_DIPLOMA,Information Technology,12,,,,2|7,6.0,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+Postgraduate Diploma in Applied Information Technology,Waikato Institute of Technology,Hamilton,NZ,DEGREE,PG_DIPLOMA,Information Technology,,,,,,6.5,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+Postgraduate Diploma in Applied Informatics,Waikato Institute of Technology,Hamilton,NZ,DEGREE,PG_DIPLOMA,Informatics,,,,,,6.5,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+Master of Applied Information Technology,Waikato Institute of Technology,Hamilton,NZ,DEGREE,PG,Information Technology,,,,,,6.5,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+Master of Applied Management,Waikato Institute of Technology,Hamilton,NZ,DEGREE,PG,Management,,,,,,6.5,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+Graduate Diploma in Engineering Technology,Waikato Institute of Technology,Hamilton,NZ,DEGREE,UG_DIPLOMA,Engineering,,,,,,6.0,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+Graduate Diploma in Supply Chain Logistics,Waikato Institute of Technology,Hamilton,NZ,DEGREE,UG_DIPLOMA,Supply Chain Management,,,,,,6.0,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+Master of Nursing Science (Pre-registration),Waikato Institute of Technology,Hamilton,NZ,NURSING,PG,Nursing,,,,,,6.5,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+Postgraduate Diploma in Nursing,Waikato Institute of Technology,Hamilton,NZ,DEGREE,PG_DIPLOMA,Nursing,,,,,,6.5,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+Master of Information Technology,Universal College of Learning,Palmerston North,NZ,DEGREE,PG,Information Technology,18,,,,,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST,DRAFT
+Postgraduate Diploma in Information Technology,Universal College of Learning,Palmerston North,NZ,DEGREE,PG_DIPLOMA,Information Technology,12,,,,,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST,DRAFT
+Bachelor of Information and Communications Technology,Universal College of Learning,Palmerston North,NZ,DEGREE,UG,Information Technology,36,,,,,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST,DRAFT
+New Zealand Diploma in Information Technology Technical Support,Universal College of Learning,Palmerston North,NZ,DEGREE,UG_DIPLOMA,Information Technology,12,,,,,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST,DRAFT

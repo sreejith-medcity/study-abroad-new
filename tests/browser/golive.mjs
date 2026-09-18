@@ -90,7 +90,7 @@ const settle = (page) => page.locator('[aria-busy="true"]').first().waitFor({ st
   // The catalogue and the library are not sample data and must survive.
   await page.goto(`${BASE}/admin/programs`);
   await settle(page);
-  /\d+ shown/.test(await page.locator("main").innerText()) ? ok("the program catalogue survived") : bad("the catalogue was removed");
+  /\d+ match/.test(await page.locator("main").innerText()) ? ok("the program catalogue survived") : bad("the catalogue was removed");
   await page.goto(`${BASE}/learning`);
   await settle(page);
   (await page.locator("main tbody tr, main li").count()) > 0 ? ok("the learning library survived") : bad("the library was removed");

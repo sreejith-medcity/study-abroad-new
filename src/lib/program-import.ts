@@ -4,12 +4,28 @@ import { MONTHS } from "./format";
 export const IMPORT_COLUMNS = [
   "program", "university", "city", "country_code", "pathway", "level", "study_area", "duration_months",
   "tuition_per_year", "application_fee", "initial_deposit", "intakes", "min_ielts", "min_pte", "min_oet_grade",
-  "min_german_level", "max_backlogs", "max_gap_years", "moi_accepted", "required_docs", "status",
+  "min_german_level", "max_backlogs", "max_gap_years", "moi_accepted", "work_rights", "work_rights_note",
+  "required_docs", "status",
 ] as const;
 
 const PATHWAYS = ["DEGREE", "AUSBILDUNG", "NURSING"] as const;
 const LEVELS = ["SCHOOL", "UG_DIPLOMA", "UG", "PG_DIPLOMA", "PG", "PHD", "VOCATIONAL", "REGISTRATION"] as const;
 const STATUSES = ["DRAFT", "LIVE", "ARCHIVED"] as const;
+const WORK_RIGHTS = ["UNKNOWN", "ELIGIBLE", "INELIGIBLE"] as const;
+
+/**
+ * Accepts what a researcher or a university actually writes, rather than making
+ * them learn three keywords. Anything unrecognised stays UNKNOWN, because on
+ * this column a wrong yes is far more expensive than a missing answer.
+ */
+function parseWorkRights(v: string | undefined) {
+  const t = (v ?? "").trim().toUpperCase().replace(/[\s-]+/g, "_");
+  if (!t) return "UNKNOWN" as const;
+  if (["ELIGIBLE", "YES", "TRUE", "Y", "1", "PGWP", "PGWP_ELIGIBLE", "STEM", "STEM_OPT", "STEM_OPT_ELIGIBLE", "GRADUATE_ROUTE"].includes(t)) return "ELIGIBLE" as const;
+  if (["INELIGIBLE", "NO", "FALSE", "N", "0", "NOT_ELIGIBLE", "PGWP_INELIGIBLE", "NOT_PGWP_ELIGIBLE"].includes(t)) return "INELIGIBLE" as const;
+  if (WORK_RIGHTS.includes(t as (typeof WORK_RIGHTS)[number])) return t as (typeof WORK_RIGHTS)[number];
+  return null;
+}
 
 export type ImportRow = {
   line: number;
@@ -32,6 +48,8 @@ export type ImportRow = {
   maxBacklogs: number | null;
   maxGapYears: number | null;
   moiAccepted: boolean;
+  workRights: (typeof WORK_RIGHTS)[number];
+  workRightsNote: string | null;
   requiredDocs: string[];
   status: (typeof STATUSES)[number];
 };
@@ -89,6 +107,8 @@ export function parseProgramCsv(text: string, validDocCodes: string[]): { rows: 
     if (badDocs.length) e.push(`unknown document codes: ${badDocs.join(", ")}`);
     const cefr = (r.min_german_level ?? "").trim().toUpperCase();
     if (cefr && !["A1", "A2", "B1", "B2", "C1", "C2"].includes(cefr)) e.push("min_german_level must be A1 to C2");
+    const workRights = parseWorkRights(r.work_rights);
+    if (workRights === null) e.push(`work_rights must be one of ${WORK_RIGHTS.join(", ")}`);
 
     const row: ImportRow = {
       line,
@@ -110,6 +130,8 @@ export function parseProgramCsv(text: string, validDocCodes: string[]): { rows: 
       maxBacklogs: num(r.max_backlogs, "max_backlogs", e, { int: true }),
       maxGapYears: num(r.max_gap_years, "max_gap_years", e, { int: true }),
       moiAccepted: ["yes", "true", "1", "y"].includes((r.moi_accepted ?? "").trim().toLowerCase()),
+      workRights: workRights ?? "UNKNOWN",
+      workRightsNote: r.work_rights_note?.trim() || null,
       requiredDocs,
     };
     if (e.length) errors.push({ line, message: e.join("; ") });

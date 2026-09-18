@@ -1,91 +1,91 @@
-program,university,city,country_code,pathway,level,study_area,duration_months,tuition_per_year,application_fee,initial_deposit,intakes,min_ielts,min_pte,min_oet_grade,min_german_level,max_backlogs,max_gap_years,moi_accepted,required_docs,status
-MS in Computer Science,The University of Texas at Arlington,Arlington,US,DEGREE,PG,Computer Science,,,,,1|5|8,6.5,,,,,,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
-MS in Data Science,The University of Texas at Arlington,Arlington,US,DEGREE,PG,Data Science,,,,,1|5|8,6.5,,,,,,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
-MS in Electrical Engineering,The University of Texas at Arlington,Arlington,US,DEGREE,PG,Electrical Engineering,,,,,1|5|8,6.5,,,,,,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
-MS in Industrial Engineering,The University of Texas at Arlington,Arlington,US,DEGREE,PG,Industrial Engineering,,,,,1|5|8,6.5,,,,,,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
-MS in Civil Engineering,The University of Texas at Arlington,Arlington,US,DEGREE,PG,Civil Engineering,,,,,1|5|8,6.5,,,,,,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
-MS in Computer Science,New Jersey Institute of Technology,Newark,US,DEGREE,PG,Computer Science,,25956,,,,6.5,57,,,,,,ENGLISH_TEST|LOR,DRAFT
-MS in Data Science,New Jersey Institute of Technology,Newark,US,DEGREE,PG,Data Science,,25956,,,,6.5,57,,,,,,ENGLISH_TEST|LOR,DRAFT
-MS in Information Systems,New Jersey Institute of Technology,Newark,US,DEGREE,PG,Information Systems,,25956,,,,6.5,57,,,,,,ENGLISH_TEST|LOR,DRAFT
-MS in Cyber Security and Privacy,New Jersey Institute of Technology,Newark,US,DEGREE,PG,Cybersecurity,,25956,,,,6.5,57,,,,,,ENGLISH_TEST|LOR,DRAFT
-MS in Artificial Intelligence,New Jersey Institute of Technology,Newark,US,DEGREE,PG,Artificial Intelligence,,25956,,,,6.5,57,,,,,,ENGLISH_TEST|LOR,DRAFT
-MS in Software Engineering,New Jersey Institute of Technology,Newark,US,DEGREE,PG,Software Engineering,,25956,,,,6.5,57,,,,,,ENGLISH_TEST|LOR,DRAFT
-MS in Computer Science,University of North Texas,Denton,US,DEGREE,PG,Computer Science,,,,,,6.0,53,,,,,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-MS in Artificial Intelligence,University of North Texas,Denton,US,DEGREE,PG,Artificial Intelligence,,,,,,6.0,53,,,,,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-MS in Cybersecurity,University of North Texas,Denton,US,DEGREE,PG,Cybersecurity,,,,,,6.0,53,,,,,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-MS in Data Engineering,University of North Texas,Denton,US,DEGREE,PG,Data Science,,,,,,6.0,53,,,,,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-MS in Electrical Engineering,University of North Texas,Denton,US,DEGREE,PG,Electrical Engineering,,,,,,6.0,53,,,,,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-MS in Computer Science,DePaul University,Chicago,US,DEGREE,PG,Computer Science,,,75,,,,,,,,,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
-MS in Data Science,DePaul University,Chicago,US,DEGREE,PG,Data Science,,,75,,,,,,,,,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
-MS in Artificial Intelligence,DePaul University,Chicago,US,DEGREE,PG,Artificial Intelligence,,,75,,,,,,,,,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
-MS in Cybersecurity,DePaul University,Chicago,US,DEGREE,PG,Cybersecurity,,,75,,,,,,,,,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
-MS in Information Systems,DePaul University,Chicago,US,DEGREE,PG,Information Systems,,,75,,,,,,,,,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
-MS in Computer Science,Kent State University,Kent,US,DEGREE,PG,Computer Science,,,,,,,,,,,,false,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|FINANCIAL_PROOF,DRAFT
-MS in Data Science,Kent State University,Kent,US,DEGREE,PG,Data Science,,,,,,,,,,,,false,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|FINANCIAL_PROOF,DRAFT
-MS in Business Analytics,Kent State University,Kent,US,DEGREE,PG,Business Analytics,,,,,,,,,,,,false,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|FINANCIAL_PROOF,DRAFT
-Master of Business Administration,Kent State University,Kent,US,DEGREE,PG,Business Administration,,,,,,,,,,,,false,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|FINANCIAL_PROOF,DRAFT
-MS in Nursing,Kent State University,Kent,US,DEGREE,PG,Nursing,,,,,,,,,,,,false,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|FINANCIAL_PROOF,DRAFT
-MS in Computer Science,Binghamton University SUNY,Binghamton,US,DEGREE,PG,Computer Science,,27130,,,,6.5,53,,,,,,PASSPORT|FINANCIAL_PROOF|ENGLISH_TEST,DRAFT
-MS in Data Analytics,Binghamton University SUNY,Binghamton,US,DEGREE,PG,Data Science,,27130,,,,6.5,53,,,,,,PASSPORT|FINANCIAL_PROOF|ENGLISH_TEST,DRAFT
-MS in Information Systems,Binghamton University SUNY,Binghamton,US,DEGREE,PG,Information Systems,,27130,,,,6.5,53,,,,,,PASSPORT|FINANCIAL_PROOF|ENGLISH_TEST,DRAFT
-MS in Electrical and Computer Engineering,Binghamton University SUNY,Binghamton,US,DEGREE,PG,Electrical Engineering,,27130,,,,6.5,53,,,,,,PASSPORT|FINANCIAL_PROOF|ENGLISH_TEST,DRAFT
-MS in Mechanical Engineering,Binghamton University SUNY,Binghamton,US,DEGREE,PG,Mechanical Engineering,,27130,,,,6.5,53,,,,,,PASSPORT|FINANCIAL_PROOF|ENGLISH_TEST,DRAFT
-MS in Industrial and Systems Engineering,Binghamton University SUNY,Binghamton,US,DEGREE,PG,Industrial Engineering,,27130,,,,6.5,53,,,,,,PASSPORT|FINANCIAL_PROOF|ENGLISH_TEST,DRAFT
-MS in Computer Science,Stony Brook University,Stony Brook,US,DEGREE,PG,Computer Science,,,,,,,,,,,,,,DRAFT
-MS in Data Science,Stony Brook University,Stony Brook,US,DEGREE,PG,Data Science,,,,,,,,,,,,,,DRAFT
-MS in Electrical Engineering,Stony Brook University,Stony Brook,US,DEGREE,PG,Electrical Engineering,,,,,,,,,,,,,,DRAFT
-MS in Mechanical Engineering,Stony Brook University,Stony Brook,US,DEGREE,PG,Mechanical Engineering,,,,,,,,,,,,,,DRAFT
-MS in Computer Science,Texas Tech University,Lubbock,US,DEGREE,PG,Computer Science,,,75,,1|5|8,6.5,60,,,,,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-MS in Electrical Engineering,Texas Tech University,Lubbock,US,DEGREE,PG,Electrical Engineering,,,75,,1|5|8,6.5,60,,,,,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-MS in Industrial Engineering,Texas Tech University,Lubbock,US,DEGREE,PG,Industrial Engineering,,,75,,1|5|8,6.5,60,,,,,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-MS in Mechanical Engineering,Texas Tech University,Lubbock,US,DEGREE,PG,Mechanical Engineering,,,75,,1|5|8,6.5,60,,,,,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-MS in Civil Engineering,Texas Tech University,Lubbock,US,DEGREE,PG,Civil Engineering,,,75,,1|5|8,6.5,60,,,,,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-MS in Data Science,Texas Tech University,Lubbock,US,DEGREE,PG,Data Science,,,75,,1|5|8,6.5,60,,,,,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-MS in Computer Science,Rochester Institute of Technology,Rochester,US,DEGREE,PG,Computer Science; STEM OPT eligible,,64542,,,1|5|8,,,,,,,,,DRAFT
-MS in Data Science,Rochester Institute of Technology,Rochester,US,DEGREE,PG,Data Science; STEM OPT eligible,,64542,,,1|5|8,,,,,,,,,DRAFT
-MS in Cybersecurity,Rochester Institute of Technology,Rochester,US,DEGREE,PG,Cybersecurity; STEM OPT eligible,,64542,,,1|5|8,,,,,,,,,DRAFT
-MS in Artificial Intelligence,Rochester Institute of Technology,Rochester,US,DEGREE,PG,Artificial Intelligence; STEM OPT eligible,,64542,,,1|5|8,,,,,,,,,DRAFT
-MS in Software Engineering,Rochester Institute of Technology,Rochester,US,DEGREE,PG,Software Engineering; STEM OPT eligible,,64542,,,1|5|8,,,,,,,,,DRAFT
-MS in Information Technology and Analytics,Rochester Institute of Technology,Rochester,US,DEGREE,PG,Information Technology; STEM OPT eligible,,64542,,,1|5|8,,,,,,,,,DRAFT
-MS in Electrical Engineering,Rochester Institute of Technology,Rochester,US,DEGREE,PG,Electrical Engineering; STEM OPT eligible,,64542,,,1|5|8,,,,,,,,,DRAFT
-MS in Mechanical Engineering,Rochester Institute of Technology,Rochester,US,DEGREE,PG,Mechanical Engineering; STEM OPT eligible,,64542,,,1|5|8,,,,,,,,,DRAFT
-MS in Computer Science,Cleveland State University,Cleveland,US,DEGREE,PG,Computer Science,,,40,,,6.0,50,,,,,,DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST,DRAFT
-MS in Software Engineering,Cleveland State University,Cleveland,US,DEGREE,PG,Software Engineering,,,40,,,6.0,50,,,,,,DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST,DRAFT
-MS in Electrical Engineering,Cleveland State University,Cleveland,US,DEGREE,PG,Electrical Engineering,,,40,,,6.0,50,,,,,,DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST,DRAFT
-MS in Mechanical Engineering,Cleveland State University,Cleveland,US,DEGREE,PG,Mechanical Engineering,,,40,,,6.0,50,,,,,,DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST,DRAFT
-MS in Civil Engineering,Cleveland State University,Cleveland,US,DEGREE,PG,Civil Engineering,,,40,,,6.0,50,,,,,,DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST,DRAFT
-Master of Computer Science,University of Dayton,Dayton,US,DEGREE,PG,Computer Science,,,50,,1|5|8,,,,,,,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST|FINANCIAL_PROOF,DRAFT
-MS in Electrical Engineering,University of Dayton,Dayton,US,DEGREE,PG,Electrical Engineering,,,50,,1|5|8,,,,,,,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST|FINANCIAL_PROOF,DRAFT
-MS in Mechanical Engineering,University of Dayton,Dayton,US,DEGREE,PG,Mechanical Engineering,,,50,,1|5|8,,,,,,,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST|FINANCIAL_PROOF,DRAFT
-MS in Engineering Management,University of Dayton,Dayton,US,DEGREE,PG,Engineering Management,,,50,,1|5|8,,,,,,,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST|FINANCIAL_PROOF,DRAFT
-Master of Business Analytics,University of Dayton,Dayton,US,DEGREE,PG,Business Analytics,,,50,,1|5|8,,,,,,,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST|FINANCIAL_PROOF,DRAFT
-MS in Computer Science,California State University East Bay,Hayward,US,DEGREE,PG,Computer Science,,,,,,6.5,58,,,,,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-MS in Construction Management,California State University East Bay,Hayward,US,DEGREE,PG,Construction Management,,,,,,6.5,58,,,,,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-MS in Nursing,California State University East Bay,Hayward,US,DEGREE,PG,Nursing,,,,,,6.5,58,,,,,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-MS in Business Analytics,California State University East Bay,Hayward,US,DEGREE,PG,Business Analytics,,,,,,6.5,58,,,,,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-Master of Business Administration,California State University East Bay,Hayward,US,DEGREE,PG,Business Administration,,,,,,6.5,58,,,,,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-MS in Computer Science,Missouri University of Science and Technology,Rolla,US,DEGREE,PG,Computer Science,,,75,,1|5|8,6.5,58,,,,,,DEGREE_MARKSHEETS,DRAFT
-MS in Information Science and Technology,Missouri University of Science and Technology,Rolla,US,DEGREE,PG,Information Systems,,,75,,1|5|8,6.5,58,,,,,,DEGREE_MARKSHEETS,DRAFT
-MS in Electrical Engineering,Missouri University of Science and Technology,Rolla,US,DEGREE,PG,Electrical Engineering,,,75,,1|5|8,6.5,58,,,,,,DEGREE_MARKSHEETS,DRAFT
-MS in Mechanical Engineering,Missouri University of Science and Technology,Rolla,US,DEGREE,PG,Mechanical Engineering,,,75,,1|5|8,6.5,58,,,,,,DEGREE_MARKSHEETS,DRAFT
-MS in Computer Science,Florida International University,Miami,US,DEGREE,PG,Computer Science,,,30,,1|5|8,,,,,,,,SOP|LOR|CV|DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
-MS in Data Science,Florida International University,Miami,US,DEGREE,PG,Data Science,,,30,,1|5|8,,,,,,,,SOP|LOR|CV|DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
-MS in Cybersecurity,Florida International University,Miami,US,DEGREE,PG,Cybersecurity,,,30,,1|5|8,,,,,,,,SOP|LOR|CV|DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
-MS in Information Technology,Florida International University,Miami,US,DEGREE,PG,Information Technology,,,30,,1|5|8,,,,,,,,SOP|LOR|CV|DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
-MS in Computer Science,University of Central Florida,Orlando,US,DEGREE,PG,Computer Science,,,,,,6.5,,,,,,,DEGREE_MARKSHEETS,DRAFT
-MS in Data Analytics,University of Central Florida,Orlando,US,DEGREE,PG,Data Science,,,,,,6.5,,,,,,,DEGREE_MARKSHEETS,DRAFT
-MS in Cyber Security,University of Central Florida,Orlando,US,DEGREE,PG,Cybersecurity,,,,,,6.5,,,,,,,DEGREE_MARKSHEETS,DRAFT
-MS in Electrical and Computer Engineering,University of Central Florida,Orlando,US,DEGREE,PG,Electrical Engineering,,,,,,6.5,,,,,,,DEGREE_MARKSHEETS,DRAFT
-MS in Industrial Engineering,University of Central Florida,Orlando,US,DEGREE,PG,Industrial Engineering,,,,,,6.5,,,,,,,DEGREE_MARKSHEETS,DRAFT
-MS in Data Intelligence,University of South Florida,Tampa,US,DEGREE,PG,Data Science,,,,,,6.5,53,,,,,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION,DRAFT
-MS in Electrical Engineering,University of South Florida,Tampa,US,DEGREE,PG,Electrical Engineering,,,,,,6.5,53,,,,,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION,DRAFT
-MS in Mechanical Engineering,University of South Florida,Tampa,US,DEGREE,PG,Mechanical Engineering,,,,,,6.5,53,,,,,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION,DRAFT
-MS in Civil Engineering,University of South Florida,Tampa,US,DEGREE,PG,Civil Engineering,,,,,,6.5,53,,,,,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION,DRAFT
-MS in Computer Science,San Francisco Bay University,Fremont,US,DEGREE,PG,Computer Science,,,,,,5.5,50,,,,,,PASSPORT|DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST|FINANCIAL_PROOF,DRAFT
-MS in Data Science,San Francisco Bay University,Fremont,US,DEGREE,PG,Data Science,,,,,,5.5,50,,,,,,PASSPORT|DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST|FINANCIAL_PROOF,DRAFT
-MS in Electrical Engineering,San Francisco Bay University,Fremont,US,DEGREE,PG,Electrical Engineering,,,,,,5.5,50,,,,,,PASSPORT|DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST|FINANCIAL_PROOF,DRAFT
-Master of Business Administration,San Francisco Bay University,Fremont,US,DEGREE,PG,Business Administration,,,,,,5.5,50,,,,,,PASSPORT|DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST|FINANCIAL_PROOF,DRAFT
-MS in Computer Science and Information Technology,Sacred Heart University,Fairfield,US,DEGREE,PG,Computer Science,,,,,1|8,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|CV|SOP|LOR|FINANCIAL_PROOF,DRAFT
-MS in Business Analytics and Applied Artificial Intelligence,Sacred Heart University,Fairfield,US,DEGREE,PG,Business Analytics,,,,,1|8,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|CV|SOP|LOR|FINANCIAL_PROOF,DRAFT
-Master of Business Administration,Sacred Heart University,Fairfield,US,DEGREE,PG,Business Administration,,,,,1|8,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|CV|SOP|LOR|FINANCIAL_PROOF,DRAFT
-Master of Public Health,Sacred Heart University,Fairfield,US,DEGREE,PG,Public Health,,,,,1|8,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|CV|SOP|LOR|FINANCIAL_PROOF|CREDENTIAL_EVALUATION,DRAFT
+program,university,city,country_code,pathway,level,study_area,duration_months,tuition_per_year,application_fee,initial_deposit,intakes,min_ielts,min_pte,min_oet_grade,min_german_level,max_backlogs,max_gap_years,moi_accepted,work_rights,work_rights_note,required_docs,status
+MS in Computer Science,The University of Texas at Arlington,Arlington,US,DEGREE,PG,Computer Science,,,,,1|5|8,6.5,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
+MS in Data Science,The University of Texas at Arlington,Arlington,US,DEGREE,PG,Data Science,,,,,1|5|8,6.5,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
+MS in Electrical Engineering,The University of Texas at Arlington,Arlington,US,DEGREE,PG,Electrical Engineering,,,,,1|5|8,6.5,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
+MS in Industrial Engineering,The University of Texas at Arlington,Arlington,US,DEGREE,PG,Industrial Engineering,,,,,1|5|8,6.5,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
+MS in Civil Engineering,The University of Texas at Arlington,Arlington,US,DEGREE,PG,Civil Engineering,,,,,1|5|8,6.5,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
+MS in Computer Science,New Jersey Institute of Technology,Newark,US,DEGREE,PG,Computer Science,,25956,,,,6.5,57,,,,,,UNKNOWN,,ENGLISH_TEST|LOR,DRAFT
+MS in Data Science,New Jersey Institute of Technology,Newark,US,DEGREE,PG,Data Science,,25956,,,,6.5,57,,,,,,UNKNOWN,,ENGLISH_TEST|LOR,DRAFT
+MS in Information Systems,New Jersey Institute of Technology,Newark,US,DEGREE,PG,Information Systems,,25956,,,,6.5,57,,,,,,UNKNOWN,,ENGLISH_TEST|LOR,DRAFT
+MS in Cyber Security and Privacy,New Jersey Institute of Technology,Newark,US,DEGREE,PG,Cybersecurity,,25956,,,,6.5,57,,,,,,UNKNOWN,,ENGLISH_TEST|LOR,DRAFT
+MS in Artificial Intelligence,New Jersey Institute of Technology,Newark,US,DEGREE,PG,Artificial Intelligence,,25956,,,,6.5,57,,,,,,UNKNOWN,,ENGLISH_TEST|LOR,DRAFT
+MS in Software Engineering,New Jersey Institute of Technology,Newark,US,DEGREE,PG,Software Engineering,,25956,,,,6.5,57,,,,,,UNKNOWN,,ENGLISH_TEST|LOR,DRAFT
+MS in Computer Science,University of North Texas,Denton,US,DEGREE,PG,Computer Science,,,,,,6.0,53,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+MS in Artificial Intelligence,University of North Texas,Denton,US,DEGREE,PG,Artificial Intelligence,,,,,,6.0,53,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+MS in Cybersecurity,University of North Texas,Denton,US,DEGREE,PG,Cybersecurity,,,,,,6.0,53,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+MS in Data Engineering,University of North Texas,Denton,US,DEGREE,PG,Data Science,,,,,,6.0,53,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+MS in Electrical Engineering,University of North Texas,Denton,US,DEGREE,PG,Electrical Engineering,,,,,,6.0,53,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+MS in Computer Science,DePaul University,Chicago,US,DEGREE,PG,Computer Science,,,75,,,,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
+MS in Data Science,DePaul University,Chicago,US,DEGREE,PG,Data Science,,,75,,,,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
+MS in Artificial Intelligence,DePaul University,Chicago,US,DEGREE,PG,Artificial Intelligence,,,75,,,,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
+MS in Cybersecurity,DePaul University,Chicago,US,DEGREE,PG,Cybersecurity,,,75,,,,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
+MS in Information Systems,DePaul University,Chicago,US,DEGREE,PG,Information Systems,,,75,,,,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
+MS in Computer Science,Kent State University,Kent,US,DEGREE,PG,Computer Science,,,,,,,,,,,,false,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|FINANCIAL_PROOF,DRAFT
+MS in Data Science,Kent State University,Kent,US,DEGREE,PG,Data Science,,,,,,,,,,,,false,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|FINANCIAL_PROOF,DRAFT
+MS in Business Analytics,Kent State University,Kent,US,DEGREE,PG,Business Analytics,,,,,,,,,,,,false,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|FINANCIAL_PROOF,DRAFT
+Master of Business Administration,Kent State University,Kent,US,DEGREE,PG,Business Administration,,,,,,,,,,,,false,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|FINANCIAL_PROOF,DRAFT
+MS in Nursing,Kent State University,Kent,US,DEGREE,PG,Nursing,,,,,,,,,,,,false,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|FINANCIAL_PROOF,DRAFT
+MS in Computer Science,Binghamton University SUNY,Binghamton,US,DEGREE,PG,Computer Science,,27130,,,,6.5,53,,,,,,UNKNOWN,,PASSPORT|FINANCIAL_PROOF|ENGLISH_TEST,DRAFT
+MS in Data Analytics,Binghamton University SUNY,Binghamton,US,DEGREE,PG,Data Science,,27130,,,,6.5,53,,,,,,UNKNOWN,,PASSPORT|FINANCIAL_PROOF|ENGLISH_TEST,DRAFT
+MS in Information Systems,Binghamton University SUNY,Binghamton,US,DEGREE,PG,Information Systems,,27130,,,,6.5,53,,,,,,UNKNOWN,,PASSPORT|FINANCIAL_PROOF|ENGLISH_TEST,DRAFT
+MS in Electrical and Computer Engineering,Binghamton University SUNY,Binghamton,US,DEGREE,PG,Electrical Engineering,,27130,,,,6.5,53,,,,,,UNKNOWN,,PASSPORT|FINANCIAL_PROOF|ENGLISH_TEST,DRAFT
+MS in Mechanical Engineering,Binghamton University SUNY,Binghamton,US,DEGREE,PG,Mechanical Engineering,,27130,,,,6.5,53,,,,,,UNKNOWN,,PASSPORT|FINANCIAL_PROOF|ENGLISH_TEST,DRAFT
+MS in Industrial and Systems Engineering,Binghamton University SUNY,Binghamton,US,DEGREE,PG,Industrial Engineering,,27130,,,,6.5,53,,,,,,UNKNOWN,,PASSPORT|FINANCIAL_PROOF|ENGLISH_TEST,DRAFT
+MS in Computer Science,Stony Brook University,Stony Brook,US,DEGREE,PG,Computer Science,,,,,,,,,,,,,UNKNOWN,,,DRAFT
+MS in Data Science,Stony Brook University,Stony Brook,US,DEGREE,PG,Data Science,,,,,,,,,,,,,UNKNOWN,,,DRAFT
+MS in Electrical Engineering,Stony Brook University,Stony Brook,US,DEGREE,PG,Electrical Engineering,,,,,,,,,,,,,UNKNOWN,,,DRAFT
+MS in Mechanical Engineering,Stony Brook University,Stony Brook,US,DEGREE,PG,Mechanical Engineering,,,,,,,,,,,,,UNKNOWN,,,DRAFT
+MS in Computer Science,Texas Tech University,Lubbock,US,DEGREE,PG,Computer Science,,,75,,1|5|8,6.5,60,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+MS in Electrical Engineering,Texas Tech University,Lubbock,US,DEGREE,PG,Electrical Engineering,,,75,,1|5|8,6.5,60,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+MS in Industrial Engineering,Texas Tech University,Lubbock,US,DEGREE,PG,Industrial Engineering,,,75,,1|5|8,6.5,60,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+MS in Mechanical Engineering,Texas Tech University,Lubbock,US,DEGREE,PG,Mechanical Engineering,,,75,,1|5|8,6.5,60,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+MS in Civil Engineering,Texas Tech University,Lubbock,US,DEGREE,PG,Civil Engineering,,,75,,1|5|8,6.5,60,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+MS in Data Science,Texas Tech University,Lubbock,US,DEGREE,PG,Data Science,,,75,,1|5|8,6.5,60,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+MS in Computer Science,Rochester Institute of Technology,Rochester,US,DEGREE,PG,Computer Science,,64542,,,1|5|8,,,,,,,,ELIGIBLE,STEM OPT eligible,,DRAFT
+MS in Data Science,Rochester Institute of Technology,Rochester,US,DEGREE,PG,Data Science,,64542,,,1|5|8,,,,,,,,ELIGIBLE,STEM OPT eligible,,DRAFT
+MS in Cybersecurity,Rochester Institute of Technology,Rochester,US,DEGREE,PG,Cybersecurity,,64542,,,1|5|8,,,,,,,,ELIGIBLE,STEM OPT eligible,,DRAFT
+MS in Artificial Intelligence,Rochester Institute of Technology,Rochester,US,DEGREE,PG,Artificial Intelligence,,64542,,,1|5|8,,,,,,,,ELIGIBLE,STEM OPT eligible,,DRAFT
+MS in Software Engineering,Rochester Institute of Technology,Rochester,US,DEGREE,PG,Software Engineering,,64542,,,1|5|8,,,,,,,,ELIGIBLE,STEM OPT eligible,,DRAFT
+MS in Information Technology and Analytics,Rochester Institute of Technology,Rochester,US,DEGREE,PG,Information Technology,,64542,,,1|5|8,,,,,,,,ELIGIBLE,STEM OPT eligible,,DRAFT
+MS in Electrical Engineering,Rochester Institute of Technology,Rochester,US,DEGREE,PG,Electrical Engineering,,64542,,,1|5|8,,,,,,,,ELIGIBLE,STEM OPT eligible,,DRAFT
+MS in Mechanical Engineering,Rochester Institute of Technology,Rochester,US,DEGREE,PG,Mechanical Engineering,,64542,,,1|5|8,,,,,,,,ELIGIBLE,STEM OPT eligible,,DRAFT
+MS in Computer Science,Cleveland State University,Cleveland,US,DEGREE,PG,Computer Science,,,40,,,6.0,50,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST,DRAFT
+MS in Software Engineering,Cleveland State University,Cleveland,US,DEGREE,PG,Software Engineering,,,40,,,6.0,50,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST,DRAFT
+MS in Electrical Engineering,Cleveland State University,Cleveland,US,DEGREE,PG,Electrical Engineering,,,40,,,6.0,50,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST,DRAFT
+MS in Mechanical Engineering,Cleveland State University,Cleveland,US,DEGREE,PG,Mechanical Engineering,,,40,,,6.0,50,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST,DRAFT
+MS in Civil Engineering,Cleveland State University,Cleveland,US,DEGREE,PG,Civil Engineering,,,40,,,6.0,50,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST,DRAFT
+Master of Computer Science,University of Dayton,Dayton,US,DEGREE,PG,Computer Science,,,50,,1|5|8,,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST|FINANCIAL_PROOF,DRAFT
+MS in Electrical Engineering,University of Dayton,Dayton,US,DEGREE,PG,Electrical Engineering,,,50,,1|5|8,,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST|FINANCIAL_PROOF,DRAFT
+MS in Mechanical Engineering,University of Dayton,Dayton,US,DEGREE,PG,Mechanical Engineering,,,50,,1|5|8,,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST|FINANCIAL_PROOF,DRAFT
+MS in Engineering Management,University of Dayton,Dayton,US,DEGREE,PG,Engineering Management,,,50,,1|5|8,,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST|FINANCIAL_PROOF,DRAFT
+Master of Business Analytics,University of Dayton,Dayton,US,DEGREE,PG,Business Analytics,,,50,,1|5|8,,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST|FINANCIAL_PROOF,DRAFT
+MS in Computer Science,California State University East Bay,Hayward,US,DEGREE,PG,Computer Science,,,,,,6.5,58,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+MS in Construction Management,California State University East Bay,Hayward,US,DEGREE,PG,Construction Management,,,,,,6.5,58,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+MS in Nursing,California State University East Bay,Hayward,US,DEGREE,PG,Nursing,,,,,,6.5,58,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+MS in Business Analytics,California State University East Bay,Hayward,US,DEGREE,PG,Business Analytics,,,,,,6.5,58,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+Master of Business Administration,California State University East Bay,Hayward,US,DEGREE,PG,Business Administration,,,,,,6.5,58,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
+MS in Computer Science,Missouri University of Science and Technology,Rolla,US,DEGREE,PG,Computer Science,,,75,,1|5|8,6.5,58,,,,,,UNKNOWN,,DEGREE_MARKSHEETS,DRAFT
+MS in Information Science and Technology,Missouri University of Science and Technology,Rolla,US,DEGREE,PG,Information Systems,,,75,,1|5|8,6.5,58,,,,,,UNKNOWN,,DEGREE_MARKSHEETS,DRAFT
+MS in Electrical Engineering,Missouri University of Science and Technology,Rolla,US,DEGREE,PG,Electrical Engineering,,,75,,1|5|8,6.5,58,,,,,,UNKNOWN,,DEGREE_MARKSHEETS,DRAFT
+MS in Mechanical Engineering,Missouri University of Science and Technology,Rolla,US,DEGREE,PG,Mechanical Engineering,,,75,,1|5|8,6.5,58,,,,,,UNKNOWN,,DEGREE_MARKSHEETS,DRAFT
+MS in Computer Science,Florida International University,Miami,US,DEGREE,PG,Computer Science,,,30,,1|5|8,,,,,,,,UNKNOWN,,SOP|LOR|CV|DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
+MS in Data Science,Florida International University,Miami,US,DEGREE,PG,Data Science,,,30,,1|5|8,,,,,,,,UNKNOWN,,SOP|LOR|CV|DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
+MS in Cybersecurity,Florida International University,Miami,US,DEGREE,PG,Cybersecurity,,,30,,1|5|8,,,,,,,,UNKNOWN,,SOP|LOR|CV|DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
+MS in Information Technology,Florida International University,Miami,US,DEGREE,PG,Information Technology,,,30,,1|5|8,,,,,,,,UNKNOWN,,SOP|LOR|CV|DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
+MS in Computer Science,University of Central Florida,Orlando,US,DEGREE,PG,Computer Science,,,,,,6.5,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS,DRAFT
+MS in Data Analytics,University of Central Florida,Orlando,US,DEGREE,PG,Data Science,,,,,,6.5,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS,DRAFT
+MS in Cyber Security,University of Central Florida,Orlando,US,DEGREE,PG,Cybersecurity,,,,,,6.5,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS,DRAFT
+MS in Electrical and Computer Engineering,University of Central Florida,Orlando,US,DEGREE,PG,Electrical Engineering,,,,,,6.5,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS,DRAFT
+MS in Industrial Engineering,University of Central Florida,Orlando,US,DEGREE,PG,Industrial Engineering,,,,,,6.5,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS,DRAFT
+MS in Data Intelligence,University of South Florida,Tampa,US,DEGREE,PG,Data Science,,,,,,6.5,53,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION,DRAFT
+MS in Electrical Engineering,University of South Florida,Tampa,US,DEGREE,PG,Electrical Engineering,,,,,,6.5,53,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION,DRAFT
+MS in Mechanical Engineering,University of South Florida,Tampa,US,DEGREE,PG,Mechanical Engineering,,,,,,6.5,53,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION,DRAFT
+MS in Civil Engineering,University of South Florida,Tampa,US,DEGREE,PG,Civil Engineering,,,,,,6.5,53,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION,DRAFT
+MS in Computer Science,San Francisco Bay University,Fremont,US,DEGREE,PG,Computer Science,,,,,,5.5,50,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST|FINANCIAL_PROOF,DRAFT
+MS in Data Science,San Francisco Bay University,Fremont,US,DEGREE,PG,Data Science,,,,,,5.5,50,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST|FINANCIAL_PROOF,DRAFT
+MS in Electrical Engineering,San Francisco Bay University,Fremont,US,DEGREE,PG,Electrical Engineering,,,,,,5.5,50,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST|FINANCIAL_PROOF,DRAFT
+Master of Business Administration,San Francisco Bay University,Fremont,US,DEGREE,PG,Business Administration,,,,,,5.5,50,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST|FINANCIAL_PROOF,DRAFT
+MS in Computer Science and Information Technology,Sacred Heart University,Fairfield,US,DEGREE,PG,Computer Science,,,,,1|8,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|CV|SOP|LOR|FINANCIAL_PROOF,DRAFT
+MS in Business Analytics and Applied Artificial Intelligence,Sacred Heart University,Fairfield,US,DEGREE,PG,Business Analytics,,,,,1|8,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|CV|SOP|LOR|FINANCIAL_PROOF,DRAFT
+Master of Business Administration,Sacred Heart University,Fairfield,US,DEGREE,PG,Business Administration,,,,,1|8,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|CV|SOP|LOR|FINANCIAL_PROOF,DRAFT
+Master of Public Health,Sacred Heart University,Fairfield,US,DEGREE,PG,Public Health,,,,,1|8,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|CV|SOP|LOR|FINANCIAL_PROOF|CREDENTIAL_EVALUATION,DRAFT

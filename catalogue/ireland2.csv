@@ -1,46 +1,46 @@
-program,university,city,country_code,pathway,level,study_area,duration_months,tuition_per_year,application_fee,initial_deposit,intakes,min_ielts,min_pte,min_oet_grade,min_german_level,max_backlogs,max_gap_years,moi_accepted,required_docs,status
-MSc in Management,National College of Ireland,Dublin,IE,DEGREE,PG,Business and Management,12,17000,,,1|9,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
-MSc in International Business,National College of Ireland,Dublin,IE,DEGREE,PG,Business and Management,12,17000,,,1|9,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
-MSc in Cloud Computing,National College of Ireland,Dublin,IE,DEGREE,PG,Cloud Computing,12,17000,,,1|9,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
-MSc in Artificial Intelligence,National College of Ireland,Dublin,IE,DEGREE,PG,Artificial Intelligence,12,17000,,,1|9,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
-MSc in Cybersecurity,National College of Ireland,Dublin,IE,DEGREE,PG,Cybersecurity,12,17000,,,1|9,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
-MSc in Artificial Intelligence for Business,National College of Ireland,Dublin,IE,DEGREE,PG,Artificial Intelligence,12,17000,,,1|9,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
-MSc in Fintech,National College of Ireland,Dublin,IE,DEGREE,PG,Finance,12,17000,,,9,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
-MSc in Data Analytics,National College of Ireland,Dublin,IE,DEGREE,PG,Data Science,,17000,,,,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
-MSc in Finance,National College of Ireland,Dublin,IE,DEGREE,PG,Finance,,17000,,,,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
-MSc in Accounting,National College of Ireland,Dublin,IE,DEGREE,PG,Accounting and Finance,,17000,,,,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
-MSc in Marketing,National College of Ireland,Dublin,IE,DEGREE,PG,Marketing,,17000,,,,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
-MA in Human Resource Management,National College of Ireland,Dublin,IE,DEGREE,PG,Human Resource Management,,17000,,,,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
-MSc in Business Analytics for Decision Makers,National College of Ireland,Dublin,IE,DEGREE,PG,Business Analytics,,17000,,,,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
-Higher Diploma in Science in Computing,National College of Ireland,Dublin,IE,DEGREE,PG_DIPLOMA,Computer Science,,12000,,,,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
-Higher Diploma in Science in Data Analytics,National College of Ireland,Dublin,IE,DEGREE,PG_DIPLOMA,Data Science,,12000,,,,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
-BSc in Computing,National College of Ireland,Dublin,IE,DEGREE,UG,Computer Science,,14000,,,,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
-BSc in Data Science,National College of Ireland,Dublin,IE,DEGREE,UG,Data Science,,14000,,,,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
-BA in Accounting and Finance,National College of Ireland,Dublin,IE,DEGREE,UG,Accounting and Finance,,14000,,,,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
-BA in Business,National College of Ireland,Dublin,IE,DEGREE,UG,Business and Management,,12000,,,,,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
-MSc in Computing,CCT College Dublin,Dublin,IE,DEGREE,PG,Computer Science,,14000,,,2|9,,,,,,,,,DRAFT
-MSc in Data Analytics,CCT College Dublin,Dublin,IE,DEGREE,PG,Data Science,12,14000,,,2|9,,,,,,,,,DRAFT
-MSc in Cybersecurity,CCT College Dublin,Dublin,IE,DEGREE,PG,Cybersecurity,,14000,,,2|9,,,,,,,,,DRAFT
-MA in International Business,CCT College Dublin,Dublin,IE,DEGREE,PG,Business and Management,,12000,,,2|9,,,,,,,,,DRAFT
-Higher Diploma in Science in Computing,CCT College Dublin,Dublin,IE,DEGREE,PG_DIPLOMA,Computer Science,,8900,,,,,,,,,,,,DRAFT
-Higher Diploma in Science in Cybersecurity,CCT College Dublin,Dublin,IE,DEGREE,PG_DIPLOMA,Cybersecurity,,8900,,,,,,,,,,,,DRAFT
-BSc (Hons) in Computing and IT,CCT College Dublin,Dublin,IE,DEGREE,UG,Computer Science,,8600,,,,,,,,,,,,DRAFT
-BA (Hons) in Business,CCT College Dublin,Dublin,IE,DEGREE,UG,Business and Management,,8600,,,,,,,,,,,,DRAFT
-MSc in Applied Data Science,Dundalk Institute of Technology,Dundalk,IE,DEGREE,PG,Data Science,12,12000,30,,9,6.5,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST,DRAFT
-Higher Diploma in Science in Data Analytics,Dundalk Institute of Technology,Dundalk,IE,DEGREE,UG_DIPLOMA,Data Science,,10950,30,,,6.0,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST,DRAFT
-BSc (Hons) in Mathematics and Data Science,Dundalk Institute of Technology,Dundalk,IE,DEGREE,UG,Data Science,,10950,30,,,6.0,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST,DRAFT
-BSc (Hons) in Computing in Software Development,Dundalk Institute of Technology,Dundalk,IE,DEGREE,UG,Computer Science,,10950,30,,,6.0,,,,,,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST,DRAFT
-Master of Business Administration,Technological University of the Shannon,Limerick,IE,DEGREE,PG,Business and Management,,20500,50,1000,,,,,,,,,,DRAFT
-MSc in Data Analytics,Technological University of the Shannon,Limerick,IE,DEGREE,PG,Data Science,12,18500,50,1000,,6.0,,,,,,,,DRAFT
-MSc in Business Analytics,Technological University of the Shannon,Limerick,IE,DEGREE,PG,Business Analytics,12,18500,50,1000,,6.5,,,,,,,,DRAFT
-MSc in Software Engineering,Technological University of the Shannon,Limerick,IE,DEGREE,PG,Software Engineering,12,17500,50,1000,,6.5,,,,,,,,DRAFT
-MEng in Mechanical Engineering,Technological University of the Shannon,Limerick,IE,DEGREE,PG,Mechanical Engineering,,17500,50,1000,,,,,,,,,,DRAFT
-MSc in Quantity Surveying,Technological University of the Shannon,Limerick,IE,DEGREE,PG,Quantity Surveying,,20500,50,1000,,,,,,,,,,DRAFT
-MSc in Nursing in Leadership and Quality Healthcare,Technological University of the Shannon,Limerick,IE,DEGREE,PG,Nursing,,18500,50,1000,,,,,,,,,,DRAFT
-MSc in Pharmaceutical and Chemical Analysis,Technological University of the Shannon,Limerick,IE,DEGREE,PG,Pharmaceutical Science,,20500,50,1000,,,,,,,,,,DRAFT
-MSc in Biopharmaceutical Technology,Technological University of the Shannon,Limerick,IE,DEGREE,PG,Biopharmaceutical Technology,,21500,50,1000,,,,,,,,,,DRAFT
-Master of Business in International and Sustainable Business Strategy,Technological University of the Shannon,Limerick,IE,DEGREE,PG,Business and Management,,16500,50,1000,,,,,,,,,,DRAFT
-BSc Pharmacy,RCSI University of Medicine and Health Sciences,Dublin,IE,DEGREE,UG,Pharmacy,60,25000,,,,,,,,,,,,DRAFT
-PgDip in Health Professions Education,RCSI University of Medicine and Health Sciences,Dublin,IE,DEGREE,PG_DIPLOMA,Health Professions Education,12,7500,,,,,,,,,,,,DRAFT
-MSc in Cyberpsychology,"Institute of Art, Design and Technology",Dun Laoghaire,IE,DEGREE,PG,Cyberpsychology,24,,,,9,,,,,,,,,DRAFT
-BSc in Strength and Conditioning,Setanta College,Thurles,IE,DEGREE,UG,Sports Science,54,,,,3|6|9|12,6.0,,,,,,,,DRAFT
+program,university,city,country_code,pathway,level,study_area,duration_months,tuition_per_year,application_fee,initial_deposit,intakes,min_ielts,min_pte,min_oet_grade,min_german_level,max_backlogs,max_gap_years,moi_accepted,work_rights,work_rights_note,required_docs,status
+MSc in Management,National College of Ireland,Dublin,IE,DEGREE,PG,Business and Management,12,17000,,,1|9,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
+MSc in International Business,National College of Ireland,Dublin,IE,DEGREE,PG,Business and Management,12,17000,,,1|9,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
+MSc in Cloud Computing,National College of Ireland,Dublin,IE,DEGREE,PG,Cloud Computing,12,17000,,,1|9,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
+MSc in Artificial Intelligence,National College of Ireland,Dublin,IE,DEGREE,PG,Artificial Intelligence,12,17000,,,1|9,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
+MSc in Cybersecurity,National College of Ireland,Dublin,IE,DEGREE,PG,Cybersecurity,12,17000,,,1|9,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
+MSc in Artificial Intelligence for Business,National College of Ireland,Dublin,IE,DEGREE,PG,Artificial Intelligence,12,17000,,,1|9,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
+MSc in Fintech,National College of Ireland,Dublin,IE,DEGREE,PG,Finance,12,17000,,,9,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
+MSc in Data Analytics,National College of Ireland,Dublin,IE,DEGREE,PG,Data Science,,17000,,,,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
+MSc in Finance,National College of Ireland,Dublin,IE,DEGREE,PG,Finance,,17000,,,,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
+MSc in Accounting,National College of Ireland,Dublin,IE,DEGREE,PG,Accounting and Finance,,17000,,,,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
+MSc in Marketing,National College of Ireland,Dublin,IE,DEGREE,PG,Marketing,,17000,,,,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
+MA in Human Resource Management,National College of Ireland,Dublin,IE,DEGREE,PG,Human Resource Management,,17000,,,,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
+MSc in Business Analytics for Decision Makers,National College of Ireland,Dublin,IE,DEGREE,PG,Business Analytics,,17000,,,,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
+Higher Diploma in Science in Computing,National College of Ireland,Dublin,IE,DEGREE,PG_DIPLOMA,Computer Science,,12000,,,,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
+Higher Diploma in Science in Data Analytics,National College of Ireland,Dublin,IE,DEGREE,PG_DIPLOMA,Data Science,,12000,,,,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
+BSc in Computing,National College of Ireland,Dublin,IE,DEGREE,UG,Computer Science,,14000,,,,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
+BSc in Data Science,National College of Ireland,Dublin,IE,DEGREE,UG,Data Science,,14000,,,,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
+BA in Accounting and Finance,National College of Ireland,Dublin,IE,DEGREE,UG,Accounting and Finance,,14000,,,,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
+BA in Business,National College of Ireland,Dublin,IE,DEGREE,UG,Business and Management,,12000,,,,,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|CV|SOP,DRAFT
+MSc in Computing,CCT College Dublin,Dublin,IE,DEGREE,PG,Computer Science,,14000,,,2|9,,,,,,,,UNKNOWN,,,DRAFT
+MSc in Data Analytics,CCT College Dublin,Dublin,IE,DEGREE,PG,Data Science,12,14000,,,2|9,,,,,,,,UNKNOWN,,,DRAFT
+MSc in Cybersecurity,CCT College Dublin,Dublin,IE,DEGREE,PG,Cybersecurity,,14000,,,2|9,,,,,,,,UNKNOWN,,,DRAFT
+MA in International Business,CCT College Dublin,Dublin,IE,DEGREE,PG,Business and Management,,12000,,,2|9,,,,,,,,UNKNOWN,,,DRAFT
+Higher Diploma in Science in Computing,CCT College Dublin,Dublin,IE,DEGREE,PG_DIPLOMA,Computer Science,,8900,,,,,,,,,,,UNKNOWN,,,DRAFT
+Higher Diploma in Science in Cybersecurity,CCT College Dublin,Dublin,IE,DEGREE,PG_DIPLOMA,Cybersecurity,,8900,,,,,,,,,,,UNKNOWN,,,DRAFT
+BSc (Hons) in Computing and IT,CCT College Dublin,Dublin,IE,DEGREE,UG,Computer Science,,8600,,,,,,,,,,,UNKNOWN,,,DRAFT
+BA (Hons) in Business,CCT College Dublin,Dublin,IE,DEGREE,UG,Business and Management,,8600,,,,,,,,,,,UNKNOWN,,,DRAFT
+MSc in Applied Data Science,Dundalk Institute of Technology,Dundalk,IE,DEGREE,PG,Data Science,12,12000,30,,9,6.5,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST,DRAFT
+Higher Diploma in Science in Data Analytics,Dundalk Institute of Technology,Dundalk,IE,DEGREE,UG_DIPLOMA,Data Science,,10950,30,,,6.0,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST,DRAFT
+BSc (Hons) in Mathematics and Data Science,Dundalk Institute of Technology,Dundalk,IE,DEGREE,UG,Data Science,,10950,30,,,6.0,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST,DRAFT
+BSc (Hons) in Computing in Software Development,Dundalk Institute of Technology,Dundalk,IE,DEGREE,UG,Computer Science,,10950,30,,,6.0,,,,,,,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST,DRAFT
+Master of Business Administration,Technological University of the Shannon,Limerick,IE,DEGREE,PG,Business and Management,,20500,50,1000,,,,,,,,,UNKNOWN,,,DRAFT
+MSc in Data Analytics,Technological University of the Shannon,Limerick,IE,DEGREE,PG,Data Science,12,18500,50,1000,,6.0,,,,,,,UNKNOWN,,,DRAFT
+MSc in Business Analytics,Technological University of the Shannon,Limerick,IE,DEGREE,PG,Business Analytics,12,18500,50,1000,,6.5,,,,,,,UNKNOWN,,,DRAFT
+MSc in Software Engineering,Technological University of the Shannon,Limerick,IE,DEGREE,PG,Software Engineering,12,17500,50,1000,,6.5,,,,,,,UNKNOWN,,,DRAFT
+MEng in Mechanical Engineering,Technological University of the Shannon,Limerick,IE,DEGREE,PG,Mechanical Engineering,,17500,50,1000,,,,,,,,,UNKNOWN,,,DRAFT
+MSc in Quantity Surveying,Technological University of the Shannon,Limerick,IE,DEGREE,PG,Quantity Surveying,,20500,50,1000,,,,,,,,,UNKNOWN,,,DRAFT
+MSc in Nursing in Leadership and Quality Healthcare,Technological University of the Shannon,Limerick,IE,DEGREE,PG,Nursing,,18500,50,1000,,,,,,,,,UNKNOWN,,,DRAFT
+MSc in Pharmaceutical and Chemical Analysis,Technological University of the Shannon,Limerick,IE,DEGREE,PG,Pharmaceutical Science,,20500,50,1000,,,,,,,,,UNKNOWN,,,DRAFT
+MSc in Biopharmaceutical Technology,Technological University of the Shannon,Limerick,IE,DEGREE,PG,Biopharmaceutical Technology,,21500,50,1000,,,,,,,,,UNKNOWN,,,DRAFT
+Master of Business in International and Sustainable Business Strategy,Technological University of the Shannon,Limerick,IE,DEGREE,PG,Business and Management,,16500,50,1000,,,,,,,,,UNKNOWN,,,DRAFT
+BSc Pharmacy,RCSI University of Medicine and Health Sciences,Dublin,IE,DEGREE,UG,Pharmacy,60,25000,,,,,,,,,,,UNKNOWN,,,DRAFT
+PgDip in Health Professions Education,RCSI University of Medicine and Health Sciences,Dublin,IE,DEGREE,PG_DIPLOMA,Health Professions Education,12,7500,,,,,,,,,,,UNKNOWN,,,DRAFT
+MSc in Cyberpsychology,"Institute of Art, Design and Technology",Dun Laoghaire,IE,DEGREE,PG,Cyberpsychology,24,,,,9,,,,,,,,UNKNOWN,,,DRAFT
+BSc in Strength and Conditioning,Setanta College,Thurles,IE,DEGREE,UG,Sports Science,54,,,,3|6|9|12,6.0,,,,,,,UNKNOWN,,,DRAFT

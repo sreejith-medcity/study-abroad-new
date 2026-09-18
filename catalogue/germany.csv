@@ -1,32 +1,32 @@
-program,university,city,country_code,pathway,level,study_area,duration_months,tuition_per_year,application_fee,initial_deposit,intakes,min_ielts,min_pte,min_oet_grade,min_german_level,max_backlogs,max_gap_years,moi_accepted,required_docs,status
-Data Science M.Sc.,RWTH Aachen University,Aachen,DE,DEGREE,PG,Data Science,24,0,,,4|10,6.0,,,,,,no,DEGREE_CERTIFICATE|DEGREE_MARKSHEETS|ENGLISH_TEST|OTHER|APS_CERTIFICATE,DRAFT
-Automotive Engineering M.Sc.,RWTH Aachen University,Aachen,DE,DEGREE,PG,Automotive Engineering,18,0,,,10,6.0,,,,,,no,APS_CERTIFICATE,DRAFT
-Data Science M.Sc.,Hamburg University of Technology (TUHH),Hamburg,DE,DEGREE,PG,Data Science,24,0,,,10,6.5,,,,,,,CV|DEGREE_CERTIFICATE|DEGREE_MARKSHEETS|ENGLISH_TEST|OTHER|APS_CERTIFICATE,DRAFT
-Mechatronics M.Sc.,Hamburg University of Technology (TUHH),Hamburg,DE,DEGREE,PG,Mechanical Engineering,24,0,,,10,6.5,,,,,,,CV|DEGREE_CERTIFICATE|DEGREE_MARKSHEETS|ENGLISH_TEST|OTHER|APS_CERTIFICATE,DRAFT
-Mechanical Engineering and Management M.Sc.,Hamburg University of Technology (TUHH),Hamburg,DE,DEGREE,PG,Mechanical Engineering,24,0,,,10,6.5,,,,,,,CV|DEGREE_CERTIFICATE|DEGREE_MARKSHEETS|ENGLISH_TEST|OTHER|APS_CERTIFICATE,DRAFT
-Computer Science M.Sc.,Hamburg University of Technology (TUHH),Hamburg,DE,DEGREE,PG,Computer Science,,0,,,4|10,6.5,,,,,,,CV|DEGREE_CERTIFICATE|DEGREE_MARKSHEETS|ENGLISH_TEST|OTHER|APS_CERTIFICATE,DRAFT
-Automotive Software Engineering M.Sc.,TU Chemnitz,Chemnitz,DE,DEGREE,PG,Automotive Engineering,24,0,,,4|10,5.5,,,,,,,APS_CERTIFICATE,DRAFT
-Advanced Manufacturing M.Sc.,TU Chemnitz,Chemnitz,DE,DEGREE,PG,Mechanical Engineering,24,0,50,,10,5.5,,,A1,,,,APS_CERTIFICATE,DRAFT
-Web Engineering M.Sc.,TU Chemnitz,Chemnitz,DE,DEGREE,PG,Computer Science,24,0,,,10,,,,,,,,APS_CERTIFICATE,DRAFT
-Computational Modeling and Simulation M.Sc.,TU Dresden,Dresden,DE,DEGREE,PG,Computer Science,,0,,,10,6.0,60,,,,,,APS_CERTIFICATE,DRAFT
-Distributed Systems Engineering M.Sc.,TU Dresden,Dresden,DE,DEGREE,PG,Computer Science,,0,,,,,,,,,,,CV|SOP|DEGREE_CERTIFICATE|DEGREE_MARKSHEETS|MARKSHEET_10|OTHER|ENGLISH_TEST|APS_CERTIFICATE,DRAFT
-Data and Knowledge Engineering M.Sc.,Otto von Guericke University Magdeburg,Magdeburg,DE,DEGREE,PG,Data Science,24,0,,,4|10,,,,,,,,APS_CERTIFICATE,DRAFT
-Digital Engineering M.Sc.,Otto von Guericke University Magdeburg,Magdeburg,DE,DEGREE,PG,Computer Science,24,0,,,4|10,,,,,,,,APS_CERTIFICATE,DRAFT
-Research in Computer & Systems Engineering M.Sc.,TU Ilmenau,Ilmenau,DE,DEGREE,PG,Computer Science,24,0,,,4|10,,,,,,,yes,APS_CERTIFICATE,DRAFT
-Computer Science M.Sc.,TU Darmstadt,Darmstadt,DE,DEGREE,PG,Computer Science,24,0,,,4|10,7.0,,,,,,,APS_CERTIFICATE,DRAFT
-Information Technology (INFOTECH) M.Sc.,University of Stuttgart,Stuttgart,DE,DEGREE,PG,Computer Science,,3000,,,4|10,7.0,76,,,,,no,DEGREE_CERTIFICATE|DEGREE_MARKSHEETS|ENGLISH_TEST|OTHER|APS_CERTIFICATE,DRAFT
-Computational Mechanics of Materials and Structures (COMMAS) M.Sc.,University of Stuttgart,Stuttgart,DE,DEGREE,PG,Mechanical Engineering,,3000,,,10,6.5,,,,,,,DEGREE_CERTIFICATE|DEGREE_MARKSHEETS|MARKSHEET_10|CV|SOP|LOR|ENGLISH_TEST|APS_CERTIFICATE,DRAFT
-Commercial Vehicle Technology M.Sc.,RPTU Kaiserslautern-Landau,Kaiserslautern,DE,DEGREE,PG,Automotive Engineering,,0,60,,10,6.0,,,A1,,,,APS_CERTIFICATE,DRAFT
-Mannheim Master in Management (MMM),University of Mannheim,Mannheim,DE,DEGREE,PG,Management,,3000,,,9,,,,,,,,APS_CERTIFICATE,DRAFT
-Mannheim Master in Data Science,University of Mannheim,Mannheim,DE,DEGREE,PG,Data Science,24,3000,,,2|9,,,,,,,,APS_CERTIFICATE,DRAFT
-Pflegefachfrau/Pflegefachmann (generalist nursing),Vivantes Netzwerk fuer Gesundheit,Berlin,DE,AUSBILDUNG,VOCATIONAL,Nursing,36,0,,,4|10,,,,B2,,,,OTHER|ENGLISH_TEST|TRAINING_CONTRACT|GERMAN_CERTIFICATE,DRAFT
-Pflegefachmann/Pflegefachfrau (generalist nursing),Asklepios Klinik Lindau,Lindau,DE,AUSBILDUNG,VOCATIONAL,Nursing,36,0,,,9,,,,B2,,,,OTHER|CV|DEGREE_MARKSHEETS|TRAINING_CONTRACT|GERMAN_CERTIFICATE,DRAFT
-Pflegefachfrau/Pflegefachmann (generalist nursing),Duale Ausbildung Pflegefachmann/-frau (Pflegeberufegesetz),,DE,AUSBILDUNG,VOCATIONAL,Nursing,36,0,,,,,,,B1,,,,OTHER|ENGLISH_TEST|TRAINING_CONTRACT|GERMAN_CERTIFICATE,DRAFT
-Hotelfachmann/Hotelfachfrau,Duale Ausbildung Hotel- und Gastronomieberufe (IHK),,DE,AUSBILDUNG,VOCATIONAL,Hotel and Gastronomy,36,0,,,8|9,,,,B1,,,,OTHER|ENGLISH_TEST|TRAINING_CONTRACT|GERMAN_CERTIFICATE,DRAFT
-Kaufmann/Kauffrau fuer Hotelmanagement,Duale Ausbildung Hotel- und Gastronomieberufe (IHK),,DE,AUSBILDUNG,VOCATIONAL,Hotel and Gastronomy,36,0,,,8|9,,,,B1,,,,OTHER|ENGLISH_TEST|TRAINING_CONTRACT|GERMAN_CERTIFICATE,DRAFT
-Koch/Koechin,Duale Ausbildung Hotel- und Gastronomieberufe (IHK),,DE,AUSBILDUNG,VOCATIONAL,Hotel and Gastronomy,36,0,,,8|9,,,,B1,,,,OTHER|ENGLISH_TEST|TRAINING_CONTRACT|GERMAN_CERTIFICATE,DRAFT
-Fachkraft fuer Gastronomie,Duale Ausbildung Hotel- und Gastronomieberufe (IHK),,DE,AUSBILDUNG,VOCATIONAL,Hotel and Gastronomy,24,0,,,8|9,,,,B1,,,,OTHER|ENGLISH_TEST|TRAINING_CONTRACT|GERMAN_CERTIFICATE,DRAFT
-Elektroniker/in fuer Betriebstechnik,Duale Ausbildung Elektroberufe (IHK),,DE,AUSBILDUNG,VOCATIONAL,Technical Trades,42,0,,,8|9,,,,B1,,,,OTHER|ENGLISH_TEST|TRAINING_CONTRACT|GERMAN_CERTIFICATE,DRAFT
-Mechatroniker/in,Duale Ausbildung Metall- und Elektroberufe (IHK),,DE,AUSBILDUNG,VOCATIONAL,Technical Trades,42,0,,,8|9,,,,B1,,,,OTHER|ENGLISH_TEST|TRAINING_CONTRACT|GERMAN_CERTIFICATE,DRAFT
-"Anlagenmechaniker/in fuer Sanitaer-, Heizungs- und Klimatechnik",Duale Ausbildung (Handwerkskammer/IHK),,DE,AUSBILDUNG,VOCATIONAL,Technical Trades,42,0,,,8|9,,,,B1,,,,OTHER|ENGLISH_TEST|TRAINING_CONTRACT|GERMAN_CERTIFICATE,DRAFT
-Kraftfahrzeugmechatroniker/in,Duale Ausbildung (Handwerkskammer/IHK),,DE,AUSBILDUNG,VOCATIONAL,Technical Trades,42,0,,,8|9,,,,B1,,,,OTHER|ENGLISH_TEST|TRAINING_CONTRACT|GERMAN_CERTIFICATE,DRAFT
+program,university,city,country_code,pathway,level,study_area,duration_months,tuition_per_year,application_fee,initial_deposit,intakes,min_ielts,min_pte,min_oet_grade,min_german_level,max_backlogs,max_gap_years,moi_accepted,work_rights,work_rights_note,required_docs,status
+Data Science M.Sc.,RWTH Aachen University,Aachen,DE,DEGREE,PG,Data Science,24,0,,,4|10,6.0,,,,,,no,UNKNOWN,,DEGREE_CERTIFICATE|DEGREE_MARKSHEETS|ENGLISH_TEST|OTHER|APS_CERTIFICATE,DRAFT
+Automotive Engineering M.Sc.,RWTH Aachen University,Aachen,DE,DEGREE,PG,Automotive Engineering,18,0,,,10,6.0,,,,,,no,UNKNOWN,,APS_CERTIFICATE,DRAFT
+Data Science M.Sc.,Hamburg University of Technology (TUHH),Hamburg,DE,DEGREE,PG,Data Science,24,0,,,10,6.5,,,,,,,UNKNOWN,,CV|DEGREE_CERTIFICATE|DEGREE_MARKSHEETS|ENGLISH_TEST|OTHER|APS_CERTIFICATE,DRAFT
+Mechatronics M.Sc.,Hamburg University of Technology (TUHH),Hamburg,DE,DEGREE,PG,Mechanical Engineering,24,0,,,10,6.5,,,,,,,UNKNOWN,,CV|DEGREE_CERTIFICATE|DEGREE_MARKSHEETS|ENGLISH_TEST|OTHER|APS_CERTIFICATE,DRAFT
+Mechanical Engineering and Management M.Sc.,Hamburg University of Technology (TUHH),Hamburg,DE,DEGREE,PG,Mechanical Engineering,24,0,,,10,6.5,,,,,,,UNKNOWN,,CV|DEGREE_CERTIFICATE|DEGREE_MARKSHEETS|ENGLISH_TEST|OTHER|APS_CERTIFICATE,DRAFT
+Computer Science M.Sc.,Hamburg University of Technology (TUHH),Hamburg,DE,DEGREE,PG,Computer Science,,0,,,4|10,6.5,,,,,,,UNKNOWN,,CV|DEGREE_CERTIFICATE|DEGREE_MARKSHEETS|ENGLISH_TEST|OTHER|APS_CERTIFICATE,DRAFT
+Automotive Software Engineering M.Sc.,TU Chemnitz,Chemnitz,DE,DEGREE,PG,Automotive Engineering,24,0,,,4|10,5.5,,,,,,,UNKNOWN,,APS_CERTIFICATE,DRAFT
+Advanced Manufacturing M.Sc.,TU Chemnitz,Chemnitz,DE,DEGREE,PG,Mechanical Engineering,24,0,50,,10,5.5,,,A1,,,,UNKNOWN,,APS_CERTIFICATE,DRAFT
+Web Engineering M.Sc.,TU Chemnitz,Chemnitz,DE,DEGREE,PG,Computer Science,24,0,,,10,,,,,,,,UNKNOWN,,APS_CERTIFICATE,DRAFT
+Computational Modeling and Simulation M.Sc.,TU Dresden,Dresden,DE,DEGREE,PG,Computer Science,,0,,,10,6.0,60,,,,,,UNKNOWN,,APS_CERTIFICATE,DRAFT
+Distributed Systems Engineering M.Sc.,TU Dresden,Dresden,DE,DEGREE,PG,Computer Science,,0,,,,,,,,,,,UNKNOWN,,CV|SOP|DEGREE_CERTIFICATE|DEGREE_MARKSHEETS|MARKSHEET_10|OTHER|ENGLISH_TEST|APS_CERTIFICATE,DRAFT
+Data and Knowledge Engineering M.Sc.,Otto von Guericke University Magdeburg,Magdeburg,DE,DEGREE,PG,Data Science,24,0,,,4|10,,,,,,,,UNKNOWN,,APS_CERTIFICATE,DRAFT
+Digital Engineering M.Sc.,Otto von Guericke University Magdeburg,Magdeburg,DE,DEGREE,PG,Computer Science,24,0,,,4|10,,,,,,,,UNKNOWN,,APS_CERTIFICATE,DRAFT
+Research in Computer & Systems Engineering M.Sc.,TU Ilmenau,Ilmenau,DE,DEGREE,PG,Computer Science,24,0,,,4|10,,,,,,,yes,UNKNOWN,,APS_CERTIFICATE,DRAFT
+Computer Science M.Sc.,TU Darmstadt,Darmstadt,DE,DEGREE,PG,Computer Science,24,0,,,4|10,7.0,,,,,,,UNKNOWN,,APS_CERTIFICATE,DRAFT
+Information Technology (INFOTECH) M.Sc.,University of Stuttgart,Stuttgart,DE,DEGREE,PG,Computer Science,,3000,,,4|10,7.0,76,,,,,no,UNKNOWN,,DEGREE_CERTIFICATE|DEGREE_MARKSHEETS|ENGLISH_TEST|OTHER|APS_CERTIFICATE,DRAFT
+Computational Mechanics of Materials and Structures (COMMAS) M.Sc.,University of Stuttgart,Stuttgart,DE,DEGREE,PG,Mechanical Engineering,,3000,,,10,6.5,,,,,,,UNKNOWN,,DEGREE_CERTIFICATE|DEGREE_MARKSHEETS|MARKSHEET_10|CV|SOP|LOR|ENGLISH_TEST|APS_CERTIFICATE,DRAFT
+Commercial Vehicle Technology M.Sc.,RPTU Kaiserslautern-Landau,Kaiserslautern,DE,DEGREE,PG,Automotive Engineering,,0,60,,10,6.0,,,A1,,,,UNKNOWN,,APS_CERTIFICATE,DRAFT
+Mannheim Master in Management (MMM),University of Mannheim,Mannheim,DE,DEGREE,PG,Management,,3000,,,9,,,,,,,,UNKNOWN,,APS_CERTIFICATE,DRAFT
+Mannheim Master in Data Science,University of Mannheim,Mannheim,DE,DEGREE,PG,Data Science,24,3000,,,2|9,,,,,,,,UNKNOWN,,APS_CERTIFICATE,DRAFT
+Pflegefachfrau/Pflegefachmann (generalist nursing),Vivantes Netzwerk fuer Gesundheit,Berlin,DE,AUSBILDUNG,VOCATIONAL,Nursing,36,0,,,4|10,,,,B2,,,,UNKNOWN,,OTHER|ENGLISH_TEST|TRAINING_CONTRACT|GERMAN_CERTIFICATE,DRAFT
+Pflegefachmann/Pflegefachfrau (generalist nursing),Asklepios Klinik Lindau,Lindau,DE,AUSBILDUNG,VOCATIONAL,Nursing,36,0,,,9,,,,B2,,,,UNKNOWN,,OTHER|CV|DEGREE_MARKSHEETS|TRAINING_CONTRACT|GERMAN_CERTIFICATE,DRAFT
+Pflegefachfrau/Pflegefachmann (generalist nursing),Duale Ausbildung Pflegefachmann/-frau (Pflegeberufegesetz),,DE,AUSBILDUNG,VOCATIONAL,Nursing,36,0,,,,,,,B1,,,,UNKNOWN,,OTHER|ENGLISH_TEST|TRAINING_CONTRACT|GERMAN_CERTIFICATE,DRAFT
+Hotelfachmann/Hotelfachfrau,Duale Ausbildung Hotel- und Gastronomieberufe (IHK),,DE,AUSBILDUNG,VOCATIONAL,Hotel and Gastronomy,36,0,,,8|9,,,,B1,,,,UNKNOWN,,OTHER|ENGLISH_TEST|TRAINING_CONTRACT|GERMAN_CERTIFICATE,DRAFT
+Kaufmann/Kauffrau fuer Hotelmanagement,Duale Ausbildung Hotel- und Gastronomieberufe (IHK),,DE,AUSBILDUNG,VOCATIONAL,Hotel and Gastronomy,36,0,,,8|9,,,,B1,,,,UNKNOWN,,OTHER|ENGLISH_TEST|TRAINING_CONTRACT|GERMAN_CERTIFICATE,DRAFT
+Koch/Koechin,Duale Ausbildung Hotel- und Gastronomieberufe (IHK),,DE,AUSBILDUNG,VOCATIONAL,Hotel and Gastronomy,36,0,,,8|9,,,,B1,,,,UNKNOWN,,OTHER|ENGLISH_TEST|TRAINING_CONTRACT|GERMAN_CERTIFICATE,DRAFT
+Fachkraft fuer Gastronomie,Duale Ausbildung Hotel- und Gastronomieberufe (IHK),,DE,AUSBILDUNG,VOCATIONAL,Hotel and Gastronomy,24,0,,,8|9,,,,B1,,,,UNKNOWN,,OTHER|ENGLISH_TEST|TRAINING_CONTRACT|GERMAN_CERTIFICATE,DRAFT
+Elektroniker/in fuer Betriebstechnik,Duale Ausbildung Elektroberufe (IHK),,DE,AUSBILDUNG,VOCATIONAL,Technical Trades,42,0,,,8|9,,,,B1,,,,UNKNOWN,,OTHER|ENGLISH_TEST|TRAINING_CONTRACT|GERMAN_CERTIFICATE,DRAFT
+Mechatroniker/in,Duale Ausbildung Metall- und Elektroberufe (IHK),,DE,AUSBILDUNG,VOCATIONAL,Technical Trades,42,0,,,8|9,,,,B1,,,,UNKNOWN,,OTHER|ENGLISH_TEST|TRAINING_CONTRACT|GERMAN_CERTIFICATE,DRAFT
+"Anlagenmechaniker/in fuer Sanitaer-, Heizungs- und Klimatechnik",Duale Ausbildung (Handwerkskammer/IHK),,DE,AUSBILDUNG,VOCATIONAL,Technical Trades,42,0,,,8|9,,,,B1,,,,UNKNOWN,,OTHER|ENGLISH_TEST|TRAINING_CONTRACT|GERMAN_CERTIFICATE,DRAFT
+Kraftfahrzeugmechatroniker/in,Duale Ausbildung (Handwerkskammer/IHK),,DE,AUSBILDUNG,VOCATIONAL,Technical Trades,42,0,,,8|9,,,,B1,,,,UNKNOWN,,OTHER|ENGLISH_TEST|TRAINING_CONTRACT|GERMAN_CERTIFICATE,DRAFT
