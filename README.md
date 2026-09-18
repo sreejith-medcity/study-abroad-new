@@ -8,7 +8,7 @@ This repository currently contains **Phase 0 basics and Phase 1 (core pipeline)*
 
 | Area | Who | What |
 | --- | --- | --- |
-| Sign in and roles | All | Super admin, Overseas admin, Management (read-only), Partner owner, Counsellor. Partners only ever see their own organisation's data. |
+| Sign in and roles | All | Seven roles, each with its own powers, plus a free-text job title on every account. Partners only ever see their own organisation's data. |
 | Dashboards | All | One address, five dashboards. Super admin sees the platform (accounts, access, storage, audit activity); Overseas admin sees the processing desk (lane health against SLA, own files, unassigned work, partner activity); Management sees outcomes (funnel, conversion rates, partner performance, twelve month trend); a partner owner sees the branch (KPI tiles, tier progress, team load, deadlines); a counsellor sees their own desk (what is waiting on them, unread student replies, their students). |
 | Students | Partners, staff | List with filters, inline reassignment, archive / delete. Registration requires recorded consent. |
 | Student file | Partners, staff | Three steps: **Profile** (personal, address, passport, academics, work, tests), **Applications**, **Documents**. Profile locks once the team starts working an application; partners send edit requests. Passport numbers are masked for counsellors and every reveal and download is logged. |
@@ -77,6 +77,8 @@ All seeded users share the password `Password@123`. Every person, university and
 | sreejith@miak.in | Super admin, platform owner |
 | fathima.rahman@example.com | Student portal, opens in Malayalam |
 | admin@medcityoverseas.test | Overseas admin, UK desk |
+| ops@medcityoverseas.test | Ops manager |
+| documentation@medcityoverseas.test | Documentation team |
 | germany.desk@medcityoverseas.test | Overseas admin, Germany desk |
 | nursing.desk@medcityoverseas.test | Overseas admin, Nursing desk |
 | management@medcityoverseas.test | Management (read-only) |
@@ -167,7 +169,7 @@ The Hostinger build does not touch the database, so a migration is applied on pu
 npm run db:migrate
 ```
 
-`drizzle/0002_super_admin_role.sql` adds `SUPER_ADMIN` to the role enum `drizzle/0003_enquiries.sql` adds the enquiry tables, and `drizzle/0004_commission_wallet.sql` adds commission rules, commissions, wallet entries and payout requests, and `drizzle/0005_resources.sql` adds the learning library, `drizzle/0006_public_form_and_student_login.sql` adds the public form and student logins, and `drizzle/0007_malayalam_labels.sql` adds the Malayalam wording. If you would rather do it in the Supabase SQL editor:
+`drizzle/0002_super_admin_role.sql` adds `SUPER_ADMIN` to the role enum `drizzle/0003_enquiries.sql` adds the enquiry tables, and `drizzle/0004_commission_wallet.sql` adds commission rules, commissions, wallet entries and payout requests, and `drizzle/0005_resources.sql` adds the learning library, `drizzle/0006_public_form_and_student_login.sql` adds the public form and student logins, `drizzle/0007_malayalam_labels.sql` adds the Malayalam wording, and `drizzle/0008_ops_and_documentation_roles.sql` adds the ops manager and documentation roles. If you would rather do it in the Supabase SQL editor:
 
 ```sql
 alter type "public"."role" add value 'SUPER_ADMIN';
@@ -178,13 +180,20 @@ Run the two statements separately: Postgres will not let a new enum value be use
 
 ## Roles
 
+Set from **Partners and people**, along with a free-text job title ("UK desk", "Germany documentation") that shows beside the person's name everywhere.
+
 | Role | Sees | Can |
 | --- | --- | --- |
-| Super admin | Everything | Everything an Overseas admin can, plus create and deactivate staff accounts, change roles, reset passwords, read and export the audit log |
-| Overseas admin | Everything | Process applications: statuses, work queue, programs, status flows, partner organisations, partner users, documents |
-| Management | Everything | Read only: dashboard, applications, students |
-| Partner owner | Own organisation | Register students, apply, upload documents, answer requests, manage their own counsellors' work |
-| Counsellor | Own organisation | Same as partner owner, without full passport numbers |
+| Super admin | Everything | Everything below, plus creating other super admins and reading the audit log |
+| Ops manager | Everything | Everything an Overseas admin can, plus adding and deactivating staff, changing roles and resetting passwords. No audit log, and cannot hand out super admin |
+| Overseas admin | Everything | Process applications: statuses, work queue, programs, status flows, partners, commission, documents |
+| Documentation team | Every student and application | Documents, the pre-submission check, asking partners for items, and both comment channels. No status changes, no commission, no accounts, no reports |
+| Management | Everything | Read only: dashboards, applications, students, commission and insights |
+| Branch head | Own organisation | Register students, apply, upload documents, answer requests, run the branch team, wallet and payouts |
+| Counsellor | Own organisation | Same as a branch head, without full passport numbers, the team view or the wallet |
+| Student | Their own file | The student portal only |
+
+Who may hand out which role: a super admin can set any role. An ops manager can set every role except super admin. An Overseas admin can add partner staff but not Medcity Overseas accounts.
 
 ## Next
 

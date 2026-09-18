@@ -3,7 +3,7 @@ import { asc, desc, ne, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fmtDate, fullName, intakeLabel } from "@/lib/format";
-import { STAFF_ROLES, isAdmin } from "@/lib/permissions";
+import { REPORTING_ROLES, isAdmin } from "@/lib/permissions";
 import {
   STATUS_LABEL,
   STATUS_TONE,
@@ -50,7 +50,7 @@ const TABS = [
 
 export default async function AdminCommissionPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   // Management reads the same numbers; only an admin can move money.
-  const user = await requireUser([...STAFF_ROLES]);
+  const user = await requireUser([...REPORTING_ROLES]);
   const canAct = isAdmin(user);
   const sp = await searchParams;
   const tab = (Array.isArray(sp.tab) ? sp.tab[0] : sp.tab) ?? "pipeline";

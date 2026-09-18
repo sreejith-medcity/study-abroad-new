@@ -8,7 +8,7 @@ import { applicationsBase, readFilters } from "@/server/queries";
 import type { Pathway, StatusGroup } from "@/db/schema";
 import { Button, Card, Chip, LinkButton, PageHeader, Select, cn } from "@/components/ui";
 import { StatusForm } from "@/app/(app)/students/[id]/applications/client";
-import { ADMIN_ROLES } from "@/lib/permissions";
+import { PROCESSING_ROLES, canChangeStatus } from "@/lib/permissions";
 
 export const metadata = { title: "Work queue" };
 
@@ -27,7 +27,8 @@ const PATHWAYS: { key: Pathway; label: string }[] = [
 ];
 
 export default async function QueuePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const user = await requireUser([...ADMIN_ROLES]);
+  const user = await requireUser([...PROCESSING_ROLES]);
+  const canMoveStatus = canChangeStatus(user);
   const f = readFilters(await searchParams) as Record<string, string>;
   const pathway = (PATHWAYS.find((p) => p.key === f.pathway)?.key ?? "DEGREE") as Pathway;
   const mine = f.officer !== "all";
@@ -111,12 +112,18 @@ export default async function QueuePage({ searchParams }: { searchParams: Promis
                           <p className="text-xs text-muted">{orgNames[r.orgId]}</p>
                           <div className="mt-2 flex flex-wrap gap-2 border-t border-line pt-2 text-xs">
                             {lane.group === "NEW" && <Link href={`/admin/applications/${r.id}/check`} className="text-brand-600 hover:underline">Run check</Link>}
-                            <details className="w-full">
-                              <summary className="cursor-pointer text-brand-600">Change status</summary>
-                              <div className="mt-2">
-                                <StatusForm applicationId={r.id} currentId={statusIdByCode[r.statusCode]} statuses={statuses} />
-                              </div>
-                            </details>
+                            {canMoveStatus ? (
+                              <details className="w-full">
+                                <summary className="cursor-pointer text-brand-600">Change status</summary>
+                                <div className="mt-2">
+                                  <StatusForm applicationId={r.id} currentId={statusIdByCode[r.statusCode]} statuses={statuses} />
+                                </div>
+                              </details>
+                            ) : (
+                              <Link href={`/students/${r.studentId}/applications?app=${r.id}`} className="text-brand-600 hover:underline">
+                                Open the file
+                              </Link>
+                            )}
                           </div>
                         </Card>
                       </li>

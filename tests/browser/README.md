@@ -16,6 +16,7 @@ node tests/browser/dashboards.mjs
 | `enquiries.mjs` | Capture, follow-up, conversion to a student, org isolation |
 | `money.mjs` | Commission rules and pipeline, wallet, payout request and payment |
 | `phase4.mjs` | Insights, its CSV export, and the learning library audiences |
+| `roles.mjs` | Adding a user with a role and title, and what ops managers and the documentation team can reach |
 | `portal.mjs` | The student portal: language switch, documents, messages, isolation, and the invite |
 | `publicform.mjs` | The public enquiry form, consent, the branch QR panel and org isolation |
 | `super-smoke.mjs` | Super admin gating: audit log, role controls, health detail |

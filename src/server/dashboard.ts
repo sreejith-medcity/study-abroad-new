@@ -446,7 +446,7 @@ export async function officerLoad(user: SessionUser) {
         )::int`,
       })
       .from(us)
-      .where(and(inArray(us.role, ["SUPER_ADMIN", "ADMIN"]), eq(us.active, true)))
+      .where(and(inArray(us.role, ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN"]), eq(us.active, true)))
       .orderBy(asc(us.name)),
   ]);
   return {

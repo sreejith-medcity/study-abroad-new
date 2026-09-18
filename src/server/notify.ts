@@ -13,7 +13,7 @@ export async function adminIds() {
   const rows = await db
     .select({ id: schema.users.id })
     .from(schema.users)
-    .where(and(inArray(schema.users.role, ["ADMIN", "SUPER_ADMIN"]), eq(schema.users.active, true)));
+    .where(and(inArray(schema.users.role, ["ADMIN", "SUPER_ADMIN", "OPS_MANAGER"]), eq(schema.users.active, true)));
   return rows.map((r) => r.id);
 }
 

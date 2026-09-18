@@ -7,12 +7,12 @@ import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { getStudentForUser } from "@/server/queries";
 import { deleteUpload, saveUpload, UploadError } from "@/server/storage";
-import { ADMIN_ROLES, isAdmin } from "@/lib/permissions";
+import { PROCESSING_ROLES, isAdmin } from "@/lib/permissions";
 
 export type FormState = { error?: string; ok?: string };
 
 export async function uploadDocumentAction(_: FormState, formData: FormData): Promise<FormState> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...ADMIN_ROLES]);
+  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
   const studentId = String(formData.get("studentId"));
   const typeCode = String(formData.get("typeCode") || "");
   const file = formData.get("file");
@@ -36,7 +36,7 @@ export async function uploadDocumentAction(_: FormState, formData: FormData): Pr
 }
 
 export async function deleteDocumentAction(formData: FormData) {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...ADMIN_ROLES]);
+  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
   const documentId = String(formData.get("documentId"));
   const doc = await db.query.documents.findFirst({ where: eq(schema.documents.id, documentId), with: { type: true } });
   if (!doc) return;

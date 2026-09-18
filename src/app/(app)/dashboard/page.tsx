@@ -19,6 +19,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   if (isSuperAdmin(user)) return <SuperAdminDashboard user={user} f={f} />;
   if (isAdmin(user)) return <AdminDashboard user={user} f={f} />;
+  // The documentation team sees the same desk without the money lines.
+  if (user.role === "DOCUMENTATION") return <AdminDashboard user={user} f={f} showMoney={false} />;
   if (user.role === "MANAGEMENT") return <ManagementDashboard user={user} f={f} />;
   return <PartnerDashboard user={user} f={f} variant={user.role === "PARTNER" ? "owner" : "counsellor"} />;
 }

@@ -2,26 +2,30 @@ import { asc, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fmtDate } from "@/lib/format";
-import { ADMIN_ROLES, canManageUsers, canResetPasswords, ROLE_LABEL } from "@/lib/permissions";
+import { ADMIN_ROLES, HQ_ROLES, canManageSuperAdmins, canManageUsers, canResetPasswords, ROLE_BLURB, ROLE_LABEL } from "@/lib/permissions";
 import { Button, Card, CardHeader, Chip, Input, PageHeader, Select, Alert } from "@/components/ui";
 import { IconPartners } from "@/components/icons";
 import { toggleUserAction, updateOrgAction } from "./actions";
-import { AddUserForm, InvitePartnerForm, ResetPasswordForm, RoleForm } from "./forms";
+import { AddUserForm, InvitePartnerForm, ResetPasswordForm, RoleForm, TitleForm } from "./forms";
 import { PublicFormPanel } from "./public-form-panel";
 
 export const metadata = { title: "Partners and people" };
 
-const ROLE_TONE: Record<string, "brand" | "info" | "neutral" | "gold"> = {
+const ROLE_TONE: Record<string, "brand" | "info" | "neutral" | "gold" | "warn" | "ok"> = {
   SUPER_ADMIN: "gold",
+  OPS_MANAGER: "warn",
   ADMIN: "brand",
+  DOCUMENTATION: "ok",
   MANAGEMENT: "info",
   PARTNER: "neutral",
   COUNSELLOR: "neutral",
+  STUDENT: "neutral",
 };
 
 export default async function PartnersPage() {
   const me = await requireUser([...ADMIN_ROLES]);
   const manageUsers = canManageUsers(me);
+  const superAdmin = canManageSuperAdmins(me);
 
   const orgs = await db.query.organizations.findMany({
     with: {
@@ -116,9 +120,12 @@ export default async function PartnersPage() {
                         {u.lastSignInAt ? `Last signed in ${fmtDate(u.lastSignInAt)}` : "Never signed in"}
                       </span>
                       <div className="ml-auto flex flex-wrap items-center gap-2">
-                        {manageUsers && u.id !== me.id && <RoleForm userId={u.id} role={u.role} hq={hq} />}
+                        {manageUsers && u.id !== me.id && (
+                          <RoleForm userId={u.id} role={u.role} hq={hq} roleLabel={ROLE_LABEL} canSetSuperAdmin={superAdmin} />
+                        )}
+                        {manageUsers && <TitleForm userId={u.id} title={u.deskLabel} />}
                         {canResetPasswords(me) && <ResetPasswordForm userId={u.id} email={u.email} />}
-                        {u.id !== me.id && (manageUsers || !["SUPER_ADMIN", "ADMIN", "MANAGEMENT"].includes(u.role)) && (
+                        {u.id !== me.id && (manageUsers || !(HQ_ROLES as readonly string[]).includes(u.role)) && (
                           <form action={toggleUserAction}>
                             <input type="hidden" name="userId" value={u.id} />
                             <button className="text-xs text-muted hover:text-stop-500">{u.active ? "Deactivate" : "Reactivate"}</button>
@@ -140,7 +147,14 @@ export default async function PartnersPage() {
                 <details className="border-t border-line px-4 py-3">
                   <summary className="cursor-pointer text-[13px] font-medium text-brand-600">Add user to {o.name}</summary>
                   <div className="mt-3">
-                    <AddUserForm orgId={o.id} hq={hq} canCreateStaff={manageUsers} />
+                    <AddUserForm
+                      orgId={o.id}
+                      hq={hq}
+                      canCreateStaff={manageUsers}
+                      canCreateSuperAdmin={superAdmin}
+                      roleLabel={ROLE_LABEL}
+                      roleBlurb={ROLE_BLURB}
+                    />
                   </div>
                 </details>
               </Card>

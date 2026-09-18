@@ -265,7 +265,7 @@ export async function toggleLockAction(formData: FormData) {
 }
 
 export async function revealPassportAction(formData: FormData) {
-  const user = await requireUser(["ADMIN", "PARTNER", "COUNSELLOR"]);
+  const user = await requireUser(["ADMIN", "SUPER_ADMIN", "OPS_MANAGER", "DOCUMENTATION", "PARTNER", "COUNSELLOR"]);
   const studentId = String(formData.get("studentId"));
   await getStudentForUser(user, studentId);
   await audit(user.id, "passport.reveal", "student", studentId);

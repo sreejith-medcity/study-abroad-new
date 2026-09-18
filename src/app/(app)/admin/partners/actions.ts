@@ -7,7 +7,7 @@ import { z } from "zod";
 import { db, schema } from "@/db";
 import { hashPassword, requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { ADMIN_ROLES, canManageUsers, canResetPasswords, ROLE_LABEL } from "@/lib/permissions";
+import { ADMIN_ROLES, HQ_ROLES, canManageSuperAdmins, canManageUsers, canResetPasswords, ROLE_LABEL } from "@/lib/permissions";
 import { makeSlug } from "@/server/public-form";
 
 export type FormState = { error?: string; ok?: string; fieldErrors?: Record<string, string[] | undefined> };
@@ -52,7 +52,7 @@ const addUser = z.object({
   name: z.string().trim().min(2, "Name is required").max(100),
   email: z.string().trim().toLowerCase().email("Enter a valid email"),
   deskLabel: z.string().trim().max(60).optional(),
-  role: z.enum(["PARTNER", "COUNSELLOR", "ADMIN", "MANAGEMENT", "SUPER_ADMIN"]),
+  role: z.enum(["PARTNER", "COUNSELLOR", "ADMIN", "MANAGEMENT", "SUPER_ADMIN", "OPS_MANAGER", "DOCUMENTATION"]),
 });
 
 export async function addUserAction(_: FormState, formData: FormData): Promise<FormState> {
@@ -62,11 +62,16 @@ export async function addUserAction(_: FormState, formData: FormData): Promise<F
   const d = parsed.data;
   const org = await db.query.organizations.findFirst({ where: eq(schema.organizations.id, d.orgId) });
   if (!org) return { error: "Organisation not found." };
-  if (org.type === "HQ" && !["SUPER_ADMIN", "ADMIN", "MANAGEMENT"].includes(d.role)) return { error: "Medcity Overseas users must be Super admin, Admin or Management." };
-  if ((d.role === "SUPER_ADMIN" || d.role === "ADMIN") && !canManageUsers(user)) {
+  if (org.type === "HQ" && !(HQ_ROLES as readonly string[]).includes(d.role)) {
+    return { error: "Medcity Overseas users must be Super admin, Ops manager, Overseas admin, Documentation team or Management." };
+  }
+  if (d.role === "SUPER_ADMIN" && !canManageSuperAdmins(user)) {
+    return { error: "Only a super admin can create another super admin." };
+  }
+  if (org.type === "HQ" && !canManageUsers(user)) {
     return { error: "Only a super admin can create Medcity Overseas staff accounts." };
   }
-  if (org.type !== "HQ" && !["PARTNER", "COUNSELLOR"].includes(d.role)) return { error: "Partner users must be Partner or Counsellor." };
+  if (org.type !== "HQ" && !["PARTNER", "COUNSELLOR"].includes(d.role)) return { error: "Partner users must be a Branch head or a Counsellor." };
   if (await db.query.users.findFirst({ where: eq(schema.users.email, d.email) })) return { error: "A user with that email already exists." };
 
   if (org.type !== "HQ") {
@@ -100,7 +105,7 @@ export async function toggleUserAction(formData: FormData) {
   const u = await db.query.users.findFirst({ where: eq(schema.users.id, userId) });
   if (!u) return;
   // Only a super admin may switch off another Medcity Overseas account.
-  if (["SUPER_ADMIN", "ADMIN", "MANAGEMENT"].includes(u.role) && !canManageUsers(actor)) return;
+  if ((HQ_ROLES as readonly string[]).includes(u.role) && !canManageUsers(actor)) return;
   await db.update(schema.users).set({ active: !u.active }).where(eq(schema.users.id, userId));
   await audit(actor.id, u.active ? "user.deactivate" : "user.activate", "user", userId, { email: u.email, role: u.role });
   revalidatePath("/admin/partners");
@@ -119,8 +124,13 @@ export async function changeRoleAction(_: FormState, formData: FormData): Promis
   if (target.id === actor.id) return { error: "Ask another super admin to change your own role." };
 
   const hq = target.org.type === "HQ";
-  if (hq && !["SUPER_ADMIN", "ADMIN", "MANAGEMENT"].includes(role)) return { error: "Medcity Overseas staff can only be Super admin, Admin or Management." };
-  if (!hq && !["PARTNER", "COUNSELLOR"].includes(role)) return { error: "Partner staff can only be Partner owner or Counsellor." };
+  if (hq && !(HQ_ROLES as readonly string[]).includes(role)) {
+    return { error: "Medcity Overseas staff can be Super admin, Ops manager, Overseas admin, Documentation team or Management." };
+  }
+  if (!hq && !["PARTNER", "COUNSELLOR"].includes(role)) return { error: "Partner staff can only be Branch head or Counsellor." };
+  if ((role === "SUPER_ADMIN" || target.role === "SUPER_ADMIN") && !canManageSuperAdmins(actor)) {
+    return { error: "Only a super admin can add or remove another super admin." };
+  }
 
   if (target.role === "SUPER_ADMIN" && role !== "SUPER_ADMIN") {
     const [{ n }] = await db.select({ n: count() }).from(schema.users).where(and(eq(schema.users.role, "SUPER_ADMIN"), eq(schema.users.active, true)));
@@ -180,4 +190,20 @@ export async function resetPublicSlugAction(formData: FormData) {
   await db.update(schema.organizations).set({ publicSlug: slug }).where(eq(schema.organizations.id, orgId));
   await audit(actor.id, "org.public_slug_reset", "organization", orgId, { from: org.publicSlug, to: slug });
   revalidatePath("/admin/partners");
+}
+
+/** The free-text job title beside someone's name. */
+export async function setTitleAction(_: FormState, formData: FormData): Promise<FormState> {
+  const actor = await requireUser([...ADMIN_ROLES]);
+  if (!canManageUsers(actor)) return { error: "Only a super admin or an ops manager can change titles." };
+  const userId = String(formData.get("userId"));
+  const title = String(formData.get("deskLabel") ?? "").trim().slice(0, 60);
+
+  const target = await db.query.users.findFirst({ where: eq(schema.users.id, userId) });
+  if (!target) return { error: "User not found." };
+
+  await db.update(schema.users).set({ deskLabel: title || null }).where(eq(schema.users.id, userId));
+  await audit(actor.id, "user.title", "user", userId, { email: target.email, title: title || null });
+  revalidatePath("/admin/partners");
+  return { ok: title ? `${target.name} is now "${title}".` : `Title cleared for ${target.name}.` };
 }

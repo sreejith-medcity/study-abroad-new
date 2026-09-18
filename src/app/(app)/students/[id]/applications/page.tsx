@@ -4,7 +4,7 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { summarise } from "@/lib/checks";
 import { fmtDate, fmtDateTime, fmtMoney, intakeLabel } from "@/lib/format";
-import { APP_ROLES, isStaff } from "@/lib/permissions";
+import { APP_ROLES, isAdmin, isDocumentationTeam, isStaff } from "@/lib/permissions";
 import { checkApplication, statusesFor } from "@/server/applications";
 import { getStudentForUser } from "@/server/queries";
 import { Button, Card, Chip, EmptyState, Select, StatusBadge, cn } from "@/components/ui";
@@ -62,7 +62,7 @@ export default async function StudentApplicationsPage({ params, searchParams }: 
               </li>
             ))}
           </ul>
-          <ApplicationDetail appId={selected.id} studentId={id} channel={channel} userRole={user.role} staff={isStaff(user)} canWrite={canWrite} whatsapp={student.whatsappOptIn} />
+          <ApplicationDetail appId={selected.id} studentId={id} channel={channel} canProcess={isAdmin(user)} canCheck={isAdmin(user) || isDocumentationTeam(user)} staff={isStaff(user)} canWrite={canWrite} whatsapp={student.whatsappOptIn} />
         </div>
       ) : null}
     </Card>
@@ -108,7 +108,7 @@ async function ApplyPanel({ studentId, defaultPathway, preselectProgramId }: { s
   );
 }
 
-async function ApplicationDetail({ appId, studentId, channel, userRole, staff, canWrite, whatsapp }: { appId: string; studentId: string; channel: "TEAM" | "STUDENT"; userRole: string; staff: boolean; canWrite: boolean; whatsapp: boolean }) {
+async function ApplicationDetail({ appId, studentId, channel, canProcess, canCheck, staff, canWrite, whatsapp }: { appId: string; studentId: string; channel: "TEAM" | "STUDENT"; canProcess: boolean; canCheck: boolean; staff: boolean; canWrite: boolean; whatsapp: boolean }) {
   const app = await db.query.applications.findFirst({
     where: eq(schema.applications.id, appId),
     with: {
@@ -128,7 +128,7 @@ async function ApplicationDetail({ appId, studentId, channel, userRole, staff, c
   const docTypes = await db.select().from(schema.documentTypes).orderBy(asc(schema.documentTypes.sortOrder));
   const checks = await checkApplication(appId);
   const { blockers, warnings } = summarise(checks);
-  const statuses = userRole === "ADMIN" ? await statusesFor(app.status.pathway) : [];
+  const statuses = canProcess ? await statusesFor(app.status.pathway) : [];
   const currency = app.program.university.country.currency;
 
   return (
@@ -150,7 +150,7 @@ async function ApplicationDetail({ appId, studentId, channel, userRole, staff, c
         <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-line pt-3">
           <span className="text-muted">Application fee:</span>
           {app.feeStatus === "NOT_APPLICABLE" ? <Chip tone="ok">No application fee</Chip> : app.feeStatus === "PAID" ? <Chip tone="ok">Paid {fmtMoney(app.program.applicationFee, currency)}</Chip> : <Chip tone="warn">Due {fmtMoney(app.program.applicationFee, currency)}</Chip>}
-          {app.feeStatus === "DUE" && userRole === "ADMIN" && (
+          {app.feeStatus === "DUE" && canProcess && (
             <form action={markFeePaidAction}><input type="hidden" name="applicationId" value={app.id} /><Button variant="quiet" className="py-1 text-xs">Mark paid</Button></form>
           )}
           <span className="ml-auto text-muted">Officer: {app.officer ? `${app.officer.name}${app.officer.phone ? ` · ${app.officer.phone}` : ""}` : "not assigned yet"}</span>
@@ -172,12 +172,12 @@ async function ApplicationDetail({ appId, studentId, channel, userRole, staff, c
             ))}
             {checks.length === 0 && <li className="text-muted">No rules configured for this program.</li>}
           </ul>
-          {staff && userRole === "ADMIN" && <Link href={`/admin/applications/${app.id}/check`} className="mt-3 inline-block text-brand-600 hover:underline">Open check and ask partner</Link>}
+          {staff && canCheck && <Link href={`/admin/applications/${app.id}/check`} className="mt-3 inline-block text-brand-600 hover:underline">Open check and ask partner</Link>}
         </Card>
 
         <Card className="p-4">
           <h3 className="mb-2 font-semibold">Status</h3>
-          {userRole === "ADMIN" && canWrite && (
+          {canProcess && canWrite && (
             <div className="mb-3 border-b border-line pb-3">
               <StatusForm applicationId={app.id} currentId={app.statusId} statuses={statuses.map((s) => ({ id: s.id, label: s.label, requiresReason: s.requiresReason, isMilestone: s.isMilestone }))} />
             </div>

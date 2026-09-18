@@ -3,7 +3,7 @@ import { asc, ne } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { MONTHS } from "@/lib/format";
-import { STAFF_ROLES } from "@/lib/permissions";
+import { REPORTING_ROLES } from "@/lib/permissions";
 import { SOURCE_LABEL } from "@/server/enquiries";
 import { inr } from "@/server/commission";
 import { breakdown, enquiryEffectiveness, headline, intakeSpread, rate, readInsightFilters, revenueByCountry, speed } from "@/server/insights";
@@ -39,7 +39,7 @@ const DIMENSIONS = [
 ] as const;
 
 export default async function InsightsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const user = await requireUser([...STAFF_ROLES]);
+  const user = await requireUser([...REPORTING_ROLES]);
   const sp = await searchParams;
   const f = readInsightFilters(sp);
   const dimRaw = Array.isArray(sp.dim) ? sp.dim[0] : sp.dim;

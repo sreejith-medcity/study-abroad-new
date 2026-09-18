@@ -53,7 +53,7 @@ export default async function DocumentsPage({ params, searchParams }: { params: 
             {mandatory.length === 0 && <p className="text-muted">No applications yet, so nothing is mandatory. Upload documents below any time.</p>}
             <div className="space-y-3">
               {mandatory.map((t) => (
-                <DocTypeCard key={t.code} type={t} files={docsFor(t.code)} requiredFor={[...new Set(requiredBy.get(t.code))]} studentId={id} canWrite={canWrite} userId={user.id} role={user.role} />
+                <DocTypeCard key={t.code} type={t} files={docsFor(t.code)} requiredFor={[...new Set(requiredBy.get(t.code))]} studentId={id} canWrite={canWrite} userId={user.id} role={user.role} canProcess={isAdmin(user)} />
               ))}
             </div>
           </section>
@@ -63,7 +63,7 @@ export default async function DocumentsPage({ params, searchParams }: { params: 
           <h2 className="mb-3 font-semibold text-brand-700">{teamTab ? "Issued by Medcity Overseas" : "Additional documents"}</h2>
           <div className="space-y-3">
             {(teamTab ? visibleTypes.filter((t) => docsFor(t.code).length || isAdmin(user)) : additional).map((t) => (
-              <DocTypeCard key={t.code} type={t} files={docsFor(t.code)} studentId={id} canWrite={canWrite && (!teamTab || isAdmin(user))} userId={user.id} role={user.role} />
+              <DocTypeCard key={t.code} type={t} files={docsFor(t.code)} studentId={id} canWrite={canWrite && (!teamTab || isAdmin(user))} userId={user.id} role={user.role} canProcess={isAdmin(user)} />
             ))}
             {teamTab && !isAdmin(user) && !visibleTypes.some((t) => docsFor(t.code).length) && <p className="text-muted">Offer letters, CAS / COE and visa documents will appear here.</p>}
           </div>
@@ -80,12 +80,12 @@ export default async function DocumentsPage({ params, searchParams }: { params: 
 }
 
 function DocTypeCard({
-  type, files, requiredFor, studentId, canWrite, userId, role,
+  type, files, requiredFor, studentId, canWrite, userId, role, canProcess,
 }: {
   type: { code: string; label: string; uploadedBy: string };
   files: { id: string; fileName: string; createdAt: Date; uploadedById: string | null; uploadedBy: { name: string; deskLabel: string | null } | null }[];
   requiredFor?: string[];
-  studentId: string; canWrite: boolean; userId: string; role: string;
+  studentId: string; canWrite: boolean; userId: string; role: string; canProcess: boolean;
 }) {
   const ok = files.length > 0;
   return (
@@ -106,7 +106,7 @@ function DocTypeCard({
             <li key={f.id} className="flex items-center gap-2 rounded bg-ground px-2 py-1 text-xs">
               <a href={`/api/documents/${f.id}`} className="text-brand-600 hover:underline">📄 {f.fileName}</a>
               <span className="text-muted">{fmtDateTime(f.createdAt)} · {f.uploadedBy?.deskLabel ?? f.uploadedBy?.name ?? "Student"}</span>
-              {canWrite && (role === "ADMIN" || role === "PARTNER" || f.uploadedById === userId) && (
+              {canWrite && (canProcess || role === "PARTNER" || f.uploadedById === userId) && (
                 <form action={deleteDocumentAction}>
                   <input type="hidden" name="documentId" value={f.id} />
                   <button className="text-muted hover:text-red-600" aria-label={`Delete ${f.fileName}`}>✕</button>

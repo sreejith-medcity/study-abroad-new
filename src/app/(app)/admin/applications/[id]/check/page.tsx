@@ -8,12 +8,12 @@ import { fullName, intakeLabel } from "@/lib/format";
 import { checkApplication } from "@/server/applications";
 import { Button, Card, Chip, PageHeader, StatusBadge } from "@/components/ui";
 import { askPartnerAction } from "@/app/(app)/students/[id]/applications/actions";
-import { ADMIN_ROLES } from "@/lib/permissions";
+import { PROCESSING_ROLES } from "@/lib/permissions";
 
 export const metadata = { title: "Pre-submission check" };
 
 export default async function CheckPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireUser([...ADMIN_ROLES]);
+  await requireUser([...PROCESSING_ROLES]);
   const { id } = await params;
   const app = await db.query.applications.findFirst({
     where: eq(schema.applications.id, id),

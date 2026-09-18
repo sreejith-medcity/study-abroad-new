@@ -1,6 +1,6 @@
 import { getSession } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { isStaff } from "@/lib/permissions";
+import { REPORTING_ROLES } from "@/lib/permissions";
 import { breakdown, rate, readInsightFilters } from "@/server/insights";
 
 function csvCell(v: unknown) {
@@ -14,7 +14,7 @@ const DIMENSIONS = ["partner", "country", "university", "pathway", "officer"] as
 export async function GET(req: Request) {
   const user = await getSession();
   if (!user) return new Response("Sign in required", { status: 401 });
-  if (!isStaff(user)) return new Response("Not found", { status: 404 });
+  if (!(REPORTING_ROLES as readonly string[]).includes(user.role)) return new Response("Not found", { status: 404 });
 
   const params = Object.fromEntries(new URL(req.url).searchParams);
   const f = readInsightFilters(params);

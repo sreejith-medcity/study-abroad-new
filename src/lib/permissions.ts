@@ -3,30 +3,69 @@ import type { PgColumn } from "drizzle-orm/pg-core";
 import type { SessionUser } from "./auth";
 
 /** Roles that work inside Medcity Overseas rather than at a partner. */
-export const STAFF_ROLES = ["SUPER_ADMIN", "ADMIN", "MANAGEMENT"] as const;
-/** Roles that can process applications: everything an admin can do. */
-export const ADMIN_ROLES = ["SUPER_ADMIN", "ADMIN"] as const;
+export const STAFF_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "MANAGEMENT"] as const;
+/** Roles that process applications: status changes, programs, partners, money. */
+export const ADMIN_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN"] as const;
+/** Everyone who reads the numbers: admins and management, but not the documentation team. */
+export const REPORTING_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "MANAGEMENT"] as const;
+/** Admins plus the documentation team, who work the same files without moving them. */
+export const PROCESSING_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION"] as const;
 export const PARTNER_ROLES = ["PARTNER", "COUNSELLOR"] as const;
 /** Every signed-in role that uses the internal app shell. */
-export const APP_ROLES = ["SUPER_ADMIN", "ADMIN", "MANAGEMENT", "PARTNER", "COUNSELLOR"] as const;
+export const APP_ROLES = [
+  "SUPER_ADMIN",
+  "OPS_MANAGER",
+  "ADMIN",
+  "DOCUMENTATION",
+  "MANAGEMENT",
+  "PARTNER",
+  "COUNSELLOR",
+] as const;
 
 /** One label per role, used in the header, the people table and confirmations. */
 export const ROLE_LABEL: Record<string, string> = {
   SUPER_ADMIN: "Super admin",
+  OPS_MANAGER: "Ops manager",
   ADMIN: "Overseas admin",
+  DOCUMENTATION: "Documentation team",
   MANAGEMENT: "Management",
-  PARTNER: "Partner owner",
+  PARTNER: "Branch head",
   COUNSELLOR: "Counsellor",
   STUDENT: "Student",
 };
 
+/** One line each, shown wherever a role is chosen, so the choice is informed. */
+export const ROLE_BLURB: Record<string, string> = {
+  SUPER_ADMIN: "Owns the platform: every admin power, plus accounts, roles and the audit log",
+  OPS_MANAGER: "Runs the desk: everything an admin does, plus partners, commission and staff accounts",
+  ADMIN: "Processes applications: statuses, work queue, programs, partners and documents",
+  DOCUMENTATION: "Works the files: documents, the pre-submission check and messages, without moving statuses",
+  MANAGEMENT: "Reads everything, changes nothing",
+  PARTNER: "Runs a branch or sub-agent: their own students, applications, team and wallet",
+  COUNSELLOR: "Works their own students inside one branch",
+  STUDENT: "Sees only their own application, in the student portal",
+};
+
+/** Roles that belong to Medcity Overseas itself rather than to a partner. */
+export const HQ_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "MANAGEMENT"] as const;
+
 export function isStaff(user: SessionUser) {
-  return user.role === "SUPER_ADMIN" || user.role === "ADMIN" || user.role === "MANAGEMENT";
+  return (HQ_ROLES as readonly string[]).includes(user.role);
 }
 
-/** Processes applications: status changes, programs, partners, documents. */
+/** Processes applications: status changes, programs, partners, documents, money. */
 export function isAdmin(user: SessionUser) {
-  return user.role === "SUPER_ADMIN" || user.role === "ADMIN";
+  return (ADMIN_ROLES as readonly string[]).includes(user.role);
+}
+
+/** The documentation team: the same files as an admin, but read-only on status. */
+export function isDocumentationTeam(user: SessionUser) {
+  return user.role === "DOCUMENTATION";
+}
+
+/** Can open a student file and work its documents, checks and messages. */
+export function canWorkFiles(user: SessionUser) {
+  return isAdmin(user) || isDocumentationTeam(user) || isPartner(user);
 }
 
 /**
@@ -54,12 +93,23 @@ export function canChangeStatus(user: SessionUser) {
   return isAdmin(user);
 }
 
+/** Adding staff, changing roles: a super admin or an ops manager. */
 export function canManageUsers(user: SessionUser) {
-  return isSuperAdmin(user);
+  return isSuperAdmin(user) || user.role === "OPS_MANAGER";
 }
 
 export function canResetPasswords(user: SessionUser) {
+  return canManageUsers(user);
+}
+
+/** Only a super admin may create or change another super admin. */
+export function canManageSuperAdmins(user: SessionUser) {
   return isSuperAdmin(user);
+}
+
+/** Commission rules, settlements and payouts. */
+export function canManageMoney(user: SessionUser) {
+  return isAdmin(user);
 }
 
 export function canViewAuditLog(user: SessionUser) {
@@ -68,7 +118,8 @@ export function canViewAuditLog(user: SessionUser) {
 
 /** Passport and ID numbers are masked unless the role needs them (DPDP Act basics). */
 export function canSeeFullPassport(user: SessionUser) {
-  return isAdmin(user) || user.role === "PARTNER";
+  // The documentation team classifies passports, so they need the number.
+  return isAdmin(user) || isDocumentationTeam(user) || user.role === "PARTNER";
 }
 
 export function maskPassport(value: string | null | undefined) {

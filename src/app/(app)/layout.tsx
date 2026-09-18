@@ -79,6 +79,26 @@ const PLATFORM_NAV: NavGroup = {
   items: [{ href: "/admin/audit", label: "Audit log", icon: "shield" }],
 };
 
+/** The documentation team works files, so they get the file screens and nothing else. */
+const DOCUMENTATION_NAV: NavGroup[] = [
+  {
+    title: "Files",
+    items: [
+      { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
+      { href: "/admin/queue", label: "Work queue", icon: "queue" },
+      { href: "/applications", label: "Applications", icon: "applications" },
+      { href: "/students", label: "Students", icon: "students" },
+    ],
+  },
+  {
+    title: "Reference",
+    items: [
+      { href: "/search", label: "Search programs", icon: "search" },
+      { href: "/learning", label: "Learning resources", icon: "learning" },
+    ],
+  },
+];
+
 const MANAGEMENT_NAV: NavGroup[] = [
   {
     title: "Overview",
@@ -99,11 +119,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     ? [...ADMIN_NAV, PLATFORM_NAV]
     : isAdmin(user)
       ? ADMIN_NAV
-      : user.role === "MANAGEMENT"
-        ? MANAGEMENT_NAV
-        : user.role === "PARTNER"
-          ? PARTNER_NAV
-          : COUNSELLOR_NAV;
+      : user.role === "DOCUMENTATION"
+        ? DOCUMENTATION_NAV
+        : user.role === "MANAGEMENT"
+          ? MANAGEMENT_NAV
+          : user.role === "PARTNER"
+            ? PARTNER_NAV
+            : COUNSELLOR_NAV;
 
   const [{ unread }] = await db
     .select({ unread: count() })

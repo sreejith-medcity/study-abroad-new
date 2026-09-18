@@ -39,7 +39,7 @@ import { IconAlert, IconApplications, IconCheck, IconClock, IconQueue, IconSearc
 import { AgingCard, DashboardFilters, DeadlinesCard, RecentChangesCard } from "./parts";
 
 /** The processing desk: what needs a decision today, and who is carrying it. */
-export default async function AdminDashboard({ user, f }: { user: SessionUser; f: ApplicationFilters }) {
+export default async function AdminDashboard({ user, f, showMoney = true }: { user: SessionUser; f: ApplicationFilters; showMoney?: boolean }) {
   const { applications: a, countries: c } = schema;
   const filters: ApplicationFilters = { from: f.from, to: f.to, country: f.country, intakeYear: f.intakeYear, intakeMonth: f.intakeMonth };
 
@@ -70,9 +70,13 @@ export default async function AdminDashboard({ user, f }: { user: SessionUser; f
   return (
     <>
       <DashboardHero
-        eyebrow="Processing desk"
+        eyebrow={showMoney ? "Processing desk" : "Documentation desk"}
         title={user.deskLabel ?? "Medcity Overseas"}
-        subtitle="Everything across all partners. Start with the lanes that are late, then clear what is assigned to you."
+        subtitle={
+          showMoney
+            ? "Everything across all partners. Start with the lanes that are late, then clear what is assigned to you."
+            : "Every file across all partners. Documents, checks and messages are yours; statuses are moved by the processing team."
+        }
         actions={
           <>
             <LinkButton href="/search" variant="secondary">
@@ -204,8 +208,12 @@ export default async function AdminDashboard({ user, f }: { user: SessionUser; f
                 { label: "Closed", value: groups.CLOSED, href: "/applications?group=CLOSED" },
                 { label: "Open enquiries", value: enquiries.open, href: "/enquiries?stage=OPEN" },
                 { label: "Follow ups overdue", value: enquiries.overdue, href: "/enquiries?due=overdue", tone: enquiries.overdue ? "bad" : undefined },
-                { label: "Commission received, not settled", value: inr(commission.RECEIVED.partner), href: "/admin/commission?status=RECEIVED", tone: commission.RECEIVED.n ? "warn" : undefined },
-                { label: "Paid to partners", value: inr(commission.SETTLED.partner), href: "/admin/commission?status=SETTLED", tone: "ok" },
+                ...(showMoney
+                  ? [
+                      { label: "Commission received, not settled", value: inr(commission.RECEIVED.partner), href: "/admin/commission?status=RECEIVED", tone: (commission.RECEIVED.n ? "warn" : undefined) as "warn" | undefined },
+                      { label: "Paid to partners", value: inr(commission.SETTLED.partner), href: "/admin/commission?status=SETTLED", tone: "ok" as const },
+                    ]
+                  : []),
               ]}
             />
           </Card>

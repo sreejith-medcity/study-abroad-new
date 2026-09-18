@@ -39,6 +39,8 @@ async function main() {
   const admin = await u("Anita Menon", "admin@medcityoverseas.test", "ADMIN", hq.id, "UK Desk", "+91 90000 00001");
   const officerDe = await u("Rahul Nair", "germany.desk@medcityoverseas.test", "ADMIN", hq.id, "Germany Desk", "+91 90000 00002");
   const officerNurse = await u("Divya Pillai", "nursing.desk@medcityoverseas.test", "ADMIN", hq.id, "Nursing Desk", "+91 90000 00003");
+  await u("Meera Thomas", "ops@medcityoverseas.test", "OPS_MANAGER", hq.id, "Operations", "+91 90000 00004");
+  const docsTeam = await u("Nithin Jose", "documentation@medcityoverseas.test", "DOCUMENTATION", hq.id, "Documentation");
   await u("Management View", "management@medcityoverseas.test", "MANAGEMENT", hq.id);
   await u("Kottayam Branch Head", "kottayam@medcity.test", "PARTNER", kottayam.id);
   const ukDocs = await u("UK Documentation", "uk.docs@medcity.test", "COUNSELLOR", kottayam.id, "UK Documentation");
@@ -235,6 +237,7 @@ async function main() {
     { actorId: admin.id, action: "programs.import", entityType: "program", entityId: "*", meta: { created: 12, updated: 0, skipped: 0 }, createdAt: months(21) },
     { actorId: admin.id, action: "partner.invite", entityType: "organization", entityId: thrissur.id, meta: { ownerEmail: "owner@horizon.test" }, createdAt: months(18) },
     { actorId: admin.id, action: "passport.reveal", entityType: "student", entityId: firstStudentId, meta: {}, createdAt: months(4) },
+    { actorId: docsTeam.id, action: "document.classify", entityType: "student", entityId: firstStudentId, meta: { typeCode: "PASSPORT" }, createdAt: months(3) },
     { actorId: null, action: "whatsapp.inbound", entityType: "application", entityId: lastAppId, meta: { type: "text" }, createdAt: months(1) },
   );
   // Enquiries: the stage before a student file exists.
@@ -450,6 +453,8 @@ async function main() {
   console.log(`  ${superEmail}${" ".repeat(Math.max(1, 33 - superEmail.length))}Super admin (platform owner)`);
   console.log("  admin@medcityoverseas.test       Medcity Overseas admin (UK desk)");
   console.log("  germany.desk@medcityoverseas.test Medcity Overseas admin (Germany desk)");
+  console.log("  ops@medcityoverseas.test          Ops manager (desk + partners + accounts)");
+  console.log("  documentation@medcityoverseas.test Documentation team (files, no status changes)");
   console.log("  management@medcityoverseas.test  Management (read-only)");
   console.log("  kottayam@medcity.test             Partner owner, Medcity Kottayam");
   console.log("  uk.docs@medcity.test              Counsellor, Medcity Kottayam");

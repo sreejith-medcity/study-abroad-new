@@ -72,7 +72,12 @@ export default async function SuperAdminDashboard({ user, f }: { user: SessionUs
       .limit(6),
   ]);
 
-  const staff = (snapshot.roles.SUPER_ADMIN ?? 0) + (snapshot.roles.ADMIN ?? 0) + (snapshot.roles.MANAGEMENT ?? 0);
+  const staff =
+    (snapshot.roles.SUPER_ADMIN ?? 0) +
+    (snapshot.roles.OPS_MANAGER ?? 0) +
+    (snapshot.roles.ADMIN ?? 0) +
+    (snapshot.roles.DOCUMENTATION ?? 0) +
+    (snapshot.roles.MANAGEMENT ?? 0);
   const partnerUsers = (snapshot.roles.PARTNER ?? 0) + (snapshot.roles.COUNSELLOR ?? 0);
   const orgCount = (snapshot.orgs.BRANCH ?? 0) + (snapshot.orgs.SUB_AGENT ?? 0);
   const backend = storageBackend();
@@ -159,7 +164,11 @@ export default async function SuperAdminDashboard({ user, f }: { user: SessionUs
                         <p className={r.active ? "font-medium" : "text-muted line-through"}>{r.name}</p>
                         <p className="truncate text-xs text-muted">{r.email}</p>
                       </Td>
-                      <Td><Chip tone={r.role === "SUPER_ADMIN" ? "gold" : r.role === "ADMIN" ? "brand" : "neutral"}>{ROLE_LABEL[r.role] ?? r.role}</Chip></Td>
+                      <Td>
+                        <Chip tone={r.role === "SUPER_ADMIN" ? "gold" : r.role === "OPS_MANAGER" ? "warn" : r.role === "ADMIN" ? "brand" : "neutral"}>
+                          {ROLE_LABEL[r.role] ?? r.role}
+                        </Chip>
+                      </Td>
                       <Td className="text-[13px]">{r.orgName}</Td>
                       <Td>
                         {!r.active ? (
@@ -224,10 +233,13 @@ export default async function SuperAdminDashboard({ user, f }: { user: SessionUs
             <DataList
               rows={[
                 { label: "Super admin", value: snapshot.roles.SUPER_ADMIN ?? 0 },
+                { label: "Ops manager", value: snapshot.roles.OPS_MANAGER ?? 0 },
                 { label: "Overseas admin", value: snapshot.roles.ADMIN ?? 0 },
+                { label: "Documentation team", value: snapshot.roles.DOCUMENTATION ?? 0 },
                 { label: "Management", value: snapshot.roles.MANAGEMENT ?? 0 },
-                { label: "Partner owner", value: snapshot.roles.PARTNER ?? 0 },
+                { label: "Branch head", value: snapshot.roles.PARTNER ?? 0 },
                 { label: "Counsellor", value: snapshot.roles.COUNSELLOR ?? 0 },
+                { label: "Student portal", value: snapshot.roles.STUDENT ?? 0 },
                 { label: "Switched off", value: snapshot.flags.inactive, tone: snapshot.flags.inactive ? "warn" : undefined },
               ]}
             />
