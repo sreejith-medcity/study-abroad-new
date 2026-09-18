@@ -15,7 +15,7 @@ import {
   Chip,
   DataList,
   EmptyState,
-  Input,
+  DateInput,
   LinkButton,
   PageHeader,
   Select,
@@ -78,8 +78,8 @@ export default async function InsightsPage({ searchParams }: { searchParams: Pro
         <form className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-6 [&>*]:min-w-0">
           <input type="hidden" name="dim" value={dim} />
           <div className="grid grid-cols-2 gap-2 sm:col-span-2 [&>*]:min-w-0">
-            <Input type="date" name="from" aria-label="Created from" defaultValue={f.from} />
-            <Input type="date" name="to" aria-label="Created to" defaultValue={f.to} />
+            <DateInput label="Created from" name="from" defaultValue={f.from} />
+            <DateInput label="Created to" name="to" defaultValue={f.to} />
           </div>
           <Select name="country" aria-label="Destination" defaultValue={f.country ?? ""}>
             <option value="">All destinations</option>

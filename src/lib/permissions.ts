@@ -112,6 +112,11 @@ export function canManageMoney(user: SessionUser) {
   return isAdmin(user);
 }
 
+/** Platform-wide settings: names, branding, SLA days, tier targets, exchange rates. */
+export function canManageSettings(user: SessionUser) {
+  return isSuperAdmin(user);
+}
+
 export function canViewAuditLog(user: SessionUser) {
   return isSuperAdmin(user);
 }

@@ -16,7 +16,11 @@ export async function loginAction(_: LoginState, formData: FormData): Promise<Lo
   const head = await headers();
   const clientKey = (head.get("x-forwarded-for") ?? head.get("x-real-ip") ?? "unknown").split(",")[0].trim();
 
-  const result = await signIn(parsed.data.email, parsed.data.password, clientKey);
+  const result = await signIn(parsed.data.email, parsed.data.password, {
+    clientKey,
+    ipAddress: clientKey === "unknown" ? null : clientKey,
+    userAgent: head.get("user-agent"),
+  });
   if (!result.ok) {
     if (result.reason === "throttled") {
       const minutes = Math.max(1, Math.ceil(result.retryAfterSeconds / 60));

@@ -54,14 +54,20 @@ async function signIn(page, email, password = "Password@123") {
   // staff pages are not reachable
   await page.goto(`${BASE}/dashboard`);
   await page.waitForLoadState("domcontentloaded");
+  // Pages stream behind a skeleton now, so wait for the real content.
+  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   page.url().includes("/portal") ? ok("staff dashboard redirects back to the portal") : bad("student reached " + page.url());
   await page.goto(`${BASE}/students`);
   await page.waitForLoadState("domcontentloaded");
+  // Pages stream behind a skeleton now, so wait for the real content.
+  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   page.url().includes("/portal") ? ok("student list is out of reach") : bad("student reached " + page.url());
 
   // documents
   await page.goto(`${BASE}/portal/documents`);
   await page.waitForLoadState("domcontentloaded");
+  // Pages stream behind a skeleton now, so wait for the real content.
+  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   t = await page.locator("main").innerText();
   t.includes("Your documents") ? ok("documents page renders") : bad("documents page missing");
   const uploads = await page.locator('input[type="file"]').count();
@@ -88,6 +94,8 @@ async function signIn(page, email, password = "Password@123") {
   // messages
   await page.goto(`${BASE}/portal/messages`);
   await page.waitForLoadState("domcontentloaded");
+  // Pages stream behind a skeleton now, so wait for the real content.
+  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   t = await page.locator("main").innerText();
   t.includes("Messages") ? ok("messages page renders") : bad("messages page missing");
   !t.includes("Dear team") ? ok("team-only notes stay hidden") : bad("a team note leaked into the student thread");
@@ -102,6 +110,8 @@ async function signIn(page, email, password = "Password@123") {
   // profile
   await page.goto(`${BASE}/portal/profile`);
   await page.waitForLoadState("domcontentloaded");
+  // Pages stream behind a skeleton now, so wait for the real content.
+  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   t = await page.locator("main").innerText();
   t.includes("Your details") ? ok("profile page renders") : bad("profile page missing");
   /[A-Z]•+\d\d/.test(t) ? ok("passport stays masked in the portal") : bad("passport not masked: " + (t.match(/Passport[\s\S]{0,40}/) ?? [""])[0]);
@@ -116,17 +126,29 @@ async function signIn(page, email, password = "Password@123") {
   await signIn(page, "uk.docs@medcity.test");
   await page.goto(`${BASE}/students`);
   await page.waitForLoadState("domcontentloaded");
+  // Pages stream behind a skeleton now, so wait for the real content.
+  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   const link = page.locator('main a[href*="/students/"][href$="/profile"]').first();
   if (await link.count()) {
     const href = await link.getAttribute("href");
     await page.goto(`${BASE}${href}`);
     await page.waitForLoadState("domcontentloaded");
+  // Pages stream behind a skeleton now, so wait for the real content.
+  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
     const t = await page.locator("main").innerText();
     t.includes("Student portal") ? ok("the student file offers portal access") : bad("no portal card on the student file");
-    await page.getByRole("button", { name: /Give portal access/i }).click();
-    await page.locator("main").getByText(/One-time password/i).first().waitFor({ timeout: 15000 })
-      .then(() => ok("invite issues a one-time password"))
-      .catch(() => bad("invite gave no password"));
+    // An earlier run may already have invited this student, which is a valid state.
+    const invite = page.getByRole("button", { name: /Give portal access/i }).first();
+    if (await invite.count()) {
+      await invite.click();
+      await page.locator('[role="status"]').getByText(/One-time password/i).first().waitFor({ timeout: 15000 })
+        .then(() => ok("invite issues a one-time password"))
+        .catch(() => bad("invite gave no password"));
+    } else {
+      t.includes("can sign in") || t.includes("Portal account")
+        ? ok("this student already has portal access, and the file says so")
+        : bad("no invite button and no sign of an existing portal account");
+    }
     await page.screenshot({ path: `${OUT}/06-invite.png`, fullPage: true });
   } else {
     bad("could not open a student file");

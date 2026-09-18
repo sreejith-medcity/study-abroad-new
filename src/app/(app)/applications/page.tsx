@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { fmtDate, fullName, intakeLabel, MONTHS } from "@/lib/format";
 import { APP_ROLES, isStaff } from "@/lib/permissions";
 import { applicationsBase, applicationWhere, orgUsers, readFilters } from "@/server/queries";
-import { Button, Card, EmptyState, Input, LinkButton, PageHeader, Select, StatusBadge, Table, Td, Th, Toolbar } from "@/components/ui";
+import { Button, Card, EmptyState, DateInput, Input, LinkButton, PageHeader, Select, StatusBadge, Table, Td, Th, Toolbar } from "@/components/ui";
 import { IconApplications, IconExport } from "@/components/icons";
 
 export const metadata = { title: "Applications" };
@@ -19,6 +19,8 @@ const PAGE = 50;
 export default async function ApplicationsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const user = await requireUser([...APP_ROLES]);
   const f = readFilters(await searchParams);
+  // A filtered search that finds nothing needs a different answer from an empty list.
+  const filtered = Object.values(f as Record<string, string>).some(Boolean);
   const page = Math.max(1, Number((f as Record<string, string>).page ?? 1));
   const where = applicationWhere(user, f);
   const staff = isStaff(user);
@@ -60,8 +62,8 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
             </Select>
           )}
           <div className="flex gap-2">
-            <Input type="date" name="from" aria-label="Created from" defaultValue={f.from} />
-            <Input type="date" name="to" aria-label="Created to" defaultValue={f.to} />
+            <DateInput label="Created from" name="from" defaultValue={f.from} />
+            <DateInput label="Created to" name="to" defaultValue={f.to} />
           </div>
           <Select name="country" aria-label="Country" defaultValue={f.country ?? ""}>
             <option value="">Country</option>
@@ -100,7 +102,15 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
 
       <Card>
         {list.length === 0 ? (
-          <EmptyState title="No applications match these filters" icon={<IconApplications />}>Try clearing a filter, or widen the date range.</EmptyState>
+          <EmptyState
+            title={filtered ? "No applications match these filters" : "No applications yet"}
+            icon={<IconApplications />}
+            action={filtered ? <LinkButton variant="secondary" href="/applications">Clear the filters</LinkButton> : undefined}
+          >
+            {filtered
+              ? "Try clearing a filter, or widen the date range."
+              : "An application appears here as soon as a student is matched to a program."}
+          </EmptyState>
         ) : (
           <Table tableClassName="min-w-[1140px]">
             <thead>

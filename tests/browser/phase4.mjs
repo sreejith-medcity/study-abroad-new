@@ -33,6 +33,8 @@ async function signIn(email, ip) {
   const { ctx, page, errors } = await signIn("admin@medcityoverseas.test", "10.9.3.11");
   await page.goto(`${BASE}/admin/insights`);
   await page.waitForLoadState("domcontentloaded");
+  // Pages stream behind a skeleton now, so wait for the real content.
+  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   const t = (await page.locator("main").innerText()).toLowerCase();
   t.includes("conversion") ? ok("insights renders") : bad("insights missing conversion table");
   t.includes("median days to offer") ? ok("timing tile present") : bad("no timing tile");
@@ -42,6 +44,8 @@ async function signIn(email, ip) {
   // switch dimension
   await page.getByRole("link", { name: "Destination", exact: true }).click();
   await page.waitForLoadState("domcontentloaded");
+  // Pages stream behind a skeleton now, so wait for the real content.
+  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   (await page.locator("main").innerText()).toLowerCase().includes("united kingdom") ? ok("destination breakdown works") : bad("destination breakdown empty");
 
   const res = await page.request.get(`${BASE}/api/insights/export?dim=partner`);
@@ -56,6 +60,8 @@ async function signIn(email, ip) {
   const { ctx, page } = await signIn("management@medcityoverseas.test", "10.9.3.12");
   await page.goto(`${BASE}/admin/insights`);
   await page.waitForLoadState("domcontentloaded");
+  // Pages stream behind a skeleton now, so wait for the real content.
+  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   page.url().includes("/admin/insights") ? ok("management can read insights") : bad("management got " + page.url());
   await ctx.close();
 }
@@ -64,12 +70,14 @@ async function signIn(email, ip) {
 {
   const { ctx, page } = await signIn("kottayam@medcity.test", "10.9.3.13");
   await page.goto(`${BASE}/admin/insights`);
-  await page.waitForLoadState("domcontentloaded");
+  await page.waitForURL((u) => String(u).includes("/forbidden"), { timeout: 10000 }).catch(() => {});
   page.url().includes("/forbidden") ? ok("partner is kept out of insights") : bad("partner reached " + page.url());
 
   // library
   await page.goto(`${BASE}/learning`);
   await page.waitForLoadState("domcontentloaded");
+  // Pages stream behind a skeleton now, so wait for the real content.
+  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   const t = await page.locator("main").innerText();
   t.includes("UK student visa") ? ok("partner sees the library") : bad("library empty for the partner");
   t.includes("Counter posters") ? ok("partner-only resource visible to the owner") : bad("partner-only resource missing");
@@ -83,6 +91,8 @@ async function signIn(email, ip) {
   const { ctx, page } = await signIn("uk.docs@medcity.test", "10.9.3.14");
   await page.goto(`${BASE}/learning`);
   await page.waitForLoadState("domcontentloaded");
+  // Pages stream behind a skeleton now, so wait for the real content.
+  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   const t = await page.locator("main").innerText();
   t.includes("UK student visa") ? ok("counsellor sees shared resources") : bad("counsellor sees nothing");
   !t.includes("Counter posters") ? ok("audience filter keeps partner-only items hidden") : bad("counsellor sees a partner-only item");
@@ -94,6 +104,8 @@ async function signIn(email, ip) {
   const { ctx, page, errors } = await signIn("admin@medcityoverseas.test", "10.9.3.15");
   await page.goto(`${BASE}/learning`);
   await page.waitForLoadState("domcontentloaded");
+  // Pages stream behind a skeleton now, so wait for the real content.
+  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   (await page.locator("main").getByText("Add a resource").count()) ? ok("admin sees the add form") : bad("no add form for the admin");
   const tag = String(Date.now()).slice(-5);
   await page.fill('input[name="title"]', `Smoke test guide ${tag}`);

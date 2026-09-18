@@ -13,7 +13,7 @@ const login = async (page, email, password) => {
 const rowOf = (page, email) => page.locator("main li").filter({ hasText: email });
 const waitText = async (page, text, label) => {
   try {
-    await page.locator("main").getByText(text).first().waitFor({ timeout: 8000 });
+    await page.locator('main, [role="status"]').getByText(text).first().waitFor({ timeout: 8000 });
     ok(label);
     return true;
   } catch {
@@ -48,7 +48,7 @@ let temp = null;
   const row = rowOf(page, "uk.docs@medcity.test");
   await row.getByRole("button", { name: "Reset password" }).click();
   await waitText(page, /Temporary password for/, "reset password confirmation shown");
-  const msg = await page.locator("main").getByText(/Temporary password for/).first().textContent().catch(() => null);
+  const msg = await page.locator('[role="status"]').getByText(/Temporary password for/).first().textContent().catch(() => null);
   const m = msg?.match(/:\s*([A-Za-z0-9#@_-]{8,})/);
   temp = m?.[1] ?? null;
   temp ? ok(`temp password issued (${temp.length} chars)`) : bad("no temp password in the confirmation: " + msg);

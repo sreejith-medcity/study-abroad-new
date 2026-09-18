@@ -52,6 +52,8 @@ for (const [i, role] of ROLES.entries()) {
   await page.click('button[type="submit"]');
   await page.waitForURL((u) => !String(u).includes("/login"), { timeout: 20000 }).catch(() => {});
   await page.waitForLoadState("domcontentloaded");
+  // Pages stream behind a skeleton now, so wait for the real content.
+  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   await page.locator("main").first().waitFor({ timeout: 15000 }).catch(() => {});
 
   if (page.url().endsWith("/dashboard")) ok(`${role.email} lands on the dashboard`);

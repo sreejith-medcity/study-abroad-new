@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
-import { Card, Logo } from "@/components/ui";
+import { Card } from "@/components/ui";
+import { BrandLogo, BrandStyle } from "@/components/brand";
+import { getSettings, signInPoints } from "@/server/settings";
 import { IconCheck } from "@/components/icons";
 import { LoginForm } from "./login-form";
 
@@ -8,22 +10,19 @@ export const metadata = { title: "Sign in" };
 
 const AUDIENCE = ["Overseas team", "Management", "Branch owners", "Counsellors", "Sub-agents"];
 
-const POINTS = [
-  "Register students and apply to universities, Ausbildung and nursing routes in one place",
-  "See exactly what each application is waiting on, and who has it",
-  "Talk to the Medcity Overseas team and to students on one thread",
-];
-
 export default async function LoginPage() {
   if (await getSession()) redirect("/");
+  const settings = await getSettings();
+  const POINTS = signInPoints(settings);
 
   return (
     <main className="grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
+      <BrandStyle />
       <section className="brand-wash grain relative hidden flex-col justify-between p-10 lg:flex">
-        <Logo className="relative z-10" />
+        <BrandLogo className="relative z-10" />
         <div className="relative z-10 max-w-md">
           <h1 className="font-display text-[34px] font-semibold leading-[1.15] text-white">
-            The workspace behind every Medcity student going abroad.
+            {settings.signInHeadline}
           </h1>
           <ul className="mt-7 space-y-3">
             {POINTS.map((point) => (
@@ -45,14 +44,14 @@ export default async function LoginPage() {
               </li>
             ))}
           </ul>
-          <p className="text-[13px] text-white/60">Medcity International Overseas Corporation · Kerala</p>
+          <p className="text-[13px] text-white/60">{settings.organisationName}</p>
         </div>
       </section>
 
       <section className="flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-sm">
           <div className="mb-7 lg:hidden">
-            <Logo tone="dark" />
+            <BrandLogo tone="dark" />
           </div>
           <h2 className="font-display text-[22px] font-semibold text-ink">Sign in</h2>
           <p className="mt-1 text-[14px] text-muted">
@@ -67,9 +66,22 @@ export default async function LoginPage() {
               to set your own.
             </p>
             <p>
-              <span className="font-medium text-ink">Locked out?</span> Ask your Medcity Overseas relationship manager to issue a new
-              one. Repeated wrong attempts pause sign in for ten minutes.
+              <span className="font-medium text-ink">Locked out?</span> Ask your {settings.organisationName} relationship manager to
+              issue a new one. Repeated wrong attempts pause sign in for ten minutes.
             </p>
+            {(settings.supportEmail || settings.supportPhone) && (
+              <p>
+                <span className="font-medium text-ink">Need help?</span>{" "}
+                {settings.supportEmail && (
+                  <a href={`mailto:${settings.supportEmail}`} className="text-brand-600 hover:underline">
+                    {settings.supportEmail}
+                  </a>
+                )}
+                {settings.supportEmail && settings.supportPhone ? " · " : ""}
+                {settings.supportPhone}
+                {settings.supportHours ? ` · ${settings.supportHours}` : ""}
+              </p>
+            )}
           </div>
         </div>
       </section>

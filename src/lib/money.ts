@@ -11,12 +11,16 @@
  */
 const DEFAULT_FX: Record<string, number> = { INR: 1, GBP: 112, EUR: 96, AUD: 58, CAD: 62, USD: 88 };
 
-export function fxToInr(currency: string) {
+export function fxToInr(currency: string, configured?: Record<string, number>) {
   const rates = { ...DEFAULT_FX };
   for (const pair of (process.env.COMMISSION_FX ?? "").split(",")) {
     const [code, rate] = pair.split(":");
     const value = Number(rate);
     if (code && !Number.isNaN(value) && value > 0) rates[code.trim().toUpperCase()] = value;
+  }
+  // Platform settings win over both the built-in table and the environment.
+  for (const [code, value] of Object.entries(configured ?? {})) {
+    if (!Number.isNaN(value) && value > 0) rates[code.toUpperCase()] = value;
   }
   return rates[currency.toUpperCase()] ?? 1;
 }
