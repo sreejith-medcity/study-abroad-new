@@ -422,6 +422,22 @@ async function main() {
     },
   ]);
 
+  // One student with portal access, so the portal can be seen without an invite.
+  const portalStudent = await db.query.students.findFirst({ where: eq(schema.students.firstName, "Fathima") });
+  if (portalStudent) {
+    await db.insert(schema.users).values({
+      name: `${portalStudent.firstName} ${portalStudent.lastName}`,
+      email: portalStudent.email,
+      phone: portalStudent.phone,
+      passwordHash: hash,
+      role: "STUDENT",
+      orgId: portalStudent.orgId,
+      studentId: portalStudent.id,
+      locale: "ml",
+    });
+    trail.push({ actorId: ukDocs.id, action: "portal.invite", entityType: "student", entityId: portalStudent.id, meta: { email: portalStudent.email }, createdAt: months(2) });
+  }
+
   await db.insert(schema.auditLogs).values(trail);
 
   await db.insert(schema.notifications).values([
@@ -438,6 +454,7 @@ async function main() {
   console.log("  kottayam@medcity.test             Partner owner, Medcity Kottayam");
   console.log("  uk.docs@medcity.test              Counsellor, Medcity Kottayam");
   console.log("  owner@horizon.test                Sub-agent owner");
+  console.log("  fathima.rahman@example.com        Student portal (Malayalam by default)");
 }
 
 main()

@@ -1,0 +1,135 @@
+import "server-only";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { db, schema } from "@/db";
+import { getSession } from "@/lib/auth";
+import { isLocale, type Locale } from "@/lib/i18n";
+
+const LOCALE_COOKIE = "portal_locale";
+
+/**
+ * A student session: the account, the one student file it may read, and the
+ * language to render in. Anyone else is sent back to their own home.
+ */
+export async function requireStudent() {
+  const session = await getSession();
+  if (!session) redirect("/login");
+  if (session.role !== "STUDENT") redirect("/");
+  if (session.mustChangePassword) redirect("/change-password");
+  if (!session.studentId) redirect("/forbidden");
+
+  const student = await db.query.students.findFirst({
+    where: eq(schema.students.id, session.studentId),
+    with: { assignedTo: true, org: true },
+  });
+  if (!student) redirect("/forbidden");
+
+  const cookieLocale = (await cookies()).get(LOCALE_COOKIE)?.value;
+  const locale: Locale = isLocale(cookieLocale) ? cookieLocale : isLocale(session.locale) ? session.locale : "en";
+  return { session, student, locale };
+}
+
+export async function setPortalLocale(locale: Locale, userId: string) {
+  (await cookies()).set(LOCALE_COOKIE, locale, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+  await db.update(schema.users).set({ locale }).where(eq(schema.users.id, userId));
+}
+
+/** Everything the portal home needs: applications with student-facing wording. */
+export async function studentApplications(studentId: string, locale: Locale = "en") {
+  const { applications: a, statusDefinitions: sd, programs: p, universities: u, countries: c } = schema;
+  return db
+    .select({
+      id: a.id,
+      ackNo: a.ackNo,
+      intakeMonth: a.intakeMonth,
+      intakeYear: a.intakeYear,
+      statusLabel: locale === "ml" ? sql<string>`coalesce(${sd.studentLabelMl}, ${sd.studentLabel})` : sd.studentLabel,
+      statusGroup: sd.group,
+      statusCode: sd.code,
+      changedAt: a.statusChangedAt,
+      program: p.name,
+      university: u.name,
+      country: c.name,
+      requiredDocs: p.requiredDocs,
+    })
+    .from(a)
+    .innerJoin(sd, eq(a.statusId, sd.id))
+    .innerJoin(p, eq(a.programId, p.id))
+    .innerJoin(u, eq(p.universityId, u.id))
+    .innerJoin(c, eq(u.countryId, c.id))
+    .where(eq(a.studentId, studentId))
+    .orderBy(desc(a.createdAt));
+}
+
+/** Milestones only: the student sees the story, not every internal step. */
+export async function studentTimeline(applicationIds: string[], locale: Locale = "en") {
+  if (applicationIds.length === 0) return [];
+  const { statusHistory: sh, statusDefinitions: sd } = schema;
+  return db
+    .select({
+      id: sh.id,
+      applicationId: sh.applicationId,
+      label: locale === "ml" ? sql<string>`coalesce(${sd.studentLabelMl}, ${sd.studentLabel})` : sd.studentLabel,
+      group: sd.group,
+      createdAt: sh.createdAt,
+    })
+    .from(sh)
+    .innerJoin(sd, eq(sh.toStatusId, sd.id))
+    .where(and(inArray(sh.applicationId, applicationIds), eq(sd.isMilestone, true)))
+    .orderBy(desc(sh.createdAt))
+    .limit(30);
+}
+
+/** Documents the student has given us, and the ones still to come. */
+export async function studentDocuments(studentId: string, requiredCodes: string[], locale: Locale = "en") {
+  const held = await db
+    .select({
+      id: schema.documents.id,
+      typeCode: schema.documents.typeCode,
+      fileName: schema.documents.fileName,
+      createdAt: schema.documents.createdAt,
+    })
+    .from(schema.documents)
+    .where(eq(schema.documents.studentId, studentId))
+    .orderBy(desc(schema.documents.createdAt));
+
+  const types = await db.select().from(schema.documentTypes).orderBy(asc(schema.documentTypes.sortOrder));
+  const heldCodes = new Set(held.map((d) => d.typeCode));
+  const wanted = types.filter((t) => requiredCodes.includes(t.code) || heldCodes.has(t.code));
+  return {
+    held,
+    types,
+    rows: wanted.map((t) => ({
+      code: t.code,
+      label: (locale === "ml" ? t.labelMl : null) ?? t.label,
+      byTeam: t.uploadedBy === "team",
+      document: held.find((d) => d.typeCode === t.code) ?? null,
+    })),
+    missing: wanted
+      .filter((t) => t.uploadedBy !== "team" && !heldCodes.has(t.code))
+      .map((t) => ({ ...t, label: (locale === "ml" ? t.labelMl : null) ?? t.label })),
+  };
+}
+
+/** The student channel only. Team notes are never exposed here. */
+export async function studentThread(applicationIds: string[]) {
+  if (applicationIds.length === 0) return [];
+  const { comments: cm, users: us } = schema;
+  return db
+    .select({
+      id: cm.id,
+      applicationId: cm.applicationId,
+      body: cm.body,
+      source: cm.source,
+      authorId: cm.authorId,
+      authorName: us.name,
+      authorLabel: cm.authorLabel,
+      createdAt: cm.createdAt,
+    })
+    .from(cm)
+    .leftJoin(us, eq(cm.authorId, us.id))
+    .where(and(inArray(cm.applicationId, applicationIds), eq(cm.channel, "STUDENT")))
+    .orderBy(asc(cm.createdAt))
+    .limit(200);
+}

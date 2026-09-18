@@ -2,7 +2,7 @@
 
 import { ActionForm } from "@/components/action-form";
 import { SelectField, TextField, TextareaField } from "@/components/fields";
-import { addAcademicAction, addTestAction, addWorkAction, requestEditAction, savePersonalAction } from "../../actions";
+import { addAcademicAction, addTestAction, addWorkAction, invitePortalAction, requestEditAction, savePersonalAction } from "../../actions";
 
 type Student = Record<string, unknown> & { id: string };
 const d = (v: unknown) => (v instanceof Date ? v.toISOString().slice(0, 10) : typeof v === "string" && v ? v.slice(0, 10) : "");
@@ -125,6 +125,19 @@ export function RequestEditForm({ studentId }: { studentId: string }) {
         </SelectField>
         <TextareaField label="What needs to change?" name="message" rows={2} required />
       </div>
+    </ActionForm>
+  );
+}
+
+export function PortalInviteForm({ studentId, invited }: { studentId: string; invited: boolean }) {
+  return (
+    <ActionForm
+      action={invitePortalAction}
+      submitLabel={invited ? "Send a new password" : "Give portal access"}
+      pendingLabel="Preparing…"
+      submitVariant="secondary"
+    >
+      <input type="hidden" name="studentId" value={studentId} />
     </ActionForm>
   );
 }

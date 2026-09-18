@@ -6,8 +6,8 @@ import { fmtDate, fmtDateTime } from "@/lib/format";
 import { APP_ROLES, canSeeFullPassport, isAdmin, maskPassport } from "@/lib/permissions";
 import { getStudentForUser } from "@/server/queries";
 import { Alert, Button, Card, Chip } from "@/components/ui";
-import { deleteProfileRowAction, revealPassportAction, toggleLockAction } from "../../actions";
-import { AcademicForm, PersonalForm, RequestEditForm, TestForm, WorkForm } from "./forms";
+import { deleteProfileRowAction, revealPassportAction, toggleLockAction, togglePortalAccessAction } from "../../actions";
+import { AcademicForm, PersonalForm, PortalInviteForm, RequestEditForm, TestForm, WorkForm } from "./forms";
 
 export const metadata = { title: "Student profile" };
 
@@ -18,11 +18,12 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
   const { reveal } = await searchParams;
   const user = await requireUser([...APP_ROLES]);
   const student = await getStudentForUser(user, id);
-  const [academics, tests, work, openRequests] = await Promise.all([
+  const [academics, tests, work, openRequests, portalAccount] = await Promise.all([
     db.select().from(schema.academicRecords).where(eq(schema.academicRecords.studentId, id)).orderBy(asc(schema.academicRecords.yearCompleted)),
     db.select().from(schema.testScores).where(eq(schema.testScores.studentId, id)),
     db.select().from(schema.workExperience).where(eq(schema.workExperience.studentId, id)).orderBy(asc(schema.workExperience.startDate)),
     db.select().from(schema.editRequests).where(and(eq(schema.editRequests.studentId, id), eq(schema.editRequests.status, "OPEN"))),
+    db.query.users.findFirst({ where: eq(schema.users.studentId, id) }),
   ]);
 
   const done = profileCompleteness({ ...student, academics, tests, documentTypeCodes: [] });
@@ -84,6 +85,37 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
           <RequestEditForm studentId={id} />
         </Card>
       )}
+
+      <Card className="p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="flex items-center gap-1.5 font-semibold">
+              Student portal
+              {portalAccount ? (
+                portalAccount.active ? <Chip tone="ok">Has access</Chip> : <Chip tone="bad">Switched off</Chip>
+              ) : (
+                <Chip>Not invited</Chip>
+              )}
+            </h2>
+            <p className="mt-1 max-w-xl text-[13px] leading-relaxed text-muted">
+              {portalAccount
+                ? `${portalAccount.email} can sign in to see this application, upload what is missing and message the branch. ${
+                    portalAccount.lastSignInAt ? `Last signed in ${fmtDate(portalAccount.lastSignInAt)}.` : "Has not signed in yet."
+                  }`
+                : "Gives the student their own login, in English or Malayalam, showing only their own file."}
+            </p>
+          </div>
+          {portalAccount && (
+            <form action={togglePortalAccessAction}>
+              <input type="hidden" name="studentId" value={id} />
+              <Button variant="quiet" className="py-1 text-xs">{portalAccount.active ? "Switch off access" : "Switch access back on"}</Button>
+            </form>
+          )}
+        </div>
+        <div className="mt-3">
+          <PortalInviteForm studentId={id} invited={!!portalAccount} />
+        </div>
+      </Card>
 
       <Card id="personal" className="scroll-mt-20 p-5">
         {!showFull && student.passportNumber && (

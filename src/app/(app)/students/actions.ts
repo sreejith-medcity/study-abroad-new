@@ -1,11 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { randomBytes } from "crypto";
 import { redirect } from "next/navigation";
 import { and, count, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
-import { requireUser } from "@/lib/auth";
+import { hashPassword, requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { ADMIN_ROLES, isAdmin, isStaff } from "@/lib/permissions";
 import { adminIds, notifyUsers } from "@/server/notify";
@@ -269,4 +270,66 @@ export async function revealPassportAction(formData: FormData) {
   await getStudentForUser(user, studentId);
   await audit(user.id, "passport.reveal", "student", studentId);
   redirect(`/students/${studentId}/profile?reveal=1`);
+}
+
+/** A one-time password the student changes at first sign in. */
+function portalPassword() {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+  let out = "";
+  const bytes = randomBytes(10);
+  for (const b of bytes) out += alphabet[b % alphabet.length];
+  return `${out.slice(0, 5)}-${out.slice(5)}`;
+}
+
+/**
+ * Gives a student their own login: they see their applications, upload what is
+ * missing and message their counsellor, and nothing else.
+ */
+export async function invitePortalAction(_: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser(["PARTNER", "COUNSELLOR", ...ADMIN_ROLES]);
+  const studentId = String(formData.get("studentId"));
+  const student = await getStudentForUser(user, studentId);
+  if (!student.email) return { error: "Add an email address to the student's profile first." };
+
+  const existing = await db.query.users.findFirst({ where: eq(schema.users.studentId, studentId) });
+  const password = portalPassword();
+  const passwordHash = await hashPassword(password);
+
+  if (existing) {
+    await db
+      .update(schema.users)
+      .set({ passwordHash, mustChangePassword: true, active: true, passwordUpdatedAt: new Date(), email: student.email })
+      .where(eq(schema.users.id, existing.id));
+    await audit(user.id, "portal.reinvite", "student", studentId, { email: student.email });
+  } else {
+    const clash = await db.query.users.findFirst({ where: eq(schema.users.email, student.email) });
+    if (clash) return { error: `${student.email} is already used by another account.` };
+    await db.insert(schema.users).values({
+      name: `${student.firstName} ${student.lastName}`,
+      email: student.email,
+      phone: student.phone,
+      passwordHash,
+      role: "STUDENT",
+      orgId: student.orgId,
+      studentId,
+      mustChangePassword: true,
+    });
+    await audit(user.id, "portal.invite", "student", studentId, { email: student.email });
+  }
+
+  revalidatePath(`/students/${studentId}`, "layout");
+  return {
+    ok: `Portal access for ${student.email}. One-time password: ${password}. Shown once, and they must change it at sign in.`,
+  };
+}
+
+export async function togglePortalAccessAction(formData: FormData) {
+  const user = await requireUser(["PARTNER", "COUNSELLOR", ...ADMIN_ROLES]);
+  const studentId = String(formData.get("studentId"));
+  await getStudentForUser(user, studentId);
+  const account = await db.query.users.findFirst({ where: eq(schema.users.studentId, studentId) });
+  if (!account) return;
+  await db.update(schema.users).set({ active: !account.active }).where(eq(schema.users.id, account.id));
+  await audit(user.id, account.active ? "portal.disable" : "portal.enable", "student", studentId, {});
+  revalidatePath(`/students/${studentId}`, "layout");
 }

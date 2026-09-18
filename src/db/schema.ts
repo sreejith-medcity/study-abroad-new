@@ -176,6 +176,8 @@ export const statusDefinitions = pgTable(
     code: text("code").notNull(),
     label: text("label").notNull(),
     studentLabel: text("student_label").notNull(),
+    /** The same wording in Malayalam, for the student portal. */
+    studentLabelMl: text("student_label_ml"),
     group: statusGroup("group").notNull(),
     sortOrder: integer("sort_order").notNull(),
     requiresReason: boolean("requires_reason").notNull().default(false),
@@ -359,6 +361,7 @@ export const comments = pgTable("comments", {
 export const documentTypes = pgTable("document_types", {
   code: text("code").primaryKey(),
   label: text("label").notNull(),
+  labelMl: text("label_ml"),
   uploadedBy: text("uploaded_by").notNull().default("partner"), // partner | team
   sortOrder: integer("sort_order").notNull().default(100),
 });

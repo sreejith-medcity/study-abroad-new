@@ -24,6 +24,7 @@ This repository currently contains **Phase 0 basics and Phase 1 (core pipeline)*
 | Wallet | Partners | The branch's account with Medcity: commission credits, bonuses and adjustments, running balance, payout requests, and the transfer once the Overseas team marks it paid. |
 | Insights | Staff | Conversion grouped by partner, destination, university, pathway or officer, with offer and visa rates; median days to offer and to visa read from the status history; intakes ahead; which enquiry sources convert; earnings by destination; CSV export. Management reads the same page. |
 | Learning resources | All | Library of guides, templates, policies, training and marketing material. Each item is a file or a link, tagged by pathway and destination, visible to the roles it is meant for. The Overseas team publishes, pins and retires items. |
+| Student portal | Students | A login of their own at `/portal`, in English or Malayalam: their applications in student-facing wording, the milestones so far, the documents still needed with upload, and the message thread their counsellor reads. Team-only notes never appear, and the passport number stays masked. Invited from the student file with a one-time password; access can be switched off again. |
 | Notifications | All | Bell with unread count, list, mark read. Raised on new applications, status changes, comments and WhatsApp replies. |
 | WhatsApp | System | Outbound adapter (`console` for development, `meta` for WhatsApp Cloud API) and an inbound webhook that verifies Meta's signature and posts student replies into the Student channel. |
 
@@ -74,6 +75,7 @@ All seeded users share the password `Password@123`. Every person, university and
 | Email | Role |
 | --- | --- |
 | sreejith@miak.in | Super admin, platform owner |
+| fathima.rahman@example.com | Student portal, opens in Malayalam |
 | admin@medcityoverseas.test | Overseas admin, UK desk |
 | germany.desk@medcityoverseas.test | Overseas admin, Germany desk |
 | nursing.desk@medcityoverseas.test | Overseas admin, Nursing desk |
@@ -165,7 +167,7 @@ The Hostinger build does not touch the database, so a migration is applied on pu
 npm run db:migrate
 ```
 
-`drizzle/0002_super_admin_role.sql` adds `SUPER_ADMIN` to the role enum `drizzle/0003_enquiries.sql` adds the enquiry tables, and `drizzle/0004_commission_wallet.sql` adds commission rules, commissions, wallet entries and payout requests, and `drizzle/0005_resources.sql` adds the learning library. If you would rather do it in the Supabase SQL editor:
+`drizzle/0002_super_admin_role.sql` adds `SUPER_ADMIN` to the role enum `drizzle/0003_enquiries.sql` adds the enquiry tables, and `drizzle/0004_commission_wallet.sql` adds commission rules, commissions, wallet entries and payout requests, and `drizzle/0005_resources.sql` adds the learning library, `drizzle/0006_public_form_and_student_login.sql` adds the public form and student logins, and `drizzle/0007_malayalam_labels.sql` adds the Malayalam wording. If you would rather do it in the Supabase SQL editor:
 
 ```sql
 alter type "public"."role" add value 'SUPER_ADMIN';

@@ -27,6 +27,9 @@ export type SessionUser = {
   orgName: string;
   orgType: "HQ" | "BRANCH" | "SUB_AGENT";
   deskLabel: string | null;
+  /** STUDENT logins only: the student file this account may read. */
+  studentId: string | null;
+  locale: string;
   mustChangePassword: boolean;
 };
 
@@ -93,6 +96,8 @@ export const getSession = cache(async (): Promise<SessionUser | null> => {
       orgName: user.org.name,
       orgType: user.org.type,
       deskLabel: user.deskLabel,
+      studentId: user.studentId,
+      locale: user.locale,
       mustChangePassword: user.mustChangePassword,
     };
   } catch {
@@ -108,7 +113,10 @@ export async function requireUser(roles?: Role[]): Promise<SessionUser> {
   const user = await getSession();
   if (!user) redirect("/login");
   if (user.mustChangePassword) redirect("/change-password");
-  if (roles && !roles.includes(user.role)) redirect("/forbidden");
+  if (roles && !roles.includes(user.role)) {
+    // A student who lands on a staff page belongs in their own portal.
+    redirect(user.role === "STUDENT" ? "/portal" : "/forbidden");
+  }
   return user;
 }
 

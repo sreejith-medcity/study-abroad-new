@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 
-/** Every role now has its own dashboard, so home is the same address for all of them. */
+/** Staff and partners share one dashboard; a student has their own portal. */
 export default async function Home() {
-  await requireUser();
-  redirect("/dashboard");
+  const user = await requireUser();
+  redirect(user.role === "STUDENT" ? "/portal" : "/dashboard");
 }
