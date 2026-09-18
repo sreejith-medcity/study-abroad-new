@@ -17,12 +17,15 @@ const LABEL: Record<string, { text: string; tone: "warn" | "bad" }> = {
  */
 export async function FailedSignIns() {
   const weekAgo = new Date(Date.now() - 7 * 86400000);
+  // A panel is not worth taking the audit log down for, so a read that fails
+  // (a deploy that has landed ahead of its migration) shows as empty instead.
   const rows = await db
     .select()
     .from(schema.signInEvents)
     .where(and(ne(schema.signInEvents.outcome, "success"), gte(schema.signInEvents.createdAt, weekAgo)))
     .orderBy(desc(schema.signInEvents.createdAt))
-    .limit(20);
+    .limit(20)
+    .catch(() => [] as (typeof schema.signInEvents.$inferSelect)[]);
 
   const addresses = new Set(rows.map((r) => r.ipAddress).filter(Boolean));
 

@@ -47,12 +47,15 @@ export default async function SecuritySettingsPage() {
   const user = await requireUser();
   const [row, events] = await Promise.all([
     db.query.users.findFirst({ where: eq(schema.users.id, user.id) }),
+    // Same reasoning as the audit panel: an unreadable history must not cost
+    // somebody the ability to change their password.
     db
       .select()
       .from(schema.signInEvents)
       .where(eq(schema.signInEvents.userId, user.id))
       .orderBy(desc(schema.signInEvents.createdAt))
-      .limit(15),
+      .limit(15)
+      .catch(() => [] as (typeof schema.signInEvents.$inferSelect)[]),
   ]);
 
   const failures = events.filter((e) => e.outcome !== "success").length;
