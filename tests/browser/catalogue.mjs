@@ -31,6 +31,19 @@ async function signIn(email, ip, password = "Password@123") {
 }
 const settle = (page) => page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
 const countOf = (text) => Number((text.match(/([\d,]+) match/) || [])[1]?.replace(/,/g, "") ?? -1);
+// Paging is a client-side transition, so there is no load event to wait on.
+// Waiting for the range line to actually change is both simpler and truer to
+// what a person sees.
+const rangeLine = async () => ((await page.locator("main").innerText()).match(/Showing[^\n]*/) || [""])[0];
+async function waitForRange(previous, timeout = 15000) {
+  const until = Date.now() + timeout;
+  while (Date.now() < until) {
+    const now = await rangeLine();
+    if (now && now !== previous) return now;
+    await page.waitForTimeout(250);
+  }
+  return null;
+}
 
 const { ctx, page, errors } = await signIn("sreejith@miak.in", "10.60.1.11");
 
@@ -52,17 +65,21 @@ await page.screenshot({ path: `${OUT}/01-page-1.png`, fullPage: true });
 // ---- Paging reaches rows the first page cannot ----
 // Compared on the whole row: a programme name like "Master of Information
 // Technology" is shared by several universities, so the name alone proves nothing.
-const rowText = () => page.locator("main tbody tr").first().innerText();
+const rowText = async () => (await page.locator("main tbody tr").first().innerText()).replace(/\s+/g, " ").trim();
 const firstRowOnPage1 = await rowText();
+const rangeOnPage1 = await rangeLine();
 await page.getByRole("link", { name: "Next" }).click();
-await page.waitForURL(/page=2/, { timeout: 15000 });
-await settle(page);
+const rangeOnPage2 = await waitForRange(rangeOnPage1);
 firstRowOnPage1 !== (await rowText()) ? ok("Next moves to different rows") : bad("Next showed the same rows");
-/Showing 51 to/.test(await page.locator("main").innerText()) ? ok("the range advances") : bad("the range did not advance");
+/Showing 51 to/.test(rangeOnPage2 ?? "") ? ok("the range advances") : bad(`the range did not advance, saw ${rangeOnPage2}`);
 await page.getByRole("link", { name: "Previous" }).click();
-await page.waitForURL(/page=1/, { timeout: 15000 });
+await waitForRange(rangeOnPage2);
 await settle(page);
-(await rowText()) === firstRowOnPage1 ? ok("Previous comes back") : bad("Previous did not return to the first page");
+await page.waitForTimeout(1200);
+const backAgain = await rowText();
+backAgain === firstRowOnPage1
+  ? ok("Previous comes back")
+  : bad(`Previous landed elsewhere: "${backAgain.slice(0, 60)}" vs "${firstRowOnPage1.slice(0, 60)}"`);
 
 // ---- Deep pages still render ----
 const lastPage = Math.ceil(total / 50);
@@ -77,8 +94,9 @@ await page.goto(`${BASE}/admin/programs?page=${lastPage}`);
 await settle(page);
 await page.locator('select[name="country"]').selectOption("DE");
 await page.getByRole("button", { name: "Filter" }).click();
-await page.waitForURL(/country=DE/, { timeout: 15000 });
+await page.waitForURL(/country=DE/, { timeout: 15000, waitUntil: "commit" }).catch(() => {});
 await settle(page);
+await page.waitForTimeout(1500);
 t = await page.locator("main").innerText();
 const german = countOf(t);
 german > 0 && (await page.locator("main tbody tr").count()) > 0

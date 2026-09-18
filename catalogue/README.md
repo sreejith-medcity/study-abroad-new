@@ -65,37 +65,94 @@ file is.
 
 ## Post-study work rights
 
-`work_rights` is its own column, not prose: `ELIGIBLE`, `INELIGIBLE`, or
-`UNKNOWN`, with `work_rights_note` carrying the institution's own wording. It
-drives a badge on the search row and a "Post-study work" filter, and the filter
-returns confirmed rows only, never the unknowns.
+`work_rights` is its own column, not prose: `ELIGIBLE`, `INELIGIBLE` or
+`UNKNOWN`, with `work_rights_note` carrying the evidence. It drives a badge on
+the search row and a "Post-study work" filter, and that filter returns confirmed
+rows only, never the unknowns.
 
-The importer takes the words people actually write, so `PGWP-ineligible`,
-`STEM OPT`, `yes` and `no` all land correctly, and anything it does not
-recognise is rejected rather than guessed at.
+| | eligible | ineligible | unknown |
+|---|---|---|---|
+| United Kingdom | 95 | 0 | 12 |
+| New Zealand | 72 | 13 | 7 |
+| Ireland | 49 | 0 | 28 |
+| Canada | 40 | 8 | 48 |
+| Australia | 28 | 13 | 57 |
+| United States | 20 | 0 | 100 |
+| Germany, Europe, Malta | 0 | 0 | 176 |
 
-Fourteen rows are set so far:
+Every verdict names its source in the note: an institution's own PGWP or
+STEM-designated list, its own Graduate Route statement, or an official register
+(INZ's post-study work qualification list, CRICOS registration, the Irish Third
+Level Graduate Programme award levels). 408 rows stay `UNKNOWN`, which is the
+honest state rather than a gap to paper over.
 
-- **INELIGIBLE (6)**: four Georgian@ILAC Toronto programmes, which are the
-  public-private partnership category that lost eligibility, and George Brown
-  B415 and B412, which are 8-month programmes and so under the two-year floor.
-- **ELIGIBLE (8)**: the Rochester Institute of Technology programmes RIT itself
-  names as STEM-designated.
+### The ones that change what a counsellor should say
 
-The other 732 are `UNKNOWN`, and that is the honest state rather than a gap to
-paper over. Filling it in is a per-institution job: the rule is mechanical in
-Canada and broad in the UK, but a counsellor quoting it is telling a student
-they can stay and work, so it goes in only where the institution says so.
-- **MOI**: Kent State states outright that it does not accept Medium of
-  Instruction letters, recorded as `false` on all six of its rows. No
-  institution in the set was found to accept one, so the column is otherwise
-  empty rather than `false` by assumption.
-- **Nurse recognition is not Ausbildung.** The ten German `NURSING` /
-  `REGISTRATION` rows (Triple Win, the ZAV placements, and the Bundesland
-  recognition authorities) are routes for nurses who already qualified abroad.
-  Hand in Hand for International Talents was deliberately left out of that
-  group: it is an IHK pilot for hotel, restaurant and chef occupations, not
-  nursing.
+- **Mohawk College Supply Chain Management exists twice, with opposite answers.**
+  The Hamilton programme is on Mohawk's own PGWP list. The Mississauga campus
+  version runs in partnership with triOS, a private career college, which makes
+  it a public-private partnership and not PGWP-eligible. Same programme name,
+  different outcome, and anyone selling from the name alone will get it wrong.
+- **Centennial's Project Management (Online)** prints "PGWP Aligned: No" on its
+  own page. It is cheap and looks like an easy postgraduate option, and it leads
+  nowhere for a student whose goal is to stay.
+- **The New Zealand Diploma in Enrolled Nursing does not qualify**, at SIT, Toi
+  Ohomai or Ara. Enrolled nursing sits at Level 5 and is not on INZ's list. A
+  student who takes it instead of a Bachelor of Nursing gets no post-study work
+  visa at all. The same goes for the hospitality and cookery diplomas.
+- **Inside a single provider the answer can split.** At Toi Ohomai the five
+  engineering and construction diplomas qualify and seven other sub-degree
+  awards do not. Never flatten a provider to one verdict.
+- **UT Dallas is the opposite of what anyone would guess**: its business school
+  publishes a STEM-designated list, so MS in IT and Management is confirmed,
+  while its engineering school publishes nothing, so its computer science and
+  computer engineering programmes are unknown.
+- **The UK Graduate Route drops to 18 months from January 2027.** The notes say
+  so. Most students being counselled now will get the shorter one.
+
+### A correction worth keeping
+
+An earlier pass recorded George Brown B415 and B412 as ineligible "under 2 years,
+so no PGWP". The verdict was right and the reason was wrong: there is no
+two-year rule. IRCC asks for a programme of at least 8 months, and length
+decides how long the permit lasts, not whether there is one. Both are ineligible
+because George Brown's own pages say "PGWP Eligible: No", which is a
+field-of-study outcome. The distinction matters, because several 8-month
+graduate certificates in this catalogue (Fanshawe DAA1, four Durham
+certificates, Niagara Data Analytics) are confirmed eligible.
+
+### Australia's vocational rows are a scoped no
+
+The 13 TAFE rows read "No 485 Higher Ed stream; Post-Vocational may apply". That
+is deliberate. They are a definite no for the Post-Higher Education Work stream,
+which needs a degree, but the Post-Vocational Education Work stream still exists
+for a trade qualification tied to an occupation on the skilled list. Certificate
+III in Carpentry and the Diploma of Nursing could plausibly go that way. Do not
+read those rows as "no work rights at all".
+
+### Where the remaining unknowns are, and why
+
+- **United States, 100 rows.** Most universities point at the DHS CIP list and
+  tell the student to read their own I-20. A student at NJIT, Texas Tech, UT
+  Arlington, Buffalo, Stony Brook, Binghamton, Cleveland State or Missouri S&T
+  almost certainly does get STEM OPT in practice, but no page on those sites
+  says so. Get it in writing from each DSO, or stop stating it.
+- **Australia, 57 rows.** Every one is in `australia2.csv`, which has no CRICOS
+  codes. Adding the CRICOS code to those rows would settle roughly 45 of them in
+  one pass. That is the single highest-value piece of data entry left here.
+- **Ireland, 28 rows.** Nineteen of them are National College of Ireland, whose
+  stay-back page would not render. NCI is a volume recruiter and worth one email.
+- **UK, 12 rows.** University of East London, Edinburgh Napier and Sunderland do
+  not publish a Graduate Route statement. All three recruit heavily from India.
+- **Germany and the rest of Europe, 176 rows.** Not researched yet. Germany's
+  18-month post-graduation job-seeking permit and the Ausbildung route are
+  statutory rather than per-institution, so they need a different approach.
+
+### Seneca, Sheridan and Humber
+
+Their PGWP lists exist but are JavaScript tables that a fetcher cannot read, so
+five rows are unresolved for that reason alone. Someone opening those pages in a
+browser would settle all five in a few minutes.
 
 ## Institutions that could not be read
 

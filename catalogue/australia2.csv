@@ -28,15 +28,15 @@ Bachelor of Accounting,Charles Sturt University,Bathurst,AU,DEGREE,UG,Accounting
 Bachelor of Nursing,Charles Sturt University,Bathurst,AU,NURSING,UG,Nursing,,36096,,,,,,,,,,,UNKNOWN,,,DRAFT
 Bachelor of Engineering (Honours),Charles Sturt University,Bathurst,AU,DEGREE,UG,Engineering,,39440,,,,,,,,,,,UNKNOWN,,,DRAFT
 Master of Professional Accounting,Charles Sturt University,Bathurst,AU,DEGREE,PG,Accounting,,36960,,,,,,,,,,,UNKNOWN,,,DRAFT
-Diploma of Information Technology - Advanced Networking and Cloud Engineering,TAFE Queensland,Brisbane,AU,DEGREE,VOCATIONAL,Computer Science,12,23000,,,,,,,,,,,UNKNOWN,,,DRAFT
-Certificate IV in Cyber Security,TAFE Queensland,Brisbane,AU,DEGREE,VOCATIONAL,Computer Science,12,18800,,,,,,,,,,,UNKNOWN,,,DRAFT
-Diploma of Graphic Design,TAFE Queensland,Brisbane,AU,DEGREE,VOCATIONAL,Design,12,24800,,,,,,,,,,,UNKNOWN,,,DRAFT
-Diploma of Hospitality Management,TAFE Queensland,Brisbane,AU,DEGREE,VOCATIONAL,Hospitality,12,23200,,,,,,,,,,,UNKNOWN,,,DRAFT
-Diploma of Nursing,TAFE Queensland,Brisbane,AU,NURSING,VOCATIONAL,Nursing,18,,,,,,,,,,,,UNKNOWN,,,DRAFT
-Certificate III in Carpentry,TAFE Queensland,Brisbane,AU,DEGREE,VOCATIONAL,Trades,24,,,,,,,,,,,,UNKNOWN,,,DRAFT
-Certificate III in Hospitality,TAFE Queensland,Brisbane,AU,DEGREE,VOCATIONAL,Hospitality,6,,,,,,,,,,,,UNKNOWN,,,DRAFT
-Certificate III in Dental Assisting,TAFE Queensland,Brisbane,AU,DEGREE,VOCATIONAL,Health,9,,,,,,,,,,,,UNKNOWN,,,DRAFT
-Certificate III in Accounts Administration,TAFE Queensland,Brisbane,AU,DEGREE,VOCATIONAL,Accounting,6,,,,,,,,,,,,UNKNOWN,,,DRAFT
+Diploma of Information Technology - Advanced Networking and Cloud Engineering,TAFE Queensland,Brisbane,AU,DEGREE,VOCATIONAL,Computer Science,12,23000,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
+Certificate IV in Cyber Security,TAFE Queensland,Brisbane,AU,DEGREE,VOCATIONAL,Computer Science,12,18800,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
+Diploma of Graphic Design,TAFE Queensland,Brisbane,AU,DEGREE,VOCATIONAL,Design,12,24800,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
+Diploma of Hospitality Management,TAFE Queensland,Brisbane,AU,DEGREE,VOCATIONAL,Hospitality,12,23200,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
+Diploma of Nursing,TAFE Queensland,Brisbane,AU,NURSING,VOCATIONAL,Nursing,18,,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
+Certificate III in Carpentry,TAFE Queensland,Brisbane,AU,DEGREE,VOCATIONAL,Trades,24,,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
+Certificate III in Hospitality,TAFE Queensland,Brisbane,AU,DEGREE,VOCATIONAL,Hospitality,6,,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
+Certificate III in Dental Assisting,TAFE Queensland,Brisbane,AU,DEGREE,VOCATIONAL,Health,9,,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
+Certificate III in Accounts Administration,TAFE Queensland,Brisbane,AU,DEGREE,VOCATIONAL,Accounting,6,,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
 Bachelor of Nursing,TAFE Queensland,Brisbane,AU,NURSING,UG,Nursing,24,32000,,,,,,,,,,,UNKNOWN,,,DRAFT
 Master of Cyber Security,TAFE Queensland,Brisbane,AU,DEGREE,PG,Computer Science,18,32000,,,,,,,,,,,UNKNOWN,,,DRAFT
 Bachelor of Information Technology,Charles Sturt University,Bathurst,AU,DEGREE,UG,Computer Science,,35280,,,,,,,,,,,UNKNOWN,,,DRAFT
@@ -56,10 +56,10 @@ Master of Professional Accounting,James Cook University,Townsville,AU,DEGREE,PG,
 Bachelor of Business,James Cook University,Townsville,AU,DEGREE,UG,Management,,,,,,,,,,,,,UNKNOWN,,,DRAFT
 Bachelor of Information Technology,James Cook University,Townsville,AU,DEGREE,UG,Computer Science,,,,,,,,,,,,,UNKNOWN,,,DRAFT
 Master of Information Technology,Australian Catholic University,North Sydney,AU,DEGREE,PG,Computer Science,24,,,,3|8,,,,,,,,UNKNOWN,,,DRAFT
-Diploma of Information Technology,TAFE NSW,Sydney,AU,DEGREE,VOCATIONAL,Computer Science,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-Diploma of Business,TAFE NSW,Sydney,AU,DEGREE,VOCATIONAL,Management,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-Diploma of Applied Commerce,TAFE NSW,Sydney,AU,DEGREE,VOCATIONAL,Accounting,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-Diploma of Renewable Energy Engineering,TAFE NSW,Sydney,AU,DEGREE,VOCATIONAL,Engineering,,,,,,,,,,,,,UNKNOWN,,,DRAFT
+Diploma of Information Technology,TAFE NSW,Sydney,AU,DEGREE,VOCATIONAL,Computer Science,,,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
+Diploma of Business,TAFE NSW,Sydney,AU,DEGREE,VOCATIONAL,Management,,,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
+Diploma of Applied Commerce,TAFE NSW,Sydney,AU,DEGREE,VOCATIONAL,Accounting,,,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
+Diploma of Renewable Energy Engineering,TAFE NSW,Sydney,AU,DEGREE,VOCATIONAL,Engineering,,,,,,,,,,,,,INELIGIBLE,No 485 Higher Ed stream; Post-Vocational may apply,,DRAFT
 Bachelor of IT (Cyber and Network Security),TAFE NSW,Sydney,AU,DEGREE,UG,Computer Science,,,,,,,,,,,,,UNKNOWN,,,DRAFT
 Bachelor of IT (Data Engineering),TAFE NSW,Sydney,AU,DEGREE,UG,Data Science,,,,,,,,,,,,,UNKNOWN,,,DRAFT
 Bachelor of Business,TAFE NSW,Sydney,AU,DEGREE,UG,Management,36,,,,,,,,,,,,UNKNOWN,,,DRAFT

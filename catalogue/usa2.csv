@@ -15,11 +15,11 @@ MS in Artificial Intelligence,University of North Texas,Denton,US,DEGREE,PG,Arti
 MS in Cybersecurity,University of North Texas,Denton,US,DEGREE,PG,Cybersecurity,,,,,,6.0,53,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
 MS in Data Engineering,University of North Texas,Denton,US,DEGREE,PG,Data Science,,,,,,6.0,53,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
 MS in Electrical Engineering,University of North Texas,Denton,US,DEGREE,PG,Electrical Engineering,,,,,,6.0,53,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-MS in Computer Science,DePaul University,Chicago,US,DEGREE,PG,Computer Science,,,75,,,,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
-MS in Data Science,DePaul University,Chicago,US,DEGREE,PG,Data Science,,,75,,,,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
-MS in Artificial Intelligence,DePaul University,Chicago,US,DEGREE,PG,Artificial Intelligence,,,75,,,,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
-MS in Cybersecurity,DePaul University,Chicago,US,DEGREE,PG,Cybersecurity,,,75,,,,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
-MS in Information Systems,DePaul University,Chicago,US,DEGREE,PG,Information Systems,,,75,,,,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
+MS in Computer Science,DePaul University,Chicago,US,DEGREE,PG,Computer Science,,,75,,,,,,,,,,ELIGIBLE,On DePaul CDM's own STEM-designated majors list,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
+MS in Data Science,DePaul University,Chicago,US,DEGREE,PG,Data Science,,,75,,,,,,,,,,ELIGIBLE,On DePaul CDM's own STEM-designated majors list,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
+MS in Artificial Intelligence,DePaul University,Chicago,US,DEGREE,PG,Artificial Intelligence,,,75,,,,,,,,,,ELIGIBLE,On DePaul CDM's own STEM-designated majors list,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
+MS in Cybersecurity,DePaul University,Chicago,US,DEGREE,PG,Cybersecurity,,,75,,,,,,,,,,ELIGIBLE,On DePaul CDM's own STEM-designated majors list,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
+MS in Information Systems,DePaul University,Chicago,US,DEGREE,PG,Information Systems,,,75,,,,,,,,,,ELIGIBLE,On DePaul CDM's own STEM-designated majors list,DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
 MS in Computer Science,Kent State University,Kent,US,DEGREE,PG,Computer Science,,,,,,,,,,,,false,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|FINANCIAL_PROOF,DRAFT
 MS in Data Science,Kent State University,Kent,US,DEGREE,PG,Data Science,,,,,,,,,,,,false,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|FINANCIAL_PROOF,DRAFT
 MS in Business Analytics,Kent State University,Kent,US,DEGREE,PG,Business Analytics,,,,,,,,,,,,false,UNKNOWN,,PASSPORT|DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|FINANCIAL_PROOF,DRAFT
@@ -41,14 +41,14 @@ MS in Industrial Engineering,Texas Tech University,Lubbock,US,DEGREE,PG,Industri
 MS in Mechanical Engineering,Texas Tech University,Lubbock,US,DEGREE,PG,Mechanical Engineering,,,75,,1|5|8,6.5,60,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
 MS in Civil Engineering,Texas Tech University,Lubbock,US,DEGREE,PG,Civil Engineering,,,75,,1|5|8,6.5,60,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
 MS in Data Science,Texas Tech University,Lubbock,US,DEGREE,PG,Data Science,,,75,,1|5|8,6.5,60,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|ENGLISH_TEST,DRAFT
-MS in Computer Science,Rochester Institute of Technology,Rochester,US,DEGREE,PG,Computer Science,,64542,,,1|5|8,,,,,,,,ELIGIBLE,STEM OPT eligible,,DRAFT
-MS in Data Science,Rochester Institute of Technology,Rochester,US,DEGREE,PG,Data Science,,64542,,,1|5|8,,,,,,,,ELIGIBLE,STEM OPT eligible,,DRAFT
-MS in Cybersecurity,Rochester Institute of Technology,Rochester,US,DEGREE,PG,Cybersecurity,,64542,,,1|5|8,,,,,,,,ELIGIBLE,STEM OPT eligible,,DRAFT
-MS in Artificial Intelligence,Rochester Institute of Technology,Rochester,US,DEGREE,PG,Artificial Intelligence,,64542,,,1|5|8,,,,,,,,ELIGIBLE,STEM OPT eligible,,DRAFT
-MS in Software Engineering,Rochester Institute of Technology,Rochester,US,DEGREE,PG,Software Engineering,,64542,,,1|5|8,,,,,,,,ELIGIBLE,STEM OPT eligible,,DRAFT
-MS in Information Technology and Analytics,Rochester Institute of Technology,Rochester,US,DEGREE,PG,Information Technology,,64542,,,1|5|8,,,,,,,,ELIGIBLE,STEM OPT eligible,,DRAFT
-MS in Electrical Engineering,Rochester Institute of Technology,Rochester,US,DEGREE,PG,Electrical Engineering,,64542,,,1|5|8,,,,,,,,ELIGIBLE,STEM OPT eligible,,DRAFT
-MS in Mechanical Engineering,Rochester Institute of Technology,Rochester,US,DEGREE,PG,Mechanical Engineering,,64542,,,1|5|8,,,,,,,,ELIGIBLE,STEM OPT eligible,,DRAFT
+MS in Computer Science,Rochester Institute of Technology,Rochester,US,DEGREE,PG,Computer Science,,64542,,,1|5|8,,,,,,,,ELIGIBLE,STEM-designated on RIT's own programme page,,DRAFT
+MS in Data Science,Rochester Institute of Technology,Rochester,US,DEGREE,PG,Data Science,,64542,,,1|5|8,,,,,,,,ELIGIBLE,STEM-designated on RIT's own programme page,,DRAFT
+MS in Cybersecurity,Rochester Institute of Technology,Rochester,US,DEGREE,PG,Cybersecurity,,64542,,,1|5|8,,,,,,,,ELIGIBLE,STEM-designated on RIT's own programme page,,DRAFT
+MS in Artificial Intelligence,Rochester Institute of Technology,Rochester,US,DEGREE,PG,Artificial Intelligence,,64542,,,1|5|8,,,,,,,,ELIGIBLE,STEM-designated on RIT's own programme page,,DRAFT
+MS in Software Engineering,Rochester Institute of Technology,Rochester,US,DEGREE,PG,Software Engineering,,64542,,,1|5|8,,,,,,,,ELIGIBLE,STEM-designated on RIT's own programme page,,DRAFT
+MS in Information Technology and Analytics,Rochester Institute of Technology,Rochester,US,DEGREE,PG,Information Technology,,64542,,,1|5|8,,,,,,,,ELIGIBLE,STEM-designated on RIT's own programme page,,DRAFT
+MS in Electrical Engineering,Rochester Institute of Technology,Rochester,US,DEGREE,PG,Electrical Engineering,,64542,,,1|5|8,,,,,,,,ELIGIBLE,STEM-designated on RIT's own programme page,,DRAFT
+MS in Mechanical Engineering,Rochester Institute of Technology,Rochester,US,DEGREE,PG,Mechanical Engineering,,64542,,,1|5|8,,,,,,,,ELIGIBLE,STEM-designated on RIT's own programme page,,DRAFT
 MS in Computer Science,Cleveland State University,Cleveland,US,DEGREE,PG,Computer Science,,,40,,,6.0,50,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST,DRAFT
 MS in Software Engineering,Cleveland State University,Cleveland,US,DEGREE,PG,Software Engineering,,,40,,,6.0,50,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST,DRAFT
 MS in Electrical Engineering,Cleveland State University,Cleveland,US,DEGREE,PG,Electrical Engineering,,,40,,,6.0,50,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST,DRAFT
@@ -68,10 +68,10 @@ MS in Computer Science,Missouri University of Science and Technology,Rolla,US,DE
 MS in Information Science and Technology,Missouri University of Science and Technology,Rolla,US,DEGREE,PG,Information Systems,,,75,,1|5|8,6.5,58,,,,,,UNKNOWN,,DEGREE_MARKSHEETS,DRAFT
 MS in Electrical Engineering,Missouri University of Science and Technology,Rolla,US,DEGREE,PG,Electrical Engineering,,,75,,1|5|8,6.5,58,,,,,,UNKNOWN,,DEGREE_MARKSHEETS,DRAFT
 MS in Mechanical Engineering,Missouri University of Science and Technology,Rolla,US,DEGREE,PG,Mechanical Engineering,,,75,,1|5|8,6.5,58,,,,,,UNKNOWN,,DEGREE_MARKSHEETS,DRAFT
-MS in Computer Science,Florida International University,Miami,US,DEGREE,PG,Computer Science,,,30,,1|5|8,,,,,,,,UNKNOWN,,SOP|LOR|CV|DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
+MS in Computer Science,Florida International University,Miami,US,DEGREE,PG,Computer Science,,,30,,1|5|8,,,,,,,,ELIGIBLE,STEM-designated on FIU's own programme page,SOP|LOR|CV|DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
 MS in Data Science,Florida International University,Miami,US,DEGREE,PG,Data Science,,,30,,1|5|8,,,,,,,,UNKNOWN,,SOP|LOR|CV|DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
-MS in Cybersecurity,Florida International University,Miami,US,DEGREE,PG,Cybersecurity,,,30,,1|5|8,,,,,,,,UNKNOWN,,SOP|LOR|CV|DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
-MS in Information Technology,Florida International University,Miami,US,DEGREE,PG,Information Technology,,,30,,1|5|8,,,,,,,,UNKNOWN,,SOP|LOR|CV|DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
+MS in Cybersecurity,Florida International University,Miami,US,DEGREE,PG,Cybersecurity,,,30,,1|5|8,,,,,,,,ELIGIBLE,STEM-designated on FIU's own programme page,SOP|LOR|CV|DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
+MS in Information Technology,Florida International University,Miami,US,DEGREE,PG,Information Technology,,,30,,1|5|8,,,,,,,,ELIGIBLE,STEM-designated on FIU's own programme page,SOP|LOR|CV|DEGREE_MARKSHEETS|CREDENTIAL_EVALUATION|ENGLISH_TEST,DRAFT
 MS in Computer Science,University of Central Florida,Orlando,US,DEGREE,PG,Computer Science,,,,,,6.5,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS,DRAFT
 MS in Data Analytics,University of Central Florida,Orlando,US,DEGREE,PG,Data Science,,,,,,6.5,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS,DRAFT
 MS in Cyber Security,University of Central Florida,Orlando,US,DEGREE,PG,Cybersecurity,,,,,,6.5,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS,DRAFT

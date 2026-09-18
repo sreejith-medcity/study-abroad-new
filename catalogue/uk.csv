@@ -1,41 +1,41 @@
 program,university,city,country_code,pathway,level,study_area,duration_months,tuition_per_year,application_fee,initial_deposit,intakes,min_ielts,min_pte,min_oet_grade,min_german_level,max_backlogs,max_gap_years,moi_accepted,work_rights,work_rights_note,required_docs,status
-MSc Data Science,Coventry University,Coventry,GB,DEGREE,PG,Data Science,12,19500,0,,1|3|5|7|9|11,6.5,,,,,,false,UNKNOWN,,,DRAFT
-MSc Computer Science,Coventry University,Coventry,GB,DEGREE,PG,Computer Science,12,19500,0,,1|3|5|7|9|11,6.5,,,,,,false,UNKNOWN,,,DRAFT
-MSc Business Analytics,Coventry University,Coventry,GB,DEGREE,PG,Business Analytics,12,19500,0,,1|3|5|7|9|11,6.5,,,,,,false,UNKNOWN,,,DRAFT
-MBA Master of Business Administration,Coventry University,Coventry,GB,DEGREE,PG,Business,12,21300,0,,1|3|5|7|9|11,6.5,,,,,,false,UNKNOWN,,,DRAFT
-MSc Global Public Health,Coventry University,Coventry,GB,DEGREE,PG,Public Health,12,19500,0,,1|3|5|7|9|11,6.5,,,,,,false,UNKNOWN,,,DRAFT
-BSc (Hons) Computer Science,Coventry University,Coventry,GB,DEGREE,UG,Computer Science,36,20800,0,,1|3|5|7|9|11,,,,,,,false,UNKNOWN,,,DRAFT
-MSc Data Science,University of Hertfordshire,Hatfield,GB,DEGREE,PG,Data Science,12,19950,0,,1|9,6.5,59,,,,,false,UNKNOWN,,,DRAFT
-Master of Business Administration,University of Hertfordshire,Hatfield,GB,DEGREE,PG,Business,12,21450,0,,1|5|9,6.5,59,,,,,false,UNKNOWN,,,DRAFT
-BSc (Hons) Computer Science,University of Hertfordshire,Hatfield,GB,DEGREE,UG,Computer Science,36,17450,0,,9,6.0,59,,,,,false,UNKNOWN,,,DRAFT
-MSc Data Science,University of Greenwich,London,GB,DEGREE,PG,Data Science,12,19450,0,,1|9,6.5,63,,,,,false,UNKNOWN,,,DRAFT
-MSc Computer Science,University of Greenwich,London,GB,DEGREE,PG,Computer Science,12,19450,0,,1|9,6.5,63,,,,,false,UNKNOWN,,,DRAFT
-MSc Engineering Management,University of Greenwich,Medway,GB,DEGREE,PG,Engineering,12,18700,0,,1|9,6.5,63,,,,,false,UNKNOWN,,,DRAFT
-MBA Global,University of Greenwich,London,GB,DEGREE,PG,Business,12,20800,0,,1|4|9,6.5,63,,,,,false,UNKNOWN,,,DRAFT
-BSc (Hons) Computer Science,University of Greenwich,London,GB,DEGREE,UG,Computer Science,36,17975,0,,9,6.0,59,,,,,false,UNKNOWN,,,DRAFT
-MSc Artificial Intelligence,Teesside University,Middlesbrough,GB,DEGREE,PG,Artificial Intelligence,12,17000,0,,1|5|9,6.0,,,,,,false,UNKNOWN,,,DRAFT
-MSc Computer Science,Teesside University,Middlesbrough,GB,DEGREE,PG,Computer Science,12,17000,0,,1|5|9,6.0,,,,,,false,UNKNOWN,,,DRAFT
-Master of Public Health MPH,Teesside University,Middlesbrough,GB,DEGREE,PG,Public Health,12,17000,0,,1|5|9,6.5,,,,,,false,UNKNOWN,,,DRAFT
-MSc Computing Science (Conversion),Ulster University,Derry-Londonderry,GB,DEGREE,PG,Computer Science,12,18310,0,,9,6.0,,,,,,false,UNKNOWN,,,DRAFT
-MSc International Business with Data Analytics,Ulster University,Derry-Londonderry,GB,DEGREE,PG,Business Analytics,,18310,0,,1|9,6.0,,,,,,false,UNKNOWN,,,DRAFT
-MSc Computer Science,Northumbria University,Newcastle upon Tyne,GB,DEGREE,PG,Computer Science,16,21500,0,,1|9,6.5,,,,,,false,UNKNOWN,,,DRAFT
-MSc Mechanical Engineering,Northumbria University,Newcastle upon Tyne,GB,DEGREE,PG,Engineering,12,21500,0,,1|9,6.5,,,,,,false,UNKNOWN,,,DRAFT
-MSc Data Science and Artificial Intelligence,Sheffield Hallam University,Sheffield,GB,DEGREE,PG,Data Science,12,18600,0,,1|9,6.0,,,,,,false,UNKNOWN,,,DRAFT
-Global MBA,Sheffield Hallam University,Sheffield,GB,DEGREE,PG,Business,12,21375,0,,1|9,6.5,,,,,,false,UNKNOWN,,,DRAFT
-MSc Data Analytics,De Montfort University,Leicester,GB,DEGREE,PG,Data Science,12,18600,0,,1|9,6.0,,,,,,false,UNKNOWN,,,DRAFT
-Master of Business Administration MBA (Global),De Montfort University,Leicester,GB,DEGREE,PG,Business,12,20900,0,,1|9,6.0,,,,,,false,UNKNOWN,,,DRAFT
-MSc Data Analytics,University of Portsmouth,Portsmouth,GB,DEGREE,PG,Data Science,12,19200,0,,1|9,6.0,,,,,,false,UNKNOWN,,,DRAFT
-MSc Computer Science,University of Portsmouth,Portsmouth,GB,DEGREE,PG,Computer Science,12,19200,0,,1|9,6.0,,,,,,false,UNKNOWN,,,DRAFT
-BSc (Hons) Data Science and Artificial Intelligence,University of Portsmouth,Portsmouth,GB,DEGREE,UG,Data Science,36,19200,0,,9,6.0,,,,,,false,UNKNOWN,,,DRAFT
-MSc Engineering Management,Nottingham Trent University,Nottingham,GB,DEGREE,PG,Engineering,12,18300,0,,1,6.5,62,,,,,false,UNKNOWN,,,DRAFT
-MSc Global Public Health,University of Essex,Colchester,GB,DEGREE,PG,Public Health,12,23875,0,,10,6.5,,,,,,false,UNKNOWN,,,DRAFT
-MSc Business Analytics,University of Essex,Colchester,GB,DEGREE,PG,Business Analytics,12,24675,0,,1|10,6.5,,,,,,false,UNKNOWN,,,DRAFT
-Adult Nursing MSc (with NMC Registration),Middlesex University,London,GB,NURSING,PG,Nursing,24,19000,0,,1,6.5,,,,,,false,UNKNOWN,,,DRAFT
-Mental Health Nursing MSc (with NMC Registration),Middlesex University,London,GB,NURSING,PG,Nursing,24,19000,0,,1,6.5,,,,,,false,UNKNOWN,,,DRAFT
-Nursing (Adult) BSc Honours,Middlesex University,London,GB,NURSING,UG,Nursing,36,18300,0,,9,7.0,,,,,,false,UNKNOWN,,,DRAFT
-MSc Civil Engineering,University of Strathclyde,Glasgow,GB,DEGREE,PG,Engineering,12,31900,0,,9,6.5,,,,,,false,UNKNOWN,,,DRAFT
-MSc Software Development,Queen's University Belfast,Belfast,GB,DEGREE,PG,Computer Science,12,27600,0,,9,6.0,,,,,,false,UNKNOWN,,,DRAFT
-MSc Advanced Civil and Structural Engineering,University of Bradford,Bradford,GB,DEGREE,PG,Engineering,12,19500,0,,1|9,6.0,,,,,,false,UNKNOWN,,,DRAFT
-MSc Computer Science,Birmingham City University,Birmingham,GB,DEGREE,PG,Computer Science,12,18970,0,,1|9,6.0,,,,,,false,UNKNOWN,,,DRAFT
-BSc (Hons) Computer Science,Birmingham City University,Birmingham,GB,DEGREE,UG,Computer Science,36,18570,0,,9,6.0,,,,,,false,UNKNOWN,,,DRAFT
-MSc Data Science,University of Surrey,Guildford,GB,DEGREE,PG,Data Science,12,26900,0,,9,6.5,,,,,,false,UNKNOWN,,,DRAFT
+MSc Data Science,Coventry University,Coventry,GB,DEGREE,PG,Data Science,12,19500,0,,1|3|5|7|9|11,6.5,,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+MSc Computer Science,Coventry University,Coventry,GB,DEGREE,PG,Computer Science,12,19500,0,,1|3|5|7|9|11,6.5,,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+MSc Business Analytics,Coventry University,Coventry,GB,DEGREE,PG,Business Analytics,12,19500,0,,1|3|5|7|9|11,6.5,,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+MBA Master of Business Administration,Coventry University,Coventry,GB,DEGREE,PG,Business,12,21300,0,,1|3|5|7|9|11,6.5,,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+MSc Global Public Health,Coventry University,Coventry,GB,DEGREE,PG,Public Health,12,19500,0,,1|3|5|7|9|11,6.5,,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+BSc (Hons) Computer Science,Coventry University,Coventry,GB,DEGREE,UG,Computer Science,36,20800,0,,1|3|5|7|9|11,,,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+MSc Data Science,University of Hertfordshire,Hatfield,GB,DEGREE,PG,Data Science,12,19950,0,,1|9,6.5,59,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+Master of Business Administration,University of Hertfordshire,Hatfield,GB,DEGREE,PG,Business,12,21450,0,,1|5|9,6.5,59,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+BSc (Hons) Computer Science,University of Hertfordshire,Hatfield,GB,DEGREE,UG,Computer Science,36,17450,0,,9,6.0,59,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+MSc Data Science,University of Greenwich,London,GB,DEGREE,PG,Data Science,12,19450,0,,1|9,6.5,63,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+MSc Computer Science,University of Greenwich,London,GB,DEGREE,PG,Computer Science,12,19450,0,,1|9,6.5,63,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+MSc Engineering Management,University of Greenwich,Medway,GB,DEGREE,PG,Engineering,12,18700,0,,1|9,6.5,63,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+MBA Global,University of Greenwich,London,GB,DEGREE,PG,Business,12,20800,0,,1|4|9,6.5,63,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+BSc (Hons) Computer Science,University of Greenwich,London,GB,DEGREE,UG,Computer Science,36,17975,0,,9,6.0,59,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+MSc Artificial Intelligence,Teesside University,Middlesbrough,GB,DEGREE,PG,Artificial Intelligence,12,17000,0,,1|5|9,6.0,,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+MSc Computer Science,Teesside University,Middlesbrough,GB,DEGREE,PG,Computer Science,12,17000,0,,1|5|9,6.0,,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+Master of Public Health MPH,Teesside University,Middlesbrough,GB,DEGREE,PG,Public Health,12,17000,0,,1|5|9,6.5,,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+MSc Computing Science (Conversion),Ulster University,Derry-Londonderry,GB,DEGREE,PG,Computer Science,12,18310,0,,9,6.0,,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+MSc International Business with Data Analytics,Ulster University,Derry-Londonderry,GB,DEGREE,PG,Business Analytics,,18310,0,,1|9,6.0,,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+MSc Computer Science,Northumbria University,Newcastle upon Tyne,GB,DEGREE,PG,Computer Science,16,21500,0,,1|9,6.5,,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+MSc Mechanical Engineering,Northumbria University,Newcastle upon Tyne,GB,DEGREE,PG,Engineering,12,21500,0,,1|9,6.5,,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+MSc Data Science and Artificial Intelligence,Sheffield Hallam University,Sheffield,GB,DEGREE,PG,Data Science,12,18600,0,,1|9,6.0,,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+Global MBA,Sheffield Hallam University,Sheffield,GB,DEGREE,PG,Business,12,21375,0,,1|9,6.5,,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+MSc Data Analytics,De Montfort University,Leicester,GB,DEGREE,PG,Data Science,12,18600,0,,1|9,6.0,,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+Master of Business Administration MBA (Global),De Montfort University,Leicester,GB,DEGREE,PG,Business,12,20900,0,,1|9,6.0,,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+MSc Data Analytics,University of Portsmouth,Portsmouth,GB,DEGREE,PG,Data Science,12,19200,0,,1|9,6.0,,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+MSc Computer Science,University of Portsmouth,Portsmouth,GB,DEGREE,PG,Computer Science,12,19200,0,,1|9,6.0,,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+BSc (Hons) Data Science and Artificial Intelligence,University of Portsmouth,Portsmouth,GB,DEGREE,UG,Data Science,36,19200,0,,9,6.0,,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+MSc Engineering Management,Nottingham Trent University,Nottingham,GB,DEGREE,PG,Engineering,12,18300,0,,1,6.5,62,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+MSc Global Public Health,University of Essex,Colchester,GB,DEGREE,PG,Public Health,12,23875,0,,10,6.5,,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+MSc Business Analytics,University of Essex,Colchester,GB,DEGREE,PG,Business Analytics,12,24675,0,,1|10,6.5,,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+Adult Nursing MSc (with NMC Registration),Middlesex University,London,GB,NURSING,PG,Nursing,24,19000,0,,1,6.5,,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+Mental Health Nursing MSc (with NMC Registration),Middlesex University,London,GB,NURSING,PG,Nursing,24,19000,0,,1,6.5,,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+Nursing (Adult) BSc Honours,Middlesex University,London,GB,NURSING,UG,Nursing,36,18300,0,,9,7.0,,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+MSc Civil Engineering,University of Strathclyde,Glasgow,GB,DEGREE,PG,Engineering,12,31900,0,,9,6.5,,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+MSc Software Development,Queen's University Belfast,Belfast,GB,DEGREE,PG,Computer Science,12,27600,0,,9,6.0,,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+MSc Advanced Civil and Structural Engineering,University of Bradford,Bradford,GB,DEGREE,PG,Engineering,12,19500,0,,1|9,6.0,,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+MSc Computer Science,Birmingham City University,Birmingham,GB,DEGREE,PG,Computer Science,12,18970,0,,1|9,6.0,,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+BSc (Hons) Computer Science,Birmingham City University,Birmingham,GB,DEGREE,UG,Computer Science,36,18570,0,,9,6.0,,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
+MSc Data Science,University of Surrey,Guildford,GB,DEGREE,PG,Data Science,12,26900,0,,9,6.5,,,,,,false,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT

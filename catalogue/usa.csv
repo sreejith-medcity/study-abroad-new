@@ -3,15 +3,15 @@ MS in Computer Science,Northeastern University,Boston,US,DEGREE,PG,Computer Scie
 MS in Data Analytics Engineering,Northeastern University,Boston,US,DEGREE,PG,Data Science,,,,,,,,,,,,,UNKNOWN,,,DRAFT
 MS in Information Systems,Northeastern University,Boston,US,DEGREE,PG,Information Systems,,,,,,,,,,,,,UNKNOWN,,,DRAFT
 MS in Computer Science,Arizona State University,Tempe,US,DEGREE,PG,Computer Science,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-MS in Business Analytics,Arizona State University,Tempe,US,DEGREE,PG,Business Analytics,,,,,,,,,,,,,UNKNOWN,,,DRAFT
+MS in Business Analytics,Arizona State University,Tempe,US,DEGREE,PG,Business Analytics,,,,,,,,,,,,,ELIGIBLE,STEM-designated on ASU W. P. Carey's own list,,DRAFT
 MS in Industrial Engineering,Arizona State University,Tempe,US,DEGREE,PG,Industrial Engineering,,,,,,,,,,,,,UNKNOWN,,,DRAFT
 MS in Computer Science,The University of Texas at Dallas,Richardson,US,DEGREE,PG,Computer Science,,,75,,,6.5,67,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|OTHER,DRAFT
-MS in Information Technology and Management,The University of Texas at Dallas,Richardson,US,DEGREE,PG,Information Systems,,,75,,,6.5,67,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|OTHER,DRAFT
+MS in Information Technology and Management,The University of Texas at Dallas,Richardson,US,DEGREE,PG,Information Systems,,,75,,,6.5,67,,,,,,ELIGIBLE,STEM-designated on UT Dallas Jindal's own list,DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|OTHER,DRAFT
 MS in Computer Engineering,The University of Texas at Dallas,Richardson,US,DEGREE,PG,Electrical Engineering,,,75,,,6.5,67,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|DEGREE_CERTIFICATE|ENGLISH_TEST|OTHER,DRAFT
 Master of Applied Science in Computer Science,Illinois Institute of Technology,Chicago,US,DEGREE,PG,Computer Science,,,,,,6.5,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|SOP|LOR|ENGLISH_TEST|PASSPORT|FINANCIAL_PROOF,DRAFT
 MS in Computer Science,Illinois Institute of Technology,Chicago,US,DEGREE,PG,Computer Science,,,,,,6.5,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|SOP|LOR|ENGLISH_TEST|PASSPORT|FINANCIAL_PROOF,DRAFT
 MS in Electrical Engineering,Illinois Institute of Technology,Chicago,US,DEGREE,PG,Electrical Engineering,,,,,,6.5,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|SOP|LOR|ENGLISH_TEST|PASSPORT|FINANCIAL_PROOF,DRAFT
-MS in Computer Science,Stevens Institute of Technology,Hoboken,US,DEGREE,PG,Computer Science,,,60,,,6.0,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|SOP|LOR|ENGLISH_TEST,DRAFT
+MS in Computer Science,Stevens Institute of Technology,Hoboken,US,DEGREE,PG,Computer Science,,,60,,,6.0,,,,,,,ELIGIBLE,On Stevens' own STEM-designated degree list,DEGREE_MARKSHEETS|SOP|LOR|ENGLISH_TEST,DRAFT
 MS in Computer Science and Engineering,University at Buffalo SUNY,Buffalo,US,DEGREE,PG,Computer Science,,32300,100,,8|1,6.5,55,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|CV|SOP|LOR|ENGLISH_TEST,DRAFT
 MS in Management Information Systems,University at Buffalo SUNY,Buffalo,US,DEGREE,PG,Information Systems,,36700,,,1,,,,,,,,UNKNOWN,,,DRAFT
 MS in Information Systems,University of Cincinnati,Cincinnati,US,DEGREE,PG,Information Systems,,33320,70,,8,7.0,,,,,,,UNKNOWN,,CV|DEGREE_MARKSHEETS|SOP|LOR|ENGLISH_TEST,DRAFT
@@ -20,7 +20,7 @@ MS in Computer Science,Texas A&M University,College Station,US,DEGREE,PG,Compute
 MS in Computer Engineering,Texas A&M University,College Station,US,DEGREE,PG,Electrical Engineering,,,90,,,6.0,,,,,,,UNKNOWN,,DEGREE_MARKSHEETS|ENGLISH_TEST|OTHER,DRAFT
 MS in Computer Science,Clemson University,Clemson,US,DEGREE,PG,Computer Science,,,,,,6.5,54,,,,,,UNKNOWN,,,DRAFT
 MS in Industrial Engineering,Clemson University,Clemson,US,DEGREE,PG,Industrial Engineering,,,,,,6.5,54,,,,,,UNKNOWN,,,DRAFT
-MS in Computer Science,San Jose State University,San Jose,US,DEGREE,PG,Computer Science,,,,,,,,,,,,,UNKNOWN,,,DRAFT
+MS in Computer Science,San Jose State University,San Jose,US,DEGREE,PG,Computer Science,,,,,,,,,,,,,ELIGIBLE,On SJSU's own STEM-eligible programs list,,DRAFT
 MS in Computer Science,Rutgers University New Brunswick,New Brunswick,US,DEGREE,PG,Computer Science,,,,,,,,,,,,,UNKNOWN,,,DRAFT
 MS in Electrical and Computer Engineering,Rutgers University New Brunswick,New Brunswick,US,DEGREE,PG,Electrical Engineering,,,,,,,,,,,,,UNKNOWN,,,DRAFT
 MS in Computer Science,George Mason University,Fairfax,US,DEGREE,PG,Computer Science,,,,,,,,,,,,,UNKNOWN,,,DRAFT
