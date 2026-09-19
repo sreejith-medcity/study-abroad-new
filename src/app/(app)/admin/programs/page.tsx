@@ -1,41 +1,60 @@
-import { and, asc, eq, ilike, or } from "drizzle-orm";
+import { and, asc, count, eq, ilike, or } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fmtMoney, MONTHS } from "@/lib/format";
 import { readFilters } from "@/server/queries";
-import { Button, Card, Chip, EmptyState, Input, PageHeader, Select, Table, Td, Th } from "@/components/ui";
+import { Button, Card, Chip, EmptyState, Input, LinkButton, PageHeader, Select, Table, Td, Th } from "@/components/ui";
 import { bulkStatusAction, setProgramStatusAction } from "./actions";
 import { ImportForm } from "./import-form";
 import { ADMIN_ROLES } from "@/lib/permissions";
 
 export const metadata = { title: "Programs" };
 
+const PAGE = 50;
+
 export default async function ProgramsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   await requireUser([...ADMIN_ROLES]);
   const f = readFilters(await searchParams) as Record<string, string>;
+  const page = Math.max(1, Number(f.page ?? 1));
   const { programs: p, universities: u, countries: c } = schema;
+  const where = and(
+    f.q ? or(ilike(p.name, `%${f.q}%`), ilike(u.name, `%${f.q}%`)) : undefined,
+    f.country ? eq(c.code, f.country) : undefined,
+    f.pathway ? eq(p.pathway, f.pathway as schema.Pathway) : undefined,
+    f.status ? eq(p.status, f.status as "LIVE") : undefined,
+  );
   const rows = await db
-    .select({ id: p.id, name: p.name, level: p.level, pathway: p.pathway, intakeMonths: p.intakeMonths, tuition: p.tuitionPerYear, currency: c.currency, university: u.name, country: c.name, status: p.status, minIelts: p.minIelts, minPte: p.minPte, minOet: p.minOetGrade, minGerman: p.minGermanLevel, maxBacklogs: p.maxBacklogs, moi: p.moiAccepted, docs: p.requiredDocs })
+    .select({ id: p.id, name: p.name, level: p.level, pathway: p.pathway, intakeMonths: p.intakeMonths, tuition: p.tuitionPerYear, currency: c.currency, university: u.name, country: c.name, status: p.status, minIelts: p.minIelts, minPte: p.minPte, minOet: p.minOetGrade, minGerman: p.minGermanLevel, maxBacklogs: p.maxBacklogs, moi: p.moiAccepted, workRights: p.workRights, workRightsNote: p.workRightsNote, docs: p.requiredDocs })
     .from(p)
     .innerJoin(u, eq(p.universityId, u.id))
     .innerJoin(c, eq(u.countryId, c.id))
-    .where(and(
-      f.q ? or(ilike(p.name, `%${f.q}%`), ilike(u.name, `%${f.q}%`)) : undefined,
-      f.country ? eq(c.code, f.country) : undefined,
-      f.pathway ? eq(p.pathway, f.pathway as schema.Pathway) : undefined,
-      f.status ? eq(p.status, f.status as "LIVE") : undefined,
-    ))
+    .where(where)
     .orderBy(asc(c.name), asc(u.name), asc(p.name))
-    .limit(300);
+    .limit(PAGE)
+    .offset((page - 1) * PAGE);
+  // The count is its own query rather than rows.length, because the list is a
+  // page and the bulk control below acts on every match, not just this page.
+  const [{ total }] = await db
+    .select({ total: count() })
+    .from(p)
+    .innerJoin(u, eq(p.universityId, u.id))
+    .innerJoin(c, eq(u.countryId, c.id))
+    .where(where);
+  const lastPage = Math.max(1, Math.ceil(total / PAGE));
   const countries = await db.select().from(c).orderBy(asc(c.name));
+  const qs = (extra: Record<string, string>) => {
+    const sp = new URLSearchParams();
+    for (const [k, v] of Object.entries({ ...f, ...extra })) if (v) sp.set(k, v);
+    return `/admin/programs?${sp}`;
+  };
 
   return (
     <>
       <PageHeader
         title="Programs"
-        subtitle={`${rows.length} shown. Structured requirements drive the pre-submission check.`}
+        subtitle={`${total} match${total === 1 ? "" : "es"}. Structured requirements drive the pre-submission check.`}
         actions={
-          rows.length > 0 ? (
+          total > 0 ? (
             // Acts on exactly what the filters above have selected, so a country
             // or a pathway can be reviewed and published as one batch.
             <form action={bulkStatusAction} className="flex flex-wrap items-center gap-2">
@@ -43,7 +62,7 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
               <input type="hidden" name="country" value={f.country ?? ""} />
               <input type="hidden" name="pathway" value={f.pathway ?? ""} />
               <input type="hidden" name="from" value={f.status ?? ""} />
-              <span className="text-[13px] text-muted">These {rows.length}:</span>
+              <span className="text-[13px] text-muted">All {total} matching:</span>
               <Button name="to" value="LIVE" size="sm" variant="secondary">Publish</Button>
               <Button name="to" value="DRAFT" size="sm" variant="quiet">Back to draft</Button>
             </form>
@@ -54,6 +73,7 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
         <div className="space-y-4">
           <Card className="p-4">
             <form className="grid gap-2.5 sm:grid-cols-5 [&>*]:min-w-0">
+              <input type="hidden" name="page" value="1" />
               <Input name="q" placeholder="Program or university" aria-label="Search" defaultValue={f.q} className="sm:col-span-2" />
               <Select name="country" aria-label="Country" defaultValue={f.country ?? ""}>
                 <option value="">Country</option>
@@ -86,6 +106,8 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
                         <div className="flex max-w-64 flex-wrap gap-1">
                           {r.minIelts && <Chip>IELTS {r.minIelts}</Chip>}{r.minPte && <Chip>PTE {r.minPte}</Chip>}{r.minOet && <Chip>OET {r.minOet}</Chip>}
                           {r.minGerman && <Chip>German {r.minGerman}</Chip>}{r.maxBacklogs != null && <Chip>Backlogs ≤ {r.maxBacklogs}</Chip>}{r.moi && <Chip>MOI OK</Chip>}
+                          {r.workRights === "ELIGIBLE" && <Chip tone="ok">Work rights</Chip>}
+                          {r.workRights === "INELIGIBLE" && <Chip tone="bad">No work rights</Chip>}
                           <Chip tone="info">{r.docs.length} docs</Chip>
                         </div>
                       </Td>
@@ -102,6 +124,17 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
                   ))}
                 </tbody>
               </Table>
+            )}
+            {(page > 1 || page < lastPage) && (
+              <div className="flex items-center justify-between border-t border-line px-4 py-3">
+                <span className="text-[13px] text-muted">
+                  Showing {(page - 1) * PAGE + 1} to {(page - 1) * PAGE + rows.length} of {total}
+                </span>
+                <div className="flex gap-2">
+                  {page > 1 && <LinkButton variant="secondary" size="sm" href={qs({ page: String(page - 1) })}>Previous</LinkButton>}
+                  {page < lastPage && <LinkButton variant="secondary" size="sm" href={qs({ page: String(page + 1) })}>Next</LinkButton>}
+                </div>
+              </div>
             )}
           </Card>
         </div>

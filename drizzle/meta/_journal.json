@@ -85,6 +85,13 @@
       "when": 1789720464355,
       "tag": "0011_brand_artwork",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1789754609024,
+      "tag": "0012_work_rights",
+      "breakpoints": true
     }
   ]
 }

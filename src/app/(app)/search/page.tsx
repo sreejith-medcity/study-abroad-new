@@ -31,6 +31,7 @@ const QUICK = [
   { key: "noEnglish", label: "No English test needed" },
   { key: "ausbildung", label: "Ausbildung" },
   { key: "nursing", label: "Nurse registration" },
+  { key: "workRights", label: "Post-study work" },
 ] as const;
 
 export default async function SearchPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -53,6 +54,9 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   if (f.noEnglish) conds.push(and(sql`${p.minIelts} is null`, sql`${p.minPte} is null`, sql`${p.minOetGrade} is null`));
   if (f.ausbildung) conds.push(eq(p.pathway, "AUSBILDUNG"));
   if (f.nursing) conds.push(eq(p.pathway, "NURSING"));
+  // Only programmes the institution itself confirms, never the unknowns. A
+  // partner filtering on this is telling a student the work rights are there.
+  if (f.workRights) conds.push(eq(p.workRights, "ELIGIBLE"));
   const where = and(...conds);
 
   const rows = await db
@@ -74,6 +78,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       maxBacklogs: p.maxBacklogs,
       maxGapYears: p.maxGapYears,
       moiAccepted: p.moiAccepted,
+      workRights: p.workRights,
+      workRightsNote: p.workRightsNote,
       university: u.name,
       city: u.city,
       isPublic: u.isPublic,
@@ -277,6 +283,21 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                         {r.durationMonths && <span>· {r.durationMonths} months</span>}
                         {r.pathway !== "DEGREE" && <Chip tone="brand">{r.pathway === "AUSBILDUNG" ? "Ausbildung" : "Nursing"}</Chip>}
                       </p>
+                      {/* A counsellor should not have to know which programmes lost
+                          their work rights. Where the institution says so, the row
+                          says so, and the note carries its wording on hover. */}
+                      {r.workRights !== "UNKNOWN" && (
+                        <p className="mt-1">
+                          <Chip tone={r.workRights === "ELIGIBLE" ? "ok" : "bad"}>
+                            {r.workRights === "ELIGIBLE" ? (
+                              <><IconCheck className="size-3.5" /> Post-study work</>
+                            ) : (
+                              <><IconAlert className="size-3.5" /> No post-study work</>
+                            )}
+                          </Chip>
+                          {r.workRightsNote && <span className="ml-1.5 text-xs text-muted">{r.workRightsNote}</span>}
+                        </p>
+                      )}
                     </Td>
                     <Td>
                       <p>{r.university}</p>

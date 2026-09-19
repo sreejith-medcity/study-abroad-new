@@ -33,6 +33,13 @@ export const studyLevel = pgEnum("study_level", [
   "REGISTRATION",
 ]);
 export const programStatus = pgEnum("program_status", ["DRAFT", "LIVE", "ARCHIVED"]);
+/**
+ * Whether a programme leads to post-study work rights in its own country.
+ * This is the single thing Indian applicants ask about first, and getting it
+ * wrong costs a student two years, so an unknown is recorded as unknown rather
+ * than assumed eligible.
+ */
+export const workRights = pgEnum("work_rights", ["UNKNOWN", "ELIGIBLE", "INELIGIBLE"]);
 export const statusGroup = pgEnum("status_group", [
   "NEW",
   "PENDING_PARTNER",
@@ -163,6 +170,11 @@ export const programs = pgTable(
     maxBacklogs: integer("max_backlogs"),
     maxGapYears: integer("max_gap_years"),
     moiAccepted: boolean("moi_accepted").notNull().default(false),
+    // Post-study work: PGWP in Canada, STEM OPT in the US, the Graduate Route in
+    // the UK. The note carries the institution's own wording, so a counsellor can
+    // see why the flag says what it says.
+    workRights: workRights("work_rights").notNull().default("UNKNOWN"),
+    workRightsNote: text("work_rights_note"),
     requiredDocs: text("required_docs").array().notNull().default(sql`'{}'::text[]`),
     status: programStatus("status").notNull().default("LIVE"),
     createdAt: createdAt(),

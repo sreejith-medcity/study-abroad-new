@@ -25,8 +25,21 @@ node tests/browser/dashboards.mjs
 | `polish.mjs` | The command palette and its scoping, toasts, and the shell at phone width |
 | `artwork.mjs` | The logo and favicon uploader, what it serves, and who may change it |
 | `golive.mjs` | The sample-data cleanup: what it lists, what it refuses, what survives |
+| `catalogue.mjs` | The catalogue at full size: paging, the count, a bulk publish across every match, and post-study work rights |
 
 Screenshots land in `/tmp/smoke-*`. Each script exits non-zero if a check fails.
+
+Each script expects the seed it starts from, so re-seed between runs rather than
+chaining them: `enquiries.mjs` converts an enquiry into a student, which is
+enough to make `money.mjs` look broken afterwards. `roles.mjs` and
+`publicform.mjs` also trip the sign-in rate limiter if they are run repeatedly
+without a restart, which reads as a failure but is the limiter doing its job.
+
+`catalogue.mjs` additionally wants the real catalogue loaded:
+
+```bash
+npm run db:seed && npx tsx scripts/import-catalogue.ts
+```
 
 Two things to know: every context sends its own `x-forwarded-for`, because the
 sign-in rate limiter would otherwise count one role's attempts against the next,

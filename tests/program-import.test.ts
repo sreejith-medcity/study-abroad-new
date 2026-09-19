@@ -27,3 +27,31 @@ test("rejects files missing required columns", () => {
   const { errors } = parseProgramCsv("program,university\nA,B", []);
   assert.match(errors[0].message, /Missing required columns/);
 });
+
+test("reads work rights from the words a university actually uses", () => {
+  const h = "program,university,country_code,level,intakes,work_rights,work_rights_note";
+  const { rows, errors } = parseProgramCsv(
+    `${h}\nA,Uni,CA,PG,Jan,PGWP-ineligible,Under 2 years\nB,Uni,US,PG,Jan,STEM OPT,Named on the university's own list\nC,Uni,GB,PG,Jan,,\nD,Uni,IE,PG,Jan,ELIGIBLE,`,
+    [],
+  );
+  assert.equal(errors.length, 0);
+  assert.equal(rows[0].workRights, "INELIGIBLE");
+  assert.equal(rows[0].workRightsNote, "Under 2 years");
+  assert.equal(rows[1].workRights, "ELIGIBLE");
+  // An empty cell is an unknown, never an assumed yes.
+  assert.equal(rows[2].workRights, "UNKNOWN");
+  assert.equal(rows[2].workRightsNote, null);
+  assert.equal(rows[3].workRights, "ELIGIBLE");
+});
+
+test("refuses a work rights value it does not recognise, rather than guessing", () => {
+  const h = "program,university,country_code,level,intakes,work_rights";
+  const { rows, errors } = parseProgramCsv(`${h}\nA,Uni,CA,PG,Jan,probably`, []);
+  assert.equal(rows.length, 0);
+  assert.match(errors[0].message, /work_rights must be one of/);
+});
+
+test("a file with no work rights column leaves every row unknown", () => {
+  const { rows } = parseProgramCsv(`${header}\nMSc X,Uni A,GB,DEGREE,PG,Sep,6.5,,`, []);
+  assert.equal(rows[0].workRights, "UNKNOWN");
+});

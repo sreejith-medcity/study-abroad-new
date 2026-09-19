@@ -65,7 +65,8 @@ export async function importProgramsAction(prev: ImportState, formData: FormData
         name: r.program, universityId, pathway: r.pathway, level: r.level, studyArea: r.studyArea, durationMonths: r.durationMonths,
         tuitionPerYear: r.tuitionPerYear, applicationFee: r.applicationFee, initialDeposit: r.initialDeposit, intakeMonths: r.intakeMonths,
         minIelts: r.minIelts, minPte: r.minPte, minOetGrade: r.minOetGrade, minGermanLevel: r.minGermanLevel, maxBacklogs: r.maxBacklogs,
-        maxGapYears: r.maxGapYears, moiAccepted: r.moiAccepted, requiredDocs: r.requiredDocs, status: r.status, updatedAt: new Date(),
+        maxGapYears: r.maxGapYears, moiAccepted: r.moiAccepted, workRights: r.workRights, workRightsNote: r.workRightsNote,
+        requiredDocs: r.requiredDocs, status: r.status, updatedAt: new Date(),
       };
       const existing = await tx.query.programs.findFirst({ where: and(eq(schema.programs.name, r.program), eq(schema.programs.universityId, universityId)) });
       if (existing) {
@@ -108,7 +109,12 @@ export async function bulkStatusAction(formData: FormData) {
   const from = String(formData.get("from") ?? "").trim();
 
   const { programs: p, universities: u, countries: c } = schema;
-  const matching = await db
+  // The country lives on the university, so the filter has to reach across two
+  // joins. Selecting the ids first and then updating by id worked until the
+  // catalogue passed a few hundred rows, at which point the IN list was the
+  // slowest part of the request. This keeps it to one statement whose size does
+  // not grow with the number of programs being published.
+  const scope = db
     .select({ id: p.id })
     .from(p)
     .innerJoin(u, eq(p.universityId, u.id))
@@ -121,14 +127,15 @@ export async function bulkStatusAction(formData: FormData) {
         from ? eq(p.status, from as "DRAFT") : undefined,
       ),
     );
-  if (!matching.length) return;
 
-  await db
+  const changed = await db
     .update(schema.programs)
     .set({ status: to as "LIVE", updatedAt: new Date() })
-    .where(inArray(schema.programs.id, matching.map((r) => r.id)));
+    .where(inArray(schema.programs.id, scope))
+    .returning({ id: schema.programs.id });
+  if (!changed.length) return;
 
-  await audit(user.id, "programs.bulk_status", "program", "*", { to, from: from || "any", country: country || "any", pathway: pathway || "any", count: matching.length });
+  await audit(user.id, "programs.bulk_status", "program", "*", { to, from: from || "any", country: country || "any", pathway: pathway || "any", count: changed.length });
   revalidatePath("/admin/programs");
   revalidatePath("/search");
 }
