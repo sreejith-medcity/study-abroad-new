@@ -1,41 +1,41 @@
 program,university,city,country_code,pathway,level,study_area,duration_months,tuition_per_year,application_fee,initial_deposit,intakes,min_ielts,min_pte,min_oet_grade,min_german_level,max_backlogs,max_gap_years,moi_accepted,work_rights,work_rights_note,required_docs,status
-MSc Computing Science,University of Groningen,Groningen,NL,DEGREE,PG,Computer Science,24,24900,,,9,,,,,,,,UNKNOWN,,,DRAFT
-MSc Artificial Intelligence,University of Groningen,Groningen,NL,DEGREE,PG,Artificial Intelligence,24,24900,,,9,,,,,,,,UNKNOWN,,,DRAFT
-MSc Supply Chain Management,University of Groningen,Groningen,NL,DEGREE,PG,Supply Chain,12,22200,,,2|9,6.5,,,,,,,UNKNOWN,,,DRAFT
-MSc Artificial Intelligence,Utrecht University,Utrecht,NL,DEGREE,PG,Artificial Intelligence,24,25306,,,2|9,,,,,,,,UNKNOWN,,,DRAFT
-MSc Business Informatics,Utrecht University,Utrecht,NL,DEGREE,PG,Computer Science,24,,,,2|9,,,,,,,,UNKNOWN,,,DRAFT
-MSc Computing Science,Utrecht University,Utrecht,NL,DEGREE,PG,Computer Science,24,,,,2|9,,,,,,,,UNKNOWN,,,DRAFT
-MSc Computer Science,Leiden University,Leiden,NL,DEGREE,PG,Computer Science,24,,,,9|2,,,,,,,,UNKNOWN,,,DRAFT
-MSc Computing Science,Radboud University,Nijmegen,NL,DEGREE,PG,Computer Science,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-MSc Business Analytics,Vrije Universiteit Amsterdam,Amsterdam,NL,DEGREE,PG,Business Analytics,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-MSc Computer Science,Vrije Universiteit Amsterdam,Amsterdam,NL,DEGREE,PG,Computer Science,,,,,9,,,,,,,,UNKNOWN,,,DRAFT
-MSc Marketing Analytics,Tilburg University,Tilburg,NL,DEGREE,PG,Business Analytics,12,,,,8|1,,,,,,,,UNKNOWN,,,DRAFT
-MSc Data Science for Decision Making,Maastricht University,Maastricht,NL,DEGREE,PG,Data Science,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-MSc Business Intelligence and Smart Services,Maastricht University,Maastricht,NL,DEGREE,PG,Business Analytics,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-"Computer Science, Master of Science (Technology)",Aalto University,Espoo,FI,DEGREE,PG,Computer Science,24,17000,,,1,,,,,,,,UNKNOWN,,,DRAFT
-"Machine Learning, Data Science and Artificial Intelligence, Master of Science (Technology)",Aalto University,Espoo,FI,DEGREE,PG,Data Science,24,17000,,,1,,,,,,,,UNKNOWN,,,DRAFT
-"Computer Engineering, Master of Science (Technology)",Aalto University,Espoo,FI,DEGREE,PG,Engineering,24,17000,,,1,,,,,,,,UNKNOWN,,,DRAFT
-Data Science Master's Programme,University of Helsinki,Helsinki,FI,DEGREE,PG,Data Science,24,15000,,,1,,,,,,,,UNKNOWN,,,DRAFT
-Computer Science Master's Programme,University of Helsinki,Helsinki,FI,DEGREE,PG,Computer Science,24,15000,,,1,,,,,,,,UNKNOWN,,,DRAFT
-Life Science Informatics Master's Programme,University of Helsinki,Helsinki,FI,DEGREE,PG,Data Science,24,15000,,,1,,,,,,,,UNKNOWN,,,DRAFT
-"Data Science, Computing Sciences and Electrical Engineering",Tampere University,Tampere,FI,DEGREE,PG,Data Science,24,12000,,,,,,,,,,,UNKNOWN,,,DRAFT
-Master's Programme in Computer Science,Uppsala University,Uppsala,SE,DEGREE,PG,Computer Science,24,,,,8,,,,,,,,UNKNOWN,,,DRAFT
-Master's Programme in Data Science - Data Engineering,Uppsala University,Uppsala,SE,DEGREE,PG,Data Science,24,,,,8,,,,,,,,UNKNOWN,,,DRAFT
-Master's Programme in Data Science - Machine Learning and Statistics,Uppsala University,Uppsala,SE,DEGREE,PG,Data Science,24,,,,8,,,,,,,,UNKNOWN,,,DRAFT
-Master's Programme in Data Science - Image Analysis and Machine Learning,Uppsala University,Uppsala,SE,DEGREE,PG,Data Science,24,,,,8,,,,,,,,UNKNOWN,,,DRAFT
-Master's Programme in Statistics and Data Science,Uppsala University,Uppsala,SE,DEGREE,PG,Data Science,24,,,,8,,,,,,,,UNKNOWN,,,DRAFT
-"Computational Science, Scientific Computing - Master Programme",Lund University,Lund,SE,DEGREE,PG,Data Science,24,,,,8,,,,,,,,UNKNOWN,,,DRAFT
-Master's Degree in Computer Science and Engineering,Politecnico di Milano,Milan,IT,DEGREE,PG,Computer Science,24,,,,,,,,,,,,UNKNOWN,,,DRAFT
-Master's in Business Analytics,Nova School of Business and Economics,Lisbon,PT,DEGREE,PG,Business Analytics,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-International Master's in Management,Nova School of Business and Economics,Lisbon,PT,DEGREE,PG,Management,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-International Master's in Finance,Nova School of Business and Economics,Lisbon,PT,DEGREE,PG,Accounting and Finance,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-Master's in Management,Nova School of Business and Economics,Lisbon,PT,DEGREE,PG,Management,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-Master's in Finance,Nova School of Business and Economics,Lisbon,PT,DEGREE,PG,Accounting and Finance,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-CEMS Master's in International Management,Nova School of Business and Economics,Lisbon,PT,DEGREE,PG,Management,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-MSc International Business and Management,University of Groningen,Groningen,NL,DEGREE,PG,Management,12,22200,,,2|9,6.5,,,,,,,UNKNOWN,,,DRAFT
-MSc Finance,University of Groningen,Groningen,NL,DEGREE,PG,Accounting and Finance,12,22200,,,2|9,6.5,,,,,,,UNKNOWN,,,DRAFT
-MSc Business Administration,University of Groningen,Groningen,NL,DEGREE,PG,Management,12,22200,,,2|9,6.5,,,,,,,UNKNOWN,,,DRAFT
-MSc Industrial Engineering and Management,University of Groningen,Groningen,NL,DEGREE,PG,Engineering,24,24900,,,9,,,,,,,,UNKNOWN,,,DRAFT
-MSc Applied Data Science,Utrecht University,Utrecht,NL,DEGREE,PG,Data Science,12,25306,,,9,,,,,,,,UNKNOWN,,,DRAFT
-MSc ICT in Business and the Public Sector,Leiden University,Leiden,NL,DEGREE,PG,Computer Science,24,,,,2,,,,,,,,UNKNOWN,,,DRAFT
-MSc Artificial Intelligence,Radboud University,Nijmegen,NL,DEGREE,PG,Artificial Intelligence,,,,,,,,,,,,,UNKNOWN,,,DRAFT
+MSc Computing Science,University of Groningen,Groningen,NL,DEGREE,PG,Computer Science,24,24900,,,9,,,,,,,,ELIGIBLE,"Netherlands: orientation year, up to 12 months to live and work freely; apply within 3 years of graduating (IND)",,DRAFT
+MSc Artificial Intelligence,University of Groningen,Groningen,NL,DEGREE,PG,Artificial Intelligence,24,24900,,,9,,,,,,,,ELIGIBLE,"Netherlands: orientation year, up to 12 months to live and work freely; apply within 3 years of graduating (IND)",,DRAFT
+MSc Supply Chain Management,University of Groningen,Groningen,NL,DEGREE,PG,Supply Chain,12,22200,,,2|9,6.5,,,,,,,ELIGIBLE,"Netherlands: orientation year, up to 12 months to live and work freely; apply within 3 years of graduating (IND)",,DRAFT
+MSc Artificial Intelligence,Utrecht University,Utrecht,NL,DEGREE,PG,Artificial Intelligence,24,25306,,,2|9,,,,,,,,ELIGIBLE,"Netherlands: orientation year, up to 12 months to live and work freely; apply within 3 years of graduating (IND)",,DRAFT
+MSc Business Informatics,Utrecht University,Utrecht,NL,DEGREE,PG,Computer Science,24,,,,2|9,,,,,,,,ELIGIBLE,"Netherlands: orientation year, up to 12 months to live and work freely; apply within 3 years of graduating (IND)",,DRAFT
+MSc Computing Science,Utrecht University,Utrecht,NL,DEGREE,PG,Computer Science,24,,,,2|9,,,,,,,,ELIGIBLE,"Netherlands: orientation year, up to 12 months to live and work freely; apply within 3 years of graduating (IND)",,DRAFT
+MSc Computer Science,Leiden University,Leiden,NL,DEGREE,PG,Computer Science,24,,,,9|2,,,,,,,,ELIGIBLE,"Netherlands: orientation year, up to 12 months to live and work freely; apply within 3 years of graduating (IND)",,DRAFT
+MSc Computing Science,Radboud University,Nijmegen,NL,DEGREE,PG,Computer Science,,,,,,,,,,,,,ELIGIBLE,"Netherlands: orientation year, up to 12 months to live and work freely; apply within 3 years of graduating (IND)",,DRAFT
+MSc Business Analytics,Vrije Universiteit Amsterdam,Amsterdam,NL,DEGREE,PG,Business Analytics,,,,,,,,,,,,,ELIGIBLE,"Netherlands: orientation year, up to 12 months to live and work freely; apply within 3 years of graduating (IND)",,DRAFT
+MSc Computer Science,Vrije Universiteit Amsterdam,Amsterdam,NL,DEGREE,PG,Computer Science,,,,,9,,,,,,,,ELIGIBLE,"Netherlands: orientation year, up to 12 months to live and work freely; apply within 3 years of graduating (IND)",,DRAFT
+MSc Marketing Analytics,Tilburg University,Tilburg,NL,DEGREE,PG,Business Analytics,12,,,,8|1,,,,,,,,ELIGIBLE,"Netherlands: orientation year, up to 12 months to live and work freely; apply within 3 years of graduating (IND)",,DRAFT
+MSc Data Science for Decision Making,Maastricht University,Maastricht,NL,DEGREE,PG,Data Science,,,,,,,,,,,,,ELIGIBLE,"Netherlands: orientation year, up to 12 months to live and work freely; apply within 3 years of graduating (IND)",,DRAFT
+MSc Business Intelligence and Smart Services,Maastricht University,Maastricht,NL,DEGREE,PG,Business Analytics,,,,,,,,,,,,,ELIGIBLE,"Netherlands: orientation year, up to 12 months to live and work freely; apply within 3 years of graduating (IND)",,DRAFT
+"Computer Science, Master of Science (Technology)",Aalto University,Espoo,FI,DEGREE,PG,Computer Science,24,17000,,,1,,,,,,,,ELIGIBLE,"Finland: permit to look for work for up to 24 months after a Finnish degree, no work restrictions (Migri)",,DRAFT
+"Machine Learning, Data Science and Artificial Intelligence, Master of Science (Technology)",Aalto University,Espoo,FI,DEGREE,PG,Data Science,24,17000,,,1,,,,,,,,ELIGIBLE,"Finland: permit to look for work for up to 24 months after a Finnish degree, no work restrictions (Migri)",,DRAFT
+"Computer Engineering, Master of Science (Technology)",Aalto University,Espoo,FI,DEGREE,PG,Engineering,24,17000,,,1,,,,,,,,ELIGIBLE,"Finland: permit to look for work for up to 24 months after a Finnish degree, no work restrictions (Migri)",,DRAFT
+Data Science Master's Programme,University of Helsinki,Helsinki,FI,DEGREE,PG,Data Science,24,15000,,,1,,,,,,,,ELIGIBLE,"Finland: permit to look for work for up to 24 months after a Finnish degree, no work restrictions (Migri)",,DRAFT
+Computer Science Master's Programme,University of Helsinki,Helsinki,FI,DEGREE,PG,Computer Science,24,15000,,,1,,,,,,,,ELIGIBLE,"Finland: permit to look for work for up to 24 months after a Finnish degree, no work restrictions (Migri)",,DRAFT
+Life Science Informatics Master's Programme,University of Helsinki,Helsinki,FI,DEGREE,PG,Data Science,24,15000,,,1,,,,,,,,ELIGIBLE,"Finland: permit to look for work for up to 24 months after a Finnish degree, no work restrictions (Migri)",,DRAFT
+"Data Science, Computing Sciences and Electrical Engineering",Tampere University,Tampere,FI,DEGREE,PG,Data Science,24,12000,,,,,,,,,,,ELIGIBLE,"Finland: permit to look for work for up to 24 months after a Finnish degree, no work restrictions (Migri)",,DRAFT
+Master's Programme in Computer Science,Uppsala University,Uppsala,SE,DEGREE,PG,Computer Science,24,,,,8,,,,,,,,ELIGIBLE,Sweden: up to 12 months to look for work after completing the programme; a job can start once a work permit is applied for (Migrationsverket),,DRAFT
+Master's Programme in Data Science - Data Engineering,Uppsala University,Uppsala,SE,DEGREE,PG,Data Science,24,,,,8,,,,,,,,ELIGIBLE,Sweden: up to 12 months to look for work after completing the programme; a job can start once a work permit is applied for (Migrationsverket),,DRAFT
+Master's Programme in Data Science - Machine Learning and Statistics,Uppsala University,Uppsala,SE,DEGREE,PG,Data Science,24,,,,8,,,,,,,,ELIGIBLE,Sweden: up to 12 months to look for work after completing the programme; a job can start once a work permit is applied for (Migrationsverket),,DRAFT
+Master's Programme in Data Science - Image Analysis and Machine Learning,Uppsala University,Uppsala,SE,DEGREE,PG,Data Science,24,,,,8,,,,,,,,ELIGIBLE,Sweden: up to 12 months to look for work after completing the programme; a job can start once a work permit is applied for (Migrationsverket),,DRAFT
+Master's Programme in Statistics and Data Science,Uppsala University,Uppsala,SE,DEGREE,PG,Data Science,24,,,,8,,,,,,,,ELIGIBLE,Sweden: up to 12 months to look for work after completing the programme; a job can start once a work permit is applied for (Migrationsverket),,DRAFT
+"Computational Science, Scientific Computing - Master Programme",Lund University,Lund,SE,DEGREE,PG,Data Science,24,,,,8,,,,,,,,ELIGIBLE,Sweden: up to 12 months to look for work after completing the programme; a job can start once a work permit is applied for (Migrationsverket),,DRAFT
+Master's Degree in Computer Science and Engineering,Politecnico di Milano,Milan,IT,DEGREE,PG,Computer Science,24,,,,,,,,,,,,ELIGIBLE,"Italy: job-search permit of 9 to 12 months after an Italian degree or master, with no weekly hours limit (integrazionemigranti.gov.it)",,DRAFT
+Master's in Business Analytics,Nova School of Business and Economics,Lisbon,PT,DEGREE,PG,Business Analytics,,,,,,,,,,,,,ELIGIBLE,"Portugal: up to one year to look for work or start a company after a master's or PhD (Art. 122(1)(p), AIMA)",,DRAFT
+International Master's in Management,Nova School of Business and Economics,Lisbon,PT,DEGREE,PG,Management,,,,,,,,,,,,,ELIGIBLE,"Portugal: up to one year to look for work or start a company after a master's or PhD (Art. 122(1)(p), AIMA)",,DRAFT
+International Master's in Finance,Nova School of Business and Economics,Lisbon,PT,DEGREE,PG,Accounting and Finance,,,,,,,,,,,,,ELIGIBLE,"Portugal: up to one year to look for work or start a company after a master's or PhD (Art. 122(1)(p), AIMA)",,DRAFT
+Master's in Management,Nova School of Business and Economics,Lisbon,PT,DEGREE,PG,Management,,,,,,,,,,,,,ELIGIBLE,"Portugal: up to one year to look for work or start a company after a master's or PhD (Art. 122(1)(p), AIMA)",,DRAFT
+Master's in Finance,Nova School of Business and Economics,Lisbon,PT,DEGREE,PG,Accounting and Finance,,,,,,,,,,,,,ELIGIBLE,"Portugal: up to one year to look for work or start a company after a master's or PhD (Art. 122(1)(p), AIMA)",,DRAFT
+CEMS Master's in International Management,Nova School of Business and Economics,Lisbon,PT,DEGREE,PG,Management,,,,,,,,,,,,,ELIGIBLE,"Portugal: up to one year to look for work or start a company after a master's or PhD (Art. 122(1)(p), AIMA)",,DRAFT
+MSc International Business and Management,University of Groningen,Groningen,NL,DEGREE,PG,Management,12,22200,,,2|9,6.5,,,,,,,ELIGIBLE,"Netherlands: orientation year, up to 12 months to live and work freely; apply within 3 years of graduating (IND)",,DRAFT
+MSc Finance,University of Groningen,Groningen,NL,DEGREE,PG,Accounting and Finance,12,22200,,,2|9,6.5,,,,,,,ELIGIBLE,"Netherlands: orientation year, up to 12 months to live and work freely; apply within 3 years of graduating (IND)",,DRAFT
+MSc Business Administration,University of Groningen,Groningen,NL,DEGREE,PG,Management,12,22200,,,2|9,6.5,,,,,,,ELIGIBLE,"Netherlands: orientation year, up to 12 months to live and work freely; apply within 3 years of graduating (IND)",,DRAFT
+MSc Industrial Engineering and Management,University of Groningen,Groningen,NL,DEGREE,PG,Engineering,24,24900,,,9,,,,,,,,ELIGIBLE,"Netherlands: orientation year, up to 12 months to live and work freely; apply within 3 years of graduating (IND)",,DRAFT
+MSc Applied Data Science,Utrecht University,Utrecht,NL,DEGREE,PG,Data Science,12,25306,,,9,,,,,,,,ELIGIBLE,"Netherlands: orientation year, up to 12 months to live and work freely; apply within 3 years of graduating (IND)",,DRAFT
+MSc ICT in Business and the Public Sector,Leiden University,Leiden,NL,DEGREE,PG,Computer Science,24,,,,2,,,,,,,,ELIGIBLE,"Netherlands: orientation year, up to 12 months to live and work freely; apply within 3 years of graduating (IND)",,DRAFT
+MSc Artificial Intelligence,Radboud University,Nijmegen,NL,DEGREE,PG,Artificial Intelligence,,,,,,,,,,,,,ELIGIBLE,"Netherlands: orientation year, up to 12 months to live and work freely; apply within 3 years of graduating (IND)",,DRAFT

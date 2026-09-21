@@ -85,19 +85,37 @@ rows only, never the unknowns.
 
 | | eligible | ineligible | unknown |
 |---|---|---|---|
-| United Kingdom | 95 | 0 | 70 |
-| Canada | 84 | 8 | 57 |
+| United Kingdom | 164 | 1 | 0 |
+| Canada | 113 | 26 | 10 |
 | Australia | 76 | 16 | 6 |
 | New Zealand | 72 | 13 | 7 |
 | Ireland | 49 | 0 | 28 |
 | United States | 20 | 0 | 100 |
-| Germany and the rest of Europe | 0 | 0 | 196 |
+| Germany | 125 | 0 | 1 |
+| Rest of Europe | 67 | 0 | 3 |
 
-Every verdict names its source in the note: an institution's own PGWP or
-STEM-designated list, its own Graduate Route statement, or an official register
-(INZ's post-study work qualification list, CRICOS registration, the Irish Third
-Level Graduate Programme award levels). 464 rows stay `UNKNOWN`, which is the
-honest state rather than a gap to paper over.
+Every verdict names its source in the note. Where the right depends on national
+law rather than the institution, the note cites the law or the government page:
+the UK Graduate visa (gov.uk), § 20 AufenthG for Germany, and the immigration
+services of the Netherlands, Finland, Sweden, France, Italy and Portugal, all
+checked on 21 Sep 2026. Canadian degrees rest on IRCC's rule that degrees carry
+no field-of-study requirement; Canadian college programmes rest on each
+college's own list or programme page. Elsewhere the source is the institution's
+own statement or an official register (INZ's post-study work qualification list,
+CRICOS registration, the Irish Third Level Graduate Programme award levels).
+155 rows stay `UNKNOWN`, which is the honest state rather than a gap to paper over.
+
+Two notes worth reading before selling: Switzerland gives graduates six months
+to look for a job, but that job then needs approval, so those rows stay
+unconfirmed with the rule in the note. France allows only work related to the
+degree above a salary floor, and the note says so.
+
+Programmes marked not eligible because the college leaves them off its own
+complete PGWP list (Sheridan, St. Clair, Durham, Georgian, Niagara, Loyalist)
+carry that reason in the note. The University of Hull's MSc Advanced Clinical
+Practice is part-time only, so it cannot be taken on a Student visa at all and
+should probably be archived. Three Vancouver Community College programmes are
+open only to Canadian citizens and permanent residents, which their notes say.
 
 ### The ones that change what a counsellor should say
 
@@ -145,32 +163,28 @@ read those rows as "no work rights at all".
 
 ### Where the remaining unknowns are, and why
 
-- **Germany and the rest of Europe, 196 rows.** Not researched. Germany's
-  18-month post-graduation job-seeking permit and the rights that follow an
-  Ausbildung are statutory rather than per-institution, so they need a different
-  approach from reading course pages.
+- **Europe, 4 rows.** Switzerland's three (see above) and Germany's recognition
+  route for nurses trained in the EU, which does not apply to Indian applicants.
 - **United States, 100 rows.** Most universities point at the DHS CIP list and
   tell the student to read their own I-20. A student at NJIT, Texas Tech, UT
   Arlington, Buffalo, Stony Brook, Binghamton, Cleveland State or Missouri S&T
   almost certainly does get STEM OPT in practice, but no page on those sites
   says so. Get it in writing from each DSO, or stop stating it.
-- **United Kingdom, 70 rows.** Sixty of them are wave 3 institutions that were
-  gathered before the Graduate Route pass ran. Most will resolve the same way
-  the other 95 did. Three are genuine gaps: University of East London,
-  Edinburgh Napier and Sunderland publish no Graduate Route statement at all,
-  and all three recruit heavily from India.
-- **Canada, 57 rows.** Mostly wave 3 colleges whose PGWP position is published
-  but was not read, plus Seneca, Sheridan and Humber below. Canadian business
-  and hospitality diplomas are where the misses cluster; treat those as "verify
-  before selling" rather than assuming.
+- **Canada, 10 rows.** Four Lambton programmes (its list needs a browser; the
+  note warns that only the Sarnia campus counts), four Vancouver Community
+  College programmes, Humber's Global Business Management (Humber's own page
+  says "N/A" rather than yes), and Saskatchewan Polytechnic's Computer Systems
+  Technology, whose list would not render.
 - **Ireland, 28 rows.** Nineteen are National College of Ireland, whose
   stay-back page would not render. NCI is a volume recruiter and worth one email.
 
 ### Seneca, Sheridan and Humber
 
-Their PGWP lists exist but are JavaScript tables that a fetcher cannot read, so
-five rows are unresolved for that reason alone. Someone opening those pages in a
-browser would settle all five in a few minutes.
+Settled on 21 Sep 2026 in a browser. Seneca's Data Analytics and Supply Chain
+Management – Global Logistics are on its list. None of the three Sheridan
+programmes is on Sheridan's PGWP-aligned list (updated 13 Apr 2026); for
+project management, the aligned one is Project Management – Information
+Technology. Humber's Global Business Management page shows "PGWP-Eligible: N/A".
 
 ## Institutions that could not be read
 

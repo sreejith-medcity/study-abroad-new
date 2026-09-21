@@ -17,12 +17,12 @@ MSc Advanced Cyber Security,Cardiff Metropolitan University,Cardiff,GB,DEGREE,PG
 MSc Advanced Computer Science,University of Chester,Chester,GB,DEGREE,PG,Computer Science,12,15500,,,1|5|10,6.5,,,,,,,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
 MSc Cybersecurity,University of Chester,Chester,GB,DEGREE,PG,Cybersecurity,,15500,,,,,,,,,,,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
 MSc Data Science and Engineering,University of Dundee,Dundee,GB,DEGREE,PG,Data Science,,23700,,,1|9,,,,,,,,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
-MSc Computer Science,University of East London,London,GB,DEGREE,PG,Computer Science,12,17220,,,1|5|9,6.0,,,,,,,UNKNOWN,,,DRAFT
-MSc AI and Data Science,University of East London,London,GB,DEGREE,PG,Artificial Intelligence,,17220,,,9,6.0,,,,,,,UNKNOWN,,,DRAFT
-MSc Public Health,University of East London,London,GB,DEGREE,PG,Public Health,12,17700,,,1|9,6.5,,,,,,,UNKNOWN,,,DRAFT
-MSc Project Management,University of East London,London,GB,DEGREE,PG,Project Management,,18900,,,1|9,6.0,,,,,,,UNKNOWN,,,DRAFT
-BSc (Hons) Nursing (Adult),University of East London,London,GB,NURSING,UG,Nursing,36,,,,3|9,7.0,,,,,,,UNKNOWN,,,DRAFT
-MSc Artificial Intelligence and Data Science,Edinburgh Napier University,Edinburgh,GB,DEGREE,PG,Artificial Intelligence,12,22285,,,9,,,,,,,,UNKNOWN,,,DRAFT
+MSc Computer Science,University of East London,London,GB,DEGREE,PG,Computer Science,12,17220,,,1|5|9,6.0,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc AI and Data Science,University of East London,London,GB,DEGREE,PG,Artificial Intelligence,,17220,,,9,6.0,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Public Health,University of East London,London,GB,DEGREE,PG,Public Health,12,17700,,,1|9,6.5,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Project Management,University of East London,London,GB,DEGREE,PG,Project Management,,18900,,,1|9,6.0,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+BSc (Hons) Nursing (Adult),University of East London,London,GB,NURSING,UG,Nursing,36,,,,3|9,7.0,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Artificial Intelligence and Data Science,Edinburgh Napier University,Edinburgh,GB,DEGREE,PG,Artificial Intelligence,12,22285,,,9,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
 MSc Artificial Intelligence and Data Science,Keele University,Keele,GB,DEGREE,PG,Artificial Intelligence,12,18200,,,1|9,,,,,,,,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
 MSc Computer Science,University of Kent,Canterbury,GB,DEGREE,PG,Computer Science,12,,,,9,6.0,,,,,,,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
 MSc Data Science,Kingston University London,Kingston upon Thames,GB,DEGREE,PG,Data Science,,20000,,,9,,,,,,,,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
@@ -56,12 +56,12 @@ MSc Project Management,University of Salford,Salford,GB,DEGREE,PG,Project Manage
 MSc Computer Science,University of Staffordshire,Stoke-on-Trent,GB,DEGREE,PG,Computer Science,12,17700,,,1|9,6.0,,,,,,,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
 MSc Cyber Security,University of Staffordshire,Stoke-on-Trent,GB,DEGREE,PG,Cybersecurity,12,17700,,,1|9,6.0,,,,,,,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
 Master of Business Administration,University of Staffordshire,Stoke-on-Trent,GB,DEGREE,PG,Business and Management,12,,,,1|9,6.0,,,,,,,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
-MSc Applied Computing,University of Sunderland,Sunderland,GB,DEGREE,PG,Computer Science,,19000,,,,,,,,,,,UNKNOWN,,,DRAFT
-MSc Applied Cybersecurity,University of Sunderland,Sunderland,GB,DEGREE,PG,Cybersecurity,,19000,,,,,,,,,,,UNKNOWN,,,DRAFT
-MSc Applied Data Science,University of Sunderland,Sunderland,GB,DEGREE,PG,Data Science,,19000,,,,,,,,,,,UNKNOWN,,,DRAFT
-MSc Applied Project Management,University of Sunderland,Sunderland,GB,DEGREE,PG,Project Management,,19000,,,,,,,,,,,UNKNOWN,,,DRAFT
-MSc Computing,University of Sunderland,Sunderland,GB,DEGREE,PG,Computer Science,,18000,,,,,,,,,,,UNKNOWN,,,DRAFT
-Master of Business Administration,University of Sunderland,Sunderland,GB,DEGREE,PG,Business and Management,,19000,,,,,,,,,,,UNKNOWN,,,DRAFT
+MSc Applied Computing,University of Sunderland,Sunderland,GB,DEGREE,PG,Computer Science,,19000,,,,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Applied Cybersecurity,University of Sunderland,Sunderland,GB,DEGREE,PG,Cybersecurity,,19000,,,,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Applied Data Science,University of Sunderland,Sunderland,GB,DEGREE,PG,Data Science,,19000,,,,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Applied Project Management,University of Sunderland,Sunderland,GB,DEGREE,PG,Project Management,,19000,,,,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Computing,University of Sunderland,Sunderland,GB,DEGREE,PG,Computer Science,,18000,,,,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+Master of Business Administration,University of Sunderland,Sunderland,GB,DEGREE,PG,Business and Management,,19000,,,,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
 MSc Computer Science,Swansea University,Swansea,GB,DEGREE,PG,Computer Science,12,23450,,,9,6.0,,,,,,,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
 MSc Advanced Computer Science,Swansea University,Swansea,GB,DEGREE,PG,Computer Science,12,24200,,,1|9,6.0,,,,,,,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT
 MSc Data Science,University of the West of England,Bristol,GB,DEGREE,PG,Data Science,12,18000,,,1|9,6.5,,,,,,,ELIGIBLE,"Graduate Route, 2 yrs (18 months from Jan 2027)",,DRAFT

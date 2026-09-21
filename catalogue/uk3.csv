@@ -1,59 +1,59 @@
 program,university,city,country_code,pathway,level,study_area,duration_months,tuition_per_year,application_fee,initial_deposit,intakes,min_ielts,min_pte,min_oet_grade,min_german_level,max_backlogs,max_gap_years,moi_accepted,work_rights,work_rights_note,required_docs,status
-MSc Data Science and Artificial Intelligence,Bournemouth University,Bournemouth,GB,DEGREE,PG,Data Science,12,20685,,,9|1,6.0,,,,,,,UNKNOWN,,,DRAFT
-MSc Computer Science,Bournemouth University,Poole,GB,DEGREE,PG,Computer Science,12,19688,,,9|1,6.0,,,,,,,UNKNOWN,,,DRAFT
-MSc Advanced Data Science,University of Derby,Derby,GB,DEGREE,PG,Data Science,12,17500,,,9|1,6.0,,,,,,,UNKNOWN,,,DRAFT
-MSc Information Technology,University of Derby,Derby,GB,DEGREE,PG,Computer Science,12,17500,,,9|1,6.0,,,,,,,UNKNOWN,,,DRAFT
-Computer Science MSc,University of Huddersfield,Huddersfield,GB,DEGREE,PG,Computer Science,12,18700,,,9|1,6.0,,,,,,,UNKNOWN,,,DRAFT
-Data Science and Applied Artificial Intelligence MSc,University of Huddersfield,Huddersfield,GB,DEGREE,PG,Data Science,12,18700,,,9|1,6.0,,,,,,,UNKNOWN,,,DRAFT
-MSc Data Science and Artificial Intelligence,Oxford Brookes University,Oxford,GB,DEGREE,PG,Data Science,12,19600,,,9,6.0,,,,,,,UNKNOWN,,,DRAFT
-MSc Data Science,Heriot-Watt University,Edinburgh,GB,DEGREE,PG,Data Science,12,26296,,,9|1,,,,,,,,UNKNOWN,,,DRAFT
-MSc Advanced Computer Science,University of South Wales,Pontypridd,GB,DEGREE,PG,Computer Science,,17900,,,9,6.0,,,,,,,UNKNOWN,,,DRAFT
-"MSc Cyber Security, Risk and Resilience",University of South Wales,Newport,GB,DEGREE,PG,Cybersecurity,,17900,,,9,6.0,,,,,,,UNKNOWN,,,DRAFT
-MSc Data Science,University of Aberdeen,Aberdeen,GB,DEGREE,PG,Data Science,12,26250,,,9|1,,,,,,,,UNKNOWN,,,DRAFT
-MSc Artificial Intelligence,University of Aberdeen,Aberdeen,GB,DEGREE,PG,Artificial Intelligence,12,26250,,,9|1,,,,,,,,UNKNOWN,,,DRAFT
-Business Analytics MSc,Queen Margaret University,Edinburgh,GB,DEGREE,PG,Business Analytics,,18455,,,,,,,,,,,UNKNOWN,,,DRAFT
-Public Health MSc,Queen Margaret University,Edinburgh,GB,DEGREE,PG,Public Health,,19860,,,,,,,,,,,UNKNOWN,,,DRAFT
-Global Health MSc,Queen Margaret University,Edinburgh,GB,DEGREE,PG,Public Health,,19860,,,,,,,,,,,UNKNOWN,,,DRAFT
-International Management and Leadership MSc,Queen Margaret University,Edinburgh,GB,DEGREE,PG,Management,,18455,,,,,,,,,,,UNKNOWN,,,DRAFT
-Accounting and Finance with CIMA MSc,Queen Margaret University,Edinburgh,GB,DEGREE,PG,Accounting and Finance,,19180,,,,,,,,,,,UNKNOWN,,,DRAFT
-International Marketing MSc,Queen Margaret University,Edinburgh,GB,DEGREE,PG,Management,,18655,,,,,,,,,,,UNKNOWN,,,DRAFT
-Strategic Communication and Public Relations MSc,Queen Margaret University,Edinburgh,GB,DEGREE,PG,Management,,18655,,,,,,,,,,,UNKNOWN,,,DRAFT
-Mental Health and Psychosocial Support MSc,Queen Margaret University,Edinburgh,GB,DEGREE,PG,Public Health,,19860,,,,,,,,,,,UNKNOWN,,,DRAFT
-Global Health (Health Systems) MSc,Queen Margaret University,Edinburgh,GB,DEGREE,PG,Public Health,,19860,,,,,,,,,,,UNKNOWN,,,DRAFT
-MSc Business Analytics,University of Stirling,Stirling,GB,DEGREE,PG,Business Analytics,12,,,,9|1,6.0,,,,,,,UNKNOWN,,,DRAFT
-MSc Data Science for Business,University of Stirling,Stirling,GB,DEGREE,PG,Data Science,12,24300,,,9|1,6.0,,,,,,,UNKNOWN,,,DRAFT
-MSc Data Science,Bath Spa University,Bath,GB,DEGREE,PG,Data Science,12,18755,,,9,,,,,,,,UNKNOWN,,,DRAFT
-MSc Computer Science (Conversion),Bath Spa University,Bath,GB,DEGREE,PG,Computer Science,12,18755,,,,,,,,,,,UNKNOWN,,,DRAFT
-MA Business and Management,Bath Spa University,Bath,GB,DEGREE,PG,Management,12,17485,,,2|9,6.0,,,,,,,UNKNOWN,,,DRAFT
-MSc Ethical Hacking and Cybersecurity,Abertay University,Dundee,GB,DEGREE,PG,Cybersecurity,12,19950,,,9,,,,,,,,UNKNOWN,,,DRAFT
-Cyber Security MSc,University of Gloucestershire,Cheltenham,GB,DEGREE,PG,Cybersecurity,12,19055,,,9,6.0,,,,,,,UNKNOWN,,,DRAFT
-Data Science MSc,University of Gloucestershire,Cheltenham,GB,DEGREE,PG,Data Science,12,18490,,,9|1,6.0,,,,,,,UNKNOWN,,,DRAFT
-MSc Computer Science,Wrexham University,Wrexham,GB,DEGREE,PG,Computer Science,12,12500,,,9|1,,,,,,,,UNKNOWN,,,DRAFT
-MSc International Business,Canterbury Christ Church University,Canterbury,GB,DEGREE,PG,Management,12,,,,5,,,,,,,,UNKNOWN,,,DRAFT
-MSc Applied Data Science,University of Central Lancashire,Preston,GB,DEGREE,PG,Data Science,12,16900,,,9,,,,,,,,UNKNOWN,,,DRAFT
-Data Science MSc,University of Sheffield,Sheffield,GB,DEGREE,PG,Data Science,12,,,,9,6.5,,,,,,,UNKNOWN,,,DRAFT
-Advanced Computer Science MSc,University of Sheffield,Sheffield,GB,DEGREE,PG,Computer Science,12,,,,9,6.5,,,,,,,UNKNOWN,,,DRAFT
-Computer Science MSc,University of Sheffield,Sheffield,GB,DEGREE,PG,Computer Science,12,,,,9,6.5,,,,,,,UNKNOWN,,,DRAFT
-MSc Computer Science,Buckinghamshire New University,High Wycombe,GB,DEGREE,PG,Computer Science,12,16280,,,1|4|9,6.5,,,,,,,UNKNOWN,,,DRAFT
-MSc Artificial Intelligence,Buckinghamshire New University,High Wycombe,GB,DEGREE,PG,Artificial Intelligence,12,16280,,,1|4|9,6.5,,,,,,,UNKNOWN,,,DRAFT
-MSc Big Data Technologies,Glasgow Caledonian University,Glasgow,GB,DEGREE,PG,Data Science,12,,,,1|9,6.0,,,,,,,UNKNOWN,,,DRAFT
-MSc Advanced Computer Science,Glasgow Caledonian University,London,GB,DEGREE,PG,Computer Science,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-MSc Computer Science,Glasgow Caledonian University,London,GB,DEGREE,PG,Computer Science,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-MSc International Management and Business Development,Glasgow Caledonian University,London,GB,DEGREE,PG,Management,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-MSc International Marketing,Glasgow Caledonian University,London,GB,DEGREE,PG,Management,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-MPH Master of Public Health,Glasgow Caledonian University,London,GB,DEGREE,PG,Public Health,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-Computer Science MSc,York St John University,York,GB,DEGREE,PG,Computer Science,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-Data Science MSc,York St John University,York,GB,DEGREE,PG,Data Science,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-International Business MSc,York St John University,York,GB,DEGREE,PG,Management,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-MSc Advanced Computer Science,University of Hull,Hull,GB,DEGREE,PG,Computer Science,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-MSc Computer Science and Cyber Security,University of Hull,Hull,GB,DEGREE,PG,Cybersecurity,12,,,,,,,,,,,,UNKNOWN,,,DRAFT
-MSc Artificial Intelligence and Data Science,University of Hull,Hull,GB,DEGREE,PG,Artificial Intelligence,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-MSc Business Analytics and Artificial Intelligence,University of Hull,Hull,GB,DEGREE,PG,Business Analytics,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-MSc Accounting and Finance,University of Hull,Hull,GB,DEGREE,PG,Accounting and Finance,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-MSc Business Management,University of Hull,Hull,GB,DEGREE,PG,Management,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-MSc Civil Engineering,University of Hull,Hull,GB,DEGREE,PG,Engineering,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-MSc Mechanical Engineering,University of Hull,Hull,GB,DEGREE,PG,Engineering,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-MSc Artificial Intelligence for Healthcare,University of Hull,Hull,GB,DEGREE,PG,Artificial Intelligence,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-MSc Advanced Clinical Practice,University of Hull,Hull,GB,DEGREE,PG,Nursing,,,,,,,,,,,,,UNKNOWN,,,DRAFT
-MSc International Business Management,Wrexham University,Wrexham,GB,DEGREE,PG,Management,12,12500,,,9,,,,,,,,UNKNOWN,,,DRAFT
-MSc International Business and Data Analytics Management,Wrexham University,Wrexham,GB,DEGREE,PG,Business Analytics,12,12500,,,,,,,,,,,UNKNOWN,,,DRAFT
+MSc Data Science and Artificial Intelligence,Bournemouth University,Bournemouth,GB,DEGREE,PG,Data Science,12,20685,,,9|1,6.0,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Computer Science,Bournemouth University,Poole,GB,DEGREE,PG,Computer Science,12,19688,,,9|1,6.0,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Advanced Data Science,University of Derby,Derby,GB,DEGREE,PG,Data Science,12,17500,,,9|1,6.0,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Information Technology,University of Derby,Derby,GB,DEGREE,PG,Computer Science,12,17500,,,9|1,6.0,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+Computer Science MSc,University of Huddersfield,Huddersfield,GB,DEGREE,PG,Computer Science,12,18700,,,9|1,6.0,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+Data Science and Applied Artificial Intelligence MSc,University of Huddersfield,Huddersfield,GB,DEGREE,PG,Data Science,12,18700,,,9|1,6.0,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Data Science and Artificial Intelligence,Oxford Brookes University,Oxford,GB,DEGREE,PG,Data Science,12,19600,,,9,6.0,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Data Science,Heriot-Watt University,Edinburgh,GB,DEGREE,PG,Data Science,12,26296,,,9|1,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Advanced Computer Science,University of South Wales,Pontypridd,GB,DEGREE,PG,Computer Science,,17900,,,9,6.0,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+"MSc Cyber Security, Risk and Resilience",University of South Wales,Newport,GB,DEGREE,PG,Cybersecurity,,17900,,,9,6.0,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Data Science,University of Aberdeen,Aberdeen,GB,DEGREE,PG,Data Science,12,26250,,,9|1,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Artificial Intelligence,University of Aberdeen,Aberdeen,GB,DEGREE,PG,Artificial Intelligence,12,26250,,,9|1,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+Business Analytics MSc,Queen Margaret University,Edinburgh,GB,DEGREE,PG,Business Analytics,,18455,,,,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+Public Health MSc,Queen Margaret University,Edinburgh,GB,DEGREE,PG,Public Health,,19860,,,,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+Global Health MSc,Queen Margaret University,Edinburgh,GB,DEGREE,PG,Public Health,,19860,,,,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+International Management and Leadership MSc,Queen Margaret University,Edinburgh,GB,DEGREE,PG,Management,,18455,,,,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+Accounting and Finance with CIMA MSc,Queen Margaret University,Edinburgh,GB,DEGREE,PG,Accounting and Finance,,19180,,,,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+International Marketing MSc,Queen Margaret University,Edinburgh,GB,DEGREE,PG,Management,,18655,,,,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+Strategic Communication and Public Relations MSc,Queen Margaret University,Edinburgh,GB,DEGREE,PG,Management,,18655,,,,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+Mental Health and Psychosocial Support MSc,Queen Margaret University,Edinburgh,GB,DEGREE,PG,Public Health,,19860,,,,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+Global Health (Health Systems) MSc,Queen Margaret University,Edinburgh,GB,DEGREE,PG,Public Health,,19860,,,,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Business Analytics,University of Stirling,Stirling,GB,DEGREE,PG,Business Analytics,12,,,,9|1,6.0,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Data Science for Business,University of Stirling,Stirling,GB,DEGREE,PG,Data Science,12,24300,,,9|1,6.0,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Data Science,Bath Spa University,Bath,GB,DEGREE,PG,Data Science,12,18755,,,9,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Computer Science (Conversion),Bath Spa University,Bath,GB,DEGREE,PG,Computer Science,12,18755,,,,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MA Business and Management,Bath Spa University,Bath,GB,DEGREE,PG,Management,12,17485,,,2|9,6.0,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Ethical Hacking and Cybersecurity,Abertay University,Dundee,GB,DEGREE,PG,Cybersecurity,12,19950,,,9,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+Cyber Security MSc,University of Gloucestershire,Cheltenham,GB,DEGREE,PG,Cybersecurity,12,19055,,,9,6.0,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+Data Science MSc,University of Gloucestershire,Cheltenham,GB,DEGREE,PG,Data Science,12,18490,,,9|1,6.0,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Computer Science,Wrexham University,Wrexham,GB,DEGREE,PG,Computer Science,12,12500,,,9|1,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc International Business,Canterbury Christ Church University,Canterbury,GB,DEGREE,PG,Management,12,,,,5,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Applied Data Science,University of Central Lancashire,Preston,GB,DEGREE,PG,Data Science,12,16900,,,9,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+Data Science MSc,University of Sheffield,Sheffield,GB,DEGREE,PG,Data Science,12,,,,9,6.5,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+Advanced Computer Science MSc,University of Sheffield,Sheffield,GB,DEGREE,PG,Computer Science,12,,,,9,6.5,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+Computer Science MSc,University of Sheffield,Sheffield,GB,DEGREE,PG,Computer Science,12,,,,9,6.5,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Computer Science,Buckinghamshire New University,High Wycombe,GB,DEGREE,PG,Computer Science,12,16280,,,1|4|9,6.5,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Artificial Intelligence,Buckinghamshire New University,High Wycombe,GB,DEGREE,PG,Artificial Intelligence,12,16280,,,1|4|9,6.5,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Big Data Technologies,Glasgow Caledonian University,Glasgow,GB,DEGREE,PG,Data Science,12,,,,1|9,6.0,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Advanced Computer Science,Glasgow Caledonian University,London,GB,DEGREE,PG,Computer Science,,,,,,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Computer Science,Glasgow Caledonian University,London,GB,DEGREE,PG,Computer Science,,,,,,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc International Management and Business Development,Glasgow Caledonian University,London,GB,DEGREE,PG,Management,,,,,,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc International Marketing,Glasgow Caledonian University,London,GB,DEGREE,PG,Management,,,,,,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MPH Master of Public Health,Glasgow Caledonian University,London,GB,DEGREE,PG,Public Health,,,,,,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+Computer Science MSc,York St John University,York,GB,DEGREE,PG,Computer Science,,,,,,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+Data Science MSc,York St John University,York,GB,DEGREE,PG,Data Science,,,,,,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+International Business MSc,York St John University,York,GB,DEGREE,PG,Management,,,,,,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Advanced Computer Science,University of Hull,Hull,GB,DEGREE,PG,Computer Science,12,19355,,,9,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Computer Science and Cyber Security,University of Hull,Hull,GB,DEGREE,PG,Cybersecurity,12,19355,,,9,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Artificial Intelligence and Data Science,University of Hull,Hull,GB,DEGREE,PG,Artificial Intelligence,12,19355,,,9|1|5,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Business Analytics and Artificial Intelligence,University of Hull,Hull,GB,DEGREE,PG,Business Analytics,12,19725,,,9,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Accounting and Finance,University of Hull,Hull,GB,DEGREE,PG,Accounting and Finance,12,19725,,,9,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Business Management,University of Hull,Hull,GB,DEGREE,PG,Management,12,19725,,,9|1|5,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Civil Engineering,University of Hull,Hull,GB,DEGREE,PG,Engineering,12,19355,,,9,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Mechanical Engineering,University of Hull,Hull,GB,DEGREE,PG,Engineering,12,19355,,,9,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Artificial Intelligence for Healthcare,University of Hull,Hull,GB,DEGREE,PG,Artificial Intelligence,12,19355,,,9|1,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc Advanced Clinical Practice,University of Hull,Hull,GB,DEGREE,PG,Nursing,36,,,,,,,,,,,,INELIGIBLE,"Part-time only (3 years), so it cannot be taken on a Student visa and leads to no Graduate visa",,DRAFT
+MSc International Business Management,Wrexham University,Wrexham,GB,DEGREE,PG,Management,12,12500,,,9,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
+MSc International Business and Data Analytics Management,Wrexham University,Wrexham,GB,DEGREE,PG,Business Analytics,12,12500,,,,,,,,,,,ELIGIBLE,"Graduate visa (gov.uk): 18 months if applying from 1 Jan 2027, after a UK degree completed on a Student visa",,DRAFT
