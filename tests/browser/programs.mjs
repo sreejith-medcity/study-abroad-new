@@ -59,6 +59,7 @@ check(/Application fee\s*Not recorded/.test(text), "program page: unverified fee
 // Part-time only, so the catalogue records it as carrying no Graduate visa.
 check(/Post-study work/.test(text) && /Not eligible/.test(text) && /Part-time only/.test(text), "program page: a confirmed 'not eligible' shows with its evidence");
 check(!/Edit program/.test(text), "program page: partners get no edit button");
+check(/Similar programs/.test(text) && /Nursing, Master's, elsewhere in United Kingdom/.test(text) && !/Similar programs[\s\S]*University of Hull ·/.test(text), "program page: similar programs come from other universities in the same country");
 await pp.screenshot({ path: `${OUT}/program.png`, fullPage: true });
 
 await pp.locator('select[name="student"]').selectOption({ index: 1 });

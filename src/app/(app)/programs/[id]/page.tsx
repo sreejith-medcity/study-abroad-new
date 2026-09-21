@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { and, asc, count, eq, ne } from "drizzle-orm";
+import { and, asc, count, eq, ne, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { DOCUMENT_TYPES } from "@/db/statuses";
 import { requireUser } from "@/lib/auth";
-import { LEVEL_LABEL, PATHWAY_LABEL, SHORTLIST_LIMIT, durationText, feeText, inrApprox, intakesText } from "@/lib/catalogue";
+import { LEVEL_LABEL, PATHWAY_LABEL, SHORTLIST_LIMIT, durationText, feeText, inrApprox, intakesText, tuitionText } from "@/lib/catalogue";
 import { checkEligibility } from "@/lib/eligibility";
 import { fullName } from "@/lib/format";
 import { ADMIN_ROLES, APP_ROLES, isAdmin, isStaff } from "@/lib/permissions";
@@ -74,6 +74,18 @@ export default async function ProgramPage({
   const shortlisted = picks.some((x) => x.programId === program.id);
   const shortlistCount = picks.length;
 
+  // The same field and level elsewhere in the same country: what a student
+  // who likes this one would also look at.
+  const P = schema.programs;
+  const similar = program.studyArea
+    ? await db
+        .select({ id: P.id, name: P.name, university: schema.universities.name, perYear: P.tuitionPerYear, total: P.tuitionTotal, workRights: P.workRights })
+        .from(P)
+        .innerJoin(schema.universities, eq(P.universityId, schema.universities.id))
+        .where(and(eq(P.status, "LIVE"), eq(P.level, program.level), eq(P.studyArea, program.studyArea), eq(schema.universities.countryId, country.id), ne(P.universityId, university.id)))
+        .orderBy(sql`${P.workRights} = 'ELIGIBLE' desc`, sql`${P.tuitionPerYear} is null`, asc(P.tuitionPerYear), asc(P.name))
+        .limit(6)
+    : [];
   const scholarships = await openScholarships(university.id, program.level);
   const rates = fxRates(await getSettings());
   // The rupee figure sits under the real one, smaller, and says it is rough.
@@ -258,6 +270,30 @@ export default async function ProgramPage({
               </Link>
             </div>
           </Card>
+
+          {similar.length > 0 && (
+            <Card>
+              <CardHeader title="Similar programs" subtitle={`${program.studyArea}, ${LEVEL_LABEL[program.level] ?? program.level}, elsewhere in ${country.name}`} />
+              <ul className="divide-y divide-line">
+                {similar.map((x) => (
+                  <li key={x.id}>
+                    <Link prefetch={false} href={`/programs/${x.id}${student ? `?student=${student.id}` : ""}`} className="block px-4 py-2.5 text-[13px] hover:bg-surface-2/60">
+                      <span className="font-medium text-ink">{x.name}</span>
+                      <span className="block text-xs text-muted">
+                        {x.university} · {tuitionText(x.perYear, x.total, cur)}
+                        {x.workRights === "ELIGIBLE" && " · Post-study work"}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              <div className="border-t border-line px-4 py-3">
+                <Link prefetch={false} href={`/search?${new URLSearchParams({ country: country.code, level: program.level, field: program.studyArea!, ...(student ? { student: student.id } : {}) })}`} className="text-[13px] font-medium text-brand-600 hover:underline">
+                  See them all in search
+                </Link>
+              </div>
+            </Card>
+          )}
         </div>
       </div>
     </>
