@@ -112,13 +112,16 @@ async function signIn(page, email, password = "Password@123") {
   const summaries = page.locator("main summary", { hasText: "Public enquiry form" });
   for (let i = 0; i < (await summaries.count()); i++) await summaries.nth(i).click();
   await page.waitForTimeout(500);
-  const openButtons = page.getByRole("button", { name: "Open the form for this branch" });
+  // Counted hidden or not: whether a <details> is open after the refresh is not the point.
+  const openButtons = page.getByRole("button", { name: "Open the form for this branch", includeHidden: true });
   const before = await openButtons.count();
   before > 0 ? ok(`${before} branches still closed, as expected`) : bad("every branch already open");
   if (before > 0) {
-    await openButtons.first().click();
-    await page.waitForTimeout(2500);
-    (await page.getByRole("button", { name: "Open the form for this branch" }).count()) === before - 1
+    await page.getByRole("button", { name: "Open the form for this branch" }).first().click();
+    // Poll rather than sleep: on a cold server the refresh can take longer than a fixed wait.
+    const left = () => page.getByRole("button", { name: "Open the form for this branch", includeHidden: true }).count();
+    for (let t0 = Date.now(); (await left()) !== before - 1 && Date.now() - t0 < 15000; ) await page.waitForTimeout(300);
+    (await left()) === before - 1
       ? ok("opening a branch form works")
       : bad("open did not stick");
   }

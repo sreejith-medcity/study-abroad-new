@@ -146,6 +146,18 @@ drizzle/                        SQL migrations
 tests/                          node:test unit tests
 ```
 
+### Two rules for server actions
+
+- **No `loading.tsx` on a route whose page posts server actions that
+  revalidate.** With a route-level loading boundary, the action's refreshed
+  page could arrive and never be applied: the save happened, the screen kept the
+  old state (about one run in three for opening a branch's public form). Routes
+  with forms have no `loading.tsx`; read-only ones (search, queue, audit,
+  insights, partner commission) keep their skeletons.
+- **No `redirect()` to the same page with other search params.** Return
+  `redirectTo` in the form state and let `ActionForm` navigate. The redirect
+  could leave the button on its pending label after the save.
+
 ## Security and data protection notes
 
 - Every page and action loads records through org-scoped helpers (`getStudentForUser`, `applicationWhere`); partners get a 404 for other organisations' records.
