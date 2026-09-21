@@ -56,7 +56,8 @@ text = await main(pp);
 const programUrl = pp.url().split("?")[0];
 check(/At a glance/.test(text) && /University of Hull/.test(text), "program page: opens from the search result");
 check(/Application fee\s*Not recorded/.test(text), "program page: unverified fee says not recorded");
-check(/Post-study work/.test(text) && /Not confirmed/.test(text), "program page: unknown work rights say not confirmed");
+// Part-time only, so the catalogue records it as carrying no Graduate visa.
+check(/Post-study work/.test(text) && /Not eligible/.test(text) && /Part-time only/.test(text), "program page: a confirmed 'not eligible' shows with its evidence");
 check(!/Edit program/.test(text), "program page: partners get no edit button");
 await pp.screenshot({ path: `${OUT}/program.png`, fullPage: true });
 
