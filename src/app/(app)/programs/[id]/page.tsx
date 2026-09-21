@@ -81,7 +81,9 @@ export default async function ProgramPage({
     program.minGermanLevel && { label: "German (CEFR)", value: program.minGermanLevel },
     program.maxBacklogs != null && { label: "Backlogs allowed", value: `Up to ${program.maxBacklogs}` },
     program.maxGapYears != null && { label: "Study gap allowed", value: `Up to ${program.maxGapYears} year${program.maxGapYears === 1 ? "" : "s"}` },
-    { label: "Medium of instruction letter", value: program.moiAccepted ? "Accepted instead of a test" : "Not accepted", tone: program.moiAccepted ? ("ok" as const) : undefined },
+    // The flag is only ever set when someone confirmed it, so "false" means
+    // nobody recorded it, not that the institution refuses the letter.
+    { label: "Medium of instruction letter", value: program.moiAccepted ? "Accepted instead of a test" : "Not recorded", tone: program.moiAccepted ? ("ok" as const) : undefined },
   ].filter(Boolean) as { label: string; value: string; tone?: "ok" }[];
 
   return (

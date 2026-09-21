@@ -20,7 +20,8 @@ type Level = "SCHOOL" | "UG_DIPLOMA" | "UG" | "PG_DIPLOMA" | "PG" | "PHD" | "CER
 const LEVELS: Record<string, Level> = {
   "Bachelor Degree": "UG",
   "Bachelor Honours Degree": "UG",
-  "Associate Degree": "UG",
+  // A level below a bachelor's (AQF 6), so it sits with the diplomas.
+  "Associate Degree": "UG_DIPLOMA",
   "Masters Degree (Coursework)": "PG",
   "Masters Degree (Extended)": "PG",
   "Masters Degree (Research)": "PG",

@@ -21,6 +21,7 @@ test("money, weeks and fields parse without inventing values", () => {
   assert.equal(stripFieldCode("0905 - Human Welfare Studies and Services"), "Human Welfare Studies and Services");
   assert.equal(mapLevel("Masters Degree (Coursework)"), "PG");
   assert.equal(mapLevel("Certificate IV"), "CERTIFICATE");
+  assert.equal(mapLevel("Associate Degree"), "UG_DIPLOMA");
 });
 
 test("provider names read the way students know them", () => {
