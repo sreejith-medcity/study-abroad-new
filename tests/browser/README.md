@@ -27,6 +27,7 @@ node tests/browser/dashboards.mjs
 | `golive.mjs` | The sample-data cleanup: what it lists, what it refuses, what survives |
 | `catalogue.mjs` | The catalogue at full size: paging, the count, a bulk publish across every match, and post-study work rights |
 | `cricos.mjs` | The full CRICOS register through the admin upload, a bulk publish of 25,889 drafts, a second sync, and the partner screens at 27,000 programs (needs `CRICOS_DIR`) |
+| `scholarships.mjs` | Adding a scholarship and its rules, where it shows, the search filter, and pausing it |
 | `programs.mjs` | The program and university pages, the admin edit screen and its rules, and that an unverified fee never reads as free |
 | `shortlist.mjs` | Shortlisting from search and a program page, the side by side comparison, removal, read-only roles and branch isolation |
 

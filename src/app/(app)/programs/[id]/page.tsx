@@ -4,11 +4,12 @@ import { and, asc, count, eq, ne } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { DOCUMENT_TYPES } from "@/db/statuses";
 import { requireUser } from "@/lib/auth";
-import { durationText, feeText, intakesText, LEVEL_LABEL, PATHWAY_LABEL, SHORTLIST_LIMIT } from "@/lib/catalogue";
+import { LEVEL_LABEL, PATHWAY_LABEL, SHORTLIST_LIMIT, durationText, feeText, inrApprox, intakesText } from "@/lib/catalogue";
 import { checkEligibility } from "@/lib/eligibility";
 import { fullName } from "@/lib/format";
 import { ADMIN_ROLES, APP_ROLES, isAdmin, isStaff } from "@/lib/permissions";
 import { openScholarships } from "@/server/scholarships";
+import { fxRates, getSettings } from "@/server/settings";
 import { ScholarshipList } from "@/components/scholarship-list";
 import { ShortlistButton } from "@/components/shortlist-button";
 import { Alert, Button, Card, CardHeader, Chip, DataList, LinkButton, PageHeader, Select } from "@/components/ui";
@@ -74,6 +75,12 @@ export default async function ProgramPage({
   const shortlistCount = picks.length;
 
   const scholarships = await openScholarships(university.id, program.level);
+  const rates = fxRates(await getSettings());
+  // The rupee figure sits under the real one, smaller, and says it is rough.
+  const withInr = (amount: number | null, text: string) => {
+    const inr = inrApprox(amount, cur, rates);
+    return inr ? <span>{text}<span className="block text-xs font-normal text-muted">{inr} at the team&apos;s indicative rate</span></span> : text;
+  };
 
   const fit = student ? checkEligibility({ backlogs: student.backlogs, gapYears: student.gapYears, tests: student.tests }, program) : null;
   const hasEnglish = program.minIelts != null || program.minPte != null || program.minOetGrade != null;
@@ -130,8 +137,8 @@ export default async function ProgramPage({
                 { label: "Pathway", value: PATHWAY_LABEL[program.pathway] ?? program.pathway },
                 { label: "Duration", value: durationText(program.durationMonths) },
                 { label: "Intakes", value: intakesText(program.intakeMonths) },
-                { label: "Tuition per year", value: feeText(program.tuitionPerYear, cur, { zero: "No tuition fee" }) },
-                ...(program.tuitionTotal != null ? [{ label: "Tuition, whole course", value: feeText(program.tuitionTotal, cur, { zero: "No tuition fee" }) }] : []),
+                { label: "Tuition per year", value: withInr(program.tuitionPerYear, feeText(program.tuitionPerYear, cur, { zero: "No tuition fee" })) },
+                ...(program.tuitionTotal != null ? [{ label: "Tuition, whole course", value: withInr(program.tuitionTotal, feeText(program.tuitionTotal, cur, { zero: "No tuition fee" })) }] : []),
                 { label: "Application fee", value: feeText(program.applicationFee, cur, { zero: "No application fee" }) },
                 { label: "Deposit to confirm a place", value: feeText(program.initialDeposit, cur, { zero: "No deposit" }) },
                 ...(program.externalCode ? [{ label: program.source === "CRICOS" ? "Source" : "CRICOS code", value: program.source === "CRICOS" ? `CRICOS register, course ${program.externalCode}` : program.externalCode }] : []),

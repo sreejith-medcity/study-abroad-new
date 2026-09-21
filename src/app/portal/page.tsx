@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { fmtDate, fmtMoney, intakeLabel } from "@/lib/format";
 import { translator } from "@/lib/i18n";
+import { inrApprox } from "@/lib/catalogue";
+import { fxRates, getSettings } from "@/server/settings";
 import { requireStudent, studentApplications, studentDocuments, studentShortlist, studentTimeline } from "@/server/portal";
 import { Card, CardHeader, Chip, EmptyState, StatusBadge } from "@/components/ui";
 import { IconApplications, IconCheck, IconClock, IconDoc } from "@/components/icons";
@@ -15,6 +17,11 @@ export default async function PortalHome() {
     studentDocuments(student.id, [...new Set(apps.flatMap((a) => a.requiredDocs ?? []))], locale),
     studentShortlist(student.id),
   ]);
+  const rates = fxRates(await getSettings());
+  const inr = (x: { tuitionPerYear: number | null; tuitionTotal: number | null; currency: string }) => {
+    const v = inrApprox(x.tuitionPerYear ?? x.tuitionTotal, x.currency, rates);
+    return v && locale === "ml" ? v.replace(" lakh", " ലക്ഷം").replace(" crore", " കോടി") : v;
+  };
   // Localised here rather than with the staff helpers, so a Malayalam reader
   // never meets "whole course" or "Not recorded" in English.
   const fee = (x: (typeof shortlist)[number]) =>
@@ -125,7 +132,7 @@ export default async function PortalHome() {
                   <p className="font-medium text-ink">{x.name}</p>
                   <p className="text-[13px] text-muted">{x.university}{x.campus ? `, ${x.campus}` : ""} · {x.country}</p>
                   <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[13px]">
-                    <span><span className="text-muted">{t("tuition")}:</span> {fee(x)}</span>
+                    <span><span className="text-muted">{t("tuition")}:</span> {fee(x)}{inr(x) && <span className="text-muted"> ({inr(x)})</span>}</span>
                     {x.durationMonths && <span><span className="text-muted">{t("duration")}:</span> {x.durationMonths} {t("months")}</span>}
                     {x.workRights === "ELIGIBLE" && <Chip tone="ok">{t("postStudyWork")}</Chip>}
                   </p>

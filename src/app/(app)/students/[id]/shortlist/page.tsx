@@ -3,11 +3,12 @@ import { asc, eq } from "drizzle-orm";
 import type { ReactNode } from "react";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
-import { LEVEL_LABEL, SHORTLIST_LIMIT, durationText, feeText, intakesText, tuitionText } from "@/lib/catalogue";
+import { LEVEL_LABEL, SHORTLIST_LIMIT, durationText, feeText, inrApprox, intakesText, tuitionText } from "@/lib/catalogue";
 import { checkEligibility } from "@/lib/eligibility";
 import { fmtDate } from "@/lib/format";
 import { ADMIN_ROLES, APP_ROLES } from "@/lib/permissions";
 import { getStudentForUser } from "@/server/queries";
+import { fxRates, getSettings } from "@/server/settings";
 import { ShortlistButton } from "@/components/shortlist-button";
 import { Card, Chip, EmptyState, LinkButton, cn } from "@/components/ui";
 import { PrintButton } from "@/components/print-button";
@@ -44,6 +45,7 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
     );
   }
 
+  const rates = fxRates(await getSettings());
   const cols = items.map((it) => {
     const p = it.program;
     const cur = p.university.country.currency;
@@ -75,6 +77,7 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
     { label: "Tuition", cell: ({ p, cur }) => (
       <span className="tabular">
         <Muted on={p.tuitionPerYear == null && p.tuitionTotal == null}>{tuitionText(p.tuitionPerYear, p.tuitionTotal, cur)}</Muted>
+        {inrApprox(p.tuitionPerYear ?? p.tuitionTotal, cur, rates) && <span className="block text-xs text-muted">{inrApprox(p.tuitionPerYear ?? p.tuitionTotal, cur, rates)}</span>}
         {cheapest != null && p.tuitionPerYear === cheapest && <Chip tone="ok" className="ml-1.5">Lowest</Chip>}
       </span>
     ) },

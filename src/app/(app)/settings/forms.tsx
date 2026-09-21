@@ -193,7 +193,7 @@ export function PlatformForm({ settings }: { settings: PlatformValues }) {
             .filter(([code]) => code !== "INR")
             .map(([code, rate]) => `${code} ${rate}`)
             .join("\n")}
-          hint="For example GBP 112. Leave the box empty to keep the current rates."
+          hint="For example GBP 112. Used for commission estimates and for the rough rupee figure shown under fees; a currency without a rate shows no rupee figure. Leave the box empty to keep the current rates."
         />
       </Section>
 

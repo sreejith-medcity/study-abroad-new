@@ -18,3 +18,14 @@ test("intakes and duration say when nothing is recorded", () => {
   assert.equal(durationText(24), "2 years");
   assert.equal(durationText(16), "16 months");
 });
+
+test("rupee figures are rough, marked, and only with a rate", async () => {
+  const { inrApprox } = await import("../src/lib/catalogue");
+  const rates = { GBP: 112, AUD: 58 };
+  assert.equal(inrApprox(19355, "GBP", rates), "≈ ₹21.7 lakh");
+  assert.equal(inrApprox(193792, "AUD", rates), "≈ ₹1.1 crore");
+  assert.equal(inrApprox(500, "GBP", rates), "≈ ₹56,000");
+  assert.equal(inrApprox(19355, "NZD", rates), null);
+  assert.equal(inrApprox(null, "GBP", rates), null);
+  assert.equal(inrApprox(0, "GBP", rates), null);
+});

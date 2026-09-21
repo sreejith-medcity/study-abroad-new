@@ -7,8 +7,9 @@ import { fmtMoney, fullName, MONTHS } from "@/lib/format";
 import { ADMIN_ROLES, APP_ROLES, isStaff } from "@/lib/permissions";
 import { ShortlistButton } from "@/components/shortlist-button";
 import { readFilters } from "@/server/queries";
+import { fxRates, getSettings } from "@/server/settings";
 import { hasOpenScholarship } from "@/server/scholarships";
-import { LEVEL_LABEL, SHORTLIST_LIMIT, intakesText, tuitionText } from "@/lib/catalogue";
+import { LEVEL_LABEL, SHORTLIST_LIMIT, inrApprox, intakesText, tuitionText } from "@/lib/catalogue";
 import { Button, Card, Chip, EmptyState, Input, LinkButton, PageHeader, Select, Table, Td, Th, Toolbar, cn } from "@/components/ui";
 import { IconCheck, IconAlert, IconClock, IconGlobe, IconSearch, IconSpark } from "@/components/icons";
 
@@ -110,6 +111,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     .where(where);
 
   const countries = await db.select().from(c).orderBy(asc(c.name));
+  const rates = fxRates(await getSettings());
   // Fields with a meaningful number of live programs, so the list stays usable.
   const fields = await db
     .select({ field: p.studyArea, n: count() })
@@ -338,6 +340,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                     <Td className={cn("whitespace-nowrap text-[13px]", !r.intakeMonths.length && "text-muted")}>{intakesText(r.intakeMonths)}</Td>
                     <Td className="whitespace-nowrap tabular">
                       {r.tuition == null && r.tuitionTotal == null ? <span className="text-muted">Tuition not recorded</span> : tuitionText(r.tuition, r.tuitionTotal, r.currency)}
+                      {inrApprox(r.tuition ?? r.tuitionTotal, r.currency, rates) && <span className="block text-xs text-muted">{inrApprox(r.tuition ?? r.tuitionTotal, r.currency, rates)}</span>}
                       <p className="text-xs text-muted">
                         {r.applicationFee == null ? "App. fee not recorded" : r.applicationFee > 0 ? `App. fee ${fmtMoney(r.applicationFee, r.currency)}` : "No application fee"}
                         {r.deposit ? ` · deposit ${fmtMoney(r.deposit, r.currency)}` : ""}
