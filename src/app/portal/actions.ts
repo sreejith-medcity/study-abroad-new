@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { audit } from "@/lib/audit";
@@ -10,7 +9,7 @@ import { notifyUsers } from "@/server/notify";
 import { requireStudent, setPortalLocale } from "@/server/portal";
 import { saveUpload, UploadError } from "@/server/storage";
 
-export type PortalState = { error?: string; ok?: string };
+export type PortalState = { error?: string; ok?: string; redirectTo?: string };
 
 export async function setLocaleAction(formData: FormData) {
   const { session } = await requireStudent();
@@ -48,10 +47,11 @@ export async function portalUploadAction(_: PortalState, formData: FormData): Pr
     if (e instanceof UploadError) return { error: e.message };
     throw e;
   }
-  revalidatePath("/portal", "layout");
   // The row disappears from "still needed" once it is uploaded, and its inline
-  // message would go with it, so confirm at the top of the page instead.
-  redirect(`/portal/documents?uploaded=${encodeURIComponent(type.code)}`);
+  // message would go with it, so confirm at the top of the page instead. The
+  // form navigates there itself (see FormState.redirectTo), which also loads
+  // the page fresh.
+  return { redirectTo: `/portal/documents?uploaded=${encodeURIComponent(type.code)}` };
 }
 
 /** A message from the student, into the same thread the counsellor reads. */
