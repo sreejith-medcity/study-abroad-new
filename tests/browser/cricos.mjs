@@ -99,6 +99,14 @@ check(/Tuition, whole course/.test(text) && /CRICOS register, course/.test(text)
 check(/Tuition per year\s*Not recorded/.test(text), "program page: no yearly figure is invented");
 await pp.screenshot({ path: `${OUT}/program.png`, fullPage: true });
 
+// A rupee budget: whole-course fees rule a program out only when the average
+// year is over budget, and programs with no fee on record stay.
+const countOf = (t) => Number((t.match(/([\d,]+) live programs?/) || [])[1]?.replace(/,/g, ""));
+const allAu = countOf(await go(pp, "/search?country=AU"));
+const under20 = countOf(await timed("search, budget", () => go(pp, "/search?country=AU&budget=20")));
+const under5 = countOf(await go(pp, "/search?country=AU&budget=5"));
+check(under5 > 0 && under5 < under20 && under20 < allAu, `search: a lower budget keeps fewer programs (${under5} < ${under20} < ${allAu})`);
+
 text = await timed("university page, Monash", async () => { await go(pp, "/search?q=Monash+University&country=AU"); await pp.locator('a[href^="/universities/"]').first().click(); await pp.waitForURL(/\/universities\//); return main(pp); });
 check(/Page 1 of \d+/.test(text), "university page: a large university pages its list");
 check(/Official website/.test(await pp.locator("main").innerText()), "university page: links the official website");
@@ -108,6 +116,7 @@ const sid = await (await go(pp, "/search"), pp.locator('select[name="student"] o
 text = await timed("apply panel, keyword", () => go(pp, `/students/${sid}/applications?tab=apply&q=Monash&country=AU`));
 const options = await pp.locator('select[name="programId"] option').count();
 check(options > 20 && options <= 60, `apply panel: a bounded list that includes register courses (${options - 1} options)`);
+await pp.waitForLoadState("networkidle");
 // Pick a course from the register: the one whose intake list says none are on record.
 for (let i = 1; i < Math.min(options, 15); i++) {
   await pp.selectOption('select[name="programId"]', { index: i });
@@ -117,7 +126,7 @@ const intakeOptions = await pp.locator('select[name="intake"] option').count();
 check(intakeOptions > 12 && /No intakes are recorded/.test(await pp.locator("main").innerText()), `apply panel: a register course offers every month, with the note (${intakeOptions - 1})`);
 await pp.selectOption('select[name="intake"]', { index: 1 });
 await pp.getByRole("button", { name: "Create application" }).click();
-await pp.waitForURL(/app=/, { timeout: 20000 }).then(() => ok("apply: an application opens for a course with no intake on record"), () => bad("apply: could not create the application"));
+await pp.waitForURL(/app=/, { timeout: 20000 }).then(() => ok("apply: an application opens for a course with no intake on record"), async () => { bad("apply: could not create the application"); await pp.screenshot({ path: `${OUT}/apply-failed.png`, fullPage: true }); console.log((await pp.locator("main").innerText()).slice(0, 600)); });
 text = await timed("apply panel, no filter", () => go(pp, `/students/${sid}/applications?tab=apply`));
 check(/first 50 matches/.test(text) || (await pp.locator('select[name="programId"] option').count()) <= 60, "apply panel: never sends the whole catalogue");
 

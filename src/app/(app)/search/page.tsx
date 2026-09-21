@@ -28,6 +28,26 @@ const QUICK = [
   { key: "scholarship", label: "Scholarship available" },
 ] as const;
 
+const BUDGETS = [5, 10, 15, 20, 25, 30, 40, 50];
+
+/**
+ * A yearly budget in rupees, against fees in each destination's currency at
+ * the platform's indicative rates. A per-year fee is compared directly. A
+ * whole-course fee is only used to rule a program out when its average year
+ * is over budget, which is certain without inventing a yearly figure. Programs
+ * with no fee on record, or in a currency with no rate, stay in the list.
+ */
+function budgetWhere(budgetInr: number, rates: Record<string, number>): SQL {
+  const { programs: p, countries: c } = schema;
+  const known = Object.entries(rates).filter(([k]) => /^[A-Z]{3}$/.test(k));
+  const rate = sql`(case ${c.currency} ${sql.join(known.map(([k, v]) => sql`when ${k} then ${v}::numeric`), sql` `)} end)`;
+  return sql`(case
+    when ${rate} is null then true
+    when ${p.tuitionPerYear} is not null then ${p.tuitionPerYear} * ${rate} <= ${budgetInr}::numeric
+    when ${p.tuitionTotal} is not null and ${p.durationMonths} > 0 then ${p.tuitionTotal} * ${rate} * 12 <= ${budgetInr}::numeric * ${p.durationMonths}
+    else true end)`;
+}
+
 export default async function SearchPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const user = await requireUser([...APP_ROLES]);
   const f = readFilters(await searchParams) as Record<string, string>;
@@ -41,7 +61,11 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   if (f.pathway) conds.push(eq(p.pathway, f.pathway as schema.Pathway));
   if (f.level) conds.push(eq(p.level, f.level as "PG"));
   if (f.intakeMonth) conds.push(sql`${Number(f.intakeMonth)} = any(${p.intakeMonths})`);
-  if (f.maxTuition) conds.push(or(lte(p.tuitionPerYear, Number(f.maxTuition)), sql`${p.tuitionPerYear} is null`));
+  // Older links carried a figure in the destination's own currency.
+  if (f.maxTuition && f.country) conds.push(or(lte(p.tuitionPerYear, Number(f.maxTuition)), sql`${p.tuitionPerYear} is null`));
+  const rates = fxRates(await getSettings());
+  const budget = Number(f.budget) > 0 ? Number(f.budget) * 1e5 : null;
+  if (budget) conds.push(budgetWhere(budget, rates));
   if (f.minIelts) conds.push(or(lte(p.minIelts, Number(f.minIelts)), sql`${p.minIelts} is null`));
   if (f.noAppFee) conds.push(eq(p.applicationFee, 0));
   if (f.moi) conds.push(eq(p.moiAccepted, true));
@@ -111,7 +135,6 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     .where(where);
 
   const countries = await db.select().from(c).orderBy(asc(c.name));
-  const rates = fxRates(await getSettings());
   // Fields with a meaningful number of live programs, so the list stays usable.
   const fields = await db
     .select({ field: p.studyArea, n: count() })
@@ -160,7 +183,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       <PageHeader
         eyebrow="Phase 2"
         title="Search programs"
-        subtitle={`${total} live program${total === 1 ? "" : "s"} across ${countries.length} destinations`}
+        subtitle={`${total.toLocaleString("en-IN")} live program${total === 1 ? "" : "s"} across ${countries.length} destinations${budget ? ". Fees are compared at the indicative rates in Settings; programs with no fee on record stay in the list" : ""}`}
         actions={
           student ? (
             <LinkButton href={`/students/${student.id}/profile`} variant="secondary">
@@ -217,7 +240,10 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             <option value="6.5">Needs IELTS 6.5 or less</option>
             <option value="7">Needs IELTS 7.0 or less</option>
           </Select>
-          <Input name="maxTuition" defaultValue={f.maxTuition} placeholder="Max tuition per year" aria-label="Maximum tuition" inputMode="numeric" />
+          <Select name="budget" aria-label="Tuition budget per year" defaultValue={f.budget ?? ""}>
+            <option value="">Any tuition budget</option>
+            {BUDGETS.map((b) => <option key={b} value={b}>Tuition up to ₹{b} lakh a year</option>)}
+          </Select>
           <Select name="field" aria-label="Field of study" defaultValue={f.field ?? ""}>
             <option value="">Any field of study</option>
             {fields.map((x) => <option key={x.field} value={x.field!}>{x.field} ({x.n.toLocaleString("en-IN")})</option>)}
