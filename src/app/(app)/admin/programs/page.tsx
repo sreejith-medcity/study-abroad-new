@@ -91,7 +91,9 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
             </form>
           </Card>
           <Card>
-            {rows.length === 0 ? <EmptyState title="No programs yet">Import a CSV to get started.</EmptyState> : (
+            {rows.length === 0 ? (Object.entries(f).some(([k, v]) => k !== "page" && v)
+              ? <EmptyState title="No programs match these filters">Clear a filter to see more.</EmptyState>
+              : <EmptyState title="No programs yet">Import a CSV to get started.</EmptyState>) : (
               <Table tableClassName="min-w-[1100px]">
                 <thead><tr><Th>Program</Th><Th>University</Th><Th>Level</Th><Th>Intakes</Th><Th>Tuition / yr</Th><Th>Requirements</Th><Th>Status</Th></tr></thead>
                 <tbody>

@@ -55,3 +55,11 @@ test("a file with no work rights column leaves every row unknown", () => {
   const { rows } = parseProgramCsv(`${header}\nMSc X,Uni A,GB,DEGREE,PG,Sep,6.5,,`, []);
   assert.equal(rows[0].workRights, "UNKNOWN");
 });
+
+test("the template shown in the admin paste box parses with no errors", async () => {
+  const { PROGRAM_CSV_TEMPLATE } = await import("../src/lib/program-import");
+  const { rows, errors } = parseProgramCsv(PROGRAM_CSV_TEMPLATE, ["PASSPORT", "MARKSHEET_12", "DEGREE_MARKSHEETS", "ENGLISH_TEST", "SOP"]);
+  assert.deepEqual(errors, []);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].workRights, "ELIGIBLE");
+});

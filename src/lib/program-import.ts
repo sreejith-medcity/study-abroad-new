@@ -1,6 +1,10 @@
 import Papa from "papaparse";
 import { MONTHS } from "./format";
 
+/** Sample shown in the admin paste box. Kept here so a test can prove it parses. */
+export const PROGRAM_CSV_TEMPLATE = `program,university,city,country_code,pathway,level,study_area,duration_months,tuition_per_year,application_fee,initial_deposit,intakes,min_ielts,min_pte,min_oet_grade,min_german_level,max_backlogs,max_gap_years,moi_accepted,work_rights,work_rights_note,required_docs,status
+MSc Public Health,University of Westbridge,Leeds,GB,DEGREE,PG,Health,12,17800,0,2000,Jan|Sep,6.5,58,,,5,4,no,ELIGIBLE,Graduate Route; university confirms eligibility,PASSPORT|MARKSHEET_12|DEGREE_MARKSHEETS|ENGLISH_TEST|SOP,LIVE`;
+
 export const IMPORT_COLUMNS = [
   "program", "university", "city", "country_code", "pathway", "level", "study_area", "duration_months",
   "tuition_per_year", "application_fee", "initial_deposit", "intakes", "min_ielts", "min_pte", "min_oet_grade",

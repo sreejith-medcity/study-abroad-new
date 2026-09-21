@@ -4,9 +4,8 @@ import { startTransition, useActionState, type FormEvent } from "react";
 import { Alert, Button, Chip, Textarea } from "@/components/ui";
 import { MONTHS } from "@/lib/format";
 import { importProgramsAction, type ImportState } from "./actions";
+import { PROGRAM_CSV_TEMPLATE as TEMPLATE } from "@/lib/program-import";
 
-const TEMPLATE = `program,university,city,country_code,pathway,level,study_area,duration_months,tuition_per_year,application_fee,initial_deposit,intakes,min_ielts,min_pte,min_oet_grade,min_german_level,max_backlogs,max_gap_years,moi_accepted,required_docs,status
-MSc Public Health,University of Westbridge,Leeds,GB,DEGREE,PG,Health,12,17800,0,2000,Jan|Sep,6.5,58,,,5,4,no,PASSPORT|MARKSHEET_12|DEGREE_MARKSHEETS|ENGLISH_TEST|SOP,LIVE`;
 
 export function ImportForm() {
   const [state, action, pending] = useActionState<ImportState, FormData>(importProgramsAction, {});
