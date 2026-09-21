@@ -34,6 +34,22 @@ Three waves so far. Wave 1 is the eight original files, wave 2 the `*2.csv`
 files, wave 3 the `*3.csv` files. No institution appears in more than one wave
 and no programme is duplicated across the set.
 
+
+## Australia at full size: the CRICOS register
+
+The hand-researched rows in this folder are the verified core. Australia's full
+list, about 26,000 courses from 1,500 providers, comes from the government's
+CRICOS register instead (data.gov.au, CC BY 2.5 AU) and is loaded by the
+"Australia (CRICOS)" card on the admin Programs screen, not from a CSV here.
+The register gives provider, campus, level, field, duration and the
+international tuition for the whole course. It has no entry requirements,
+intakes or application fees, so those stay blank until someone adds them, and
+counsellors can still apply by choosing the intake the student is aiming for.
+Post-study work is set from the Home Affairs 485 rule: a bachelor's, master's
+or doctoral course of 92 or more registered weeks meets the course side of the
+Post-Higher Education Work stream. Shorter degrees and vocational courses say
+why they are not confirmed. The 89 rows here that carry a CRICOS code are
+matched to the register rather than duplicated, and keep their verified data.
 ## The rule these were gathered under
 
 A number is either verified on the institution's own page or the cell is empty.

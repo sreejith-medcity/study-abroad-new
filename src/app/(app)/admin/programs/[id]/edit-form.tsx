@@ -48,6 +48,7 @@ export function ProgramEditForm({ program, currency, docs }: { program: Editable
           <option value="PHD">PhD</option>
           <option value="VOCATIONAL">Vocational (Ausbildung)</option>
           <option value="REGISTRATION">Registration route</option>
+          <option value="CERTIFICATE">Certificate</option>
           <option value="SCHOOL">School</option>
         </SelectField>
         <SelectField label="Pathway" name="pathway" required defaultValue={program.pathway}>

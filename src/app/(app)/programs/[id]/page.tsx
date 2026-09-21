@@ -125,8 +125,10 @@ export default async function ProgramPage({
                 { label: "Duration", value: durationText(program.durationMonths) },
                 { label: "Intakes", value: intakesText(program.intakeMonths) },
                 { label: "Tuition per year", value: feeText(program.tuitionPerYear, cur, { zero: "No tuition fee" }) },
+                ...(program.tuitionTotal != null ? [{ label: "Tuition, whole course", value: feeText(program.tuitionTotal, cur, { zero: "No tuition fee" }) }] : []),
                 { label: "Application fee", value: feeText(program.applicationFee, cur, { zero: "No application fee" }) },
                 { label: "Deposit to confirm a place", value: feeText(program.initialDeposit, cur, { zero: "No deposit" }) },
+                ...(program.externalCode ? [{ label: program.source === "CRICOS" ? "Source" : "CRICOS code", value: program.source === "CRICOS" ? `CRICOS register, course ${program.externalCode}` : program.externalCode }] : []),
               ]}
             />
           </Card>
@@ -193,10 +195,10 @@ export default async function ProgramPage({
                   {fit.onTrack.map((m) => <li key={m}>{m}</li>)}
                 </ul>
                 {program.status === "LIVE" && program.intakeMonths.length === 0 && (
-                  <p className="mt-3 text-xs text-muted">No intake is recorded for this program yet, so an application cannot be opened. Ask the Overseas team to add one.</p>
+                  <p className="mt-3 text-xs text-muted">No intakes are recorded for this program. You can still apply for the intake the student is aiming for; the Overseas team confirms it with the institution.</p>
                 )}
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                  {program.status === "LIVE" && program.intakeMonths.length > 0 && (
+                  {program.status === "LIVE" && (
                     <LinkButton
                       size="sm"
                       variant={fit.verdict === "blocked" ? "secondary" : "primary"}

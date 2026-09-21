@@ -72,7 +72,7 @@ text = await go(pp, `/students/${studentId}/shortlist`);
 check(/Shortlist \(3\)/.test(await pp.locator("body").innerText()), "student file: the tab carries the count");
 const heads = await pp.locator("thead th a[href^='/programs/']").count();
 check(heads === 3, `compare: three programs side by side (${heads})`);
-for (const label of ["Fit", "Tuition per year", "Application fee", "Post-study work", "Intakes"]) check(text.includes(label.toUpperCase()) || text.includes(label), `compare: row ${label}`);
+for (const label of ["Fit", "Tuition", "Application fee", "Post-study work", "Intakes"]) check(text.includes(label.toUpperCase()) || text.includes(label), `compare: row ${label}`);
 check(/Not recorded/.test(text), "compare: unverified figures say not recorded");
 check(/Eligible|On track|Not yet|No rules recorded/.test(text), "compare: shows the student's fit");
 await pp.screenshot({ path: `${OUT}/compare.png`, fullPage: true });

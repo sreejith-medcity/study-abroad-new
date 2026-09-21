@@ -1,6 +1,7 @@
 "use client";
 
-import { startTransition, useActionState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { startTransition, useActionState, useEffect, type FormEvent } from "react";
 import { Alert, Button, Chip, Textarea } from "@/components/ui";
 import { MONTHS } from "@/lib/format";
 import { importProgramsAction, type ImportState } from "./actions";
@@ -8,7 +9,11 @@ import { PROGRAM_CSV_TEMPLATE as TEMPLATE } from "@/lib/program-import";
 
 
 export function ImportForm() {
+  const router = useRouter();
   const [state, action, pending] = useActionState<ImportState, FormData>(importProgramsAction, {});
+  useEffect(() => {
+    if (state.ok) router.refresh();
+  }, [state, router]);
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);

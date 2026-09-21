@@ -3,7 +3,7 @@ import { asc, eq } from "drizzle-orm";
 import type { ReactNode } from "react";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
-import { durationText, feeText, intakesText, LEVEL_LABEL, SHORTLIST_LIMIT } from "@/lib/catalogue";
+import { LEVEL_LABEL, SHORTLIST_LIMIT, durationText, feeText, intakesText, tuitionText } from "@/lib/catalogue";
 import { checkEligibility } from "@/lib/eligibility";
 import { fmtDate } from "@/lib/format";
 import { ADMIN_ROLES, APP_ROLES } from "@/lib/permissions";
@@ -71,9 +71,9 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
     { label: "Campus", cell: ({ p }) => `${p.campus ?? p.university.city ? `${p.campus ?? p.university.city}, ` : ""}${p.university.country.name}` },
     { label: "Duration", cell: ({ p }) => <Muted on={p.durationMonths == null}>{durationText(p.durationMonths)}</Muted> },
     { label: "Intakes", cell: ({ p }) => <Muted on={!p.intakeMonths.length}>{intakesText(p.intakeMonths)}</Muted> },
-    { label: "Tuition per year", cell: ({ p, cur }) => (
+    { label: "Tuition", cell: ({ p, cur }) => (
       <span className="tabular">
-        <Muted on={p.tuitionPerYear == null}>{feeText(p.tuitionPerYear, cur, { zero: "No tuition fee" })}</Muted>
+        <Muted on={p.tuitionPerYear == null && p.tuitionTotal == null}>{tuitionText(p.tuitionPerYear, p.tuitionTotal, cur)}</Muted>
         {cheapest != null && p.tuitionPerYear === cheapest && <Chip tone="ok" className="ml-1.5">Lowest</Chip>}
       </span>
     ) },
@@ -140,7 +140,7 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
                 {cols.map(({ p }) => (
                   <td key={p.id} className="border-l border-line px-4 py-3 align-top">
                     <div className="flex flex-wrap gap-2">
-                      {p.status === "LIVE" && p.intakeMonths.length > 0 && (
+                      {p.status === "LIVE" && (
                         <LinkButton size="sm" href={`/students/${student.id}/applications?tab=apply&program=${p.id}`}>Apply</LinkButton>
                       )}
                       <ShortlistButton studentId={student.id} programId={p.id} on reload labels={{ on: "Remove", off: "Add back" }} />

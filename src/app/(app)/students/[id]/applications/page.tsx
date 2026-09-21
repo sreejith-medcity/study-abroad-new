@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, or } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { summarise } from "@/lib/checks";
@@ -7,13 +7,14 @@ import { fmtDate, fmtDateTime, fmtMoney, intakeLabel } from "@/lib/format";
 import { APP_ROLES, isAdmin, isDocumentationTeam, isStaff } from "@/lib/permissions";
 import { checkApplication, statusesFor } from "@/server/applications";
 import { getStudentForUser } from "@/server/queries";
-import { Button, Card, Chip, EmptyState, Select, StatusBadge, cn } from "@/components/ui";
+import { Button, Card, Chip, EmptyState, Input, Select, StatusBadge, cn } from "@/components/ui";
+import { tuitionText } from "@/lib/catalogue";
 import { markFeePaidAction, setDocumentTypeAction } from "./actions";
 import { ApplyForm, CommentComposer, StatusForm } from "./client";
 
 export const metadata = { title: "Applications" };
 
-export default async function StudentApplicationsPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ app?: string; tab?: string; ch?: string; program?: string }> }) {
+export default async function StudentApplicationsPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ app?: string; tab?: string; ch?: string; program?: string; q?: string; country?: string; pw?: string }> }) {
   const { id } = await params;
   const sp = await searchParams;
   const user = await requireUser([...APP_ROLES]);
@@ -39,7 +40,7 @@ export default async function StudentApplicationsPage({ params, searchParams }: 
 
       {tab === "apply" ? (
         <div className="mx-auto max-w-2xl p-5">
-          {canWrite ? <ApplyPanel studentId={id} defaultPathway={student.preferredPathway ?? ""} preselectProgramId={sp.program} /> : <EmptyState title="Read-only access" />}
+          {canWrite ? <ApplyPanel studentId={id} pathway={sp.pw ?? student.preferredPathway ?? ""} preselectProgramId={sp.program} q={sp.q ?? ""} country={sp.country ?? ""} /> : <EmptyState title="Read-only access" />}
         </div>
       ) : selected ? (
         <div className="grid gap-4 p-4 lg:grid-cols-[320px_minmax(0,1fr)]">
@@ -77,33 +78,76 @@ function TabLink({ href, active, children }: { href: string; active: boolean; ch
   );
 }
 
-async function ApplyPanel({ studentId, defaultPathway, preselectProgramId }: { studentId: string; defaultPathway: string; preselectProgramId?: string }) {
-  const rows = await db.query.programs.findMany({
-    where: eq(schema.programs.status, "LIVE"),
-    with: { university: { with: { country: true } } },
-    orderBy: asc(schema.programs.name),
-  });
-  const programs = rows.map((p) => ({
-    id: p.id,
-    name: p.name,
-    university: p.university.name,
-    country: p.university.country.name,
-    pathway: p.pathway,
-    intakeMonths: p.intakeMonths,
-    tuition: p.tuitionPerYear ? `${fmtMoney(p.tuitionPerYear, p.university.country.currency)}/yr` : p.tuitionPerYear === 0 ? "No tuition fee" : "Tuition not recorded",
+/**
+ * The catalogue is too large to send to the browser whole, so the program list
+ * is searched here: the student's shortlist first, then up to 50 matches for
+ * the filters. Any live program can be applied to; where no intakes are
+ * recorded the counsellor picks the one the student is aiming for.
+ */
+async function ApplyPanel({ studentId, pathway, preselectProgramId, q, country }: { studentId: string; pathway: string; preselectProgramId?: string; q: string; country: string }) {
+  const { programs: p, universities: u, countries: c } = schema;
+  const openable = eq(p.status, "LIVE");
+  const columns = {
+    id: p.id, name: p.name, pathway: p.pathway, intakeMonths: p.intakeMonths, campus: p.campus,
+    tuitionPerYear: p.tuitionPerYear, tuitionTotal: p.tuitionTotal,
+    minIelts: p.minIelts, minPte: p.minPte, minOetGrade: p.minOetGrade, minGermanLevel: p.minGermanLevel, maxBacklogs: p.maxBacklogs, moiAccepted: p.moiAccepted,
+    university: u.name, country: c.name, currency: c.currency,
+  };
+  const base = () => db.select(columns).from(p).innerJoin(u, eq(p.universityId, u.id)).innerJoin(c, eq(u.countryId, c.id));
+  const [matches, picked, preselected, countries] = await Promise.all([
+    base()
+      .where(and(
+        openable,
+        pathway ? eq(p.pathway, pathway as schema.Pathway) : undefined,
+        country ? eq(c.code, country) : undefined,
+        q ? or(ilike(p.name, `%${q}%`), ilike(u.name, `%${q}%`)) : undefined,
+      ))
+      .orderBy(asc(p.name))
+      .limit(50),
+    base().innerJoin(schema.shortlists, eq(schema.shortlists.programId, p.id)).where(and(openable, eq(schema.shortlists.studentId, studentId))).orderBy(asc(p.name)),
+    preselectProgramId ? base().where(and(openable, eq(p.id, preselectProgramId))) : Promise.resolve([]),
+    db.selectDistinct({ code: c.code, name: c.name }).from(c).innerJoin(u, eq(u.countryId, c.id)).innerJoin(p, eq(p.universityId, u.id)).where(openable).orderBy(asc(c.name)),
+  ]);
+  const seen = new Set<string>();
+  const rows = [...preselected, ...picked, ...matches].filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
+  const shortlisted = new Set(picked.map((r) => r.id));
+  const programs = rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    university: r.campus ? `${r.university} (${r.campus})` : r.university,
+    country: r.country,
+    pathway: r.pathway,
+    intakeMonths: r.intakeMonths,
+    shortlisted: shortlisted.has(r.id),
+    tuition: tuitionText(r.tuitionPerYear, r.tuitionTotal, r.currency),
     requirements: [
-      p.minIelts && `IELTS ${p.minIelts}`,
-      p.minPte && `PTE ${p.minPte}`,
-      p.minOetGrade && `OET ${p.minOetGrade}`,
-      p.minGermanLevel && `German ${p.minGermanLevel}`,
-      p.maxBacklogs != null && `backlogs ≤ ${p.maxBacklogs}`,
-      p.moiAccepted && "MOI accepted",
+      r.minIelts && `IELTS ${r.minIelts}`,
+      r.minPte && `PTE ${r.minPte}`,
+      r.minOetGrade && `OET ${r.minOetGrade}`,
+      r.minGermanLevel && `German ${r.minGermanLevel}`,
+      r.maxBacklogs != null && `backlogs ≤ ${r.maxBacklogs}`,
+      r.moiAccepted && "MOI accepted",
     ].filter(Boolean).join(", "),
   }));
   return (
     <>
       <h2 className="mb-3 text-base font-semibold">Start a new application</h2>
-      <ApplyForm studentId={studentId} programs={programs} defaultPathway={defaultPathway} preselectProgramId={preselectProgramId} />
+      <form className="mb-4 grid gap-2 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
+        <input type="hidden" name="tab" value="apply" />
+        <Input name="q" defaultValue={q} placeholder="Program or university" aria-label="Search programs" />
+        <Select name="country" defaultValue={country} aria-label="Country">
+          <option value="">All countries</option>
+          {countries.map((x) => <option key={x.code} value={x.code}>{x.name}</option>)}
+        </Select>
+        <Select name="pw" defaultValue={pathway} aria-label="Pathway">
+          <option value="">All pathways</option>
+          <option value="DEGREE">University degree</option>
+          <option value="AUSBILDUNG">Ausbildung (Germany)</option>
+          <option value="NURSING">Nurse registration</option>
+        </Select>
+        <Button type="submit" variant="secondary" size="sm">Find</Button>
+      </form>
+      <ApplyForm studentId={studentId} programs={programs} preselectProgramId={preselectProgramId} limited={matches.length === 50} />
     </>
   );
 }

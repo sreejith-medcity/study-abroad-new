@@ -12,6 +12,7 @@ type ProgramOption = {
   country: string;
   pathway: "DEGREE" | "AUSBILDUNG" | "NURSING";
   intakeMonths: number[];
+  shortlisted: boolean;
   tuition: string;
   requirements: string;
 };
@@ -21,57 +22,52 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 export function ApplyForm({
   studentId,
   programs,
-  defaultPathway,
   preselectProgramId,
+  limited,
 }: {
   studentId: string;
   programs: ProgramOption[];
-  defaultPathway: string;
   preselectProgramId?: string;
+  /** True when more programs matched than were sent; the counsellor should narrow the search. */
+  limited: boolean;
 }) {
-  const preselected = programs.find((x) => x.id === preselectProgramId);
-  const [pathway, setPathway] = useState(preselected?.pathway ?? defaultPathway);
-  const [country, setCountry] = useState(preselected?.country ?? "");
-  const [programId, setProgramId] = useState(preselected?.id ?? "");
-  const countries = useMemo(() => [...new Set(programs.map((p) => p.country))].sort(), [programs]);
-  const visible = programs.filter((p) => (!pathway || p.pathway === pathway) && (!country || p.country === country));
+  const [programId, setProgramId] = useState(programs.some((p) => p.id === preselectProgramId) ? preselectProgramId! : "");
   const program = programs.find((p) => p.id === programId);
+  const picked = programs.filter((p) => p.shortlisted);
+  const others = programs.filter((p) => !p.shortlisted);
 
   const intakes = useMemo(() => {
     if (!program) return [];
     const now = new Date();
     const out: { value: string; label: string }[] = [];
+    // No intakes on record (the CRICOS register has none) is not the same as no
+    // intakes: every month is offered and the team confirms it with the institution.
+    const months = program.intakeMonths.length ? program.intakeMonths : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
     for (let y = now.getFullYear(); y <= now.getFullYear() + 2; y++) {
-      for (const m of program.intakeMonths) {
+      for (const m of months) {
         if (new Date(y, m - 1, 1) > now) out.push({ value: `${y}-${m}`, label: `${MONTHS[m - 1]} ${y}` });
       }
     }
     return out.sort((a, b) => (a.value < b.value ? -1 : 1));
   }, [program]);
 
+  const label = (p: ProgramOption) => `${p.name} · ${p.university}, ${p.country}`;
   return (
     <ActionForm action={createApplicationAction} submitLabel="Create application" pendingLabel="Creating…">
       <input type="hidden" name="studentId" value={studentId} />
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Pathway" htmlFor="pathway">
-          <Select id="pathway" value={pathway} onChange={(e) => { setPathway(e.target.value); setProgramId(""); }}>
-            <option value="">All pathways</option>
-            <option value="DEGREE">University degree</option>
-            <option value="AUSBILDUNG">Ausbildung (Germany)</option>
-            <option value="NURSING">Nurse registration</option>
-          </Select>
-        </Field>
-        <Field label="Country" htmlFor="country">
-          <Select id="country" value={country} onChange={(e) => { setCountry(e.target.value); setProgramId(""); }}>
-            <option value="">All countries</option>
-            {countries.map((c) => <option key={c}>{c}</option>)}
-          </Select>
-        </Field>
-      </div>
-      <Field label={`Program (${visible.length})`} htmlFor="programId" required>
+      <Field label="Program" htmlFor="programId" required hint={limited ? "Showing the first 50 matches. Search above to narrow the list." : programs.length ? undefined : "Nothing open for applications matches. Change the search above."}>
         <Select id="programId" name="programId" value={programId} onChange={(e) => setProgramId(e.target.value)}>
           <option value="">Choose a program</option>
-          {visible.map((p) => <option key={p.id} value={p.id}>{p.name} · {p.university}, {p.country}</option>)}
+          {picked.length > 0 && (
+            <optgroup label="Shortlisted">
+              {picked.map((p) => <option key={p.id} value={p.id}>{label(p)}</option>)}
+            </optgroup>
+          )}
+          {others.length > 0 && (
+            <optgroup label={picked.length ? "Search results" : "Programs"}>
+              {others.map((p) => <option key={p.id} value={p.id}>{label(p)}</option>)}
+            </optgroup>
+          )}
         </Select>
         <FieldError name="programId" />
       </Field>
@@ -82,14 +78,13 @@ export function ApplyForm({
           {program.requirements && <p className="mt-1 text-muted">Requirements: {program.requirements}</p>}
         </div>
       )}
-      <Field label="Intake" htmlFor="intake" required>
+      <Field label="Intake" htmlFor="intake" required hint={program && !program.intakeMonths.length ? "No intakes are recorded for this program. Pick the one the student is aiming for; the Overseas team confirms it with the institution." : undefined}>
         <Select id="intake" name="intake" disabled={!program} defaultValue="">
           <option value="">{program ? "Choose an intake" : "Choose a program first"}</option>
           {intakes.map((i) => <option key={i.value} value={i.value}>{i.label}</option>)}
         </Select>
         <FieldError name="intake" />
       </Field>
-      <p className="text-xs text-muted">Full program search with eligibility filters arrives in Phase 2.</p>
     </ActionForm>
   );
 }

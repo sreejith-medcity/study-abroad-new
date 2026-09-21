@@ -8,6 +8,7 @@ import { audit } from "@/lib/audit";
 import { parseProgramCsv, type ImportError, type ImportRow } from "@/lib/program-import";
 import { ADMIN_ROLES } from "@/lib/permissions";
 import type { FormState } from "@/lib/form-state";
+import { fetchCricosFiles, syncCricos } from "@/server/cricos-sync";
 
 export type ImportState = {
   error?: string;
@@ -80,7 +81,8 @@ export async function importProgramsAction(prev: ImportState, formData: FormData
     }
   });
   await audit(user.id, "programs.import", "program", "*", { created, updated, skipped: errors.length });
-  revalidatePath("/admin/programs");
+  // The form refreshes the list itself once it has the result. Revalidating the
+  // calling page from inside the action is what left imports stuck on "Checking…".
   return { ok: `Imported: ${created} new, ${updated} updated${errors.length ? `, ${errors.length} rows skipped` : ""}.` };
 }
 
@@ -141,7 +143,7 @@ export async function bulkStatusAction(formData: FormData) {
   revalidatePath("/search");
 }
 
-const LEVELS = ["SCHOOL", "UG_DIPLOMA", "UG", "PG_DIPLOMA", "PG", "PHD", "VOCATIONAL", "REGISTRATION"] as const;
+const LEVELS = ["SCHOOL", "UG_DIPLOMA", "UG", "PG_DIPLOMA", "PG", "PHD", "VOCATIONAL", "REGISTRATION", "CERTIFICATE"] as const;
 const PATHWAYS = ["DEGREE", "AUSBILDUNG", "NURSING"] as const;
 const CEFR = ["A1", "A2", "B1", "B2", "C1", "C2"] as const;
 
@@ -225,7 +227,10 @@ export async function updateProgramAction(_: FormState, fd: FormData): Promise<F
   const clash = await db.query.programs.findFirst({
     where: and(eq(schema.programs.name, name), eq(schema.programs.universityId, current.universityId)),
   });
-  if (clash && clash.id !== current.id) return { error: "This university already has a program with that name.", fieldErrors: { name: ["Already used at this university"] } };
+  // Register rows are identified by their code instead (CRICOS lists the same
+  // degree at several campuses under one name), so the rule only binds rows
+  // without one.
+  if (clash && clash.id !== current.id && !current.externalCode && !clash.externalCode) return { error: "This university already has a program with that name.", fieldErrors: { name: ["Already used at this university"] } };
 
   const changed: Record<string, { from: unknown; to: unknown }> = {};
   for (const [k, v] of Object.entries(values)) {
@@ -241,4 +246,39 @@ export async function updateProgramAction(_: FormState, fd: FormData): Promise<F
   revalidatePath(`/programs/${id}`);
   revalidatePath("/search");
   return { ok: `Saved ${Object.keys(changed).length} change${Object.keys(changed).length === 1 ? "" : "s"}.` };
+}
+
+/**
+ * Brings Australia's CRICOS register into the catalogue. Fetches the current
+ * release from data.gov.au, or takes the three files uploaded by hand when the
+ * server cannot reach it.
+ */
+export async function syncCricosAction(_: FormState, fd: FormData): Promise<FormState> {
+  const user = await requireUser([...ADMIN_ROLES]);
+  const publish = fd.get("publish") === "on";
+  const uploads = ["institutions", "courses", "locations"].map((k) => fd.get(k));
+  const uploaded = uploads.every((f) => f instanceof File && f.size > 0);
+  let files: { institutions: string; courses: string; locations: string };
+  try {
+    if (uploaded) {
+      const [institutions, courses, locations] = await Promise.all(uploads.map((f) => (f as File).text()));
+      files = { institutions, courses, locations };
+    } else if (uploads.some((f) => f instanceof File && f.size > 0)) {
+      return { error: "Upload all three files, or none to fetch them from data.gov.au." };
+    } else {
+      files = await fetchCricosFiles();
+    }
+  } catch (e) {
+    return { error: `Could not get the register: ${(e as Error).message}. Download the three files from data.gov.au/data/dataset/cricos and upload them here instead.` };
+  }
+  try {
+    const r = await syncCricos(files, { publish });
+    await audit(user.id, "programs.cricos_sync", "program", "*", { ...r, publish, via: uploaded ? "upload" : "data.gov.au" });
+    // No revalidatePath here: the form refreshes the page itself once it has the report.
+    return {
+      ok: `CRICOS: ${r.courses.toLocaleString("en-IN")} live courses from ${r.providers.toLocaleString("en-IN")} providers. ${r.created.toLocaleString("en-IN")} new${publish ? " and published" : " as drafts"}, ${r.updated.toLocaleString("en-IN")} refreshed, ${r.archived} archived because they left the register${r.claimed ? `, ${r.claimed} matched to programs already in the catalogue` : ""}. Took ${r.seconds}s.`,
+    };
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
 }

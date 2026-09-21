@@ -39,6 +39,9 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Server actions accept 1 MB by default. The program CSV import allows 5 MB and
+  // the CRICOS register's course file is about 7 MB, so both need more room.
+  experimental: { serverActions: { bodySizeLimit: "15mb" } },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

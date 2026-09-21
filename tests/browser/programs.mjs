@@ -65,7 +65,7 @@ await pp.getByRole("button", { name: "Check" }).click();
 await pp.waitForURL(/student=/);
 text = await main(pp);
 check(/Eligible|On track|Not yet|No rules recorded/.test(text), "program page: checking a student shows a verdict");
-check(await pp.getByRole("link", { name: /^Apply for / }).count() === 0 && /No intake is recorded/.test(text), "program page: no Apply button while no intake is recorded");
+check(await pp.getByRole("link", { name: /^Apply for / }).count() === 1 && /No intakes are recorded/.test(text), "program page: with no intake on record, Apply is offered with a note");
 const checkedUrl = pp.url();
 
 await pp.getByRole("link", { name: "University page" }).click();
@@ -136,8 +136,8 @@ check(/applicationFee/.test(text) && /workRights/.test(text), "admin edit: the c
 text = await go(pp, programUrl.replace(BASE, ""));
 check(/Application fee\s*£60/.test(text) || /Application fee\s*GBP\s*60/.test(text) || /Application fee\s*[^\n]*60/.test(text), "program page: partners see the corrected fee");
 check(/Test evidence note/.test(text), "program page: partners see the evidence note");
-await go(pp, checkedUrl.replace(BASE, ""));
-check(await pp.getByRole("link", { name: /^Apply for / }).count() === 1, "program page: offers to apply once an intake exists");
+text = await go(pp, checkedUrl.replace(BASE, ""));
+check(await pp.getByRole("link", { name: /^Apply for / }).count() === 1 && !/No intakes are recorded/.test(text), "program page: once an intake exists, the note goes");
 
 await ap.fill('input[name="applicationFee"]', "");
 await ap.getByRole("button", { name: "Save program" }).click();

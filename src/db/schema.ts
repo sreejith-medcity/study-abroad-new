@@ -31,6 +31,7 @@ export const studyLevel = pgEnum("study_level", [
   "PHD",
   "VOCATIONAL",
   "REGISTRATION",
+  "CERTIFICATE",
 ]);
 export const programStatus = pgEnum("program_status", ["DRAFT", "LIVE", "ARCHIVED"]);
 /**
@@ -142,8 +143,11 @@ export const universities = pgTable(
       .notNull()
       .references(() => countries.id),
     isPublic: boolean("is_public").notNull().default(false),
+    website: text("website"),
+    // The register's own identifier, a CRICOS provider code for Australia.
+    externalCode: text("external_code"),
   },
-  (t) => [uniqueIndex("universities_name_country_uq").on(t.name, t.countryId)],
+  (t) => [uniqueIndex("universities_name_country_uq").on(t.name, t.countryId), uniqueIndex("universities_external_code_uq").on(t.externalCode)],
 );
 
 export const programs = pgTable(
@@ -163,6 +167,10 @@ export const programs = pgTable(
     studyArea: text("study_area"),
     durationMonths: integer("duration_months"),
     tuitionPerYear: integer("tuition_per_year"),
+    // Some registers publish the fee for the whole course rather than per year
+    // (Australia's CRICOS does). It is kept as published, never divided into a
+    // yearly figure the institution did not state.
+    tuitionTotal: integer("tuition_total"),
     // Null means nobody has verified the fee yet. Zero means the institution
     // states there is no fee. The two must never be confused.
     applicationFee: integer("application_fee"),
@@ -181,12 +189,16 @@ export const programs = pgTable(
     // see why the flag says what it says.
     workRights: workRights("work_rights").notNull().default("UNKNOWN"),
     workRightsNote: text("work_rights_note"),
+    // Where the row came from, and its code there (a CRICOS course code), so a
+    // later release of the same register updates rows instead of duplicating them.
+    source: text("source"),
+    externalCode: text("external_code"),
     requiredDocs: text("required_docs").array().notNull().default(sql`'{}'::text[]`),
     status: programStatus("status").notNull().default("LIVE"),
     createdAt: createdAt(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("programs_name_idx").on(t.name)],
+  (t) => [index("programs_name_idx").on(t.name), uniqueIndex("programs_external_code_uq").on(t.externalCode), index("programs_university_idx").on(t.universityId)],
 );
 
 // ---------- Status dictionary (per pathway) ----------

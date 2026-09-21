@@ -9,6 +9,7 @@ export const LEVEL_LABEL: Record<string, string> = {
   PHD: "PhD",
   VOCATIONAL: "Ausbildung",
   REGISTRATION: "Registration route",
+  CERTIFICATE: "Certificate",
 };
 
 export const PATHWAY_LABEL: Record<string, string> = {
@@ -40,3 +41,13 @@ export function durationText(months: number | null | undefined) {
 
 /** Long enough to compare honestly, short enough that it is still a shortlist. */
 export const SHORTLIST_LIMIT = 12;
+
+/**
+ * Tuition as the source published it: per year where known, otherwise the
+ * whole-course figure (CRICOS publishes only that), never one derived from the other.
+ */
+export function tuitionText(perYear: number | null | undefined, total: number | null | undefined, currency: string) {
+  if (perYear != null) return perYear === 0 ? "No tuition fee" : `${fmtMoney(perYear, currency)} / yr`;
+  if (total != null) return total === 0 ? "No tuition fee" : `${fmtMoney(total, currency)} whole course`;
+  return "Not recorded";
+}

@@ -35,7 +35,11 @@ export async function createApplicationAction(_: FormState, formData: FormData):
 
   const program = await db.query.programs.findFirst({ where: eq(schema.programs.id, parsed.data.programId), with: { university: true } });
   if (!program || program.status !== "LIVE") return { error: "That program is not open for applications." };
-  if (!program.intakeMonths.includes(month)) return { error: `${program.name} has no ${intakeLabel(month, year)} intake.` };
+  // Where intakes are on record the choice must be one of them. Where none are
+  // (register imports carry no intake dates) any future month is accepted and
+  // the team confirms it with the institution.
+  if (program.intakeMonths.length && !program.intakeMonths.includes(month)) return { error: `${program.name} has no ${intakeLabel(month, year)} intake.` };
+  if (new Date(year, month - 1, 1) < new Date(new Date().getFullYear(), new Date().getMonth(), 1)) return { error: "That intake has already started." };
 
   const duplicate = await db.query.applications.findFirst({
     where: and(eq(schema.applications.studentId, student.id), eq(schema.applications.programId, program.id), eq(schema.applications.intakeYear, year), eq(schema.applications.intakeMonth, month)),
@@ -70,7 +74,7 @@ export async function createApplicationAction(_: FormState, formData: FormData):
   await db.insert(schema.statusHistory).values({ applicationId: app.id, toStatusId: first.id, changedById: user.id });
   if (!student.preferredPathway) await db.update(schema.students).set({ preferredPathway: program.pathway }).where(eq(schema.students.id, student.id));
 
-  await notifyUsers(await adminIds(), `New application ${ackNo}`, `${student.firstName} ${student.lastName}: ${program.name}, ${program.university.name}`, `/students/${student.id}/applications?app=${app.id}`);
+  await notifyUsers(await adminIds(), `New application ${ackNo}`, `${student.firstName} ${student.lastName}: ${program.name}, ${program.university.name}${program.intakeMonths.length ? "" : ". Intake not on record: confirm it with the institution"}`, `/students/${student.id}/applications?app=${app.id}`);
   await audit(user.id, "application.create", "application", app.id, { programId: program.id, intake: `${month}/${year}` });
   redirect(`/students/${student.id}/applications?app=${app.id}`);
 }

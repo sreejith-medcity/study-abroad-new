@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { and, asc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
-import { durationText, feeText, intakesText, LEVEL_LABEL } from "@/lib/catalogue";
+import { LEVEL_LABEL, durationText, feeText, intakesText, tuitionText } from "@/lib/catalogue";
 import { APP_ROLES, isStaff } from "@/lib/permissions";
 import { Card, CardHeader, Chip, DataList, EmptyState, PageHeader, Table, Td, Th, cn } from "@/components/ui";
 import { IconAlert, IconCheck, IconPrograms } from "@/components/icons";
@@ -23,6 +23,7 @@ export default async function UniversityPage({
   const { id } = await params;
   const sp = await searchParams;
   const levelFilter = typeof sp.level === "string" ? sp.level : undefined;
+  const page = Math.max(1, Number(typeof sp.page === "string" ? sp.page : 1) || 1);
 
   const university = await db.query.universities.findFirst({ where: eq(schema.universities.id, id), with: { country: true } });
   if (!university) notFound();
@@ -36,13 +37,20 @@ export default async function UniversityPage({
 
   const live = all.filter((p) => p.status === "LIVE");
   const levels = LEVEL_ORDER.filter((l) => all.some((p) => p.level === l));
-  const shown = levelFilter ? all.filter((p) => p.level === levelFilter) : all;
+  const matching = levelFilter ? all.filter((p) => p.level === levelFilter) : all;
+  const PER_PAGE = 100;
+  const pages = Math.max(1, Math.ceil(matching.length / PER_PAGE));
+  const shown = matching.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const pageHref = (n: number) => `/universities/${university.id}?${new URLSearchParams({ ...(levelFilter ? { level: levelFilter } : {}), page: String(n) })}`;
   const cur = university.country.currency;
-  const tuitions = live.map((p) => p.tuitionPerYear).filter((t): t is number => t != null && t > 0);
+  const perYear = live.map((p) => p.tuitionPerYear).filter((t): t is number => t != null && t > 0);
+  const wholeCourse = live.map((p) => p.tuitionTotal).filter((t): t is number => t != null && t > 0);
+  // Per-year figures where the catalogue has them; otherwise the register's whole-course ones, labelled as such.
+  const [tuitions, tuitionLabel] = perYear.length ? [perYear, "Tuition range per year"] : [wholeCourse, "Tuition range, whole course"];
   const eligible = live.filter((p) => p.workRights === "ELIGIBLE").length;
   const ineligible = live.filter((p) => p.workRights === "INELIGIBLE").length;
   const intakes = [...new Set(live.flatMap((p) => p.intakeMonths))].sort((a, b) => a - b);
-  const campuses = [...new Set(all.map((p) => p.campus).filter((c): c is string => !!c))].sort();
+  const campuses = [...new Set(all.flatMap((p) => (p.campus ?? "").replace(/ and \d+ more$/, "").split(", ")).filter(Boolean))].sort();
   const multiCampus = campuses.length > 1;
 
   return (
@@ -54,14 +62,19 @@ export default async function UniversityPage({
           </Link>
         }
         title={university.name}
-        subtitle={`${multiCampus ? `Campuses in ${campuses.join(", ")} · ` : university.city ? `${university.city}, ` : ""}${university.country.name}${university.isPublic ? " · Public institution" : ""}`}
+        actions={university.website ? (
+          <a href={university.website.startsWith("http") ? university.website : `https://${university.website}`} target="_blank" rel="noopener noreferrer" className="text-[13px] font-medium text-brand-600 hover:underline">
+            Official website ↗
+          </a>
+        ) : undefined}
+        subtitle={`${multiCampus ? `Campuses in ${campuses.length > 5 ? `${campuses.slice(0, 5).join(", ")} and ${campuses.length - 5} more` : campuses.join(", ")} · ` : university.city ? `${university.city}, ` : ""}${university.country.name}${university.isPublic ? " · Public institution" : ""}`}
       />
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
         <Card>
           <CardHeader
             title="Programs"
-            subtitle={`${shown.length} of ${all.length}${isStaff(user) && all.length !== live.length ? ` (${all.length - live.length} not live)` : ""}`}
+            subtitle={`${matching.length} of ${all.length}${isStaff(user) && all.length !== live.length ? ` (${all.length - live.length} not live)` : ""}`}
             action={
               levels.length > 1 ? (
                 <div className="flex flex-wrap gap-1.5">
@@ -80,7 +93,7 @@ export default async function UniversityPage({
           ) : (
             <Table tableClassName="min-w-[760px]">
               <thead>
-                <tr><Th>Program</Th><Th>Duration</Th><Th>Intakes</Th><Th>Tuition / yr</Th><Th>Post-study work</Th></tr>
+                <tr><Th>Program</Th><Th>Duration</Th><Th>Intakes</Th><Th>Tuition</Th><Th>Post-study work</Th></tr>
               </thead>
               <tbody>
                 {shown.map((p) => (
@@ -95,8 +108,8 @@ export default async function UniversityPage({
                     </Td>
                     <Td className="whitespace-nowrap text-[13px]">{durationText(p.durationMonths)}</Td>
                     <Td className="whitespace-nowrap text-[13px]">{intakesText(p.intakeMonths)}</Td>
-                    <Td className={cn("whitespace-nowrap tabular text-[13px]", p.tuitionPerYear == null && "text-muted")}>
-                      {feeText(p.tuitionPerYear, cur, { zero: "No tuition fee" })}
+                    <Td className={cn("whitespace-nowrap tabular text-[13px]", p.tuitionPerYear == null && p.tuitionTotal == null && "text-muted")}>
+                      {tuitionText(p.tuitionPerYear, p.tuitionTotal, cur)}
                     </Td>
                     <Td>
                       {p.workRights === "ELIGIBLE" && <Chip tone="ok"><IconCheck className="size-3.5" /> Eligible</Chip>}
@@ -108,6 +121,15 @@ export default async function UniversityPage({
               </tbody>
             </Table>
           )}
+          {pages > 1 && (
+            <div className="flex items-center justify-between border-t border-line px-4 py-3 text-[13px]">
+              <span className="text-muted">Page {page} of {pages}</span>
+              <div className="flex gap-2">
+                {page > 1 && <Link prefetch={false} href={pageHref(page - 1)} className="font-medium text-brand-600 hover:underline">Previous</Link>}
+                {page < pages && <Link prefetch={false} href={pageHref(page + 1)} className="font-medium text-brand-600 hover:underline">Next</Link>}
+              </div>
+            </div>
+          )}
         </Card>
 
         <Card className="self-start">
@@ -116,7 +138,7 @@ export default async function UniversityPage({
             rows={[
               { label: "Live programs", value: String(live.length) },
               {
-                label: "Tuition range per year",
+                label: tuitionLabel,
                 value: tuitions.length
                   ? tuitions.length === 1 || Math.min(...tuitions) === Math.max(...tuitions)
                     ? feeText(tuitions[0], cur, { zero: "" })

@@ -7,7 +7,7 @@ import { fmtMoney, fullName, MONTHS } from "@/lib/format";
 import { ADMIN_ROLES, APP_ROLES, isStaff } from "@/lib/permissions";
 import { ShortlistButton } from "@/components/shortlist-button";
 import { readFilters } from "@/server/queries";
-import { intakesText, LEVEL_LABEL, SHORTLIST_LIMIT } from "@/lib/catalogue";
+import { LEVEL_LABEL, SHORTLIST_LIMIT, intakesText, tuitionText } from "@/lib/catalogue";
 import { Button, Card, Chip, EmptyState, Input, LinkButton, PageHeader, Select, Table, Td, Th, Toolbar, cn } from "@/components/ui";
 import { IconCheck, IconAlert, IconClock, IconGlobe, IconSearch, IconSpark } from "@/components/icons";
 
@@ -59,6 +59,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       studyArea: p.studyArea,
       durationMonths: p.durationMonths,
       tuition: p.tuitionPerYear,
+      tuitionTotal: p.tuitionTotal,
       applicationFee: p.applicationFee,
       deposit: p.initialDeposit,
       intakeMonths: p.intakeMonths,
@@ -173,6 +174,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             <option value="PHD">PhD</option>
             <option value="VOCATIONAL">Vocational (Ausbildung)</option>
             <option value="REGISTRATION">Registration route</option>
+            <option value="CERTIFICATE">Certificate</option>
           </Select>
           <Select name="intakeMonth" aria-label="Intake month" defaultValue={f.intakeMonth ?? ""}>
             <option value="">Any intake</option>
@@ -262,7 +264,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                 <Th>Program</Th>
                 <Th>University</Th>
                 <Th>Intakes</Th>
-                <Th>Tuition / yr</Th>
+                <Th>Tuition</Th>
                 <Th>Entry requirements</Th>
                 {student && <Th>Fit</Th>}
                 <Th><span className="sr-only">Apply</span></Th>
@@ -306,7 +308,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                     </Td>
                     <Td className={cn("whitespace-nowrap text-[13px]", !r.intakeMonths.length && "text-muted")}>{intakesText(r.intakeMonths)}</Td>
                     <Td className="whitespace-nowrap tabular">
-                      {r.tuition ? fmtMoney(r.tuition, r.currency) : r.tuition === 0 ? "No tuition fee" : <span className="text-muted">Tuition not recorded</span>}
+                      {r.tuition == null && r.tuitionTotal == null ? <span className="text-muted">Tuition not recorded</span> : tuitionText(r.tuition, r.tuitionTotal, r.currency)}
                       <p className="text-xs text-muted">
                         {r.applicationFee == null ? "App. fee not recorded" : r.applicationFee > 0 ? `App. fee ${fmtMoney(r.applicationFee, r.currency)}` : "No application fee"}
                         {r.deposit ? ` · deposit ${fmtMoney(r.deposit, r.currency)}` : ""}
@@ -337,9 +339,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                     )}
                     <Td>
                       <div className="flex flex-col items-start gap-1.5">
-                        {student && r.intakeMonths.length === 0 ? (
-                          <span className="text-xs text-muted">No intake recorded yet</span>
-                        ) : student ? (
+                        {student ? (
                           <LinkButton
                             size="sm"
                             variant={fit?.verdict === "blocked" ? "secondary" : "primary"}

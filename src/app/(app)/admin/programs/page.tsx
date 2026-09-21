@@ -1,15 +1,19 @@
 import Link from "next/link";
-import { and, asc, count, eq, ilike, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, or } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { feeText, intakesText } from "@/lib/catalogue";
+import { intakesText, tuitionText } from "@/lib/catalogue";
 import { requireUser } from "@/lib/auth";
 import { readFilters } from "@/server/queries";
 import { Button, Card, Chip, EmptyState, Input, LinkButton, PageHeader, Select, Table, Td, Th } from "@/components/ui";
 import { bulkStatusAction, setProgramStatusAction } from "./actions";
 import { ImportForm } from "./import-form";
+import { CricosForm } from "./cricos-form";
+import { fmtDateTime } from "@/lib/format";
 import { ADMIN_ROLES } from "@/lib/permissions";
 
 export const metadata = { title: "Programs" };
+// The CRICOS sync runs from this page and takes up to a minute on a full release.
+export const maxDuration = 300;
 
 const PAGE = 50;
 
@@ -25,7 +29,7 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
     f.status ? eq(p.status, f.status as "LIVE") : undefined,
   );
   const rows = await db
-    .select({ id: p.id, name: p.name, level: p.level, pathway: p.pathway, intakeMonths: p.intakeMonths, tuition: p.tuitionPerYear, currency: c.currency, university: u.name, country: c.name, status: p.status, minIelts: p.minIelts, minPte: p.minPte, minOet: p.minOetGrade, minGerman: p.minGermanLevel, maxBacklogs: p.maxBacklogs, moi: p.moiAccepted, workRights: p.workRights, workRightsNote: p.workRightsNote, docs: p.requiredDocs })
+    .select({ id: p.id, name: p.name, level: p.level, pathway: p.pathway, intakeMonths: p.intakeMonths, tuition: p.tuitionPerYear, tuitionTotal: p.tuitionTotal, currency: c.currency, university: u.name, country: c.name, status: p.status, minIelts: p.minIelts, minPte: p.minPte, minOet: p.minOetGrade, minGerman: p.minGermanLevel, maxBacklogs: p.maxBacklogs, moi: p.moiAccepted, workRights: p.workRights, workRightsNote: p.workRightsNote, docs: p.requiredDocs })
     .from(p)
     .innerJoin(u, eq(p.universityId, u.id))
     .innerJoin(c, eq(u.countryId, c.id))
@@ -42,6 +46,13 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
     .innerJoin(c, eq(u.countryId, c.id))
     .where(where);
   const lastPage = Math.max(1, Math.ceil(total / PAGE));
+  const [lastSync] = await db
+    .select({ createdAt: schema.auditLogs.createdAt, actor: schema.users.name })
+    .from(schema.auditLogs)
+    .leftJoin(schema.users, eq(schema.auditLogs.actorId, schema.users.id))
+    .where(eq(schema.auditLogs.action, "programs.cricos_sync"))
+    .orderBy(desc(schema.auditLogs.createdAt))
+    .limit(1);
   const countries = await db.select().from(c).orderBy(asc(c.name));
   const qs = (extra: Record<string, string>) => {
     const sp = new URLSearchParams();
@@ -96,7 +107,7 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
               ? <EmptyState title="No programs match these filters">Clear a filter to see more.</EmptyState>
               : <EmptyState title="No programs yet">Import a CSV to get started.</EmptyState>) : (
               <Table tableClassName="min-w-[1100px]">
-                <thead><tr><Th>Program</Th><Th>University</Th><Th>Level</Th><Th>Intakes</Th><Th>Tuition / yr</Th><Th>Requirements</Th><Th>Status</Th></tr></thead>
+                <thead><tr><Th>Program</Th><Th>University</Th><Th>Level</Th><Th>Intakes</Th><Th>Tuition</Th><Th>Requirements</Th><Th>Status</Th></tr></thead>
                 <tbody>
                   {rows.map((r) => (
                     <tr key={r.id}>
@@ -104,7 +115,7 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
                       <Td>{r.university}<p className="text-xs text-muted">{r.country}</p></Td>
                       <Td>{r.level}</Td>
                       <Td className="whitespace-nowrap">{intakesText(r.intakeMonths)}</Td>
-                      <Td className="whitespace-nowrap tabular">{feeText(r.tuition, r.currency, { zero: "No tuition fee" })}</Td>
+                      <Td className="whitespace-nowrap tabular">{tuitionText(r.tuition, r.tuitionTotal, r.currency)}</Td>
                       <Td>
                         <div className="flex max-w-64 flex-wrap gap-1">
                           {r.minIelts && <Chip>IELTS {r.minIelts}</Chip>}{r.minPte && <Chip>PTE {r.minPte}</Chip>}{r.minOet && <Chip>OET {r.minOet}</Chip>}
@@ -141,11 +152,17 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
             )}
           </Card>
         </div>
-        <Card className="h-fit p-4">
-          <h2 className="mb-1 font-semibold">Import programs</h2>
-          <p className="mb-3 text-muted">Preview first: nothing is saved until you confirm.</p>
-          <ImportForm />
-        </Card>
+        <div className="h-fit space-y-4">
+          <Card className="p-4">
+            <h2 className="mb-1 font-semibold">Import programs</h2>
+            <p className="mb-3 text-muted">Preview first: nothing is saved until you confirm.</p>
+            <ImportForm />
+          </Card>
+          <Card className="p-4">
+            <h2 className="mb-2 font-semibold">Australia (CRICOS)</h2>
+            <CricosForm lastSync={lastSync ? `${fmtDateTime(lastSync.createdAt)} by ${lastSync.actor ?? "system"}` : null} />
+          </Card>
+        </div>
       </div>
     </>
   );
