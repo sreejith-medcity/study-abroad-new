@@ -1,13 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { parseProgramCsv, type ImportError, type ImportRow } from "@/lib/program-import";
 import { ADMIN_ROLES } from "@/lib/permissions";
 import type { FormState } from "@/lib/form-state";
+import { programFilterWhere, readProgramFilters } from "@/server/program-filters";
 import { fetchCricosFiles, syncCricos } from "@/server/cricos-sync";
 
 export type ImportState = {
@@ -106,10 +107,9 @@ export async function bulkStatusAction(formData: FormData) {
   const to = String(formData.get("to"));
   if (!["LIVE", "DRAFT", "ARCHIVED"].includes(to)) return;
 
-  const q = String(formData.get("q") ?? "").trim();
-  const country = String(formData.get("country") ?? "").trim();
-  const pathway = String(formData.get("pathway") ?? "").trim();
-  const from = String(formData.get("from") ?? "").trim();
+  const f = readProgramFilters((k) => formData.get(k)?.toString());
+  // The old form sent the status filter as "from"; keep reading it.
+  if (!f.status && formData.get("from")) f.status = String(formData.get("from"));
 
   const { programs: p, universities: u, countries: c } = schema;
   // The country lives on the university, so the filter has to reach across two
@@ -122,14 +122,7 @@ export async function bulkStatusAction(formData: FormData) {
     .from(p)
     .innerJoin(u, eq(p.universityId, u.id))
     .innerJoin(c, eq(u.countryId, c.id))
-    .where(
-      and(
-        q ? or(ilike(p.name, `%${q}%`), ilike(u.name, `%${q}%`)) : undefined,
-        country ? eq(c.code, country) : undefined,
-        pathway ? eq(p.pathway, pathway as schema.Pathway) : undefined,
-        from ? eq(p.status, from as "DRAFT") : undefined,
-      ),
-    );
+    .where(programFilterWhere(f));
 
   const changed = await db
     .update(schema.programs)
@@ -138,7 +131,7 @@ export async function bulkStatusAction(formData: FormData) {
     .returning({ id: schema.programs.id });
   if (!changed.length) return;
 
-  await audit(user.id, "programs.bulk_status", "program", "*", { to, from: from || "any", country: country || "any", pathway: pathway || "any", count: changed.length });
+  await audit(user.id, "programs.bulk_status", "program", "*", { to, ...f, count: changed.length });
   revalidatePath("/admin/programs");
   revalidatePath("/search");
 }

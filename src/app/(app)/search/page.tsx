@@ -34,6 +34,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const conds: (SQL | undefined)[] = [eq(p.status, "LIVE")];
   if (f.q) conds.push(or(ilike(p.name, `%${f.q}%`), ilike(u.name, `%${f.q}%`), ilike(p.studyArea, `%${f.q}%`), ilike(p.campus, `%${f.q}%`)));
   if (f.country) conds.push(eq(c.code, f.country));
+  if (f.field) conds.push(eq(p.studyArea, f.field));
   if (f.pathway) conds.push(eq(p.pathway, f.pathway as schema.Pathway));
   if (f.level) conds.push(eq(p.level, f.level as "PG"));
   if (f.intakeMonth) conds.push(sql`${Number(f.intakeMonth)} = any(${p.intakeMonths})`);
@@ -84,7 +85,15 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     .innerJoin(u, eq(p.universityId, u.id))
     .innerJoin(c, eq(u.countryId, c.id))
     .where(where)
-    .orderBy(asc(c.name), asc(u.name), asc(p.name))
+    .orderBy(
+      ...(f.sort === "fee"
+        ? // Per-year figures first, then whole-course ones: the two are never
+          // compared with each other, and currencies only line up within a country.
+          [sql`${p.tuitionPerYear} is null`, asc(p.tuitionPerYear), sql`${p.tuitionTotal} is null`, asc(p.tuitionTotal), asc(p.name)]
+        : f.sort === "name"
+          ? [asc(p.name), asc(u.name)]
+          : [asc(c.name), asc(u.name), asc(p.name)]),
+    )
     .limit(PAGE + 1)
     .offset((page - 1) * PAGE);
 
@@ -98,6 +107,14 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     .where(where);
 
   const countries = await db.select().from(c).orderBy(asc(c.name));
+  // Fields with a meaningful number of live programs, so the list stays usable.
+  const fields = await db
+    .select({ field: p.studyArea, n: count() })
+    .from(p)
+    .where(and(eq(p.status, "LIVE"), sql`${p.studyArea} is not null`))
+    .groupBy(p.studyArea)
+    .having(sql`count(*) >= 5`)
+    .orderBy(asc(p.studyArea));
   const students = await db
     .select({ id: s.id, firstName: s.firstName, lastName: s.lastName })
     .from(s)
@@ -196,6 +213,15 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             <option value="7">Needs IELTS 7.0 or less</option>
           </Select>
           <Input name="maxTuition" defaultValue={f.maxTuition} placeholder="Max tuition per year" aria-label="Maximum tuition" inputMode="numeric" />
+          <Select name="field" aria-label="Field of study" defaultValue={f.field ?? ""}>
+            <option value="">Any field of study</option>
+            {fields.map((x) => <option key={x.field} value={x.field!}>{x.field} ({x.n.toLocaleString("en-IN")})</option>)}
+          </Select>
+          <Select name="sort" aria-label="Sort" defaultValue={f.sort ?? ""}>
+            <option value="">Sort by country and university</option>
+            <option value="name">Sort by program name</option>
+            <option value="fee">Lowest fee first</option>
+          </Select>
           <Select name="student" aria-label="Check against student" defaultValue={f.student ?? ""}>
             <option value="">Check eligibility for…</option>
             {students.map((x) => (

@@ -1,12 +1,13 @@
 import Link from "next/link";
-import { and, asc, count, desc, eq, ilike, or } from "drizzle-orm";
+import { asc, count, desc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { intakesText, tuitionText } from "@/lib/catalogue";
+import { intakesText, LEVEL_LABEL, tuitionText } from "@/lib/catalogue";
 import { requireUser } from "@/lib/auth";
 import { readFilters } from "@/server/queries";
 import { Button, Card, Chip, EmptyState, Input, LinkButton, PageHeader, Select, Table, Td, Th } from "@/components/ui";
 import { bulkStatusAction, setProgramStatusAction } from "./actions";
 import { ImportForm } from "./import-form";
+import { PROGRAM_FILTER_KEYS, programFilterWhere } from "@/server/program-filters";
 import { CricosForm } from "./cricos-form";
 import { fmtDateTime } from "@/lib/format";
 import { ADMIN_ROLES } from "@/lib/permissions";
@@ -22,12 +23,7 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
   const f = readFilters(await searchParams) as Record<string, string>;
   const page = Math.max(1, Number(f.page ?? 1));
   const { programs: p, universities: u, countries: c } = schema;
-  const where = and(
-    f.q ? or(ilike(p.name, `%${f.q}%`), ilike(u.name, `%${f.q}%`)) : undefined,
-    f.country ? eq(c.code, f.country) : undefined,
-    f.pathway ? eq(p.pathway, f.pathway as schema.Pathway) : undefined,
-    f.status ? eq(p.status, f.status as "LIVE") : undefined,
-  );
+  const where = programFilterWhere(f);
   const rows = await db
     .select({ id: p.id, name: p.name, level: p.level, pathway: p.pathway, intakeMonths: p.intakeMonths, tuition: p.tuitionPerYear, tuitionTotal: p.tuitionTotal, currency: c.currency, university: u.name, country: c.name, status: p.status, minIelts: p.minIelts, minPte: p.minPte, minOet: p.minOetGrade, minGerman: p.minGermanLevel, maxBacklogs: p.maxBacklogs, moi: p.moiAccepted, workRights: p.workRights, workRightsNote: p.workRightsNote, docs: p.requiredDocs })
     .from(p)
@@ -70,10 +66,7 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
             // Acts on exactly what the filters above have selected, so a country
             // or a pathway can be reviewed and published as one batch.
             <form action={bulkStatusAction} className="flex flex-wrap items-center gap-2">
-              <input type="hidden" name="q" value={f.q ?? ""} />
-              <input type="hidden" name="country" value={f.country ?? ""} />
-              <input type="hidden" name="pathway" value={f.pathway ?? ""} />
-              <input type="hidden" name="from" value={f.status ?? ""} />
+              {PROGRAM_FILTER_KEYS.map((k) => <input key={k} type="hidden" name={k} value={f[k] ?? ""} />)}
               <span className="text-[13px] text-muted">All {total} matching:</span>
               <Button name="to" value="LIVE" size="sm" variant="secondary">Publish</Button>
               <Button name="to" value="DRAFT" size="sm" variant="quiet">Back to draft</Button>
@@ -84,7 +77,7 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="space-y-4">
           <Card className="p-4">
-            <form className="grid gap-2.5 sm:grid-cols-5 [&>*]:min-w-0">
+            <form className="grid gap-2.5 sm:grid-cols-4 [&>*]:min-w-0">
               <input type="hidden" name="page" value="1" />
               <Input name="q" placeholder="Program or university" aria-label="Search" defaultValue={f.q} className="sm:col-span-2" />
               <Select name="country" aria-label="Country" defaultValue={f.country ?? ""}>
@@ -93,6 +86,21 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
               </Select>
               <Select name="pathway" aria-label="Pathway" defaultValue={f.pathway ?? ""}>
                 <option value="">Pathway</option><option value="DEGREE">Degree</option><option value="AUSBILDUNG">Ausbildung</option><option value="NURSING">Nurse registration</option>
+              </Select>
+              <Select name="level" aria-label="Level" defaultValue={f.level ?? ""}>
+                <option value="">Any level</option>
+                {Object.entries(LEVEL_LABEL).map(([k, v]) => <option key={k} value={k}>{v === "Ausbildung" ? "Vocational (Ausbildung)" : v}</option>)}
+              </Select>
+              <Select name="source" aria-label="Source" defaultValue={f.source ?? ""}>
+                <option value="">Any source</option>
+                <option value="catalogue">Researched catalogue</option>
+                <option value="CRICOS">CRICOS register</option>
+              </Select>
+              <Select name="workRights" aria-label="Post-study work" defaultValue={f.workRights ?? ""}>
+                <option value="">Any work rights</option>
+                <option value="ELIGIBLE">Eligible</option>
+                <option value="INELIGIBLE">Not eligible</option>
+                <option value="UNKNOWN">Not confirmed</option>
               </Select>
               <div className="flex gap-2">
                 <Select name="status" aria-label="Status" defaultValue={f.status ?? ""}>
