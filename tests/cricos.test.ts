@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildCricos, campusText, mapLevel, parseMoney, providerName, stripFieldCode, weeksToMonths, workRights485 } from "../src/lib/cricos";
+import { buildCricos, campusText, mapLevel, parseMoney, providerName, stripFieldCode, weeksToMonths, workRights485, nameKey } from "../src/lib/cricos";
 
 test("the 485 course rule follows Home Affairs: eligible degree and 92 weeks", () => {
   assert.equal(workRights485("Bachelor Degree", 156).workRights, "ELIGIBLE");
@@ -46,4 +46,11 @@ test("a small register builds providers and live courses, and drops expired ones
   assert.equal(c.campus, "Burwood");
   assert.equal(c.workRights, "ELIGIBLE");
   assert.equal(r.providers[0].name, "Deakin University");
+});
+
+test("course names match across case, punctuation and '&', and nothing looser", () => {
+  assert.equal(nameKey("Bachelor of Nursing (Pre-Registration)"), nameKey("Bachelor of Nursing (Preregistration)"));
+  assert.equal(nameKey("Bachelor of IT (Cyber & Network Security)"), nameKey("bachelor of it (cyber and network security)"));
+  assert.notEqual(nameKey("Master of Business Administration"), nameKey("Master of Business Administration [2-year]"));
+  assert.notEqual(nameKey("Bachelor of Education (Secondary)"), nameKey("Bachelor of Education (Secondary Teaching)"));
 });

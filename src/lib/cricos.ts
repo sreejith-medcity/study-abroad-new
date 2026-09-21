@@ -41,6 +41,9 @@ const LEVELS: Record<string, Level> = {
   "Primary School Studies": "SCHOOL",
 };
 
+/** Course names compare without case, punctuation or "&" versus "and". */
+export const nameKey = (name: string) => name.toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "");
+
 export function mapLevel(courseLevel: string): Level {
   return LEVELS[courseLevel.trim()] ?? "CERTIFICATE";
 }

@@ -1,6 +1,6 @@
 import { and, eq, isNull, ne, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { buildCricos, CRICOS_SOURCE } from "@/lib/cricos";
+import { buildCricos, CRICOS_SOURCE, nameKey } from "@/lib/cricos";
 
 /** data.gov.au's stable download links for the three register files. */
 export const CRICOS_FILES = {
@@ -35,6 +35,15 @@ export type CricosSyncResult = {
   seconds: number;
 };
 
+/** True when nothing in the system points at this program. */
+async function untouched(programId: string) {
+  const [row] = await db.execute<{ n: number }>(sql`
+    select (select count(*) from applications where program_id = ${programId})
+         + (select count(*) from shortlists where program_id = ${programId})
+         + (select count(*) from commission_rules where program_id = ${programId}) as n`);
+  return Number(row?.n ?? 1) === 0;
+}
+
 const chunk = <T,>(list: T[], size: number) => Array.from({ length: Math.ceil(list.length / size) }, (_, i) => list.slice(i * size, i * size + size));
 
 /**
@@ -48,8 +57,10 @@ const chunk = <T,>(list: T[], size: number) => Array.from({ length: Math.ceil(li
  *   added (intakes, IELTS, documents, their own work rights note) is kept.
  * - A course that has left the register is archived, never deleted, so any
  *   application that points at it keeps its history.
- * - Rows from the hand-researched catalogue that already carry a CRICOS code in
- *   their notes are claimed first, so the register does not duplicate them.
+ * - Rows from the hand-researched catalogue are claimed first, by a CRICOS code
+ *   in their notes or by a unique exact name at the same provider, so the
+ *   register does not duplicate them. A twin an earlier sync added is merged
+ *   away when it is an untouched draft.
  */
 export async function syncCricos(files: { institutions: string; courses: string; locations: string }, opts: { publish: boolean }): Promise<CricosSyncResult> {
   const started = Date.now();
@@ -95,22 +106,42 @@ export async function syncCricos(files: { institutions: string; courses: string;
     for (const r of rows) providerId.set(r.code!, r.id);
   }
 
-  // ---- Claim hand-researched rows that already name a CRICOS code ----
+  // ---- Claim hand-researched rows ----
+  // A hand row takes the register's code when its notes name one, or, failing
+  // that, when exactly one register course at the same provider has the same
+  // name. Either way the register then refreshes it in place instead of adding
+  // a twin. A twin an earlier sync already added is merged away, but only when
+  // it is an untouched draft: nobody has applied to it, shortlisted it or
+  // attached a commission rule to it.
   const claimable = await db
-    .select({ id: p.id, studyArea: p.studyArea, note: p.workRightsNote })
+    .select({ id: p.id, universityId: p.universityId, name: p.name, studyArea: p.studyArea, note: p.workRightsNote })
     .from(p)
     .innerJoin(u, eq(p.universityId, u.id))
-    .where(and(eq(u.countryId, au.id), isNull(p.externalCode)));
+    .where(and(eq(u.countryId, au.id), isNull(p.externalCode), sql`${p.source} is distinct from ${CRICOS_SOURCE}`));
   const liveCodes = new Set(courses.map((c) => c.code));
-  const alreadyUsed = new Set(
-    (await db.select({ code: p.externalCode }).from(p).where(sql`${p.externalCode} is not null`)).map((x) => x.code!),
+  const courseByName = new Map<string, string | null>();
+  for (const c of courses) {
+    const uni = providerId.get(c.providerCode);
+    if (!uni) continue;
+    const key = `${uni}|${nameKey(c.name)}`;
+    // Two register courses with one name at one provider: too ambiguous to claim.
+    courseByName.set(key, courseByName.has(key) ? null : c.code);
+  }
+  const holders = new Map(
+    (await db.select({ id: p.id, code: p.externalCode, source: p.source, status: p.status }).from(p).where(sql`${p.externalCode} is not null`)).map((x) => [x.code!, x]),
   );
   let claimed = 0;
   for (const row of claimable) {
-    const code = `${row.studyArea ?? ""} ${row.note ?? ""}`.match(/\b\d{6}[A-Z]\b/)?.[0];
-    if (!code || !liveCodes.has(code) || alreadyUsed.has(code)) continue;
+    const named = `${row.studyArea ?? ""} ${row.note ?? ""}`.match(/\b\d{6}[A-Z]\b/)?.[0];
+    const code = named && liveCodes.has(named) ? named : courseByName.get(`${row.universityId}|${nameKey(row.name)}`);
+    if (!code) continue;
+    const holder = holders.get(code);
+    if (holder) {
+      if (holder.source !== CRICOS_SOURCE || holder.status !== "DRAFT" || !(await untouched(holder.id))) continue;
+      await db.delete(p).where(eq(p.id, holder.id));
+    }
     await db.update(p).set({ externalCode: code }).where(eq(p.id, row.id));
-    alreadyUsed.add(code);
+    holders.set(code, { id: row.id, code, source: null, status: "LIVE" });
     claimed++;
   }
 
