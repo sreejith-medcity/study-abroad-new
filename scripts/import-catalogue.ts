@@ -1,7 +1,7 @@
 // Imports every catalogue CSV through the real parser and the real upsert, so
 // the check exercises the same code the import screen runs.
 import { readFileSync, readdirSync } from "node:fs";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db, schema } from "../src/db";
 import { parseProgramCsv } from "../src/lib/program-import";
 
@@ -22,10 +22,10 @@ async function main() {
       const countryId = byCode[r.countryCode].id;
       const [uni] = await db.insert(schema.universities)
         .values({ name: r.university, city: r.city, countryId })
-        .onConflictDoUpdate({ target: [schema.universities.name, schema.universities.countryId], set: r.city ? { city: r.city } : { name: r.university } })
+        .onConflictDoUpdate({ target: [schema.universities.name, schema.universities.countryId], set: { city: sql`coalesce(${schema.universities.city}, excluded.city)` } })
         .returning();
       const values = {
-        name: r.program, universityId: uni.id, pathway: r.pathway, level: r.level, studyArea: r.studyArea,
+        name: r.program, universityId: uni.id, campus: r.city, pathway: r.pathway, level: r.level, studyArea: r.studyArea,
         durationMonths: r.durationMonths, tuitionPerYear: r.tuitionPerYear, applicationFee: r.applicationFee,
         initialDeposit: r.initialDeposit, intakeMonths: r.intakeMonths, minIelts: r.minIelts, minPte: r.minPte,
         minOetGrade: r.minOetGrade, minGermanLevel: r.minGermanLevel, maxBacklogs: r.maxBacklogs,

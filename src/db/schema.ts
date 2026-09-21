@@ -155,6 +155,10 @@ export const programs = pgTable(
       .notNull()
       .references(() => universities.id),
     pathway: pathway("pathway").notNull().default("DEGREE"),
+    // The campus that teaches this program. A university's own city is not
+    // enough: Mohawk runs one program in Hamilton with PGWP and another in
+    // Mississauga without it, and the two must never be confused.
+    campus: text("campus"),
     level: studyLevel("level").notNull(),
     studyArea: text("study_area"),
     durationMonths: integer("duration_months"),
@@ -309,6 +313,28 @@ export const editRequests = pgTable("edit_requests", {
     .references(() => users.id),
   createdAt: createdAt(),
 });
+
+// ---------- Shortlist ----------
+
+/**
+ * Programs a counsellor is weighing up for one student, before any application
+ * exists. Cheap to add and remove, and compared side by side on the student file.
+ */
+export const shortlists = pgTable(
+  "shortlists",
+  {
+    id: id(),
+    studentId: text("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    programId: text("program_id")
+      .notNull()
+      .references(() => programs.id, { onDelete: "cascade" }),
+    addedById: text("added_by_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("shortlists_student_program_uq").on(t.studentId, t.programId)],
+);
 
 // ---------- Applications ----------
 
@@ -734,6 +760,13 @@ export const studentsRelations = relations(students, ({ one, many }) => ({
   applications: many(applications),
   documents: many(documents),
   editRequests: many(editRequests),
+  shortlist: many(shortlists),
+}));
+
+export const shortlistsRelations = relations(shortlists, ({ one }) => ({
+  student: one(students, { fields: [shortlists.studentId], references: [students.id] }),
+  program: one(programs, { fields: [shortlists.programId], references: [programs.id] }),
+  addedBy: one(users, { fields: [shortlists.addedById], references: [users.id] }),
 }));
 
 export const academicRecordsRelations = relations(academicRecords, ({ one }) => ({

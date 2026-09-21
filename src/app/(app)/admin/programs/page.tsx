@@ -100,7 +100,7 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
                 <tbody>
                   {rows.map((r) => (
                     <tr key={r.id}>
-                      <Td><Link href={`/admin/programs/${r.id}`} className="font-medium hover:text-brand-700 hover:underline">{r.name}</Link>{r.pathway !== "DEGREE" && <Chip tone="info">{r.pathway === "AUSBILDUNG" ? "Ausbildung" : "Nursing"}</Chip>}</Td>
+                      <Td><Link prefetch={false} href={`/admin/programs/${r.id}`} className="font-medium hover:text-brand-700 hover:underline">{r.name}</Link>{r.pathway !== "DEGREE" && <Chip tone="info">{r.pathway === "AUSBILDUNG" ? "Ausbildung" : "Nursing"}</Chip>}</Td>
                       <Td>{r.university}<p className="text-xs text-muted">{r.country}</p></Td>
                       <Td>{r.level}</Td>
                       <Td className="whitespace-nowrap">{intakesText(r.intakeMonths)}</Td>

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, ilike, inArray, or } from "drizzle-orm";
+import { and, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
@@ -51,19 +51,19 @@ export async function importProgramsAction(prev: ImportState, formData: FormData
         const [uni] = await tx
           .insert(schema.universities)
           .values({ name: r.university, city: r.city, countryId })
-          // A row with no city leaves nothing to update, and an empty set is an
-          // error rather than a no-op, so the name is rewritten to itself to keep
-          // the upsert returning the existing row.
+          // The university keeps the first city it was given. Each row's own
+          // city is its campus, stored on the program, because a university with
+          // several campuses would otherwise take whichever row came last.
           .onConflictDoUpdate({
             target: [schema.universities.name, schema.universities.countryId],
-            set: r.city ? { city: r.city } : { name: r.university },
+            set: { city: sql`coalesce(${schema.universities.city}, excluded.city)` },
           })
           .returning();
         universityId = uni.id;
         uniCache.set(key, universityId);
       }
       const values = {
-        name: r.program, universityId, pathway: r.pathway, level: r.level, studyArea: r.studyArea, durationMonths: r.durationMonths,
+        name: r.program, universityId, campus: r.city, pathway: r.pathway, level: r.level, studyArea: r.studyArea, durationMonths: r.durationMonths,
         tuitionPerYear: r.tuitionPerYear, applicationFee: r.applicationFee, initialDeposit: r.initialDeposit, intakeMonths: r.intakeMonths,
         minIelts: r.minIelts, minPte: r.minPte, minOetGrade: r.minOetGrade, minGermanLevel: r.minGermanLevel, maxBacklogs: r.maxBacklogs,
         maxGapYears: r.maxGapYears, moiAccepted: r.moiAccepted, workRights: r.workRights, workRightsNote: r.workRightsNote,
@@ -201,6 +201,7 @@ export async function updateProgramAction(_: FormState, fd: FormData): Promise<F
     pathway,
     status,
     studyArea: String(fd.get("studyArea") ?? "").trim() || null,
+    campus: String(fd.get("campus") ?? "").trim() || null,
     durationMonths: optionalNumber(fd, "durationMonths", errors, { int: true, min: 1, max: 120 }),
     tuitionPerYear: optionalNumber(fd, "tuitionPerYear", errors, { int: true, min: 0 }),
     applicationFee: optionalNumber(fd, "applicationFee", errors, { int: true, min: 0 }),

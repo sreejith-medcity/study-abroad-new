@@ -42,6 +42,8 @@ export default async function UniversityPage({
   const eligible = live.filter((p) => p.workRights === "ELIGIBLE").length;
   const ineligible = live.filter((p) => p.workRights === "INELIGIBLE").length;
   const intakes = [...new Set(live.flatMap((p) => p.intakeMonths))].sort((a, b) => a - b);
+  const campuses = [...new Set(all.map((p) => p.campus).filter((c): c is string => !!c))].sort();
+  const multiCampus = campuses.length > 1;
 
   return (
     <>
@@ -52,7 +54,7 @@ export default async function UniversityPage({
           </Link>
         }
         title={university.name}
-        subtitle={`${university.city ? `${university.city}, ` : ""}${university.country.name}${university.isPublic ? " · Public institution" : ""}`}
+        subtitle={`${multiCampus ? `Campuses in ${campuses.join(", ")} · ` : university.city ? `${university.city}, ` : ""}${university.country.name}${university.isPublic ? " · Public institution" : ""}`}
       />
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -84,9 +86,10 @@ export default async function UniversityPage({
                 {shown.map((p) => (
                   <tr key={p.id} className="hover:bg-surface-2/60">
                     <Td>
-                      <Link href={`/programs/${p.id}`} className="font-medium text-ink hover:text-brand-700 hover:underline">{p.name}</Link>
+                      <Link prefetch={false} href={`/programs/${p.id}`} className="font-medium text-ink hover:text-brand-700 hover:underline">{p.name}</Link>
                       <p className="text-xs text-muted">
                         {LEVEL_LABEL[p.level] ?? p.level}{p.studyArea ? ` · ${p.studyArea}` : ""}
+                        {multiCampus && p.campus && <span className="font-medium text-ink-soft"> · {p.campus} campus</span>}
                         {p.status !== "LIVE" && <Chip tone="warn" className="ml-1.5">{p.status === "DRAFT" ? "Draft" : "Archived"}</Chip>}
                       </p>
                     </Td>
@@ -121,6 +124,7 @@ export default async function UniversityPage({
                   : "Not recorded",
               },
               { label: "Intakes offered", value: intakesText(intakes) },
+              ...(multiCampus ? [{ label: "Campuses", value: campuses.join(", ") }] : []),
               { label: "Post-study work confirmed", value: String(eligible), tone: eligible ? "ok" : undefined },
               { label: "Confirmed not eligible", value: String(ineligible), tone: ineligible ? "bad" : undefined },
             ]}

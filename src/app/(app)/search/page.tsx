@@ -4,9 +4,10 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { checkEligibility, type Eligibility } from "@/lib/eligibility";
 import { fmtMoney, fullName, MONTHS } from "@/lib/format";
-import { APP_ROLES, isStaff } from "@/lib/permissions";
+import { ADMIN_ROLES, APP_ROLES, isStaff } from "@/lib/permissions";
+import { ShortlistButton } from "@/components/shortlist-button";
 import { readFilters } from "@/server/queries";
-import { intakesText, LEVEL_LABEL } from "@/lib/catalogue";
+import { intakesText, LEVEL_LABEL, SHORTLIST_LIMIT } from "@/lib/catalogue";
 import { Button, Card, Chip, EmptyState, Input, LinkButton, PageHeader, Select, Table, Td, Th, Toolbar, cn } from "@/components/ui";
 import { IconCheck, IconAlert, IconClock, IconGlobe, IconSearch, IconSpark } from "@/components/icons";
 
@@ -31,7 +32,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const { programs: p, universities: u, countries: c, students: s } = schema;
 
   const conds: (SQL | undefined)[] = [eq(p.status, "LIVE")];
-  if (f.q) conds.push(or(ilike(p.name, `%${f.q}%`), ilike(u.name, `%${f.q}%`), ilike(p.studyArea, `%${f.q}%`)));
+  if (f.q) conds.push(or(ilike(p.name, `%${f.q}%`), ilike(u.name, `%${f.q}%`), ilike(p.studyArea, `%${f.q}%`), ilike(p.campus, `%${f.q}%`)));
   if (f.country) conds.push(eq(c.code, f.country));
   if (f.pathway) conds.push(eq(p.pathway, f.pathway as schema.Pathway));
   if (f.level) conds.push(eq(p.level, f.level as "PG"));
@@ -72,7 +73,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       workRightsNote: p.workRightsNote,
       universityId: u.id,
       university: u.name,
-      city: u.city,
+      city: sql<string | null>`coalesce(${p.campus}, ${u.city})`,
       isPublic: u.isPublic,
       country: c.name,
       countryCode: c.code,
@@ -106,6 +107,12 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const student = f.student
     ? await db.query.students.findFirst({ where: and(eq(s.id, f.student), isStaff(user) ? undefined : eq(s.orgId, user.orgId)), with: { tests: true } })
     : null;
+
+  const canShortlist = (["PARTNER", "COUNSELLOR", ...ADMIN_ROLES] as readonly string[]).includes(user.role);
+  const picked = student
+    ? new Set((await db.select({ id: schema.shortlists.programId }).from(schema.shortlists).where(eq(schema.shortlists.studentId, student.id))).map((x) => x.id))
+    : new Set<string>();
+  const shortlistFull = picked.size >= SHORTLIST_LIMIT;
 
   const eligibility = new Map<string, Eligibility>();
   if (student) {
@@ -267,7 +274,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                 return (
                   <tr key={r.id} className="hover:bg-surface-2/60">
                     <Td>
-                      <Link href={`/programs/${r.id}${student ? `?student=${student.id}` : ""}`} className="font-medium text-ink hover:text-brand-700 hover:underline">{r.name}</Link>
+                      <Link prefetch={false} href={`/programs/${r.id}${student ? `?student=${student.id}` : ""}`} className="font-medium text-ink hover:text-brand-700 hover:underline">{r.name}</Link>
                       <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
                         <span>{LEVEL_LABEL[r.level] ?? r.level}</span>
                         {r.studyArea && <span>· {r.studyArea}</span>}
@@ -291,7 +298,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                       )}
                     </Td>
                     <Td>
-                      <Link href={`/universities/${r.universityId}`} className="hover:text-brand-700 hover:underline">{r.university}</Link>
+                      <Link prefetch={false} href={`/universities/${r.universityId}`} className="hover:text-brand-700 hover:underline">{r.university}</Link>
                       <p className="flex items-center gap-1 text-xs text-muted">
                         <IconGlobe className="size-3.5" /> {r.city ? `${r.city}, ` : ""}{r.country}
                         {r.isPublic && <Chip className="ml-1">Public</Chip>}
@@ -329,19 +336,24 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                       </Td>
                     )}
                     <Td>
-                      {student && r.intakeMonths.length === 0 ? (
-                        <span className="text-xs text-muted">No intake recorded yet</span>
-                      ) : student ? (
-                        <LinkButton
-                          size="sm"
-                          variant={fit?.verdict === "blocked" ? "secondary" : "primary"}
-                          href={`/students/${student.id}/applications?tab=apply&program=${r.id}`}
-                        >
-                          Apply
-                        </LinkButton>
-                      ) : (
-                        <span className="text-xs text-muted">Pick a student to apply</span>
-                      )}
+                      <div className="flex flex-col items-start gap-1.5">
+                        {student && r.intakeMonths.length === 0 ? (
+                          <span className="text-xs text-muted">No intake recorded yet</span>
+                        ) : student ? (
+                          <LinkButton
+                            size="sm"
+                            variant={fit?.verdict === "blocked" ? "secondary" : "primary"}
+                            href={`/students/${student.id}/applications?tab=apply&program=${r.id}`}
+                          >
+                            Apply
+                          </LinkButton>
+                        ) : (
+                          <span className="text-xs text-muted">Pick a student to apply</span>
+                        )}
+                        {student && canShortlist && (picked.has(r.id) || !shortlistFull) && (
+                          <ShortlistButton studentId={student.id} programId={r.id} on={picked.has(r.id)} />
+                        )}
+                      </div>
                     </Td>
                   </tr>
                 );

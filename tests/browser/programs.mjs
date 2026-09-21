@@ -87,6 +87,17 @@ if (await georgian.count()) {
   check(/Confirmed not eligible\s*[1-9]/.test(text) && /carry no post-study work/.test(text), "university page: warns when some programs lose work rights");
 } else bad("university page: could not find Mohawk in search");
 
+// The Mohawk trap: one program name, two campuses, opposite work rights.
+await go(pp, "/search?q=Mohawk");
+await pp.getByRole("link", { name: "Supply Chain Management", exact: true }).first().click();
+await pp.waitForURL(/\/programs\//);
+text = await main(pp);
+check(/Campus\s*Hamilton, Canada/.test(text), "program page: shows its own campus, not the university's last one");
+check(/Same program, different campus, different work rights/.test(text) && /Mississauga/.test(text), "program page: warns about the twin at the other campus");
+await go(pp, "/search?q=Mohawk");
+text = await main(pp);
+check(/Hamilton, Canada/.test(text) && /Mississauga, Canada/.test(text), "search: each Mohawk row shows its own campus");
+
 await pp.goto(`${BASE}/admin/programs/${programUrl.split("/").pop()}`);
 await pp.waitForURL(/\/forbidden/, { timeout: 10000 }).then(() => ok("admin edit: partners are kept out"), () => bad("admin edit: partners are kept out"));
 

@@ -4,10 +4,11 @@ import { and, asc, count, eq, ne } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { DOCUMENT_TYPES } from "@/db/statuses";
 import { requireUser } from "@/lib/auth";
-import { durationText, feeText, intakesText, LEVEL_LABEL, PATHWAY_LABEL } from "@/lib/catalogue";
+import { durationText, feeText, intakesText, LEVEL_LABEL, PATHWAY_LABEL, SHORTLIST_LIMIT } from "@/lib/catalogue";
 import { checkEligibility } from "@/lib/eligibility";
 import { fullName } from "@/lib/format";
-import { APP_ROLES, isAdmin, isStaff } from "@/lib/permissions";
+import { ADMIN_ROLES, APP_ROLES, isAdmin, isStaff } from "@/lib/permissions";
+import { ShortlistButton } from "@/components/shortlist-button";
 import { Alert, Button, Card, CardHeader, Chip, DataList, LinkButton, PageHeader, Select } from "@/components/ui";
 import { IconAlert, IconCheck, IconClock, IconGlobe } from "@/components/icons";
 
@@ -53,6 +54,23 @@ export default async function ProgramPage({
       .where(and(eq(schema.programs.universityId, university.id), eq(schema.programs.status, "LIVE"), ne(schema.programs.id, program.id))),
   ]);
 
+  // The Mohawk trap: the same program taught at two campuses, one with post-study
+  // work and one without. Anyone selling from the name alone sells the wrong one.
+  const base = (n: string) => n.replace(/\s*\(.*\)\s*$/, "").trim().toLowerCase();
+  const twins = (
+    await db.query.programs.findMany({
+      where: and(eq(schema.programs.universityId, university.id), eq(schema.programs.status, "LIVE"), ne(schema.programs.id, program.id)),
+      columns: { id: true, name: true, campus: true, workRights: true },
+    })
+  ).filter((x) => base(x.name) === base(program.name) && x.workRights !== program.workRights && x.campus !== program.campus);
+
+  const canShortlist = (["PARTNER", "COUNSELLOR", ...ADMIN_ROLES] as readonly string[]).includes(user.role);
+  const picks = student
+    ? await db.select({ programId: schema.shortlists.programId }).from(schema.shortlists).where(eq(schema.shortlists.studentId, student.id))
+    : [];
+  const shortlisted = picks.some((x) => x.programId === program.id);
+  const shortlistCount = picks.length;
+
   const fit = student ? checkEligibility({ backlogs: student.backlogs, gapYears: student.gapYears, tests: student.tests }, program) : null;
   const hasEnglish = program.minIelts != null || program.minPte != null || program.minOetGrade != null;
 
@@ -85,6 +103,16 @@ export default async function ProgramPage({
         </Alert>
       )}
 
+      {twins.map((t) => (
+        <Alert key={t.id} tone="warn" title="Same program, different campus, different work rights">
+          <Link href={`/programs/${t.id}`} className="font-medium underline">{t.name}</Link>
+          {t.campus ? ` at ${t.campus}` : ""} is{" "}
+          {t.workRights === "ELIGIBLE" ? "eligible for" : t.workRights === "INELIGIBLE" ? "not eligible for" : "not confirmed for"} post-study work, while this one
+          {program.campus ? ` at ${program.campus}` : ""} is{" "}
+          {program.workRights === "ELIGIBLE" ? "eligible" : program.workRights === "INELIGIBLE" ? "not eligible" : "not confirmed"}. Check which campus the student is applying to.
+        </Alert>
+      ))}
+
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-5">
           <Card>
@@ -92,7 +120,7 @@ export default async function ProgramPage({
             <DataList
               rows={[
                 { label: "University", value: university.name, href: `/universities/${university.id}` },
-                { label: "Location", value: `${university.city ? `${university.city}, ` : ""}${country.name}` },
+                { label: program.campus ? "Campus" : "Location", value: `${program.campus ?? university.city ? `${program.campus ?? university.city}, ` : ""}${country.name}` },
                 { label: "Pathway", value: PATHWAY_LABEL[program.pathway] ?? program.pathway },
                 { label: "Duration", value: durationText(program.durationMonths) },
                 { label: "Intakes", value: intakesText(program.intakeMonths) },
@@ -167,16 +195,25 @@ export default async function ProgramPage({
                 {program.status === "LIVE" && program.intakeMonths.length === 0 && (
                   <p className="mt-3 text-xs text-muted">No intake is recorded for this program yet, so an application cannot be opened. Ask the Overseas team to add one.</p>
                 )}
-                {program.status === "LIVE" && program.intakeMonths.length > 0 && (
-                  <LinkButton
-                    className="mt-3"
-                    size="sm"
-                    variant={fit.verdict === "blocked" ? "secondary" : "primary"}
-                    href={`/students/${student.id}/applications?tab=apply&program=${program.id}`}
-                  >
-                    Apply for {student.firstName}
-                  </LinkButton>
-                )}
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {program.status === "LIVE" && program.intakeMonths.length > 0 && (
+                    <LinkButton
+                      size="sm"
+                      variant={fit.verdict === "blocked" ? "secondary" : "primary"}
+                      href={`/students/${student.id}/applications?tab=apply&program=${program.id}`}
+                    >
+                      Apply for {student.firstName}
+                    </LinkButton>
+                  )}
+                  {canShortlist && program.status === "LIVE" && (shortlisted || shortlistCount < SHORTLIST_LIMIT) && (
+                    <ShortlistButton studentId={student.id} programId={program.id} on={shortlisted} labels={{ on: "Shortlisted ✓", off: "Add to shortlist" }} />
+                  )}
+                  {shortlistCount > 0 && (
+                    <Link href={`/students/${student.id}/shortlist`} className="text-xs font-medium text-brand-600 hover:underline">
+                      Compare {shortlistCount}
+                    </Link>
+                  )}
+                </div>
               </div>
             )}
           </Card>
@@ -190,7 +227,7 @@ export default async function ProgramPage({
               <ul className="divide-y divide-line">
                 {siblings.map((x) => (
                   <li key={x.id}>
-                    <Link href={`/programs/${x.id}`} className="block px-4 py-2.5 text-[13px] hover:bg-surface-2/60">
+                    <Link prefetch={false} href={`/programs/${x.id}`} className="block px-4 py-2.5 text-[13px] hover:bg-surface-2/60">
                       <span className="font-medium text-ink">{x.name}</span>
                       <span className="block text-xs text-muted">{LEVEL_LABEL[x.level] ?? x.level}{x.studyArea ? ` · ${x.studyArea}` : ""}</span>
                     </Link>

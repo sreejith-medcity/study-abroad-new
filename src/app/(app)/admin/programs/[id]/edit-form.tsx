@@ -13,6 +13,7 @@ export type EditableProgram = {
   pathway: string;
   status: string;
   studyArea: string | null;
+  campus: string | null;
   durationMonths: number | null;
   tuitionPerYear: number | null;
   applicationFee: number | null;
@@ -55,6 +56,7 @@ export function ProgramEditForm({ program, currency, docs }: { program: Editable
           <option value="NURSING">Nurse registration</option>
         </SelectField>
         <TextField label="Study area" name="studyArea" defaultValue={v(program.studyArea)} />
+        <TextField label="Campus" name="campus" defaultValue={v(program.campus)} hint="The town that teaches it, where the university has more than one" />
         <TextField label="Duration (months)" name="durationMonths" inputMode="numeric" defaultValue={v(program.durationMonths)} />
         <SelectField label="Status" name="status" required defaultValue={program.status} hint="Only live programs appear in partner search">
           <option value="LIVE">Live</option>

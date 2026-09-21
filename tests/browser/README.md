@@ -27,6 +27,7 @@ node tests/browser/dashboards.mjs
 | `golive.mjs` | The sample-data cleanup: what it lists, what it refuses, what survives |
 | `catalogue.mjs` | The catalogue at full size: paging, the count, a bulk publish across every match, and post-study work rights |
 | `programs.mjs` | The program and university pages, the admin edit screen and its rules, and that an unverified fee never reads as free |
+| `shortlist.mjs` | Shortlisting from search and a program page, the side by side comparison, removal, read-only roles and branch isolation |
 
 Screenshots land in `/tmp/smoke-*`. Each script exits non-zero if a check fails.
 

@@ -16,6 +16,7 @@ export default async function StudentLayout({ children, params }: { children: Re
   const student = await getStudentForUser(user, id);
   const [{ apps }] = await db.select({ apps: count() }).from(schema.applications).where(eq(schema.applications.studentId, id));
   const [{ docs }] = await db.select({ docs: count() }).from(schema.documents).where(eq(schema.documents.studentId, id));
+  const [{ picks }] = await db.select({ picks: count() }).from(schema.shortlists).where(eq(schema.shortlists.studentId, id));
 
   return (
     <div>
@@ -41,6 +42,7 @@ export default async function StudentLayout({ children, params }: { children: Re
             <StepTabs
               steps={[
                 { href: `/students/${id}/profile`, label: "Profile" },
+                { href: `/students/${id}/shortlist`, label: `Shortlist (${picks})`, done: picks > 0 },
                 { href: `/students/${id}/applications`, label: `Applications (${apps})`, done: apps > 0 },
                 { href: `/students/${id}/documents`, label: `Documents (${docs})`, done: docs > 0 },
               ]}

@@ -37,3 +37,6 @@ export function durationText(months: number | null | undefined) {
   if (months % 12 === 0) return `${months / 12} year${months === 12 ? "" : "s"}`;
   return `${months} months`;
 }
+
+/** Long enough to compare honestly, short enough that it is still a shortlist. */
+export const SHORTLIST_LIMIT = 12;
