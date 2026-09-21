@@ -67,6 +67,9 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
             // or a pathway can be reviewed and published as one batch.
             <form action={bulkStatusAction} className="flex flex-wrap items-center gap-2">
               {PROGRAM_FILTER_KEYS.map((k) => <input key={k} type="hidden" name={k} value={f[k] ?? ""} />)}
+              <a href={`/api/programs/export?${new URLSearchParams(Object.entries(f).filter(([k, v]) => v && (PROGRAM_FILTER_KEYS as readonly string[]).includes(k)))}`} className="mr-2 text-[13px] font-medium text-brand-600 hover:underline">
+                Export CSV
+              </a>
               <span className="text-[13px] text-muted">All {total} matching:</span>
               <Button name="to" value="LIVE" size="sm" variant="secondary">Publish</Button>
               <Button name="to" value="DRAFT" size="sm" variant="quiet">Back to draft</Button>

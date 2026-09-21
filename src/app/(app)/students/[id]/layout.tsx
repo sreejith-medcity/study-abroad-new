@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { count, eq } from "drizzle-orm";
+import { count, eq, ilike } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fullName } from "@/lib/format";
@@ -17,6 +17,11 @@ export default async function StudentLayout({ children, params }: { children: Re
   const [{ apps }] = await db.select({ apps: count() }).from(schema.applications).where(eq(schema.applications.studentId, id));
   const [{ docs }] = await db.select({ docs: count() }).from(schema.documents).where(eq(schema.documents.studentId, id));
   const [{ picks }] = await db.select({ picks: count() }).from(schema.shortlists).where(eq(schema.shortlists.studentId, id));
+  // The student's preferred destination is stored by name; search filters by code.
+  const preferred = student.preferredCountry
+    ? await db.query.countries.findFirst({ where: ilike(schema.countries.name, student.preferredCountry.trim()) })
+    : undefined;
+  const findHref = `/search?${new URLSearchParams({ student: id, ...(preferred ? { country: preferred.code } : {}) })}`;
 
   return (
     <div>
@@ -32,12 +37,15 @@ export default async function StudentLayout({ children, params }: { children: Re
           </div>
           <p className="mt-1 break-all text-muted">{student.email}</p>
           <p className="text-muted tabular">{student.phone}{student.whatsappOptIn && <span className="ml-2 text-xs text-emerald-700">WhatsApp on</span>}</p>
+          <Link href={findHref} data-print="hide" className="mt-2 inline-block text-[13px] font-medium text-brand-600 hover:underline">
+            Find programs for {student.firstName}{preferred ? ` in ${preferred.name}` : ""}
+          </Link>
           <p className="mt-2 text-xs text-muted">
             {isStaff(user) ? `${student.org.name} · ` : ""}Assigned to {student.assignedTo ? student.assignedTo.deskLabel ?? student.assignedTo.name : "nobody"}
             {student.consentAt ? " · Consent recorded" : " · No consent on file"}
           </p>
         </Card>
-        <Card className="flex items-center p-4">
+        <Card className="flex items-center p-4" data-print="hide">
           <div className="w-full">
             <StepTabs
               steps={[

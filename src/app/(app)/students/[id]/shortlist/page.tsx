@@ -10,6 +10,7 @@ import { ADMIN_ROLES, APP_ROLES } from "@/lib/permissions";
 import { getStudentForUser } from "@/server/queries";
 import { ShortlistButton } from "@/components/shortlist-button";
 import { Card, Chip, EmptyState, LinkButton, cn } from "@/components/ui";
+import { PrintButton } from "@/components/print-button";
 import { IconAlert, IconCheck, IconClock, IconSearch } from "@/components/icons";
 
 export const metadata = { title: "Shortlist" };
@@ -104,12 +105,15 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
     <Card>
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
         <div>
-          <h2 className="font-display text-[15px] font-semibold">Shortlist</h2>
+          <h2 className="font-display text-[15px] font-semibold">Shortlist<span data-print="only" className="font-normal"> for {student.firstName} {student.lastName}, prepared {fmtDate(new Date())}</span></h2>
           <p className="text-[13px] text-muted">
             {items.length} of {SHORTLIST_LIMIT} · blank figures have not been verified with the institution
           </p>
         </div>
-        {canEdit && items.length < SHORTLIST_LIMIT && <LinkButton size="sm" variant="secondary" href={searchHref}>Add from search</LinkButton>}
+        <div className="flex flex-wrap gap-2" data-print="hide">
+          <PrintButton />
+          {canEdit && items.length < SHORTLIST_LIMIT && <LinkButton size="sm" variant="secondary" href={searchHref}>Add from search</LinkButton>}
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-[13px]" style={{ minWidth: `${180 + cols.length * 240}px` }}>
@@ -135,7 +139,7 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
               </tr>
             ))}
             {canEdit && (
-              <tr className="border-t border-line">
+              <tr className="border-t border-line" data-print="hide">
                 <th className="sticky left-0 z-10 bg-surface" />
                 {cols.map(({ p }) => (
                   <td key={p.id} className="border-l border-line px-4 py-3 align-top">

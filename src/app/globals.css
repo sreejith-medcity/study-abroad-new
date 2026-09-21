@@ -164,3 +164,16 @@ h4,
 .grid > * {
   min-width: 0;
 }
+
+/* Printing: the shortlist comparison is handed to parents, so a printed page
+   carries the content only. Anything marked data-print="hide" drops out, as do
+   the app's own header and side navigation. */
+@media print {
+  header, aside, [data-print="hide"] { display: none !important; }
+  body { background: #fff !important; }
+  main { padding: 0 !important; }
+  .shadow-card { box-shadow: none !important; }
+  table { font-size: 11px; }
+  [data-print="only"] { display: revert !important; }
+}
+[data-print="only"] { display: none; }
