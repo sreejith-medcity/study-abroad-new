@@ -92,6 +92,13 @@
       "when": 1789754609024,
       "tag": "0012_work_rights",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1789976125200,
+      "tag": "0013_application_fee_unknown",
+      "breakpoints": true
     }
   ]
 }

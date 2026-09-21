@@ -159,7 +159,9 @@ export const programs = pgTable(
     studyArea: text("study_area"),
     durationMonths: integer("duration_months"),
     tuitionPerYear: integer("tuition_per_year"),
-    applicationFee: integer("application_fee").notNull().default(0),
+    // Null means nobody has verified the fee yet. Zero means the institution
+    // states there is no fee. The two must never be confused.
+    applicationFee: integer("application_fee"),
     initialDeposit: integer("initial_deposit"),
     intakeMonths: integer("intake_months").array().notNull().default(sql`'{}'::integer[]`),
     // Structured requirements: used by the pre-submission check and eligibility search

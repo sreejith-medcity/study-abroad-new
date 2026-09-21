@@ -7,6 +7,7 @@ import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { parseProgramCsv, type ImportError, type ImportRow } from "@/lib/program-import";
 import { ADMIN_ROLES } from "@/lib/permissions";
+import type { FormState } from "@/lib/form-state";
 
 export type ImportState = {
   error?: string;
@@ -138,4 +139,105 @@ export async function bulkStatusAction(formData: FormData) {
   await audit(user.id, "programs.bulk_status", "program", "*", { to, from: from || "any", country: country || "any", pathway: pathway || "any", count: changed.length });
   revalidatePath("/admin/programs");
   revalidatePath("/search");
+}
+
+const LEVELS = ["SCHOOL", "UG_DIPLOMA", "UG", "PG_DIPLOMA", "PG", "PHD", "VOCATIONAL", "REGISTRATION"] as const;
+const PATHWAYS = ["DEGREE", "AUSBILDUNG", "NURSING"] as const;
+const CEFR = ["A1", "A2", "B1", "B2", "C1", "C2"] as const;
+
+/** Reads an optional number field. Blank means "not recorded", which is not zero. */
+function optionalNumber(fd: FormData, name: string, errors: Record<string, string[]>, opts: { int?: boolean; min?: number; max?: number } = {}) {
+  const raw = String(fd.get(name) ?? "").trim().replace(/,/g, "");
+  if (!raw) return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || (opts.int && !Number.isInteger(n))) {
+    errors[name] = [opts.int ? "Enter a whole number, or leave it blank" : "Enter a number, or leave it blank"];
+    return null;
+  }
+  if ((opts.min != null && n < opts.min) || (opts.max != null && n > opts.max)) {
+    errors[name] = [`Must be between ${opts.min ?? "-"} and ${opts.max ?? "-"}`];
+    return null;
+  }
+  return n;
+}
+
+/**
+ * Edits one program. Kept deliberately close to the CSV import rules, so a row
+ * that could not be imported cannot be created by hand either.
+ */
+export async function updateProgramAction(_: FormState, fd: FormData): Promise<FormState> {
+  const user = await requireUser([...ADMIN_ROLES]);
+  const id = String(fd.get("programId") ?? "");
+  const current = await db.query.programs.findFirst({ where: eq(schema.programs.id, id) });
+  if (!current) return { error: "That program no longer exists." };
+
+  const errors: Record<string, string[]> = {};
+  const name = String(fd.get("name") ?? "").trim();
+  if (!name) errors.name = ["Enter the program name"];
+  const level = String(fd.get("level") ?? "") as (typeof LEVELS)[number];
+  if (!LEVELS.includes(level)) errors.level = ["Choose a level"];
+  const pathway = String(fd.get("pathway") ?? "") as (typeof PATHWAYS)[number];
+  if (!PATHWAYS.includes(pathway)) errors.pathway = ["Choose a pathway"];
+  const status = String(fd.get("status") ?? "") as "DRAFT" | "LIVE" | "ARCHIVED";
+  if (!["DRAFT", "LIVE", "ARCHIVED"].includes(status)) errors.status = ["Choose a status"];
+  const workRights = String(fd.get("workRights") ?? "") as "UNKNOWN" | "ELIGIBLE" | "INELIGIBLE";
+  if (!["UNKNOWN", "ELIGIBLE", "INELIGIBLE"].includes(workRights)) errors.workRights = ["Choose an answer"];
+  const workRightsNote = String(fd.get("workRightsNote") ?? "").trim() || null;
+  // A verdict without its evidence is exactly what this column exists to stop.
+  if (workRights !== "UNKNOWN" && !workRightsNote) errors.workRightsNote = ["Say where this comes from, for example the institution's page"];
+  const minGermanLevel = String(fd.get("minGermanLevel") ?? "").trim().toUpperCase() || null;
+  if (minGermanLevel && !CEFR.includes(minGermanLevel as (typeof CEFR)[number])) errors.minGermanLevel = ["Use A1 to C2"];
+  const minOetGrade = String(fd.get("minOetGrade") ?? "").trim().toUpperCase() || null;
+  if (minOetGrade && !["A", "B", "C+", "C", "D", "E"].includes(minOetGrade)) errors.minOetGrade = ["Use A, B, C+, C, D or E"];
+
+  const intakeMonths = fd.getAll("intake").map(Number).filter((m) => m >= 1 && m <= 12).sort((a, b) => a - b);
+  if (status === "LIVE" && !intakeMonths.length) errors.intake = ["A live program needs at least one intake, or nobody can apply"];
+  const docCodes = new Set((await db.select({ code: schema.documentTypes.code }).from(schema.documentTypes)).map((d) => d.code));
+  const requiredDocs = fd.getAll("doc").map(String).filter((d) => docCodes.has(d));
+
+  const values = {
+    name,
+    level,
+    pathway,
+    status,
+    studyArea: String(fd.get("studyArea") ?? "").trim() || null,
+    durationMonths: optionalNumber(fd, "durationMonths", errors, { int: true, min: 1, max: 120 }),
+    tuitionPerYear: optionalNumber(fd, "tuitionPerYear", errors, { int: true, min: 0 }),
+    applicationFee: optionalNumber(fd, "applicationFee", errors, { int: true, min: 0 }),
+    initialDeposit: optionalNumber(fd, "initialDeposit", errors, { int: true, min: 0 }),
+    intakeMonths,
+    minIelts: optionalNumber(fd, "minIelts", errors, { min: 0, max: 9 }),
+    minPte: optionalNumber(fd, "minPte", errors, { int: true, min: 10, max: 90 }),
+    minOetGrade,
+    minGermanLevel,
+    maxBacklogs: optionalNumber(fd, "maxBacklogs", errors, { int: true, min: 0 }),
+    maxGapYears: optionalNumber(fd, "maxGapYears", errors, { int: true, min: 0 }),
+    moiAccepted: fd.get("moiAccepted") === "on",
+    workRights,
+    workRightsNote,
+    requiredDocs,
+  };
+  if (Object.keys(errors).length) return { error: "Check the highlighted fields.", fieldErrors: errors };
+
+  // The import treats name plus university as the identity of a program, so two
+  // programs with the same name at one university would merge on the next import.
+  const clash = await db.query.programs.findFirst({
+    where: and(eq(schema.programs.name, name), eq(schema.programs.universityId, current.universityId)),
+  });
+  if (clash && clash.id !== current.id) return { error: "This university already has a program with that name.", fieldErrors: { name: ["Already used at this university"] } };
+
+  const changed: Record<string, { from: unknown; to: unknown }> = {};
+  for (const [k, v] of Object.entries(values)) {
+    const before = current[k as keyof typeof current];
+    if (JSON.stringify(before) !== JSON.stringify(v)) changed[k] = { from: before, to: v };
+  }
+  if (!Object.keys(changed).length) return { ok: "Nothing changed." };
+
+  await db.update(schema.programs).set({ ...values, updatedAt: new Date() }).where(eq(schema.programs.id, id));
+  await audit(user.id, "program.update", "program", id, { changed });
+  revalidatePath("/admin/programs");
+  revalidatePath(`/admin/programs/${id}`);
+  revalidatePath(`/programs/${id}`);
+  revalidatePath("/search");
+  return { ok: `Saved ${Object.keys(changed).length} change${Object.keys(changed).length === 1 ? "" : "s"}.` };
 }

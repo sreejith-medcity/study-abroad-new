@@ -63,7 +63,8 @@ export async function createApplicationAction(_: FormState, formData: FormData):
       intakeYear: year,
       statusId: first.id,
       createdById: user.id,
-      feeStatus: program.applicationFee > 0 ? "DUE" : "NOT_APPLICABLE",
+      // An unverified fee is treated as due, so someone confirms it before submission.
+      feeStatus: program.applicationFee === 0 ? "NOT_APPLICABLE" : "DUE",
     })
     .returning();
   await db.insert(schema.statusHistory).values({ applicationId: app.id, toStatusId: first.id, changedById: user.id });

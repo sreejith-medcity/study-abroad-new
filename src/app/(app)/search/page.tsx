@@ -6,23 +6,13 @@ import { checkEligibility, type Eligibility } from "@/lib/eligibility";
 import { fmtMoney, fullName, MONTHS } from "@/lib/format";
 import { APP_ROLES, isStaff } from "@/lib/permissions";
 import { readFilters } from "@/server/queries";
+import { intakesText, LEVEL_LABEL } from "@/lib/catalogue";
 import { Button, Card, Chip, EmptyState, Input, LinkButton, PageHeader, Select, Table, Td, Th, Toolbar, cn } from "@/components/ui";
 import { IconCheck, IconAlert, IconClock, IconGlobe, IconSearch, IconSpark } from "@/components/icons";
 
 export const metadata = { title: "Search programs" };
 
 const PAGE = 25;
-
-const LEVEL_LABEL: Record<string, string> = {
-  SCHOOL: "School",
-  UG_DIPLOMA: "Diploma",
-  UG: "Bachelor's",
-  PG_DIPLOMA: "PG diploma",
-  PG: "Master's",
-  PHD: "PhD",
-  VOCATIONAL: "Ausbildung",
-  REGISTRATION: "Registration route",
-};
 
 const QUICK = [
   { key: "noAppFee", label: "No application fee" },
@@ -80,6 +70,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       moiAccepted: p.moiAccepted,
       workRights: p.workRights,
       workRightsNote: p.workRightsNote,
+      universityId: u.id,
       university: u.name,
       city: u.city,
       isPublic: u.isPublic,
@@ -276,7 +267,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                 return (
                   <tr key={r.id} className="hover:bg-surface-2/60">
                     <Td>
-                      <p className="font-medium text-ink">{r.name}</p>
+                      <Link href={`/programs/${r.id}${student ? `?student=${student.id}` : ""}`} className="font-medium text-ink hover:text-brand-700 hover:underline">{r.name}</Link>
                       <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
                         <span>{LEVEL_LABEL[r.level] ?? r.level}</span>
                         {r.studyArea && <span>· {r.studyArea}</span>}
@@ -300,17 +291,17 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                       )}
                     </Td>
                     <Td>
-                      <p>{r.university}</p>
+                      <Link href={`/universities/${r.universityId}`} className="hover:text-brand-700 hover:underline">{r.university}</Link>
                       <p className="flex items-center gap-1 text-xs text-muted">
                         <IconGlobe className="size-3.5" /> {r.city ? `${r.city}, ` : ""}{r.country}
                         {r.isPublic && <Chip className="ml-1">Public</Chip>}
                       </p>
                     </Td>
-                    <Td className="whitespace-nowrap text-[13px]">{r.intakeMonths.map((m) => MONTHS[m - 1]).join(", ")}</Td>
+                    <Td className={cn("whitespace-nowrap text-[13px]", !r.intakeMonths.length && "text-muted")}>{intakesText(r.intakeMonths)}</Td>
                     <Td className="whitespace-nowrap tabular">
-                      {r.tuition ? fmtMoney(r.tuition, r.currency) : "No tuition fee"}
+                      {r.tuition ? fmtMoney(r.tuition, r.currency) : r.tuition === 0 ? "No tuition fee" : <span className="text-muted">Tuition not recorded</span>}
                       <p className="text-xs text-muted">
-                        {r.applicationFee > 0 ? `App. fee ${fmtMoney(r.applicationFee, r.currency)}` : "No application fee"}
+                        {r.applicationFee == null ? "App. fee not recorded" : r.applicationFee > 0 ? `App. fee ${fmtMoney(r.applicationFee, r.currency)}` : "No application fee"}
                         {r.deposit ? ` · deposit ${fmtMoney(r.deposit, r.currency)}` : ""}
                       </p>
                     </Td>
@@ -338,7 +329,9 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                       </Td>
                     )}
                     <Td>
-                      {student ? (
+                      {student && r.intakeMonths.length === 0 ? (
+                        <span className="text-xs text-muted">No intake recorded yet</span>
+                      ) : student ? (
                         <LinkButton
                           size="sm"
                           variant={fit?.verdict === "blocked" ? "secondary" : "primary"}

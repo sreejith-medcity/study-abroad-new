@@ -1,7 +1,8 @@
+import Link from "next/link";
 import { and, asc, count, eq, ilike, or } from "drizzle-orm";
 import { db, schema } from "@/db";
+import { feeText, intakesText } from "@/lib/catalogue";
 import { requireUser } from "@/lib/auth";
-import { fmtMoney, MONTHS } from "@/lib/format";
 import { readFilters } from "@/server/queries";
 import { Button, Card, Chip, EmptyState, Input, LinkButton, PageHeader, Select, Table, Td, Th } from "@/components/ui";
 import { bulkStatusAction, setProgramStatusAction } from "./actions";
@@ -99,11 +100,11 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
                 <tbody>
                   {rows.map((r) => (
                     <tr key={r.id}>
-                      <Td><p className="font-medium">{r.name}</p>{r.pathway !== "DEGREE" && <Chip tone="info">{r.pathway === "AUSBILDUNG" ? "Ausbildung" : "Nursing"}</Chip>}</Td>
+                      <Td><Link href={`/admin/programs/${r.id}`} className="font-medium hover:text-brand-700 hover:underline">{r.name}</Link>{r.pathway !== "DEGREE" && <Chip tone="info">{r.pathway === "AUSBILDUNG" ? "Ausbildung" : "Nursing"}</Chip>}</Td>
                       <Td>{r.university}<p className="text-xs text-muted">{r.country}</p></Td>
                       <Td>{r.level}</Td>
-                      <Td className="whitespace-nowrap">{r.intakeMonths.map((m) => MONTHS[m - 1]).join(", ")}</Td>
-                      <Td className="whitespace-nowrap tabular">{r.tuition ? fmtMoney(r.tuition, r.currency) : "None"}</Td>
+                      <Td className="whitespace-nowrap">{intakesText(r.intakeMonths)}</Td>
+                      <Td className="whitespace-nowrap tabular">{feeText(r.tuition, r.currency, { zero: "No tuition fee" })}</Td>
                       <Td>
                         <div className="flex max-w-64 flex-wrap gap-1">
                           {r.minIelts && <Chip>IELTS {r.minIelts}</Chip>}{r.minPte && <Chip>PTE {r.minPte}</Chip>}{r.minOet && <Chip>OET {r.minOet}</Chip>}

@@ -90,7 +90,7 @@ async function ApplyPanel({ studentId, defaultPathway, preselectProgramId }: { s
     country: p.university.country.name,
     pathway: p.pathway,
     intakeMonths: p.intakeMonths,
-    tuition: p.tuitionPerYear ? `${fmtMoney(p.tuitionPerYear, p.university.country.currency)}/yr` : "No tuition fee",
+    tuition: p.tuitionPerYear ? `${fmtMoney(p.tuitionPerYear, p.university.country.currency)}/yr` : p.tuitionPerYear === 0 ? "No tuition fee" : "Tuition not recorded",
     requirements: [
       p.minIelts && `IELTS ${p.minIelts}`,
       p.minPte && `PTE ${p.minPte}`,
@@ -149,7 +149,7 @@ async function ApplicationDetail({ appId, studentId, channel, canProcess, canChe
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-line pt-3">
           <span className="text-muted">Application fee:</span>
-          {app.feeStatus === "NOT_APPLICABLE" ? <Chip tone="ok">No application fee</Chip> : app.feeStatus === "PAID" ? <Chip tone="ok">Paid {fmtMoney(app.program.applicationFee, currency)}</Chip> : <Chip tone="warn">Due {fmtMoney(app.program.applicationFee, currency)}</Chip>}
+          {app.feeStatus === "NOT_APPLICABLE" ? <Chip tone="ok">No application fee</Chip> : app.feeStatus === "PAID" ? <Chip tone="ok">Paid{app.program.applicationFee != null ? ` ${fmtMoney(app.program.applicationFee, currency)}` : ""}</Chip> : app.program.applicationFee == null ? <Chip tone="warn">Fee to confirm</Chip> : <Chip tone="warn">Due {fmtMoney(app.program.applicationFee, currency)}</Chip>}
           {app.feeStatus === "DUE" && canProcess && (
             <form action={markFeePaidAction}><input type="hidden" name="applicationId" value={app.id} /><Button variant="quiet" className="py-1 text-xs">Mark paid</Button></form>
           )}

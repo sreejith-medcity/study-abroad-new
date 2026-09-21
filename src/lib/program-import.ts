@@ -42,7 +42,7 @@ export type ImportRow = {
   studyArea: string | null;
   durationMonths: number | null;
   tuitionPerYear: number | null;
-  applicationFee: number;
+  applicationFee: number | null;
   initialDeposit: number | null;
   intakeMonths: number[];
   minIelts: number | null;
@@ -124,7 +124,7 @@ export function parseProgramCsv(text: string, validDocCodes: string[]): { rows: 
       studyArea: r.study_area?.trim() || null,
       durationMonths: num(r.duration_months, "duration_months", e, { int: true }),
       tuitionPerYear: num(r.tuition_per_year, "tuition_per_year", e, { int: true }),
-      applicationFee: num(r.application_fee, "application_fee", e, { int: true }) ?? 0,
+      applicationFee: num(r.application_fee, "application_fee", e, { int: true }),
       initialDeposit: num(r.initial_deposit, "initial_deposit", e, { int: true }),
       intakeMonths,
       minIelts: num(r.min_ielts, "min_ielts", e),

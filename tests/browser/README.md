@@ -26,6 +26,7 @@ node tests/browser/dashboards.mjs
 | `artwork.mjs` | The logo and favicon uploader, what it serves, and who may change it |
 | `golive.mjs` | The sample-data cleanup: what it lists, what it refuses, what survives |
 | `catalogue.mjs` | The catalogue at full size: paging, the count, a bulk publish across every match, and post-study work rights |
+| `programs.mjs` | The program and university pages, the admin edit screen and its rules, and that an unverified fee never reads as free |
 
 Screenshots land in `/tmp/smoke-*`. Each script exits non-zero if a check fails.
 
