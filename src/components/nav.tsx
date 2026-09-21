@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { cn } from "./ui";
 import {
   IconApplications,
+  IconBuilding,
   IconCommission,
   IconDashboard,
   IconEnquiry,
@@ -41,6 +42,7 @@ const ICONS = {
   shield: IconShield,
   settings: IconSettings,
   spark: IconSpark,
+  universities: IconBuilding,
 } as const;
 
 export type NavItem = { href: string; label: string; icon: keyof typeof ICONS; soon?: string };

@@ -28,6 +28,7 @@ node tests/browser/dashboards.mjs
 | `catalogue.mjs` | The catalogue at full size: paging, the count, a bulk publish across every match, and post-study work rights |
 | `cricos.mjs` | The full CRICOS register through the admin upload, a bulk publish of 25,889 drafts, a second sync, and the partner screens at 27,000 programs (needs `CRICOS_DIR`) |
 | `scholarships.mjs` | Adding a scholarship and its rules, where it shows, the search filter, and pausing it |
+| `universities.mjs` | The universities index: destination, level and name filters, sorting by size, and the links to each university and its programs |
 | `programs.mjs` | The program and university pages, the admin edit screen and its rules, and that an unverified fee never reads as free |
 | `shortlist.mjs` | Shortlisting from search and a program page, the side by side comparison, removal, read-only roles and branch isolation |
 
