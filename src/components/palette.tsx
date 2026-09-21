@@ -6,13 +6,15 @@ import { cn } from "./ui";
 import { IconSearch } from "./icons";
 import type { NavGroup } from "./nav";
 
-type Hit = { kind: "student" | "application" | "partner"; label: string; hint: string; href: string };
+type Hit = { kind: "student" | "application" | "partner" | "university" | "program"; label: string; hint: string; href: string };
 type Row = { key: string; label: string; hint: string; href: string; group: string };
 
 const KIND_GROUP: Record<Hit["kind"], string> = {
   student: "Students",
   application: "Applications",
   partner: "Partners",
+  university: "Universities",
+  program: "Programs",
 };
 
 /**
@@ -153,7 +155,7 @@ export function CommandPalette({ groups }: { groups: NavGroup[] }) {
                 go(rows[cursor]);
               }
             }}
-            placeholder="Search a student, an acknowledgement number, or a screen"
+            placeholder="Search a student, a program, a university or a screen"
             className="w-full bg-transparent py-3.5 text-[15px] outline-none focus-visible:outline-none placeholder:text-muted/70"
           />
           {busy && <span className="size-3.5 shrink-0 animate-spin rounded-full border-2 border-line border-t-brand-600" aria-hidden="true" />}

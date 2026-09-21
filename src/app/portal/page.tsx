@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { fmtDate, intakeLabel } from "@/lib/format";
+import { fmtDate, fmtMoney, intakeLabel } from "@/lib/format";
 import { translator } from "@/lib/i18n";
-import { requireStudent, studentApplications, studentDocuments, studentTimeline } from "@/server/portal";
+import { requireStudent, studentApplications, studentDocuments, studentShortlist, studentTimeline } from "@/server/portal";
 import { Card, CardHeader, Chip, EmptyState, StatusBadge } from "@/components/ui";
 import { IconApplications, IconCheck, IconClock, IconDoc } from "@/components/icons";
 
@@ -10,10 +10,15 @@ export default async function PortalHome() {
   const t = translator(locale);
 
   const apps = await studentApplications(student.id, locale);
-  const [timeline, docs] = await Promise.all([
+  const [timeline, docs, shortlist] = await Promise.all([
     studentTimeline(apps.map((a) => a.id), locale),
     studentDocuments(student.id, [...new Set(apps.flatMap((a) => a.requiredDocs ?? []))], locale),
+    studentShortlist(student.id),
   ]);
+  // Localised here rather than with the staff helpers, so a Malayalam reader
+  // never meets "whole course" or "Not recorded" in English.
+  const fee = (x: (typeof shortlist)[number]) =>
+    x.tuitionPerYear ? `${fmtMoney(x.tuitionPerYear, x.currency)} ${t("perYear")}` : x.tuitionTotal ? `${fmtMoney(x.tuitionTotal, x.currency)} ${t("wholeCourse")}` : t("notConfirmed");
 
   return (
     <div className="space-y-5">
@@ -106,6 +111,30 @@ export default async function PortalHome() {
           })
         )}
       </section>
+
+      {shortlist.length > 0 && (
+        <section className="space-y-3">
+          <div>
+            <h2 className="font-display text-[15px] font-semibold text-ink">{t("shortlistTitle")}</h2>
+            <p className="text-[13px] text-muted">{t("shortlistNote")}</p>
+          </div>
+          <Card>
+            <ul className="divide-y divide-line">
+              {shortlist.map((x) => (
+                <li key={x.id} className="px-4 py-3">
+                  <p className="font-medium text-ink">{x.name}</p>
+                  <p className="text-[13px] text-muted">{x.university}{x.campus ? `, ${x.campus}` : ""} · {x.country}</p>
+                  <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[13px]">
+                    <span><span className="text-muted">{t("tuition")}:</span> {fee(x)}</span>
+                    {x.durationMonths && <span><span className="text-muted">{t("duration")}:</span> {x.durationMonths} {t("months")}</span>}
+                    {x.workRights === "ELIGIBLE" && <Chip tone="ok">{t("postStudyWork")}</Chip>}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </section>
+      )}
 
       <Card className="p-4">
         <h2 className="flex items-center gap-1.5 font-display text-[15px] font-semibold">

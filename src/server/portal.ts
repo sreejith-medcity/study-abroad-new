@@ -133,3 +133,32 @@ export async function studentThread(applicationIds: string[]) {
     .orderBy(asc(cm.createdAt))
     .limit(200);
 }
+
+/**
+ * What the counsellor has shortlisted for the student, minus anything already
+ * applied for and anything no longer open. Read-only in the portal.
+ */
+export async function studentShortlist(studentId: string) {
+  const rows = await db.query.shortlists.findMany({
+    where: eq(schema.shortlists.studentId, studentId),
+    orderBy: asc(schema.shortlists.createdAt),
+    with: { program: { with: { university: { with: { country: true } } } } },
+  });
+  const applied = new Set(
+    (await db.select({ programId: schema.applications.programId }).from(schema.applications).where(eq(schema.applications.studentId, studentId))).map((a) => a.programId),
+  );
+  return rows
+    .filter((r) => r.program.status === "LIVE" && !applied.has(r.programId))
+    .map((r) => ({
+      id: r.programId,
+      name: r.program.name,
+      university: r.program.university.name,
+      country: r.program.university.country.name,
+      campus: r.program.campus,
+      currency: r.program.university.country.currency,
+      tuitionPerYear: r.program.tuitionPerYear,
+      tuitionTotal: r.program.tuitionTotal,
+      durationMonths: r.program.durationMonths,
+      workRights: r.program.workRights,
+    }));
+}

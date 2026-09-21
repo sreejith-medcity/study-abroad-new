@@ -6,7 +6,7 @@ import { isStaff, orgScope } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
-export type PaletteHit = { kind: "student" | "application" | "partner"; label: string; hint: string; href: string };
+export type PaletteHit = { kind: "student" | "application" | "partner" | "university" | "program"; label: string; hint: string; href: string };
 
 /**
  * Feeds the command palette. Deliberately small: a few students, applications by
@@ -21,9 +21,9 @@ export async function GET(request: Request) {
   const q = (new URL(request.url).searchParams.get("q") ?? "").trim();
   if (q.length < 2) return NextResponse.json({ hits: [] });
   const like = `%${q}%`;
-  const { students: s, applications: a, organizations: og, statusDefinitions: sd } = schema;
+  const { students: s, applications: a, organizations: og, statusDefinitions: sd, universities: un, programs: pr, countries: co } = schema;
 
-  const [students, applications, partners] = await Promise.all([
+  const [students, applications, partners, universities, programs] = await Promise.all([
     db
       .select({ id: s.id, firstName: s.firstName, lastName: s.lastName, phone: s.phone, city: s.city })
       .from(s)
@@ -44,6 +44,22 @@ export async function GET(request: Request) {
     isStaff(user)
       ? db.select({ id: og.id, name: og.name, city: og.city }).from(og).where(ilike(og.name, like)).limit(4)
       : Promise.resolve([]),
+    // The catalogue is open to every signed-in role, so it is not org-scoped. A
+    // university only shows when it has something live, as on its own page.
+    db
+      .select({ id: un.id, name: un.name, country: co.name })
+      .from(un)
+      .innerJoin(co, eq(un.countryId, co.id))
+      .where(and(ilike(un.name, like), sql`exists (select 1 from programs p where p.university_id = ${un.id} and p.status = 'LIVE')`))
+      .orderBy(asc(un.name))
+      .limit(4),
+    db
+      .select({ id: pr.id, name: pr.name, university: un.name, campus: pr.campus })
+      .from(pr)
+      .innerJoin(un, eq(pr.universityId, un.id))
+      .where(and(eq(pr.status, "LIVE"), ilike(pr.name, like)))
+      .orderBy(asc(pr.name))
+      .limit(5),
   ]);
 
   const hits: PaletteHit[] = [
@@ -65,6 +81,8 @@ export async function GET(request: Request) {
       hint: r.city ?? "Partner",
       href: `/admin/partners#org-${r.id}`,
     })),
+    ...universities.map((r) => ({ kind: "university" as const, label: r.name, hint: r.country, href: `/universities/${r.id}` })),
+    ...programs.map((r) => ({ kind: "program" as const, label: r.name, hint: r.campus ? `${r.university}, ${r.campus}` : r.university, href: `/programs/${r.id}` })),
   ];
 
   return NextResponse.json({ hits });

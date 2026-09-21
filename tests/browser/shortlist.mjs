@@ -98,7 +98,26 @@ const option2 = await (await go(pp, "/search"), pp.locator('select[name="student
 text = await go(pp, `/students/${option2}/shortlist`);
 check(/Nothing shortlisted yet/.test(text) && /Search programs for this student/.test(text), "empty shortlist: explains how to add");
 
-for (const [who, e] of [["partner", partner.errors], ["management", mgmt.errors]]) check(e.length === 0, `${who}: no page errors or 500s ${e.slice(0, 3).join(" | ")}`);
+// The student sees what the counsellor shortlisted, read-only, in their own language.
+const fathimaId = await (await go(pp, "/search"), pp.locator('select[name="student"] option', { hasText: "Fathima Rahman" }).getAttribute("value"));
+await go(pp, `/search?q=Mohawk&student=${fathimaId}`);
+await pp.waitForLoadState("networkidle");
+await pp.getByRole("button", { name: "Shortlist", exact: true }).first().click();
+await waitText(pp, /Shortlisted ✓/);
+const student = await signIn("fathima.rahman@example.com", "10.80.1.4");
+await student.page.waitForURL(/\/portal/, { timeout: 15000 }).catch(() => {});
+await student.page.getByRole("button", { name: "English" }).click();
+await student.page.waitForTimeout(1500);
+text = await student.page.locator("main").innerText();
+check(/Programs your counsellor is considering/.test(text) && /Supply Chain Management/.test(text), "portal: the student sees the shortlist");
+check(/Work after study possible/.test(text), "portal: work rights read in plain words");
+await student.page.getByRole("button", { name: "മലയാളം" }).click();
+await student.page.waitForTimeout(1500);
+text = await student.page.locator("main").innerText();
+check(/കൗൺസലർ പരിഗണിക്കുന്ന കോഴ്സുകൾ/.test(text) && !/whole course|Not recorded/.test(text), "portal: the shortlist reads in Malayalam");
+await student.page.screenshot({ path: `${OUT}/portal-ml.png`, fullPage: true });
+
+for (const [who, e] of [["partner", partner.errors], ["management", mgmt.errors], ["student", student.errors]]) check(e.length === 0, `${who}: no page errors or 500s ${e.slice(0, 3).join(" | ")}`);
 await browser.close();
 if (fails.length) { console.log(`\n${fails.length} failed`); process.exit(1); }
 console.log("\nall passed");
