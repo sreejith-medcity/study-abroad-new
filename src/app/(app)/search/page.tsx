@@ -8,6 +8,7 @@ import { ADMIN_ROLES, APP_ROLES, isStaff } from "@/lib/permissions";
 import { ShortlistButton } from "@/components/shortlist-button";
 import { readFilters } from "@/server/queries";
 import { fxRates, getSettings } from "@/server/settings";
+import { notBlockedWhere } from "@/server/eligibility-sql";
 import { hasOpenScholarship } from "@/server/scholarships";
 import { LEVEL_LABEL, SHORTLIST_LIMIT, inrApprox, intakesText, tuitionText } from "@/lib/catalogue";
 import { Button, Card, Chip, EmptyState, Input, LinkButton, PageHeader, Select, Table, Td, Th, Toolbar, cn } from "@/components/ui";
@@ -77,6 +78,11 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   // partner filtering on this is telling a student the work rights are there.
   if (f.workRights) conds.push(eq(p.workRights, "ELIGIBLE"));
   if (f.scholarship) conds.push(hasOpenScholarship);
+  const student = f.student
+    ? await db.query.students.findFirst({ where: and(eq(s.id, f.student), isStaff(user) ? undefined : eq(s.orgId, user.orgId)), with: { tests: true } })
+    : null;
+  // Hide what the student cannot meet yet; on-track programs stay.
+  if (student && f.fit) conds.push(notBlockedWhere(student));
   const where = and(...conds);
 
   const rows = await db
@@ -150,9 +156,6 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     .orderBy(asc(s.firstName))
     .limit(300);
 
-  const student = f.student
-    ? await db.query.students.findFirst({ where: and(eq(s.id, f.student), isStaff(user) ? undefined : eq(s.orgId, user.orgId)), with: { tests: true } })
-    : null;
 
   const canShortlist = (["PARTNER", "COUNSELLOR", ...ADMIN_ROLES] as readonly string[]).includes(user.role);
   const picked = student
@@ -200,6 +203,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             .map(([k, v]) => (
               <input key={k} type="hidden" name={k} value={v} />
             ))}
+          {f.fit && <input type="hidden" name="fit" value="1" />}
           <div className="relative sm:col-span-2">
             <IconSearch className="pointer-events-none absolute left-3 top-1/2 size-[18px] -translate-y-1/2 text-muted" />
             <Input name="q" defaultValue={f.q} placeholder="Program, university or study area" aria-label="Search" className="pl-10" />
@@ -305,6 +309,11 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           </p>
           <p className="mt-1 text-[13px] text-muted">
             Practice scores come from Medcity&apos;s own test platform, so a student still in class shows as on track rather than blocked.
+          </p>
+          <p className="mt-2 text-[13px]">
+            <Link prefetch={false} href={`/search?${qs({ fit: f.fit ? undefined : "1" })}`} className="font-medium text-brand-600 hover:underline">
+              {f.fit ? "Show every program again" : `Hide programs ${student.firstName} cannot meet yet`}
+            </Link>
           </p>
         </Card>
       )}

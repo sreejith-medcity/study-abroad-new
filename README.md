@@ -102,6 +102,7 @@ All seeded users share the password `Password@123`. Every person, university and
 | `npm run typecheck` | TypeScript check |
 | `npm run lint` | ESLint |
 | `npm test` | Unit tests (pre-submission rules, CSV import, formatting, the role matrix, commission arithmetic) |
+| `DATABASE_URL=... npx tsx tests/db/eligibility-sql.ts` | Checks that the search filter for what a student can meet agrees with the per-row verdict on every program in that database |
 | `npm run db:generate` | Create a migration after changing `src/db/schema.ts` |
 | `npm run db:migrate` | Apply migrations |
 | `npm run db:seed` | Reset and load sample data |

@@ -48,6 +48,16 @@ const option = pp.locator('select[name="student"] option', { hasText: "Arathi Kr
 const studentId = await option.getAttribute("value");
 check(!!studentId, "search: the student is in the selector");
 
+// Hiding what the student cannot meet yet: fewer rows, and none marked "Not yet".
+{
+  const n = (t) => Number((t.match(/([\d,]+) live programs?/) || [])[1]?.replace(/,/g, ""));
+  const everything = n(await go(pp, `/search?student=${studentId}`));
+  const href = await pp.getByRole("link", { name: /^Hide programs .* cannot meet yet$/ }).getAttribute("href");
+  check(/fit=1/.test(href ?? ""), "search: the student card offers to hide what they cannot meet");
+  const fitText = await go(pp, href);
+  const fit = n(fitText);
+  check(fit > 0 && fit < everything && !/Not yet/.test(fitText), `search: hiding what the student cannot meet yet (${fit} of ${everything})`);
+}
 let text = await go(pp, `/search?q=Hull&student=${studentId}`);
 // The buttons are client components; a click before hydration does nothing.
 await pp.waitForLoadState("networkidle");

@@ -82,3 +82,30 @@ export function checkEligibility(student: EligibilityInput, program: Eligibility
   const verdict = missing.length ? "blocked" : onTrack.length ? "on-track" : met.length ? "eligible" : "unknown";
   return { verdict, met, missing, onTrack };
 }
+
+/**
+ * The student's best result per test, as the SQL filter below needs them.
+ * Official and practice results are kept apart, exactly as checkEligibility
+ * reads them.
+ */
+export function bestScores(tests: EligibilityInput["tests"]) {
+  const top = (test: string, official: boolean) => {
+    const values = best(tests, test, official).map(Number).filter((n) => !Number.isNaN(n));
+    return values.length ? Math.max(...values) : null;
+  };
+  const rank = (scale: string[], test: string, official: boolean) => {
+    const idx = best(tests, test, official).map((g) => scale.indexOf(g)).filter((i) => i >= 0);
+    return idx.length ? Math.max(...idx) : null;
+  };
+  return {
+    ielts: top("IELTS", true),
+    pte: top("PTE", true),
+    ieltsMock: top("IELTS", false),
+    // Practice grades count as on track, so the higher of the two decides.
+    oet: Math.max(rank(OET, "OET", true) ?? -1, rank(OET, "OET", false) ?? -1),
+    german: Math.max(rank(CEFR, "GERMAN", true) ?? -1, rank(CEFR, "GERMAN", false) ?? -1),
+  };
+}
+
+export const OET_SCALE = OET;
+export const CEFR_SCALE = CEFR;
