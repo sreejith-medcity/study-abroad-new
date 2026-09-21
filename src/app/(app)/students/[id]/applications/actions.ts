@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
@@ -76,7 +75,7 @@ export async function createApplicationAction(_: FormState, formData: FormData):
 
   await notifyUsers(await adminIds(), `New application ${ackNo}`, `${student.firstName} ${student.lastName}: ${program.name}, ${program.university.name}${program.intakeMonths.length ? "" : ". Intake not on record: confirm it with the institution"}`, `/students/${student.id}/applications?app=${app.id}`);
   await audit(user.id, "application.create", "application", app.id, { programId: program.id, intake: `${month}/${year}` });
-  redirect(`/students/${student.id}/applications?app=${app.id}`);
+  return { redirectTo: `/students/${student.id}/applications?app=${app.id}` };
 }
 
 export async function changeStatusAction(_: FormState, formData: FormData): Promise<FormState> {

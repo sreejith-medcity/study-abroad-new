@@ -12,4 +12,10 @@ export type FormState = {
    * as a one-time password. Shown as a panel they dismiss, never as a toast.
    */
   keep?: boolean;
+  /**
+   * Where the browser goes next. Used instead of redirect() where the target is
+   * the same page with other search params: a redirect there could leave the
+   * form stuck on its pending label after the server had already saved.
+   */
+  redirectTo?: string;
 };

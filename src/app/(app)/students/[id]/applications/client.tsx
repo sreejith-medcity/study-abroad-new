@@ -39,16 +39,17 @@ export function ApplyForm({
   const intakes = useMemo(() => {
     if (!program) return [];
     const now = new Date();
-    const out: { value: string; label: string }[] = [];
+    const out: { value: string; label: string; order: number }[] = [];
     // No intakes on record (the CRICOS register has none) is not the same as no
     // intakes: every month is offered and the team confirms it with the institution.
     const months = program.intakeMonths.length ? program.intakeMonths : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
     for (let y = now.getFullYear(); y <= now.getFullYear() + 2; y++) {
       for (const m of months) {
-        if (new Date(y, m - 1, 1) > now) out.push({ value: `${y}-${m}`, label: `${MONTHS[m - 1]} ${y}` });
+        if (new Date(y, m - 1, 1) > now) out.push({ value: `${y}-${m}`, label: `${MONTHS[m - 1]} ${y}`, order: y * 100 + m });
       }
     }
-    return out.sort((a, b) => (a.value < b.value ? -1 : 1));
+    // By date, not by the value string: "2027-10" sorts before "2027-2" as text.
+    return out.sort((a, b) => a.order - b.order);
   }, [program]);
 
   const label = (p: ProgramOption) => `${p.name} · ${p.university}, ${p.country}`;

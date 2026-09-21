@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, startTransition, useActionState, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { Alert, Button, cn } from "./ui";
 import { toast } from "./toast";
 
@@ -32,6 +33,10 @@ export function ActionForm({
   const [state, formAction, pending] = useActionState<FormState, FormData>(action, {});
   const [dismissed, setDismissed] = useState(false);
   const ref = useRef<HTMLFormElement>(null);
+  const router = useRouter();
+  useEffect(() => {
+    if (state.redirectTo) router.push(state.redirectTo);
+  }, [state, router]);
   useEffect(() => {
     if (!state.ok) return;
     if (resetOnSuccess) ref.current?.reset();
@@ -57,8 +62,8 @@ export function ActionForm({
         {children}
         {!hideSubmit && (
           <div>
-            <Button type="submit" variant={submitVariant} disabled={pending}>
-              {pending ? pendingLabel : submitLabel}
+            <Button type="submit" variant={submitVariant} disabled={pending || !!state.redirectTo}>
+              {pending || state.redirectTo ? pendingLabel : submitLabel}
             </Button>
           </div>
         )}
