@@ -120,6 +120,13 @@
       "when": 1790013278071,
       "tag": "0016_cricos",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1790016271973,
+      "tag": "0017_scholarships",
+      "breakpoints": true
     }
   ]
 }

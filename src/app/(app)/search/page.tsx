@@ -7,6 +7,7 @@ import { fmtMoney, fullName, MONTHS } from "@/lib/format";
 import { ADMIN_ROLES, APP_ROLES, isStaff } from "@/lib/permissions";
 import { ShortlistButton } from "@/components/shortlist-button";
 import { readFilters } from "@/server/queries";
+import { hasOpenScholarship } from "@/server/scholarships";
 import { LEVEL_LABEL, SHORTLIST_LIMIT, intakesText, tuitionText } from "@/lib/catalogue";
 import { Button, Card, Chip, EmptyState, Input, LinkButton, PageHeader, Select, Table, Td, Th, Toolbar, cn } from "@/components/ui";
 import { IconCheck, IconAlert, IconClock, IconGlobe, IconSearch, IconSpark } from "@/components/icons";
@@ -23,6 +24,7 @@ const QUICK = [
   { key: "ausbildung", label: "Ausbildung" },
   { key: "nursing", label: "Nurse registration" },
   { key: "workRights", label: "Post-study work" },
+  { key: "scholarship", label: "Scholarship available" },
 ] as const;
 
 export default async function SearchPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -49,6 +51,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   // Only programmes the institution itself confirms, never the unknowns. A
   // partner filtering on this is telling a student the work rights are there.
   if (f.workRights) conds.push(eq(p.workRights, "ELIGIBLE"));
+  if (f.scholarship) conds.push(hasOpenScholarship);
   const where = and(...conds);
 
   const rows = await db

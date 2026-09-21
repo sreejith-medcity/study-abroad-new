@@ -1,6 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import {
   boolean,
+  date,
   index,
   integer,
   jsonb,
@@ -667,6 +668,35 @@ export const resources = pgTable(
   (t) => [index("resources_kind_idx").on(t.kind, t.published)],
 );
 
+// ---------- Scholarships ----------
+
+/**
+ * Scholarships the Overseas team has verified on an institution's own page.
+ * The amount is kept as the institution words it ("20% of first-year
+ * tuition", "CAD 5,000"), and every entry carries the page it came from.
+ */
+export const scholarships = pgTable(
+  "scholarships",
+  {
+    id: id(),
+    universityId: text("university_id")
+      .notNull()
+      .references(() => universities.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    amount: text("amount").notNull(),
+    // Empty means every level the university teaches.
+    levels: studyLevel("levels").array().notNull().default(sql`'{}'`),
+    eligibility: text("eligibility"),
+    deadline: date("deadline"),
+    url: text("url").notNull(),
+    active: boolean("active").notNull().default(true),
+    createdById: text("created_by_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("scholarships_university_idx").on(t.universityId)],
+);
+
 // ---------- Enquiries ----------
 
 export const enquiries = pgTable(
@@ -755,6 +785,11 @@ export const countriesRelations = relations(countries, ({ many }) => ({
 export const universitiesRelations = relations(universities, ({ one, many }) => ({
   country: one(countries, { fields: [universities.countryId], references: [countries.id] }),
   programs: many(programs),
+  scholarships: many(scholarships),
+}));
+
+export const scholarshipsRelations = relations(scholarships, ({ one }) => ({
+  university: one(universities, { fields: [scholarships.universityId], references: [universities.id] }),
 }));
 
 export const programsRelations = relations(programs, ({ one, many }) => ({

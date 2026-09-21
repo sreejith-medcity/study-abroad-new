@@ -5,6 +5,8 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { LEVEL_LABEL, durationText, feeText, intakesText, tuitionText } from "@/lib/catalogue";
 import { APP_ROLES, isStaff } from "@/lib/permissions";
+import { openScholarships } from "@/server/scholarships";
+import { ScholarshipList } from "@/components/scholarship-list";
 import { Card, CardHeader, Chip, DataList, EmptyState, PageHeader, Table, Td, Th, cn } from "@/components/ui";
 import { IconAlert, IconCheck, IconPrograms } from "@/components/icons";
 
@@ -36,6 +38,7 @@ export default async function UniversityPage({
   if (!all.length && !isStaff(user)) notFound();
 
   const live = all.filter((p) => p.status === "LIVE");
+  const scholarships = await openScholarships(university.id);
   const levels = LEVEL_ORDER.filter((l) => all.some((p) => p.level === l));
   const matching = levelFilter ? all.filter((p) => p.level === levelFilter) : all;
   const PER_PAGE = 100;
@@ -132,7 +135,8 @@ export default async function UniversityPage({
           )}
         </Card>
 
-        <Card className="self-start">
+        <div className="space-y-5 self-start">
+        <Card>
           <CardHeader title="Summary" subtitle="Live programs only" />
           <DataList
             rows={[
@@ -157,6 +161,8 @@ export default async function UniversityPage({
             </p>
           )}
         </Card>
+        <ScholarshipList rows={scholarships} />
+        </div>
       </div>
     </>
   );

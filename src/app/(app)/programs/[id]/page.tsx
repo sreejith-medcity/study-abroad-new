@@ -8,6 +8,8 @@ import { durationText, feeText, intakesText, LEVEL_LABEL, PATHWAY_LABEL, SHORTLI
 import { checkEligibility } from "@/lib/eligibility";
 import { fullName } from "@/lib/format";
 import { ADMIN_ROLES, APP_ROLES, isAdmin, isStaff } from "@/lib/permissions";
+import { openScholarships } from "@/server/scholarships";
+import { ScholarshipList } from "@/components/scholarship-list";
 import { ShortlistButton } from "@/components/shortlist-button";
 import { Alert, Button, Card, CardHeader, Chip, DataList, LinkButton, PageHeader, Select } from "@/components/ui";
 import { IconAlert, IconCheck, IconClock, IconGlobe } from "@/components/icons";
@@ -70,6 +72,8 @@ export default async function ProgramPage({
     : [];
   const shortlisted = picks.some((x) => x.programId === program.id);
   const shortlistCount = picks.length;
+
+  const scholarships = await openScholarships(university.id, program.level);
 
   const fit = student ? checkEligibility({ backlogs: student.backlogs, gapYears: student.gapYears, tests: student.tests }, program) : null;
   const hasEnglish = program.minIelts != null || program.minPte != null || program.minOetGrade != null;
@@ -221,6 +225,8 @@ export default async function ProgramPage({
               </div>
             )}
           </Card>
+
+          <ScholarshipList rows={scholarships} subtitle={`At ${university.name}, for this level. Check the page before promising one.`} />
 
           <Card>
             <CardHeader
