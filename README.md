@@ -105,6 +105,7 @@ All seeded users share the password `Password@123`. Every person, university and
 | `npm run db:seed` | Reset and load sample data |
 | `npm run db:promote -- you@example.com` | Make an existing account a super admin (safe to run against production) |
 | `npm run db:demo-off` | Switch off every sample `.test` account and scramble its password. Add `--delete-enquiries` to drop the sample enquiries too |
+| `POST /api/cron/cricos` | Monthly CRICOS refresh for a scheduler, with `Authorization: Bearer $CRON_SECRET`. New courses land as drafts |
 | `npx tsx scripts/sync-cricos.ts <folder> [--publish]` | Load the CRICOS register from its three downloaded CSVs (the admin screen does the same from data.gov.au) |
 | `npm run db:studio` | Browse the database |
 
