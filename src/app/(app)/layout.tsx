@@ -181,8 +181,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     ...(ai?.enabled && ai.features.interview ? [{ href: "/interview", label: "Practice interview", icon: "learning" as const }] : []),
   ];
   const withAi = groups.map((g) => (g.title === "Find programs" && aiItems.length ? { ...g, items: [...g.items, ...aiItems] } : g));
+  // Bulk upload is for branch owners and the team.
+  const withImports = withAi.map((g, i) =>
+    i === 0 && (user.role === "PARTNER" || isAdmin(user)) ? { ...g, items: [...g.items, { href: "/imports", label: "Bulk upload", icon: "applications" as const }] } : g,
+  );
   const navGroups: NavGroup[] = [
-    ...withAi,
+    ...withImports,
     { title: "Account", items: [{ href: "/settings", label: "Settings", icon: "settings" }] },
   ];
 

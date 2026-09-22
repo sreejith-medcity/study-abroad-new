@@ -1,0 +1,76 @@
+/** What each bulk upload takes, for the page and the templates. Kept free of server code. */
+export const IMPORT_KINDS = {
+  students: {
+    label: "Students",
+    team: false,
+    intro: "New students, and blanks filled in on students already here (matched by email). Nothing already entered is overwritten, and a locked profile is left as it is.",
+    columns: [
+      ["branch", "Team uploads only: the branch's name or its public code"],
+      ["first_name", "Required"],
+      ["last_name", "Required"],
+      ["email", "Required. Matches a student already in the branch"],
+      ["phone", "Required for a new student, with country code: +91 98470 12345"],
+      ["counsellor_email", "Optional: an active counsellor or owner in the branch"],
+      ["consent", "yes, for a new student, to confirm the branch has the student's consent"],
+      ["date_of_birth", "2003-04-18 or 18/04/2003"],
+      ["gender, marital_status, nationality", "As text"],
+      ["address_line1, address_line2, city, state, pincode", "Permanent address"],
+      ["passport_number, passport_issue, passport_expiry, passport_issue_country, city_of_birth", "Dates as above"],
+      ["backlogs, gap_years", "Whole numbers"],
+      ["preferred_country, preferred_pathway", "Pathway: DEGREE, AUSBILDUNG or NURSING"],
+      ["twelfth_percent, twelfth_year, twelfth_institution", "Std. 12th, as a percentage"],
+      ["bachelors_score, bachelors_grading, bachelors_institution, bachelors_course, bachelors_year", "Grading: percentage, cgpa10 or cgpa4. A CGPA is never turned into a percentage"],
+      ["ielts, pte, toefl, duolingo, oet, german, gre, gmat", "Official overall scores or grades"],
+    ],
+    header: ["branch", "first_name", "last_name", "email", "phone", "counsellor_email", "consent", "date_of_birth", "gender", "marital_status", "nationality", "address_line1", "address_line2", "city", "state", "pincode", "passport_number", "passport_issue", "passport_expiry", "passport_issue_country", "city_of_birth", "backlogs", "gap_years", "preferred_country", "preferred_pathway", "twelfth_percent", "twelfth_year", "twelfth_institution", "bachelors_score", "bachelors_grading", "bachelors_institution", "bachelors_course", "bachelors_year", "ielts", "pte", "toefl", "duolingo", "oet", "german", "gre", "gmat"],
+  },
+  enquiries: {
+    label: "Enquiries",
+    team: false,
+    intro: "Leads from a sheet or another CRM. A phone number already open as an enquiry in the branch only has its blanks filled in.",
+    columns: [
+      ["branch", "Team uploads only: the branch's name or its public code"],
+      ["name, phone", "Required. Phone with country code"],
+      ["email, city", "Optional"],
+      ["source", "WALK_IN, PHONE, WHATSAPP, WEBSITE, REFERRAL, EVENT, SOCIAL or OTHER"],
+      ["interest_country, interest_pathway", "Pathway: DEGREE, AUSBILDUNG or NURSING"],
+      ["intake_month, intake_year", "Numbers: 9 and 2027"],
+      ["budget_lakhs", "Yearly budget in lakh rupees"],
+      ["next_follow_up", "A date; tomorrow when blank"],
+      ["counsellor_email", "Optional: who follows it up"],
+      ["notes", "Anything else"],
+    ],
+    header: ["branch", "name", "phone", "email", "city", "source", "interest_country", "interest_pathway", "intake_month", "intake_year", "budget_lakhs", "next_follow_up", "counsellor_email", "notes"],
+  },
+  applications: {
+    label: "Application updates",
+    team: true,
+    intro: "Status, priority, offer and visa details for many applications, found by acknowledgement number. A blank cell leaves that value as it is. Branches are told, as they are from the screen.",
+    columns: [
+      ["ack_no", "Required: the acknowledgement number"],
+      ["status, status_reason", "The status's name or code in the application's pathway; a reason where the status needs one"],
+      ["priority", "HIGH, NORMAL or LOW"],
+      ["offer_type, offer_date, offer_conditions, offer_accept_by", "CONDITIONAL or UNCONDITIONAL; dates"],
+      ["deposit_amount, deposit_paid_on", "In the program's currency"],
+      ["confirmation_number, confirmation_issued_on", "CAS, I-20, CoE or LOA"],
+      ["visa_lodged_on, visa_decision, visa_decision_on", "GRANTED or REFUSED"],
+    ],
+    header: ["ack_no", "status", "status_reason", "priority", "offer_type", "offer_date", "offer_conditions", "offer_accept_by", "deposit_amount", "deposit_paid_on", "confirmation_number", "confirmation_issued_on", "visa_lodged_on", "visa_decision", "visa_decision_on"],
+  },
+  commissions: {
+    label: "Commission payments",
+    team: true,
+    intro: "Commission moves from a settlement sheet, by acknowledgement number. SETTLED credits the branch's wallet once and needs the rupee amount unless the commission is already in rupees.",
+    columns: [
+      ["ack_no", "Required: the application's acknowledgement number"],
+      ["status", "Required: INVOICED, RECEIVED, SETTLED or WRITTEN_OFF"],
+      ["invoice_ref", "Optional"],
+      ["partner_amount_inr", "The branch's share in rupees, as transferred"],
+      ["note", "Optional"],
+    ],
+    header: ["ack_no", "status", "invoice_ref", "partner_amount_inr", "note"],
+  },
+} as const;
+
+export type ImportKind = keyof typeof IMPORT_KINDS;
+export const isImportKind = (k: string): k is ImportKind => k in IMPORT_KINDS;
