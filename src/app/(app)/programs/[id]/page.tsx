@@ -6,11 +6,12 @@ import { DOCUMENT_TYPES } from "@/db/statuses";
 import { requireUser } from "@/lib/auth";
 import { LEVEL_LABEL, PATHWAY_LABEL, SHORTLIST_LIMIT, daysUntil, deadlineText, durationText, feeText, inrApprox, intakesText, tuitionText } from "@/lib/catalogue";
 import { QUALIFYING_LABEL, checkEligibility, qualifyingLevel } from "@/lib/eligibility";
-import { fullName } from "@/lib/format";
+import { MONTHS, fmtMoney, fullName } from "@/lib/format";
 import { ADMIN_ROLES, APP_ROLES, isAdmin, isStaff } from "@/lib/permissions";
 import { openScholarships } from "@/server/scholarships";
 import { programDeadlines } from "@/server/deadlines";
-import { MONTHS } from "@/lib/format";
+import { activeRules } from "@/server/commission-estimate";
+import { partnerEstimate, pickRule } from "@/lib/money";
 import { fxRates, getSettings } from "@/server/settings";
 import { ScholarshipList } from "@/components/scholarship-list";
 import { ShortlistButton } from "@/components/shortlist-button";
@@ -90,6 +91,8 @@ export default async function ProgramPage({
     : [];
   const scholarships = await openScholarships(university.id, program.level);
   const deadlines = await programDeadlines(program.id);
+  const rule = pickRule(await activeRules(), program.id, university.id, country.id);
+  const commission = rule ? partnerEstimate(rule, program.tuitionPerYear, cur) : null;
   const rates = fxRates(await getSettings());
   // The rupee figure sits under the real one, smaller, and says it is rough.
   const withInr = (amount: number | null, text: string) => {
@@ -163,6 +166,9 @@ export default async function ProgramPage({
                 ...(program.tuitionTotal != null ? [{ label: "Tuition, whole course", value: withInr(program.tuitionTotal, feeText(program.tuitionTotal, cur, { zero: "No tuition fee" })) }] : []),
                 { label: "Application fee", value: feeText(program.applicationFee, cur, { zero: "No application fee" }) },
                 ...(program.feeWaiver ? [{ label: "Application fee waiver", value: program.feeWaiver, tone: "ok" as const }] : []),
+                ...(commission
+                  ? [{ label: "Your commission (estimate)", value: commission.amount != null ? `≈ ${fmtMoney(commission.amount, commission.currency)} (${commission.terms})` : `${commission.terms}; tuition not recorded yet`, tone: "ok" as const }]
+                  : []),
                 { label: "Deposit to confirm a place", value: feeText(program.initialDeposit, cur, { zero: "No deposit" }) },
                 ...(program.externalCode ? [{ label: program.source === "CRICOS" ? "Source" : "CRICOS code", value: program.source === "CRICOS" ? `CRICOS register, course ${program.externalCode}` : program.externalCode }] : []),
               ]}

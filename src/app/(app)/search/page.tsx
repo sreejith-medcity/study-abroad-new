@@ -11,6 +11,8 @@ import { fxRates, getSettings } from "@/server/settings";
 import { notBlockedWhere } from "@/server/eligibility-sql";
 import { hasOpenScholarship } from "@/server/scholarships";
 import { closingWithin, nextDeadlines } from "@/server/deadlines";
+import { activeRules, hasCommissionRule, partnerShareJoins } from "@/server/commission-estimate";
+import { partnerEstimate, pickRule } from "@/lib/money";
 import { LEVEL_LABEL, SHORTLIST_LIMIT, dayText, daysUntil, inrApprox, intakesText, tuitionText } from "@/lib/catalogue";
 import { Button, Card, Chip, EmptyState, Input, LinkButton, PageHeader, Select, Table, Td, Th, Toolbar, cn } from "@/components/ui";
 import { IconCheck, IconAlert, IconClock, IconGlobe, IconSearch, IconSpark } from "@/components/icons";
@@ -30,6 +32,7 @@ const QUICK = [
   { key: "scholarship", label: "Scholarship available" },
   { key: "closing", label: "Deadline in the next 30 days" },
   { key: "waiver", label: "Application fee waiver" },
+  { key: "commission", label: "Commission on offer" },
 ] as const;
 
 const BUDGETS = [5, 10, 15, 20, 25, 30, 40, 50];
@@ -83,12 +86,14 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   if (f.scholarship) conds.push(hasOpenScholarship);
   if (f.closing) conds.push(closingWithin(30));
   if (f.waiver) conds.push(sql`${p.feeWaiver} is not null`);
+  if (f.commission) conds.push(hasCommissionRule);
   const student = f.student
     ? await db.query.students.findFirst({ where: and(eq(s.id, f.student), isStaff(user) ? undefined : eq(s.orgId, user.orgId)), with: { tests: true, academics: true } })
     : null;
   // Hide what the student cannot meet yet; on-track programs stay.
   if (student && f.fit) conds.push(notBlockedWhere(student));
   const where = and(...conds);
+  const byShare = partnerShareJoins(rates);
 
   const rows = await db
     .select({
@@ -120,6 +125,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       workRights: p.workRights,
       workRightsNote: p.workRightsNote,
       universityId: u.id,
+      countryId: c.id,
       university: u.name,
       city: sql<string | null>`coalesce(${p.campus}, ${u.city})`,
       isPublic: u.isPublic,
@@ -130,9 +136,14 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     .from(p)
     .innerJoin(u, eq(p.universityId, u.id))
     .innerJoin(c, eq(u.countryId, c.id))
+    .leftJoin(byShare.rp, eq(byShare.rp.key, p.id))
+    .leftJoin(byShare.ru, eq(byShare.ru.key, p.universityId))
+    .leftJoin(byShare.rc, eq(byShare.rc.key, u.countryId))
     .where(where)
     .orderBy(
-      ...(f.sort === "fee"
+      ...(f.sort === "commission"
+        ? [sql`${byShare.expr} desc nulls last`, asc(p.name)]
+        : f.sort === "fee"
         ? // Per-year figures first, then whole-course ones: the two are never
           // compared with each other, and currencies only line up within a country.
           [sql`${p.tuitionPerYear} is null`, asc(p.tuitionPerYear), sql`${p.tuitionTotal} is null`, asc(p.tuitionTotal), asc(p.name)]
@@ -146,6 +157,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const hasNext = rows.length > PAGE;
   const list = rows.slice(0, PAGE);
   const next = await nextDeadlines(list.map((r) => r.id));
+  const rules = await activeRules();
   const [{ total }] = await db
     .select({ total: count() })
     .from(p)
@@ -269,6 +281,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             <option value="">Sort by country and university</option>
             <option value="name">Sort by program name</option>
             <option value="fee">Lowest fee first</option>
+            <option value="commission">Highest commission first</option>
           </Select>
           <Select name="student" aria-label="Check against student" defaultValue={f.student ?? ""}>
             <option value="">Check eligibility for…</option>
@@ -397,6 +410,12 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                     <Td className="whitespace-nowrap tabular">
                       {r.tuition == null && r.tuitionTotal == null ? <span className="text-muted">Tuition not recorded</span> : tuitionText(r.tuition, r.tuitionTotal, r.currency)}
                       {inrApprox(r.tuition ?? r.tuitionTotal, r.currency, rates) && <span className="block text-xs text-muted">{inrApprox(r.tuition ?? r.tuitionTotal, r.currency, rates)}</span>}
+                      {(() => {
+                        const rule = pickRule(rules, r.id, r.universityId, r.countryId);
+                        if (!rule) return null;
+                        const est = partnerEstimate(rule, r.tuition, r.currency);
+                        return <span className="block text-xs font-medium text-emerald-700">{est.amount != null ? `Your share ≈ ${fmtMoney(est.amount, est.currency)}` : `Commission: ${est.terms}`}</span>;
+                      })()}
                       <p className="text-xs text-muted">
                         {r.applicationFee == null ? "App. fee not recorded" : r.applicationFee > 0 ? `App. fee ${fmtMoney(r.applicationFee, r.currency)}` : "No application fee"}
                         {r.deposit ? ` · deposit ${fmtMoney(r.deposit, r.currency)}` : ""}

@@ -5,7 +5,9 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { LEVEL_LABEL, SHORTLIST_LIMIT, durationText, feeText, inrApprox, intakesText, tuitionText } from "@/lib/catalogue";
 import { checkEligibility } from "@/lib/eligibility";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, fmtMoney } from "@/lib/format";
+import { partnerEstimate, pickRule } from "@/lib/money";
+import { activeRules } from "@/server/commission-estimate";
 import { ADMIN_ROLES, APP_ROLES } from "@/lib/permissions";
 import { getStudentForUser } from "@/server/queries";
 import { fxRates, getSettings } from "@/server/settings";
@@ -47,11 +49,14 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
   }
 
   const rates = fxRates(await getSettings());
+  const rules = await activeRules();
   const cols = items.map((it) => {
     const p = it.program;
     const cur = p.university.country.currency;
     const fit = checkEligibility({ backlogs: student.backlogs, gapYears: student.gapYears, tests, academics }, p);
-    return { it, p, cur, fit };
+    const rule = pickRule(rules, p.id, p.university.id, p.university.country.id);
+    const commission = rule ? partnerEstimate(rule, p.tuitionPerYear, cur) : null;
+    return { it, p, cur, fit, commission };
   });
 
   // Cheapest verified tuition is worth pointing at; unverified figures never win.
@@ -59,7 +64,8 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
   const sameCurrency = new Set(cols.map((c) => c.cur)).size === 1;
   const cheapest = sameCurrency && tuitions.length > 1 ? Math.min(...tuitions) : null;
 
-  const rows: { label: string; cell: (c: (typeof cols)[number]) => ReactNode }[] = [
+  // hidePrint: the printed comparison may go to the student, and commission is not theirs to see.
+  const rows: { label: string; cell: (c: (typeof cols)[number]) => ReactNode; hidePrint?: boolean }[] = [
     { label: "Fit", cell: ({ fit }) => (
       <div>
         {fit.verdict === "eligible" && <Chip tone="ok"><IconCheck className="size-3.5" /> Eligible</Chip>}
@@ -83,6 +89,7 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
       </span>
     ) },
     { label: "Application fee", cell: ({ p, cur }) => <Muted on={p.applicationFee == null}>{feeText(p.applicationFee, cur, { zero: "No application fee" })}</Muted> },
+    { label: "Your commission", cell: ({ commission }) => commission ? (commission.amount != null ? <span className="font-medium text-emerald-700">≈ {fmtMoney(commission.amount, commission.currency)}</span> : <Muted on>{commission.terms}</Muted>) : <Muted on>No rule</Muted>, hidePrint: true },
     { label: "Deposit", cell: ({ p, cur }) => <Muted on={p.initialDeposit == null}>{feeText(p.initialDeposit, cur, { zero: "No deposit" })}</Muted> },
     { label: "English", cell: ({ p }) => {
       const parts = [p.minIelts != null && `IELTS ${p.minIelts}`, p.minPte != null && `PTE ${p.minPte}`, p.minToefl != null && `TOEFL ${p.minToefl}`, p.minDuolingo != null && `Duolingo ${p.minDuolingo}`, p.minOetGrade && `OET ${p.minOetGrade}`].filter(Boolean);
@@ -139,7 +146,7 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.label} className="border-t border-line">
+              <tr key={r.label} className="border-t border-line" data-print={r.hidePrint ? "hide" : undefined}>
                 <th scope="row" className="sticky left-0 z-10 bg-surface px-4 py-2.5 text-left align-top text-[11px] font-semibold uppercase tracking-wider text-muted">{r.label}</th>
                 {cols.map((c) => (
                   <td key={c.p.id} className="border-l border-line px-4 py-2.5 align-top">{r.cell(c)}</td>

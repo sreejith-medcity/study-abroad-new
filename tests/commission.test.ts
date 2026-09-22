@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
-import { amountsFor, fxToInr, rate } from "../src/lib/money";
+import { amountsFor, fxToInr, partnerEstimate, pickRule, rate } from "../src/lib/money";
 
 
 test("a percentage rule takes its cut of first year tuition", () => {
@@ -43,4 +43,19 @@ test("rates never divide by zero", () => {
   assert.equal(rate(3, 0), 0);
   assert.equal(rate(1, 3), 33);
   assert.equal(rate(2, 4), 50);
+});
+
+test("the rule shown on a program: most specific first, past-year rules ignored", () => {
+  const base = { basis: "PERCENT_TUITION", percentOfTuition: 10, flatAmount: null, partnerSharePercent: 50, currency: "INR", programId: null, universityId: null, countryId: null, intakeYear: null };
+  const rules = [
+    { ...base, id: "country", countryId: "GB" },
+    { ...base, id: "uni", universityId: "hull" },
+    { ...base, id: "old", programId: "msc", intakeYear: 2020 },
+  ];
+  assert.equal(pickRule(rules, "msc", "hull", "GB", 2027)?.id, "uni");
+  assert.equal(pickRule(rules, "other", "york", "GB", 2027)?.id, "country");
+  assert.equal(pickRule(rules, "other", "york", "CA", 2027), null);
+  assert.deepEqual(partnerEstimate(rules[1], 18000, "GBP"), { amount: 900, currency: "GBP", terms: "50% of 10% of first-year tuition" });
+  assert.equal(partnerEstimate(rules[1], null, "GBP").amount, null, "no yearly tuition, no figure");
+  assert.equal(partnerEstimate({ ...base, id: "f", basis: "FLAT", flatAmount: 100000 }, null, "GBP").amount, 50000);
 });

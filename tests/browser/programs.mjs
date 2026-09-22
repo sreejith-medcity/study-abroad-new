@@ -49,6 +49,12 @@ text = await go(pp, "/search?noAppFee=1");
 const freeCount = Number((text.match(/([\d,]+) live program/) || [])[1]?.replace(/,/g, ""));
 check(freeCount > 0 && freeCount < 100, `search: "No application fee" keeps only verified zeros (${freeCount})`);
 
+// Commission from the seeded UK rule: 15% of tuition, half to the partner.
+text = await go(pp, "/search?q=MSc+Advanced+Computer+Science&country=GB");
+check(/Your share ≈ (£|GBP )1,452/.test(text), "search: the partner's share shows on a program with a yearly fee");
+text = await go(pp, "/search?country=GB&sort=commission");
+check(/Your share ≈/.test(text.split("\n").slice(0, 200).join("\n")), "search: highest commission first puts priced programs on top");
+
 await go(pp, "/search?q=Advanced+Clinical+Practice");
 await pp.getByRole("link", { name: "MSc Advanced Clinical Practice" }).first().click();
 await pp.waitForURL(/\/programs\//);
@@ -59,6 +65,7 @@ check(/Application fee\s*Not recorded/.test(text), "program page: unverified fee
 // Part-time only, so the catalogue records it as carrying no Graduate visa.
 check(/Post-study work/.test(text) && /Not eligible/.test(text) && /Part-time only/.test(text), "program page: a confirmed 'not eligible' shows with its evidence");
 check(!/Edit program/.test(text), "program page: partners get no edit button");
+check(/Your commission \(estimate\)\s*50% of 15% of first-year tuition; tuition not recorded yet/.test(text), "program page: without a yearly fee the terms show, not a made-up figure");
 check(/Similar programs/.test(text) && /Nursing, Master's, elsewhere in United Kingdom/.test(text) && !/Similar programs[\s\S]*University of Hull ·/.test(text), "program page: similar programs come from other universities in the same country");
 await pp.screenshot({ path: `${OUT}/program.png`, fullPage: true });
 

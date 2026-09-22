@@ -56,3 +56,40 @@ export function rate(part: number, whole: number) {
   if (!whole) return 0;
   return Math.round((part / whole) * 100);
 }
+
+export type RuleScope = RuleAmounts & {
+  id: string;
+  programId: string | null;
+  universityId: string | null;
+  countryId: string | null;
+  intakeYear: number | null;
+  currency: string;
+};
+
+/**
+ * The rule that would pay on a program, for showing partners what they can
+ * expect before anyone applies: the most specific live rule wins (program, then
+ * university, then country), and one pinned to a coming intake year beats an
+ * open one. Rules pinned to a past year are ignored.
+ */
+export function pickRule<R extends RuleScope>(rules: R[], programId: string, universityId: string, countryId: string, year = new Date().getFullYear()): R | null {
+  const fits = rules.filter((r) => (r.programId === programId || r.universityId === universityId || r.countryId === countryId) && (r.intakeYear == null || r.intakeYear >= year));
+  const score = (r: R) => (r.programId === programId ? 100 : r.universityId === universityId ? 50 : 20) + (r.intakeYear != null ? 5 : 0);
+  return fits.sort((a, b) => score(b) - score(a))[0] ?? null;
+}
+
+/**
+ * The partner's share on one program under a rule. A percentage needs a
+ * verified yearly tuition; without one the amount stays null and the terms are
+ * shown instead, never a figure worked out from a whole-course fee.
+ */
+export function partnerEstimate(rule: RuleScope, tuitionPerYear: number | null, programCurrency: string) {
+  const share = rule.partnerSharePercent;
+  if (rule.basis === "FLAT") {
+    const amount = rule.flatAmount != null ? Math.round((rule.flatAmount * share) / 100) : null;
+    return { amount, currency: rule.currency, terms: `${share}% of a flat ${money(rule.flatAmount, rule.currency)}` };
+  }
+  const pct = rule.percentOfTuition ?? 0;
+  const amount = tuitionPerYear != null && tuitionPerYear > 0 ? Math.round((tuitionPerYear * pct * share) / 10000) : null;
+  return { amount, currency: programCurrency, terms: `${share}% of ${pct}% of first-year tuition` };
+}
