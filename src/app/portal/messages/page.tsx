@@ -1,4 +1,5 @@
 import { fmtDateTime, intakeLabel } from "@/lib/format";
+import { RichText } from "@/components/rich-text";
 import { translator } from "@/lib/i18n";
 import { requireStudent, studentApplications, studentThread } from "@/server/portal";
 import { Card, CardHeader, cn } from "@/components/ui";
@@ -36,7 +37,7 @@ export default async function PortalMessages() {
                     <p className={cn("mb-0.5 text-[11px] font-semibold", mine ? "text-white/70" : "text-muted")}>
                       {mine ? t("you") : (m.authorName ?? t("team"))}
                     </p>
-                    <p className="whitespace-pre-wrap">{m.body}</p>
+                    <RichText text={m.body} />
                     <p className={cn("mt-1 text-[11px]", mine ? "text-white/60" : "text-muted")}>{fmtDateTime(m.createdAt)}</p>
                   </div>
                 </li>

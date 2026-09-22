@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { RichText } from "@/components/rich-text";
 import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
@@ -293,7 +294,7 @@ async function ApplicationDetail({ appId, studentId, channel, canProcess, canChe
                       {fromStudent ? c.authorLabel ?? "Student (WhatsApp)" : c.author ? c.author.deskLabel ?? c.author.name : "System"}
                       {fromStudent && <span className="ml-1 font-normal text-emerald-700">via WhatsApp</span>}
                     </p>
-                    <p className="whitespace-pre-wrap">{c.body}</p>
+                    <RichText text={c.body} />
                     {c.attachments.map((d) => (
                       <div key={d.id} className="mt-2 flex flex-wrap items-center gap-2">
                         <a href={`/api/documents/${d.id}`} className="rounded bg-white px-2 py-1 text-xs text-brand-600 hover:underline">📎 {d.fileName}</a>

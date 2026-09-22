@@ -38,7 +38,7 @@ node tests/browser/dashboards.mjs
 | `training.mjs` | Building and publishing a course with its rules, failing and passing the quiz, the certificate, team progress and who may open a certificate |
 | `updates.mjs` | Publishing an update, an announcement and a What's New item, who is told, the dashboard banner and country tabs, and the What's New dot (needs the catalogue) |
 | `universities.mjs` | The universities index: destination, level and name filters, sorting by size, and the links to each university and its programs |
-| `program-options.mjs` | Requesting options for a new and a registered student, the team's list, shortlisting it all, linking, archiving and branch isolation |
+| `program-options.mjs` | Requesting options for a new and a registered student, the team's list, shortlisting it all, linking, archiving and branch isolation (needs the catalogue) |
 | `programs.mjs` | The program and university pages, the admin edit screen and its rules, and that an unverified fee never reads as free |
 | `search-upgrades.mjs` | Program labels (bulk and one at a time), several levels and seasons at once, chip counts, open or closed by deadline, eligibility from typed scores, the universities view, compare and download, and the new program-page details (needs the catalogue) |
 | `student-profile.mjs` | Mailing address and second citizenship, the background questions and their rules, important contacts, the ACT, section and tab status, the visa-refusal warning, and application priority on the file, list, filter, sort and export |
@@ -46,6 +46,7 @@ node tests/browser/dashboards.mjs
 | `billing.mjs` | Billing companies with PAN, GSTIN, LUT and IFSC rules, the limit of four, editing without the account number, the default, a payout to a chosen company and the team's view, removal rules, the owner's switch that hides commission from counsellors, and the commission structure page |
 | `directory.mjs` | The team's contact list with its rules and escalation levels, quick links, promotional schemes with dates, destinations and who is told, the partner pages and dashboard cards, and the owner's commission switch |
 | `student-platform.mjs` | The branch's name, colour and logo on its portal and enquiry form with the colour and file rules, the WhatsApp switches, and the sign-up question builder with answers on the enquiry |
+| `rich-prep.mjs` | Comment formatting (the format bar, what renders and what stays text, previews) and the branch test preparation page: courses and their rules, the owner's switch, and an enquiry from the page |
 | `shortlist.mjs` | Shortlisting from search and a program page, the side by side comparison, removal, read-only roles and branch isolation |
 
 Screenshots land in `/tmp/smoke-*`. Each script exits non-zero if a check fails.

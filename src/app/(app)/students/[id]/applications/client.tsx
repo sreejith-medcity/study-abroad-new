@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { FormatBar } from "@/components/format-bar";
 import { ActionForm, FieldError } from "@/components/action-form";
 import { Field, Input, Select, Textarea } from "@/components/ui";
 import { dayText, daysUntil } from "@/lib/catalogue";
@@ -131,7 +132,11 @@ export function CommentComposer({ applicationId, channel, whatsapp }: { applicat
     <ActionForm action={addCommentAction} submitLabel={channel === "STUDENT" && whatsapp ? "Send to student" : "Post comment"} pendingLabel="Sending…" resetOnSuccess>
       <input type="hidden" name="applicationId" value={applicationId} />
       <input type="hidden" name="channel" value={channel} />
-      <label htmlFor={`body-${channel}`} className="sr-only">Message</label>
+      <div className="flex items-center justify-between gap-2">
+        <label htmlFor={`body-${channel}`} className="sr-only">Message</label>
+        <FormatBar target={`body-${channel}`} />
+        <span className="text-[11px] text-muted">**bold**, *italic*, lines starting &quot;- &quot; for a list</span>
+      </div>
       <Textarea id={`body-${channel}`} name="body" rows={3} placeholder={channel === "TEAM" ? "Message the Medcity Overseas team. The student can't see this." : whatsapp ? "Message the student. They'll also get it on WhatsApp." : "Message the student. They'll see it in their portal."} />
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
         <label htmlFor={`file-${channel}`}>Attach</label>

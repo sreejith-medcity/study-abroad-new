@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { RichText } from "@/components/rich-text";
 import { notFound } from "next/navigation";
 import { asc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
@@ -41,7 +42,7 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
               <li key={m.id} className={cn("flex", fromTeam ? "justify-start" : "justify-end")}>
                 <div className={cn("max-w-[85%] rounded-lg px-3 py-2", fromTeam ? "bg-brand-50" : "bg-slate-100")}>
                   <p className="text-xs font-semibold">{m.author?.name ?? "Former user"}{fromTeam && <span className="font-normal text-brand-700"> · Overseas team</span>}</p>
-                  <p className="whitespace-pre-wrap text-[13px]">{m.body}</p>
+                  <RichText text={m.body} className="text-[13px]" />
                   <p className="mt-1 text-[11px] text-muted">{fmtDateTime(m.createdAt)}</p>
                 </div>
               </li>

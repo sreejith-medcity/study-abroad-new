@@ -1,8 +1,9 @@
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
-import { publicFormUrl } from "@/server/public-form";
-import { Alert, Card, CardHeader } from "@/components/ui";
+import { prepPageUrl, publicFormUrl } from "@/server/public-form";
+import { setPrepPageAction } from "@/server/prep";
+import { Alert, Button, Card, CardHeader } from "@/components/ui";
 import { SignupQuestionsForm, StudentBrandForm, StudentNotificationsForm } from "./forms";
 
 export const metadata = { title: "Student platform settings" };
@@ -19,6 +20,25 @@ export default async function StudentPlatformPage() {
         <CardHeader title="Portal look" subtitle="Your name, colour and logo on the student portal and on your enquiry form. Medcity Overseas is still named beside them." />
         <div className="p-4 pt-0">
           <StudentBrandForm name={org.portalName} color={org.portalColor} hasLogo={!!org.portalLogoKey} orgId={org.id} />
+        </div>
+      </Card>
+      <Card>
+        <CardHeader title="Test preparation page" subtitle="Medcity's IELTS, PTE, OET and German courses on a page of your own, in the look above. Enquiries from it come to your Enquiries." />
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4 pt-0 text-[13px]">
+          {org.prepPageEnabled && org.publicSlug ? (
+            <p>
+              On, at{" "}
+              <a href={`/prep/${org.publicSlug}`} target="_blank" rel="noreferrer" className="font-medium text-brand-600 hover:underline">
+                {prepPageUrl(org.publicSlug)}
+              </a>
+            </p>
+          ) : (
+            <p className="text-muted">Off.</p>
+          )}
+          <form action={setPrepPageAction}>
+            <input type="hidden" name="on" value={org.prepPageEnabled ? "0" : "1"} />
+            <Button size="sm" variant="secondary">{org.prepPageEnabled ? "Switch the prep page off" : "Switch the prep page on"}</Button>
+          </form>
         </div>
       </Card>
       <Card>

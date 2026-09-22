@@ -91,6 +91,7 @@ const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/updates", label: "Updates", icon: "spark" },
       { href: "/admin/promotions", label: "Schemes", icon: "commission" },
       { href: "/admin/contacts", label: "Contacts and links", icon: "partners" },
+      { href: "/admin/prep", label: "Test prep", icon: "learning" },
       { href: "/admin/events", label: "Events", icon: "events" },
       { href: "/admin/training", label: "Training", icon: "training" },
       { href: "/admin/insights", label: "Insights", icon: "insights" },

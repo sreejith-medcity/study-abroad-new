@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { dayText, daysUntil } from "@/lib/catalogue";
+import { toPlain, toWhatsApp } from "@/lib/rich-text";
 import { DEADLINE_LABEL, DEADLINE_TYPES } from "@/lib/deadline-types";
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { z } from "zod";
@@ -134,15 +135,15 @@ export async function addCommentAction(_: FormState, formData: FormData): Promis
   const href = `/students/${full.studentId}/applications?app=${app.id}&ch=${channel}`;
   const title = `New ${channel === "TEAM" ? "team" : "student"} comment on ${full.ackNo}`;
   if (isStaff(user)) {
-    await notifyUsers(await partnerRecipients(full.orgId, full.student.assignedToId), title, body.slice(0, 120), href);
+    await notifyUsers(await partnerRecipients(full.orgId, full.student.assignedToId), title, toPlain(body).slice(0, 120), href);
   } else {
-    await notifyUsers(full.officerId ? [full.officerId] : await adminIds(), title, body.slice(0, 120), href);
+    await notifyUsers(full.officerId ? [full.officerId] : await adminIds(), title, toPlain(body).slice(0, 120), href);
   }
 
   const branch = await db.query.organizations.findFirst({ where: eq(schema.organizations.id, full.orgId), columns: { studentWhatsappMessages: true } });
   const viaWhatsapp = channel === "STUDENT" && full.student.whatsappOptIn && branch?.studentWhatsappMessages !== false;
   if (viaWhatsapp && body) {
-    const sent = await sendWhatsApp({ to: full.student.phone, body: `${body}\n\n(${full.ackNo}, Medcity Overseas. Reply to this chat to respond.)` });
+    const sent = await sendWhatsApp({ to: full.student.phone, body: `${toWhatsApp(body)}\n\n(${full.ackNo}, Medcity Overseas. Reply to this chat to respond.)` });
     if (sent) await db.update(schema.comments).set({ deliveredAt: new Date() }).where(eq(schema.comments.id, comment.id));
   }
 

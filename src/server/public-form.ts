@@ -30,3 +30,16 @@ export function publicFormUrl(slug: string) {
   const base = (process.env.PUBLIC_BASE_URL ?? "https://doc.medcityoverseas.com").replace(/\/$/, "");
   return `${base}/apply/${slug}`;
 }
+
+/** The branch behind a prep page link, or null when its prep page is off. */
+export async function orgForPrepSlug(slug: string) {
+  const org = await db.query.organizations.findFirst({
+    where: and(eq(schema.organizations.publicSlug, slug), eq(schema.organizations.prepPageEnabled, true), eq(schema.organizations.active, true)),
+  });
+  return org ?? null;
+}
+
+export function prepPageUrl(slug: string) {
+  const base = (process.env.PUBLIC_BASE_URL ?? "https://doc.medcityoverseas.com").replace(/\/$/, "");
+  return `${base}/prep/${slug}`;
+}

@@ -119,6 +119,8 @@ export const organizations = pgTable("organizations", {
   studentWhatsappMessages: boolean("student_whatsapp_messages").notNull().default(true),
   /** Extra questions on the branch's public enquiry form. */
   signupQuestions: jsonb("signup_questions").$type<SignupQuestion[]>().notNull().default(sql`'[]'::jsonb`),
+  /** The branch's own test preparation page, at /prep/<public slug>. */
+  prepPageEnabled: boolean("prep_page_enabled").notNull().default(false),
   active: boolean("active").notNull().default(true),
   createdAt: createdAt(),
 });
@@ -1157,6 +1159,20 @@ export const promotions = pgTable(
   },
   (t) => [index("promotions_dates_idx").on(t.endsOn)],
 );
+
+/** Test preparation courses Medcity runs, offered on each branch's own prep page. */
+export const prepCourses = pgTable("prep_courses", {
+  id: id(),
+  test: text("test").notNull(),
+  title: text("title").notNull(),
+  summary: text("summary").notNull(),
+  mode: text("mode").notNull(),
+  durationWeeks: integer("duration_weeks"),
+  feeInr: integer("fee_inr"),
+  published: boolean("published").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(100),
+  createdAt: createdAt(),
+});
 
 /** Links partners use often: institution portals, embassy pages, forms. */
 export const quickLinks = pgTable("quick_links", {

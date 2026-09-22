@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { RichText } from "@/components/rich-text";
 import { and, asc, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
@@ -232,7 +233,7 @@ export default async function ProgramOptionsPage({ searchParams }: { searchParam
                     <li key={m.id} className={cn("flex", team ? "justify-start" : "justify-end")}>
                       <div className={cn("max-w-[85%] rounded-lg px-3 py-2 text-[13px]", team ? "bg-brand-50" : "bg-slate-100")}>
                         <p className="text-xs font-semibold">{m.author?.name ?? "Former user"}{team && <span className="font-normal text-brand-700"> · Overseas team</span>}</p>
-                        <p className="whitespace-pre-wrap">{m.body}</p>
+                        <RichText text={m.body} />
                         <p className="text-[11px] text-muted">{fmtDateTime(m.createdAt)}</p>
                       </div>
                     </li>

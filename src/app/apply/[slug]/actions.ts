@@ -6,7 +6,7 @@ import { and, eq, gte } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { audit } from "@/lib/audit";
-import { orgForPublicSlug } from "@/server/public-form";
+import { orgForPrepSlug, orgForPublicSlug } from "@/server/public-form";
 import { answerError } from "@/lib/signup-questions";
 import { rateLimit } from "@/server/rate-limit";
 import { notifyUsers, partnerRecipients } from "@/server/notify";
@@ -27,6 +27,8 @@ const shape = z.object({
   intakeYear: z.string().optional().transform((v) => (v ? Number(v) : null)),
   message: z.string().trim().max(1000).optional().transform((v) => v || null),
   consent: z.literal("on", { message: "Please tick the consent box so we may contact you" }),
+  /** Set by the branch's prep page: which course the enquiry is about. */
+  prepCourse: z.string().max(40).optional(),
   // Hidden field: a real person leaves it empty, most bots fill it in.
   website: z.string().max(0).optional(),
 });
@@ -36,17 +38,22 @@ export async function submitPublicEnquiryAction(_: PublicFormState, formData: Fo
   if (!parsed.success) {
     const fieldErrors = parsed.error.flatten().fieldErrors;
     // A filled honeypot is silently accepted, so a bot learns nothing.
-    if (fieldErrors.website) redirect(`/apply/${String(formData.get("slug"))}/thanks`);
+    if (fieldErrors.website) redirect(`/${formData.get("prepCourse") !== null ? "prep" : "apply"}/${String(formData.get("slug"))}/thanks`);
     return { fieldErrors, error: "Please check the highlighted fields." };
   }
   const d = parsed.data;
 
-  const org = await orgForPublicSlug(d.slug);
+  const prep = d.prepCourse !== undefined;
+  const org = prep ? await orgForPrepSlug(d.slug) : await orgForPublicSlug(d.slug);
   if (!org) return { error: "This form is no longer open. Please contact the branch directly." };
+  const back = `/${prep ? "prep" : "apply"}/${d.slug}/thanks`;
+  const course = prep && d.prepCourse ? await db.query.prepCourses.findFirst({ where: and(eq(schema.prepCourses.id, d.prepCourse), eq(schema.prepCourses.published, true)) }) : null;
+  if (prep && !course) return { fieldErrors: { prepCourse: ["Please choose a course"] }, error: "Please check the highlighted fields." };
   // The branch's own questions, checked against the questions as they stand now.
   const answers: { question: string; answer: string }[] = [];
   const answerErrors: Record<string, string[]> = {};
-  for (const q of org.signupQuestions) {
+  if (course) answers.push({ question: "Test preparation course", answer: `${course.title} (${course.test})` });
+  for (const q of prep ? [] : org.signupQuestions) {
     const raw = formData.get(`qa_${q.id}`);
     const err = answerError(q, typeof raw === "string" ? raw : null);
     if (err) answerErrors[`qa_${q.id}`] = [err];
@@ -66,7 +73,7 @@ export async function submitPublicEnquiryAction(_: PublicFormState, formData: Fo
   const existing = await db.query.enquiries.findFirst({
     where: and(eq(schema.enquiries.orgId, org.id), eq(schema.enquiries.phone, d.phone), gte(schema.enquiries.createdAt, dayAgo)),
   });
-  if (existing) redirect(`/apply/${d.slug}/thanks`);
+  if (existing) redirect(back);
 
   const owner = await db.query.users.findFirst({
     where: and(eq(schema.users.orgId, org.id), eq(schema.users.role, "PARTNER"), eq(schema.users.active, true)),
@@ -95,10 +102,10 @@ export async function submitPublicEnquiryAction(_: PublicFormState, formData: Fo
 
   await db.insert(schema.enquiryNotes).values({
     enquiryId: row.id,
-    body: `Came in through the branch form.${d.message ? `\n\n"${d.message}"` : ""}\n\nConsent recorded: ${CONSENT_TEXT}`,
+    body: `Came in through the branch ${prep ? "test preparation page" : "form"}.${d.message ? `\n\n"${d.message}"` : ""}\n\nConsent recorded: ${CONSENT_TEXT}`,
   });
   await audit(null, "enquiry.public_submit", "enquiry", row.id, { org: org.name, source: "WEBSITE" });
-  await notifyUsers(await partnerRecipients(org.id), "New enquiry from your form", `${d.name} · ${d.phone}`, `/enquiries/${row.id}`);
+  await notifyUsers(await partnerRecipients(org.id), prep ? "New test prep enquiry" : "New enquiry from your form", `${d.name} · ${d.phone}`, `/enquiries/${row.id}`);
 
-  redirect(`/apply/${d.slug}/thanks`);
+  redirect(back);
 }

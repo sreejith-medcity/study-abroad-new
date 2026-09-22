@@ -246,6 +246,13 @@
       "when": 1790072621444,
       "tag": "0034_student_platform",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1790073238330,
+      "tag": "0035_prep_courses",
+      "breakpoints": true
     }
   ]
 }

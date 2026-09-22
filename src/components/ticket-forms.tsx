@@ -1,6 +1,7 @@
 "use client";
 
 import { ActionForm, FieldError } from "@/components/action-form";
+import { FormatBar } from "@/components/format-bar";
 import { Field, Input, Select, Textarea } from "@/components/ui";
 import { CATEGORY_LABEL, TICKET_CATEGORIES } from "@/lib/tickets";
 import { openTicketAction, replyTicketAction } from "@/server/tickets";
@@ -32,6 +33,7 @@ export function ReplyForm({ ticketId }: { ticketId: string }) {
     <ActionForm action={replyTicketAction} submitLabel="Send reply" pendingLabel="Sending…" resetOnSuccess>
       <input type="hidden" name="ticketId" value={ticketId} />
       <label htmlFor="tk-reply" className="sr-only">Reply</label>
+      <FormatBar target="tk-reply" />
       <Textarea id="tk-reply" name="body" rows={3} placeholder="Write a reply" />
       <FieldError name="body" />
     </ActionForm>
