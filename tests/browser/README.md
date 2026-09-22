@@ -43,6 +43,7 @@ node tests/browser/dashboards.mjs
 | `search-upgrades.mjs` | Program labels (bulk and one at a time), several levels and seasons at once, chip counts, open or closed by deadline, eligibility from typed scores, the universities view, compare and download, and the new program-page details (needs the catalogue) |
 | `student-profile.mjs` | Mailing address and second citizenship, the background questions and their rules, important contacts, the ACT, section and tab status, the visa-refusal warning, and application priority on the file, list, filter, sort and export |
 | `documents-share.mjs` | Guidance and a sample per document type, a text file refused as a sample, sharing one file with the student, what the portal can and cannot open, and stopping the share |
+| `billing.mjs` | Billing companies with PAN, GSTIN, LUT and IFSC rules, the limit of four, editing without the account number, the default, a payout to a chosen company and the team's view, removal rules, the owner's switch that hides commission from counsellors, and the commission structure page |
 | `shortlist.mjs` | Shortlisting from search and a program page, the side by side comparison, removal, read-only roles and branch isolation |
 
 Screenshots land in `/tmp/smoke-*`. Each script exits non-zero if a check fails.

@@ -259,9 +259,18 @@ export async function payoutList(orgId?: string, limit = 25) {
       note: pq.note,
       createdAt: pq.createdAt,
       decidedAt: pq.decidedAt,
+      company: schema.billingCompanies.legalName,
+      companyGstin: schema.billingCompanies.gstin,
+      companyPan: schema.billingCompanies.pan,
+      companyState: schema.billingCompanies.state,
+      companyLut: schema.billingCompanies.lutValidUntil,
+      bankName: schema.billingCompanies.bankAccountName,
+      bankAccount: schema.billingCompanies.bankAccountNumber,
+      ifsc: schema.billingCompanies.ifsc,
     })
     .from(pq)
     .innerJoin(og, eq(pq.orgId, og.id))
+    .leftJoin(schema.billingCompanies, eq(pq.billingCompanyId, schema.billingCompanies.id))
     .where(orgId ? eq(pq.orgId, orgId) : undefined)
     .orderBy(desc(pq.createdAt))
     .limit(limit);

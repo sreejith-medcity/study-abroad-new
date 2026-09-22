@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { commissionVisible } from "@/server/commission-visibility";
 import { and, count, desc, eq, isNull } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
@@ -160,7 +161,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           ? MANAGEMENT_NAV
           : user.role === "PARTNER"
             ? PARTNER_NAV
-            : COUNSELLOR_NAV;
+            : (await commissionVisible(user))
+              ? COUNSELLOR_NAV
+              : COUNSELLOR_NAV.filter((g) => g.title !== "Money");
 
   const navGroups: NavGroup[] = [
     ...groups,

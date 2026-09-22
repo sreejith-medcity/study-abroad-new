@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { commissionVisible } from "@/server/commission-visibility";
 import { asc, desc } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
@@ -43,6 +44,10 @@ export default async function CommissionPage({ searchParams }: { searchParams: P
     const { redirect } = await import("next/navigation");
     redirect("/admin/commission");
   }
+  if (!(await commissionVisible(user))) {
+    const { redirect } = await import("next/navigation");
+    redirect("/dashboard");
+  }
   const f = readCommissionFilters(await searchParams);
 
   const [rows, totals, wallet, countries] = await Promise.all([
@@ -63,9 +68,12 @@ export default async function CommissionPage({ searchParams }: { searchParams: P
         title="Commission"
         subtitle="What each placement earns your branch, from the moment the visa lands to the day it reaches your wallet."
         actions={
-          <LinkButton href="/wallet" variant="secondary">
-            <IconWallet className="size-4" /> Open wallet
-          </LinkButton>
+          <div className="flex flex-wrap gap-2">
+            <LinkButton href="/commission/structure" variant="secondary">Commission structure</LinkButton>
+            <LinkButton href="/wallet" variant="secondary">
+              <IconWallet className="size-4" /> Open wallet
+            </LinkButton>
+          </div>
         }
       />
 

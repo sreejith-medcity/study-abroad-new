@@ -59,3 +59,19 @@ test("the rule shown on a program: most specific first, past-year rules ignored"
   assert.equal(partnerEstimate(rules[1], null, "GBP").amount, null, "no yearly tuition, no figure");
   assert.equal(partnerEstimate({ ...base, id: "f", basis: "FLAT", flatAmount: 100000 }, null, "GBP").amount, 50000);
 });
+
+import { GSTIN_RE, IFSC_RE, PAN_RE, gstinMatchesPan, lutState, maskAccount } from "../src/lib/billing";
+
+test("billing identifiers: PAN, GSTIN with its PAN, IFSC, masking and LUT dates", () => {
+  assert.ok(PAN_RE.test("ABCDE1234F"));
+  assert.ok(!PAN_RE.test("ABCD1234F"));
+  assert.ok(GSTIN_RE.test("32ABCDE1234F1Z5"));
+  assert.ok(gstinMatchesPan("32ABCDE1234F1Z5", "ABCDE1234F"));
+  assert.ok(!gstinMatchesPan("32ABCDE1234F1Z5", "ABCDE9999F"));
+  assert.ok(IFSC_RE.test("SBIN0001234"));
+  assert.ok(!IFSC_RE.test("SBIN1001234"));
+  assert.equal(maskAccount("123456789012"), "•••• 9012");
+  assert.equal(lutState(null), "none");
+  assert.equal(lutState("2027-03-31", new Date("2026-09-22")), "valid");
+  assert.equal(lutState("2026-03-31", new Date("2026-09-22")), "expired");
+});

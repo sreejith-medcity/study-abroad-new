@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { commissionVisible } from "@/server/commission-visibility";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
@@ -26,6 +27,10 @@ const PAYOUT_TONE: Record<string, "neutral" | "info" | "ok" | "bad"> = {
 
 export default async function WalletPage() {
   const user = await requireUser(["PARTNER", "COUNSELLOR"]);
+  if (!(await commissionVisible(user))) {
+    const { redirect } = await import("next/navigation");
+    redirect("/dashboard");
+  }
   const [wallet, ledger, payouts, totals, org] = await Promise.all([
     walletBalance(user.orgId),
     walletLedger(user.orgId, 40),
@@ -36,6 +41,9 @@ export default async function WalletPage() {
 
   const pending = payouts.find((p) => p.status === "REQUESTED");
   const owner = user.role === "PARTNER";
+  const companies = owner
+    ? await db.query.billingCompanies.findMany({ where: eq(schema.billingCompanies.orgId, user.orgId), columns: { id: true, legalName: true, gstin: true, isDefault: true } })
+    : [];
   const inFlight = totals.EXPECTED.partner + totals.INVOICED.partner + totals.RECEIVED.partner;
 
   return (
@@ -105,7 +113,14 @@ export default async function WalletPage() {
                   {owner && <CancelPayoutButton payoutId={pending.id} />}
                 </div>
               ) : owner ? (
-                <PayoutForm balance={wallet.balance} />
+                <>
+                  <PayoutForm balance={wallet.balance} companies={companies.map((c) => ({ id: c.id, isDefault: c.isDefault, label: `${c.legalName}${c.gstin ? ` (GSTIN ${c.gstin})` : ""}` }))} />
+                  {companies.length === 0 && (
+                    <p className="mt-3 text-xs text-muted">
+                      Add your billing company in <Link href="/settings/branch#billing" className="font-medium text-brand-600 hover:underline">Settings, Branch</Link> so the team knows where to pay and whether to add GST.
+                    </p>
+                  )}
+                </>
               ) : (
                 <p className="text-[13px] text-muted">Ask {org?.name ?? "your branch"}'s owner to request the transfer.</p>
               )}

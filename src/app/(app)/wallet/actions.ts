@@ -26,6 +26,10 @@ export async function requestPayoutAction(_: FormState, formData: FormData): Pro
   const parsed = requestShape.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Check the highlighted fields." };
   const { amountInr, note } = parsed.data;
+  // Once a branch has billing companies, every payout names the one it is paid to.
+  const companies = await db.query.billingCompanies.findMany({ where: eq(schema.billingCompanies.orgId, user.orgId) });
+  const billingCompanyId = String(formData.get("billingCompanyId") ?? "");
+  if (companies.length && !companies.some((c) => c.id === billingCompanyId)) return { fieldErrors: { billingCompanyId: ["Choose the company to pay"] }, error: "Choose the company to pay." };
 
   const { balance } = await walletBalance(user.orgId);
   const pending = await db.query.payoutRequests.findFirst({
@@ -36,7 +40,7 @@ export async function requestPayoutAction(_: FormState, formData: FormData): Pro
 
   const [row] = await db
     .insert(schema.payoutRequests)
-    .values({ orgId: user.orgId, amountInr, requestedById: user.id, note })
+    .values({ orgId: user.orgId, amountInr, requestedById: user.id, note, billingCompanyId: billingCompanyId || null })
     .returning();
   await audit(user.id, "payout.request", "payout", row.id, { amount: amountInr });
   await notifyUsers(await adminIds(), "Payout requested", `${user.orgName}: ${inr(amountInr)}`, "/admin/commission?tab=payouts");

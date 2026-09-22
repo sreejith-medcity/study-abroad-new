@@ -1,13 +1,18 @@
 "use client";
 
 import { ActionForm } from "@/components/action-form";
-import { TextField, TextareaField } from "@/components/fields";
+import { SelectField, TextField, TextareaField } from "@/components/fields";
 import { Button } from "@/components/ui";
 import { cancelPayoutAction, requestPayoutAction } from "./actions";
 
-export function PayoutForm({ balance }: { balance: number }) {
+export function PayoutForm({ balance, companies }: { balance: number; companies: { id: string; label: string; isDefault: boolean }[] }) {
   return (
     <ActionForm action={requestPayoutAction} submitLabel="Request payout" pendingLabel="Sending…" resetOnSuccess>
+      {companies.length > 0 && (
+        <SelectField label="Pay to" name="billingCompanyId" defaultValue={companies.find((c) => c.isDefault)?.id ?? companies[0].id} required>
+          {companies.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+        </SelectField>
+      )}
       <TextField
         label="Amount (rupees)"
         name="amountInr"

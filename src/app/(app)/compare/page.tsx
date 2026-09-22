@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { commissionVisible } from "@/server/commission-visibility";
 import { and, eq, inArray } from "drizzle-orm";
 import type { ReactNode } from "react";
 import { db, schema } from "@/db";
@@ -21,7 +22,7 @@ const MAX = 6;
 
 /** Programs ticked in search, side by side, printable for a student without the commission row. */
 export default async function ComparePage({ searchParams }: { searchParams: Promise<{ id?: string | string[] }> }) {
-  await requireUser([...APP_ROLES]);
+  const user = await requireUser([...APP_ROLES]);
   const sp = await searchParams;
   const ids = [...new Set((Array.isArray(sp.id) ? sp.id : sp.id ? [sp.id] : []).filter((x) => /^[A-Za-z0-9_-]{8,40}$/.test(x)))];
   const tooMany = ids.length > MAX;
@@ -49,7 +50,8 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
   }
 
   const rates = fxRates(await getSettings());
-  const rules = await activeRules();
+  const showCommission = await commissionVisible(user);
+  const rules = showCommission ? await activeRules() : [];
   const cols = programs.map((p) => {
     const cur = p.university.country.currency;
     const rule = pickRule(rules, p.id, p.university.id, p.university.country.id);
@@ -59,7 +61,7 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
   const sameCurrency = new Set(cols.map((c) => c.cur)).size === 1;
   const cheapest = sameCurrency && tuitions.length > 1 ? Math.min(...tuitions) : null;
 
-  const rows: { label: string; cell: (c: (typeof cols)[number]) => ReactNode; hidePrint?: boolean }[] = [
+  const allRows: { label: string; cell: (c: (typeof cols)[number]) => ReactNode; hidePrint?: boolean; hide?: boolean }[] = [
     { label: "Level", cell: ({ p }) => `${LEVEL_LABEL[p.level] ?? p.level}${p.studyArea ? ` · ${p.studyArea}` : ""}` },
     { label: "Campus", cell: ({ p }) => `${p.campus ?? p.university.city ? `${p.campus ?? p.university.city}, ` : ""}${p.university.country.name}` },
     { label: "Ranking", cell: ({ p }) => <Muted on={!rankLabels(p.university).length}>{rankLabels(p.university).join(" · ") || "Not recorded"}</Muted> },
@@ -78,7 +80,7 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
         {p.feeWaiver && <span className="block text-xs text-emerald-700">Waiver: {p.feeWaiver}</span>}
       </>
     ) },
-    { label: "Your commission", cell: ({ commission }) => commission ? (commission.amount != null ? <span className="font-medium text-emerald-700">≈ {fmtMoney(commission.amount, commission.currency)}</span> : <Muted on>{commission.terms}</Muted>) : <Muted on>No rule</Muted>, hidePrint: true },
+    { label: "Your commission", cell: ({ commission }) => commission ? (commission.amount != null ? <span className="font-medium text-emerald-700">≈ {fmtMoney(commission.amount, commission.currency)}</span> : <Muted on>{commission.terms}</Muted>) : <Muted on>No rule</Muted>, hidePrint: true, hide: !showCommission },
     { label: "Deposit", cell: ({ p, cur }) => (
       <>
         <Muted on={p.initialDeposit == null}>{feeText(p.initialDeposit, cur, { zero: "No deposit" })}</Muted>
@@ -110,6 +112,8 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
     { label: "Labels", cell: ({ p }) => p.tags.length ? <div className="flex flex-wrap gap-1">{p.tags.map((t) => <Chip key={t} tone="info">{PROGRAM_TAGS[t as keyof typeof PROGRAM_TAGS] ?? t}</Chip>)}</div> : <Muted on>None</Muted> },
     { label: "Program page", cell: ({ p }) => p.programUrl ? <a href={p.programUrl} target="_blank" rel="noreferrer" className="break-all text-brand-600 hover:underline">{new URL(p.programUrl).hostname}</a> : <Muted on>Not recorded</Muted> },
   ];
+
+  const rows = allRows.filter((r) => !r.hide);
 
   return (
     <>

@@ -105,9 +105,35 @@ export const organizations = pgTable("organizations", {
   contactPhone: text("contact_phone"),
   contactEmail: text("contact_email"),
   relationshipManagerId: text("relationship_manager_id"),
+  /** The owner decides whether counsellors see commission figures and the wallet. */
+  counsellorsSeeCommission: boolean("counsellors_see_commission").notNull().default(true),
   active: boolean("active").notNull().default(true),
   createdAt: createdAt(),
 });
+
+/** The legal entities a partner invoices Medcity from, up to four. */
+export const billingCompanies = pgTable(
+  "billing_companies",
+  {
+    id: id(),
+    orgId: text("org_id")
+      .notNull()
+      .references(() => organizations.id),
+    legalName: text("legal_name").notNull(),
+    address: text("address").notNull(),
+    state: text("state").notNull(),
+    pan: text("pan").notNull(),
+    gstin: text("gstin"),
+    lutNumber: text("lut_number"),
+    lutValidUntil: date("lut_valid_until"),
+    bankAccountName: text("bank_account_name").notNull(),
+    bankAccountNumber: text("bank_account_number").notNull(),
+    ifsc: text("ifsc").notNull(),
+    isDefault: boolean("is_default").notNull().default(false),
+    createdAt: createdAt(),
+  },
+  (t) => [index("billing_companies_org_idx").on(t.orgId)],
+);
 
 export const users = pgTable(
   "users",
@@ -675,6 +701,7 @@ export const payoutRequests = pgTable(
     decidedAt: timestamp("decided_at", { withTimezone: true }),
     reference: text("reference"),
     note: text("note"),
+    billingCompanyId: text("billing_company_id").references(() => billingCompanies.id),
     createdAt: createdAt(),
   },
   (t) => [index("payout_requests_org_idx").on(t.orgId, t.status)],

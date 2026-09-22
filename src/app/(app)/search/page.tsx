@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { commissionVisible } from "@/server/commission-visibility";
 import { and, asc, count, eq, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
@@ -28,6 +29,11 @@ const CARRIED = [...QUICK.map((q) => q.key), "tags", "fit", "view", "apply", ...
 export default async function SearchPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const user = await requireUser([...APP_ROLES]);
   const f = readSearch(await searchParams);
+  const showCommission = await commissionVisible(user);
+  if (!showCommission) {
+    delete f.commission;
+    if (f.sort === "commission") delete f.sort;
+  }
   const page = Math.max(1, Number(f.page ?? 1));
   const view = f.view === "universities" ? "universities" : "programs";
   const { programs: p, universities: u, countries: c, students: s } = schema;
@@ -167,7 +173,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const list = rows.slice(0, PAGE);
   const unis = uniRows.slice(0, PAGE).map((r) => ({ ...r, intakes: Array.from({ length: 12 }, (_, i) => i + 1).filter((m) => (r.intakeMask >> m) & 1) }));
   const next = await nextDeadlines(list.map((r) => r.id));
-  const rules = await activeRules();
+  const rules = showCommission ? await activeRules() : [];
 
   const countries = await db.select().from(c).orderBy(asc(c.name));
   // Fields with a meaningful number of live programs, so the list stays usable.
@@ -287,7 +293,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             <option value="">Sort by country and university</option>
             <option value="name">Sort by name</option>
             {view === "programs" && <option value="fee">Lowest fee first</option>}
-            {view === "programs" && <option value="commission">Highest commission first</option>}
+            {view === "programs" && showCommission && <option value="commission">Highest commission first</option>}
             <option value="rank">Best university ranking first</option>
           </Select>
           <Select name="student" aria-label="Check against student" defaultValue={f.student ?? ""}>
@@ -305,7 +311,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <span className="text-[13px] font-medium text-muted">Quick filters</span>
-        {QUICK.map((q) => {
+        {QUICK.filter((q) => showCommission || q.key !== "commission").map((q) => {
           const on = !!f[q.key];
           const n = chipCount(q.key);
           if (!on && n === 0) return null;

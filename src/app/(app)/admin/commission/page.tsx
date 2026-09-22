@@ -333,7 +333,18 @@ export default async function AdminCommissionPage({ searchParams }: { searchPara
               <tbody>
                 {payouts.map((p) => (
                   <tr key={p.id}>
-                    <Td className="font-medium">{p.orgName}</Td>
+                    <Td className="font-medium">
+                      {p.orgName}
+                      {p.company ? (
+                        <div className="mt-1 text-xs font-normal text-muted">
+                          <p className="text-ink-soft">{p.company}</p>
+                          <p>{p.companyGstin ? `GSTIN ${p.companyGstin}` : `No GSTIN · PAN ${p.companyPan}`} · {p.companyState}{p.companyLut ? ` · LUT to ${p.companyLut}` : ""}</p>
+                          <p className="tabular">{p.bankName} · {p.bankAccount} · {p.ifsc}</p>
+                        </div>
+                      ) : (
+                        <p className="mt-1 text-xs font-normal text-amber-700">No billing company chosen</p>
+                      )}
+                    </Td>
                     <Td className="whitespace-nowrap text-right font-semibold tabular">{inr(p.amountInr)}</Td>
                     <Td className="whitespace-nowrap text-[13px] text-muted">{fmtDate(p.createdAt)}</Td>
                     <Td className="text-[13px] text-muted">{p.note ?? "None"}</Td>

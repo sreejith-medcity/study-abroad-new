@@ -120,6 +120,7 @@ export async function clearDemoData(actorId: string): Promise<Record<string, num
       sql`delete from notifications`,
       sql`delete from audit_logs where actor_id in (select id from _users)`,
       sql`delete from users where id in (select id from _users)`,
+      sql`delete from billing_companies where org_id in (select id from _orgs)`,
       sql`delete from organizations where id in (select id from _orgs)`,
     ];
     for (const step of steps) await tx.execute(step);

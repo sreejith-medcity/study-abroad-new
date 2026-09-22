@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { commissionVisible } from "@/server/commission-visibility";
 import { and, asc, count, eq, gte } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
@@ -65,6 +66,7 @@ export default async function PartnerDashboard({
   const { applications: a, students: s, countries: c, organizations: og } = schema;
   const filters: ApplicationFilters = { from: f.from, to: f.to, country: f.country, intakeYear: f.intakeYear, intakeMonth: f.intakeMonth };
   const mine = variant === "counsellor" ? eq(s.assignedToId, user.id) : undefined;
+  const showMoney = await commissionVisible(user);
 
   const [kpis, work, deadlines, recent, org, countries, destinations, points, steps, enquiries, followUps, wallet, commission] = await Promise.all([
     kpiTotals(user, and(applicationWhere(user, filters), mine)),
@@ -307,8 +309,12 @@ export default async function PartnerDashboard({
               </div>
               <DataList
                 rows={[
-                  { label: "Wallet balance", value: inr(wallet.balance), href: "/wallet", tone: wallet.balance > 0 ? "ok" : undefined },
-                  { label: "Commission in flight", value: inr(commission.EXPECTED.partner + commission.INVOICED.partner + commission.RECEIVED.partner), href: "/commission" },
+                  ...(showMoney
+                    ? [
+                        { label: "Wallet balance", value: inr(wallet.balance), href: "/wallet", tone: wallet.balance > 0 ? ("ok" as const) : undefined },
+                        { label: "Commission in flight", value: inr(commission.EXPECTED.partner + commission.INVOICED.partner + commission.RECEIVED.partner), href: "/commission" },
+                      ]
+                    : []),
                   { label: "Counsellor seats", value: org.counsellorSeats },
                   { label: "Active students", value: Number(openStudents) },
                   { label: variant === "counsellor" ? "My documents" : "Documents on file", value: variant === "counsellor" ? work.documents : work.orgDocuments },

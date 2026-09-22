@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { commissionVisible } from "@/server/commission-visibility";
 import { notFound } from "next/navigation";
 import { and, asc, count, eq, ne, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
@@ -92,7 +93,7 @@ export default async function ProgramPage({
     : [];
   const scholarships = await openScholarships(university.id, program.level);
   const deadlines = await programDeadlines(program.id);
-  const rule = pickRule(await activeRules(), program.id, university.id, country.id);
+  const rule = (await commissionVisible(user)) ? pickRule(await activeRules(), program.id, university.id, country.id) : null;
   const commission = rule ? partnerEstimate(rule, program.tuitionPerYear, cur) : null;
   const rates = fxRates(await getSettings());
   // The rupee figure sits under the real one, smaller, and says it is rough.

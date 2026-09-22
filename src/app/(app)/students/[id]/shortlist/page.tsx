@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { commissionVisible } from "@/server/commission-visibility";
 import { asc, eq } from "drizzle-orm";
 import type { ReactNode } from "react";
 import { db, schema } from "@/db";
@@ -49,7 +50,8 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
   }
 
   const rates = fxRates(await getSettings());
-  const rules = await activeRules();
+  const showCommission = await commissionVisible(user);
+  const rules = showCommission ? await activeRules() : [];
   const cols = items.map((it) => {
     const p = it.program;
     const cur = p.university.country.currency;
@@ -65,7 +67,7 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
   const cheapest = sameCurrency && tuitions.length > 1 ? Math.min(...tuitions) : null;
 
   // hidePrint: the printed comparison may go to the student, and commission is not theirs to see.
-  const rows: { label: string; cell: (c: (typeof cols)[number]) => ReactNode; hidePrint?: boolean }[] = [
+  const allRows: { label: string; cell: (c: (typeof cols)[number]) => ReactNode; hidePrint?: boolean; hide?: boolean }[] = [
     { label: "Fit", cell: ({ fit }) => (
       <div>
         {fit.verdict === "eligible" && <Chip tone="ok"><IconCheck className="size-3.5" /> Eligible</Chip>}
@@ -89,7 +91,7 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
       </span>
     ) },
     { label: "Application fee", cell: ({ p, cur }) => <Muted on={p.applicationFee == null}>{feeText(p.applicationFee, cur, { zero: "No application fee" })}</Muted> },
-    { label: "Your commission", cell: ({ commission }) => commission ? (commission.amount != null ? <span className="font-medium text-emerald-700">≈ {fmtMoney(commission.amount, commission.currency)}</span> : <Muted on>{commission.terms}</Muted>) : <Muted on>No rule</Muted>, hidePrint: true },
+    { label: "Your commission", cell: ({ commission }) => commission ? (commission.amount != null ? <span className="font-medium text-emerald-700">≈ {fmtMoney(commission.amount, commission.currency)}</span> : <Muted on>{commission.terms}</Muted>) : <Muted on>No rule</Muted>, hidePrint: true, hide: !showCommission },
     { label: "Deposit", cell: ({ p, cur }) => <Muted on={p.initialDeposit == null}>{feeText(p.initialDeposit, cur, { zero: "No deposit" })}</Muted> },
     { label: "English", cell: ({ p }) => {
       const parts = [p.minIelts != null && `IELTS ${p.minIelts}`, p.minPte != null && `PTE ${p.minPte}`, p.minToefl != null && `TOEFL ${p.minToefl}`, p.minDuolingo != null && `Duolingo ${p.minDuolingo}`, p.minOetGrade && `OET ${p.minOetGrade}`].filter(Boolean);
@@ -115,6 +117,8 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
     ) },
     { label: "Added", cell: ({ it }) => <span className="text-xs text-muted">{fmtDate(it.createdAt)}{it.addedBy ? ` by ${it.addedBy.name}` : ""}</span> },
   ];
+
+  const rows = allRows.filter((r) => !r.hide);
 
   return (
     <Card>
