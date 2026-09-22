@@ -169,6 +169,13 @@
       "when": 1790051622410,
       "tag": "0023_rankings_and_living_costs",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790051969822,
+      "tag": "0024_tickets",
+      "breakpoints": true
     }
   ]
 }

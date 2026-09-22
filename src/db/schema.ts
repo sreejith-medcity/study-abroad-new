@@ -56,6 +56,8 @@ export const visaDecision = pgEnum("visa_decision", ["GRANTED", "REFUSED"]);
 export const serviceType = pgEnum("service_type", ["EDUCATION_LOAN", "FOREX", "ACCOMMODATION", "INSURANCE", "FLIGHT", "OTHER"]);
 export const serviceStatus = pgEnum("service_status", ["NEW", "IN_PROGRESS", "DONE", "CANCELLED"]);
 export const eventKind = pgEnum("event_kind", ["WEBINAR", "UNIVERSITY_VISIT", "TRAINING", "FAIR"]);
+export const ticketCategory = pgEnum("ticket_category", ["APPLICATION", "COMMISSION", "CATALOGUE", "ACCESS", "OTHER"]);
+export const ticketStatus = pgEnum("ticket_status", ["OPEN", "WAITING_PARTNER", "RESOLVED"]);
 export const feeStatus = pgEnum("fee_status", ["NOT_APPLICABLE", "DUE", "PAID"]);
 export const commentChannel = pgEnum("comment_channel", ["TEAM", "STUDENT"]);
 export const messageSource = pgEnum("message_source", ["WEB", "WHATSAPP", "SYSTEM"]);
@@ -838,6 +840,43 @@ export const eventRegistrations = pgTable(
   ],
 );
 
+/**
+ * A partner's question to the Overseas team that is not about one student's
+ * file: a commission query, a login problem, a catalogue correction.
+ */
+export const tickets = pgTable(
+  "tickets",
+  {
+    id: id(),
+    orgId: text("org_id")
+      .notNull()
+      .references(() => organizations.id),
+    raisedById: text("raised_by_id").references(() => users.id, { onDelete: "set null" }),
+    subject: text("subject").notNull(),
+    category: ticketCategory("category").notNull(),
+    status: ticketStatus("status").notNull().default("OPEN"),
+    ownerId: text("owner_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  },
+  (t) => [index("tickets_org_idx").on(t.orgId), index("tickets_status_idx").on(t.status)],
+);
+
+export const ticketMessages = pgTable(
+  "ticket_messages",
+  {
+    id: id(),
+    ticketId: text("ticket_id")
+      .notNull()
+      .references(() => tickets.id, { onDelete: "cascade" }),
+    authorId: text("author_id").references(() => users.id, { onDelete: "set null" }),
+    body: text("body").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("ticket_messages_ticket_idx").on(t.ticketId)],
+);
+
 // ---------- Enquiries ----------
 
 export const enquiries = pgTable(
@@ -955,6 +994,18 @@ export const eventRegistrationsRelations = relations(eventRegistrations, ({ one 
   event: one(events, { fields: [eventRegistrations.eventId], references: [events.id] }),
   user: one(users, { fields: [eventRegistrations.userId], references: [users.id] }),
   student: one(students, { fields: [eventRegistrations.studentId], references: [students.id] }),
+}));
+
+export const ticketsRelations = relations(tickets, ({ one, many }) => ({
+  org: one(organizations, { fields: [tickets.orgId], references: [organizations.id] }),
+  raisedBy: one(users, { fields: [tickets.raisedById], references: [users.id], relationName: "ticketRaiser" }),
+  owner: one(users, { fields: [tickets.ownerId], references: [users.id], relationName: "ticketOwner" }),
+  messages: many(ticketMessages),
+}));
+
+export const ticketMessagesRelations = relations(ticketMessages, ({ one }) => ({
+  ticket: one(tickets, { fields: [ticketMessages.ticketId], references: [tickets.id] }),
+  author: one(users, { fields: [ticketMessages.authorId], references: [users.id] }),
 }));
 
 export const programDeadlinesRelations = relations(programDeadlines, ({ one }) => ({
