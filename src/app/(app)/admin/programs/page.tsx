@@ -5,6 +5,7 @@ import { intakesText, LEVEL_LABEL, tuitionText } from "@/lib/catalogue";
 import { requireUser } from "@/lib/auth";
 import { readFilters } from "@/server/queries";
 import { Button, Card, Chip, EmptyState, Input, LinkButton, PageHeader, Select, Table, Td, Th } from "@/components/ui";
+import { BulkStatusButtons } from "./bulk-buttons";
 import { bulkStatusAction, bulkTagAction, setProgramStatusAction } from "./actions";
 import { PROGRAM_TAGS, TAG_KEYS } from "@/lib/program-tags";
 import { ImportForm } from "./import-form";
@@ -72,8 +73,7 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
                 Export CSV
               </a>
               <span className="text-[13px] text-muted">All {total} matching:</span>
-              <Button name="to" value="LIVE" size="sm" variant="secondary">Publish</Button>
-              <Button name="to" value="DRAFT" size="sm" variant="quiet">Back to draft</Button>
+              <BulkStatusButtons total={total} />
             </form>
           ) : undefined
         }

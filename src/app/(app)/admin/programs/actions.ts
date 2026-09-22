@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { TAG_KEYS } from "@/lib/program-tags";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
@@ -124,26 +124,31 @@ export async function bulkStatusAction(formData: FormData) {
   if (!f.status && formData.get("from")) f.status = String(formData.get("from"));
 
   const { programs: p, universities: u, countries: c } = schema;
-  // The country lives on the university, so the filter has to reach across two
-  // joins. Selecting the ids first and then updating by id worked until the
-  // catalogue passed a few hundred rows, at which point the IN list was the
-  // slowest part of the request. This keeps it to one statement whose size does
-  // not grow with the number of programs being published.
-  const scope = db
-    .select({ id: p.id })
-    .from(p)
-    .innerJoin(u, eq(p.universityId, u.id))
-    .innerJoin(c, eq(u.countryId, c.id))
-    .where(programFilterWhere(f));
+  // The country lives on the university, so the filter reaches across two
+  // joins. The update runs in batches: one statement over the whole CRICOS
+  // register (about 27,000 rows) could outlast the hosting's request limit or
+  // the database's statement timeout, and the page then showed nothing at all.
+  const BATCH = 2000;
+  let total = 0;
+  for (let i = 0; i < 40; i++) {
+    const scope = db
+      .select({ id: p.id })
+      .from(p)
+      .innerJoin(u, eq(p.universityId, u.id))
+      .innerJoin(c, eq(u.countryId, c.id))
+      .where(and(programFilterWhere(f), ne(p.status, to as "LIVE")))
+      .limit(BATCH);
+    const changed = await db
+      .update(schema.programs)
+      .set({ status: to as "LIVE", updatedAt: new Date() })
+      .where(inArray(schema.programs.id, scope))
+      .returning({ id: schema.programs.id });
+    total += changed.length;
+    if (changed.length < BATCH) break;
+  }
+  if (!total) return;
 
-  const changed = await db
-    .update(schema.programs)
-    .set({ status: to as "LIVE", updatedAt: new Date() })
-    .where(inArray(schema.programs.id, scope))
-    .returning({ id: schema.programs.id });
-  if (!changed.length) return;
-
-  await audit(user.id, "programs.bulk_status", "program", "*", { to, ...f, count: changed.length });
+  await audit(user.id, "programs.bulk_status", "program", "*", { to, ...f, count: total });
   revalidatePath("/admin/programs");
   revalidatePath("/search");
 }
