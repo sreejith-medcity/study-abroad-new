@@ -12,6 +12,7 @@ import {
   IconDashboard,
   IconEnquiry,
   IconFlow,
+  IconGlobe,
   IconInsights,
   IconLearning,
   IconMenu,
@@ -45,6 +46,7 @@ const ICONS = {
   spark: IconSpark,
   universities: IconBuilding,
   deadlines: IconClock,
+  services: IconGlobe,
 } as const;
 
 export type NavItem = { href: string; label: string; icon: keyof typeof ICONS; soon?: string };

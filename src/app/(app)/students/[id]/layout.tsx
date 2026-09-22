@@ -17,6 +17,7 @@ export default async function StudentLayout({ children, params }: { children: Re
   const [{ apps }] = await db.select({ apps: count() }).from(schema.applications).where(eq(schema.applications.studentId, id));
   const [{ docs }] = await db.select({ docs: count() }).from(schema.documents).where(eq(schema.documents.studentId, id));
   const [{ picks }] = await db.select({ picks: count() }).from(schema.shortlists).where(eq(schema.shortlists.studentId, id));
+  const [{ services }] = await db.select({ services: count() }).from(schema.serviceRequests).where(eq(schema.serviceRequests.studentId, id));
   // The student's preferred destination is stored by name; search filters by code.
   const preferred = student.preferredCountry
     ? await db.query.countries.findFirst({ where: ilike(schema.countries.name, student.preferredCountry.trim()) })
@@ -53,6 +54,7 @@ export default async function StudentLayout({ children, params }: { children: Re
                 { href: `/students/${id}/shortlist`, label: `Shortlist (${picks})`, done: picks > 0 },
                 { href: `/students/${id}/applications`, label: `Applications (${apps})`, done: apps > 0 },
                 { href: `/students/${id}/documents`, label: `Documents (${docs})`, done: docs > 0 },
+                { href: `/students/${id}/services`, label: `Services (${services})`, done: services > 0 },
               ]}
             />
           </div>

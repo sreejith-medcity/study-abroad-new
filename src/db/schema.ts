@@ -53,6 +53,8 @@ export const statusGroup = pgEnum("status_group", [
 ]);
 export const offerType = pgEnum("offer_type", ["CONDITIONAL", "UNCONDITIONAL"]);
 export const visaDecision = pgEnum("visa_decision", ["GRANTED", "REFUSED"]);
+export const serviceType = pgEnum("service_type", ["EDUCATION_LOAN", "FOREX", "ACCOMMODATION", "INSURANCE", "FLIGHT", "OTHER"]);
+export const serviceStatus = pgEnum("service_status", ["NEW", "IN_PROGRESS", "DONE", "CANCELLED"]);
 export const feeStatus = pgEnum("fee_status", ["NOT_APPLICABLE", "DUE", "PAID"]);
 export const commentChannel = pgEnum("comment_channel", ["TEAM", "STUDENT"]);
 export const messageSource = pgEnum("message_source", ["WEB", "WHATSAPP", "SYSTEM"]);
@@ -747,6 +749,34 @@ export const programDeadlines = pgTable(
   (t) => [uniqueIndex("program_deadlines_intake_uq").on(t.programId, t.intakeYear, t.intakeMonth), index("program_deadlines_deadline_idx").on(t.deadline)],
 );
 
+/**
+ * Help a student needs around the application: an education loan, forex,
+ * accommodation, insurance, flights. A partner asks; the Overseas team works
+ * it with a provider and records where it stands.
+ */
+export const serviceRequests = pgTable(
+  "service_requests",
+  {
+    id: id(),
+    studentId: text("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    orgId: text("org_id")
+      .notNull()
+      .references(() => organizations.id),
+    type: serviceType("type").notNull(),
+    status: serviceStatus("status").notNull().default("NEW"),
+    details: text("details").notNull(),
+    provider: text("provider"),
+    teamNote: text("team_note"),
+    requestedById: text("requested_by_id").references(() => users.id, { onDelete: "set null" }),
+    ownerId: text("owner_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("service_requests_student_idx").on(t.studentId), index("service_requests_status_idx").on(t.status)],
+);
+
 // ---------- Enquiries ----------
 
 export const enquiries = pgTable(
@@ -846,6 +876,13 @@ export const programsRelations = relations(programs, ({ one, many }) => ({
   university: one(universities, { fields: [programs.universityId], references: [universities.id] }),
   applications: many(applications),
   deadlines: many(programDeadlines),
+}));
+
+export const serviceRequestsRelations = relations(serviceRequests, ({ one }) => ({
+  student: one(students, { fields: [serviceRequests.studentId], references: [students.id] }),
+  org: one(organizations, { fields: [serviceRequests.orgId], references: [organizations.id] }),
+  requestedBy: one(users, { fields: [serviceRequests.requestedById], references: [users.id], relationName: "serviceRequester" }),
+  owner: one(users, { fields: [serviceRequests.ownerId], references: [users.id], relationName: "serviceOwner" }),
 }));
 
 export const programDeadlinesRelations = relations(programDeadlines, ({ one }) => ({

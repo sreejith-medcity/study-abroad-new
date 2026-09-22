@@ -52,6 +52,7 @@ const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/queue", label: "Work queue", icon: "queue" },
       { href: "/applications", label: "Applications", icon: "applications" },
       { href: "/students", label: "Students", icon: "students" },
+      { href: "/admin/services", label: "Services", icon: "services" },
     ],
   },
   {
@@ -101,6 +102,7 @@ const DOCUMENTATION_NAV: NavGroup[] = [
       { href: "/admin/queue", label: "Work queue", icon: "queue" },
       { href: "/applications", label: "Applications", icon: "applications" },
       { href: "/students", label: "Students", icon: "students" },
+      { href: "/admin/services", label: "Services", icon: "services" },
     ],
   },
   {
