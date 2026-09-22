@@ -44,6 +44,7 @@ const partnerNav = (home: string): NavGroup[] => [
       { href: "/events", label: "Events", icon: "events" },
       { href: "/support", label: "Help desk", icon: "support" },
       { href: "/learning", label: "Learning resources", icon: "learning" },
+      { href: "/training", label: "Training", icon: "training" },
     ],
   },
 ];
@@ -81,6 +82,7 @@ const ADMIN_NAV: NavGroup[] = [
       { href: "/enquiries", label: "Enquiries", icon: "enquiry" },
       { href: "/admin/partners", label: "Partners", icon: "partners" },
       { href: "/admin/events", label: "Events", icon: "events" },
+      { href: "/admin/training", label: "Training", icon: "training" },
       { href: "/admin/insights", label: "Insights", icon: "insights" },
     ],
   },

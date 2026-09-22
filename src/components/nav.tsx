@@ -13,6 +13,7 @@ import {
   IconDashboard,
   IconEnquiry,
   IconChat,
+  IconCheck,
   IconFlow,
   IconGlobe,
   IconInsights,
@@ -51,6 +52,7 @@ const ICONS = {
   services: IconGlobe,
   events: IconCalendar,
   support: IconChat,
+  training: IconCheck,
 } as const;
 
 export type NavItem = { href: string; label: string; icon: keyof typeof ICONS; soon?: string };

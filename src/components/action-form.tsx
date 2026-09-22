@@ -62,8 +62,8 @@ export function ActionForm({
         {children}
         {!hideSubmit && (
           <div>
-            <Button type="submit" variant={submitVariant} disabled={pending || !!state.redirectTo}>
-              {pending || state.redirectTo ? pendingLabel : submitLabel}
+            <Button type="submit" variant={submitVariant} disabled={pending}>
+              {pending ? pendingLabel : submitLabel}
             </Button>
           </div>
         )}

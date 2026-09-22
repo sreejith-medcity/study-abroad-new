@@ -877,6 +877,54 @@ export const ticketMessages = pgTable(
   (t) => [index("ticket_messages_ticket_idx").on(t.ticketId)],
 );
 
+/**
+ * A short course for partner staff: reading from the learning library, then a
+ * quiz. Passing earns a certificate the branch can print.
+ */
+export const trainingCourses = pgTable("training_courses", {
+  id: id(),
+  title: text("title").notNull(),
+  description: text("description"),
+  // Learning-library items to read before the quiz, in order.
+  resourceIds: text("resource_ids").array().notNull().default(sql`'{}'::text[]`),
+  passMark: integer("pass_mark").notNull().default(70),
+  published: boolean("published").notNull().default(false),
+  createdById: text("created_by_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: createdAt(),
+});
+
+export const trainingQuestions = pgTable(
+  "training_questions",
+  {
+    id: id(),
+    courseId: text("course_id")
+      .notNull()
+      .references(() => trainingCourses.id, { onDelete: "cascade" }),
+    prompt: text("prompt").notNull(),
+    options: text("options").array().notNull(),
+    correctIndex: integer("correct_index").notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+  },
+  (t) => [index("training_questions_course_idx").on(t.courseId)],
+);
+
+export const trainingAttempts = pgTable(
+  "training_attempts",
+  {
+    id: id(),
+    courseId: text("course_id")
+      .notNull()
+      .references(() => trainingCourses.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    score: integer("score").notNull(),
+    passed: boolean("passed").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("training_attempts_user_idx").on(t.userId, t.courseId)],
+);
+
 // ---------- Enquiries ----------
 
 export const enquiries = pgTable(
@@ -1006,6 +1054,20 @@ export const ticketsRelations = relations(tickets, ({ one, many }) => ({
 export const ticketMessagesRelations = relations(ticketMessages, ({ one }) => ({
   ticket: one(tickets, { fields: [ticketMessages.ticketId], references: [tickets.id] }),
   author: one(users, { fields: [ticketMessages.authorId], references: [users.id] }),
+}));
+
+export const trainingCoursesRelations = relations(trainingCourses, ({ many }) => ({
+  questions: many(trainingQuestions),
+  attempts: many(trainingAttempts),
+}));
+
+export const trainingQuestionsRelations = relations(trainingQuestions, ({ one }) => ({
+  course: one(trainingCourses, { fields: [trainingQuestions.courseId], references: [trainingCourses.id] }),
+}));
+
+export const trainingAttemptsRelations = relations(trainingAttempts, ({ one }) => ({
+  course: one(trainingCourses, { fields: [trainingAttempts.courseId], references: [trainingCourses.id] }),
+  user: one(users, { fields: [trainingAttempts.userId], references: [users.id] }),
 }));
 
 export const programDeadlinesRelations = relations(programDeadlines, ({ one }) => ({

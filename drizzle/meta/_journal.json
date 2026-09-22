@@ -176,6 +176,13 @@
       "when": 1790051969822,
       "tag": "0024_tickets",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1790052354896,
+      "tag": "0025_training",
+      "breakpoints": true
     }
   ]
 }
