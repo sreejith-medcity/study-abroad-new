@@ -49,3 +49,15 @@ export async function deleteDocumentAction(formData: FormData) {
   await audit(user.id, "document.delete", "document", documentId, { fileName: doc.fileName, typeCode: doc.typeCode });
   revalidatePath(`/students/${doc.studentId}`, "layout");
 }
+
+/** Show or hide one document in the student's portal. */
+export async function shareDocumentAction(formData: FormData) {
+  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const doc = await db.query.documents.findFirst({ where: eq(schema.documents.id, String(formData.get("documentId"))) });
+  if (!doc) return;
+  await getStudentForUser(user, doc.studentId);
+  const shared = !doc.sharedWithStudent;
+  await db.update(schema.documents).set({ sharedWithStudent: shared }).where(eq(schema.documents.id, doc.id));
+  await audit(user.id, shared ? "document.share" : "document.unshare", "document", doc.id, { fileName: doc.fileName });
+  revalidatePath(`/students/${doc.studentId}`, "layout");
+}

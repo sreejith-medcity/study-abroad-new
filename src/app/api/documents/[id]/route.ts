@@ -10,7 +10,11 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   if (!user) return new Response("Sign in required", { status: 401 });
   const { id } = await params;
   const doc = await db.query.documents.findFirst({ where: eq(schema.documents.id, id), with: { student: { columns: { orgId: true } } } });
-  if (!doc || (!isStaff(user) && doc.student.orgId !== user.orgId)) return new Response("Not found", { status: 404 });
+  if (!doc) return new Response("Not found", { status: 404 });
+  // A student sees only their own file: what they uploaded and what the branch shared.
+  if (user.role === "STUDENT") {
+    if (doc.studentId !== user.studentId || !(doc.sharedWithStudent || doc.uploadedById === user.id)) return new Response("Not found", { status: 404 });
+  } else if (!isStaff(user) && doc.student.orgId !== user.orgId) return new Response("Not found", { status: 404 });
 
   let bytes: Buffer;
   try {

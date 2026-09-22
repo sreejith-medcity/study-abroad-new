@@ -44,6 +44,12 @@ export default async function PortalDocuments({ searchParams }: { searchParams: 
               .map((r) => (
                 <li key={r.code} className="px-4 py-3.5">
                   <p className="font-medium">{r.label}</p>
+                  {r.guidance && <p className="mt-0.5 text-[13px] leading-relaxed text-muted">{r.guidance}</p>}
+                  {r.hasSample && (
+                    <a href={`/api/document-samples/${r.code}`} target="_blank" rel="noreferrer" className="text-[13px] font-medium text-brand-600 hover:underline">
+                      {t("seeSample")}
+                    </a>
+                  )}
                   <div className="mt-2">
                     <PortalUploadForm typeCode={r.code} label={r.label} chooseLabel={t("chooseFile")} uploadLabel={t("upload")} />
                   </div>
@@ -52,6 +58,23 @@ export default async function PortalDocuments({ searchParams }: { searchParams: 
           </ul>
         )}
       </Card>
+
+      {docs.shared.length > 0 && (
+        <Card>
+          <CardHeader title={t("sharedWithYou")} subtitle={`${docs.shared.length}`} />
+          <ul className="divide-y divide-line">
+            {docs.shared.map((d) => (
+              <li key={d.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
+                <span className="font-medium">{d.label ?? d.fileName}</span>
+                <span className="text-xs text-muted">{fmtDate(d.createdAt)}</span>
+                <a href={`/api/documents/${d.id}`} target="_blank" rel="noreferrer" className="ml-auto text-[13px] font-medium text-brand-600 hover:underline">
+                  {t("openFile")}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       <Card>
         <CardHeader title={t("received")} subtitle={`${docs.held.length}`} />

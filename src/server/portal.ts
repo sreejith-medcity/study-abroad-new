@@ -101,15 +101,28 @@ export async function studentDocuments(studentId: string, requiredCodes: string[
     .orderBy(desc(schema.documents.createdAt));
 
   const types = await db.select().from(schema.documentTypes).orderBy(asc(schema.documentTypes.sortOrder));
+  // What the branch chose to show the student, such as an offer letter.
+  const shared = await db
+    .select({ id: schema.documents.id, typeCode: schema.documents.typeCode, fileName: schema.documents.fileName, createdAt: schema.documents.createdAt })
+    .from(schema.documents)
+    .where(and(eq(schema.documents.studentId, studentId), eq(schema.documents.sharedWithStudent, true)))
+    .orderBy(desc(schema.documents.createdAt));
   const heldCodes = new Set(held.map((d) => d.typeCode));
   const wanted = types.filter((t) => requiredCodes.includes(t.code) || heldCodes.has(t.code));
+  const labelOf = (code: string | null) => {
+    const t = types.find((x) => x.code === code);
+    return t ? ((locale === "ml" ? t.labelMl : null) ?? t.label) : null;
+  };
   return {
     held,
     types,
+    shared: shared.map((d) => ({ ...d, label: labelOf(d.typeCode) })),
     rows: wanted.map((t) => ({
       code: t.code,
       label: (locale === "ml" ? t.labelMl : null) ?? t.label,
       byTeam: t.uploadedBy === "team",
+      guidance: t.guidance,
+      hasSample: !!t.sampleStorageKey,
       document: held.find((d) => d.typeCode === t.code) ?? null,
     })),
     missing: wanted

@@ -528,6 +528,11 @@ export const documentTypes = pgTable("document_types", {
   labelMl: text("label_ml"),
   uploadedBy: text("uploaded_by").notNull().default("partner"), // partner | team
   sortOrder: integer("sort_order").notNull().default(100),
+  /** What a good one looks like, in the team's words; shown next to the upload. */
+  guidance: text("guidance"),
+  sampleFileName: text("sample_file_name"),
+  sampleStorageKey: text("sample_storage_key"),
+  sampleMimeType: text("sample_mime_type"),
 });
 
 export const documents = pgTable("documents", {
@@ -543,6 +548,8 @@ export const documents = pgTable("documents", {
   mimeType: text("mime_type").notNull(),
   sizeBytes: integer("size_bytes").notNull(),
   uploadedById: text("uploaded_by_id").references(() => users.id),
+  /** Shown in the student's portal. Files the student uploaded are always theirs to see. */
+  sharedWithStudent: boolean("shared_with_student").notNull().default(false),
   createdAt: createdAt(),
 });
 

@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { fmtDateTime } from "@/lib/format";
 import { getStudentForUser } from "@/server/queries";
 import { Card, Chip, cn } from "@/components/ui";
-import { deleteDocumentAction } from "./actions";
+import { deleteDocumentAction, shareDocumentAction } from "./actions";
 import { UploadForm } from "./upload";
 import { APP_ROLES, isAdmin } from "@/lib/permissions";
 
@@ -21,7 +21,7 @@ export default async function DocumentsPage({ params, searchParams }: { params: 
 
   const [types, docs, apps] = await Promise.all([
     db.select().from(schema.documentTypes).orderBy(asc(schema.documentTypes.sortOrder)),
-    db.query.documents.findMany({ where: eq(schema.documents.studentId, id), with: { uploadedBy: { columns: { name: true, deskLabel: true } } }, orderBy: desc(schema.documents.createdAt) }),
+    db.query.documents.findMany({ where: eq(schema.documents.studentId, id), with: { uploadedBy: { columns: { name: true, deskLabel: true, role: true } } }, orderBy: desc(schema.documents.createdAt) }),
     db.query.applications.findMany({ where: eq(schema.applications.studentId, id), with: { status: true, program: { with: { university: true } } } }),
   ]);
 
@@ -82,8 +82,8 @@ export default async function DocumentsPage({ params, searchParams }: { params: 
 function DocTypeCard({
   type, files, requiredFor, studentId, canWrite, userId, role, canProcess,
 }: {
-  type: { code: string; label: string; uploadedBy: string };
-  files: { id: string; fileName: string; createdAt: Date; uploadedById: string | null; uploadedBy: { name: string; deskLabel: string | null } | null }[];
+  type: { code: string; label: string; uploadedBy: string; guidance: string | null; sampleStorageKey: string | null };
+  files: { id: string; fileName: string; createdAt: Date; uploadedById: string | null; sharedWithStudent: boolean; uploadedBy: { name: string; deskLabel: string | null; role: string } | null }[];
   requiredFor?: string[];
   studentId: string; canWrite: boolean; userId: string; role: string; canProcess: boolean;
 }) {
@@ -97,6 +97,10 @@ function DocTypeCard({
             {requiredFor && <span className="text-red-600"> *</span>}
           </p>
           {requiredFor && <p className="text-xs text-muted">Required for: {requiredFor.join(", ")}</p>}
+          {type.guidance && <p className="mt-1 max-w-xl text-xs leading-relaxed text-ink-soft">{type.guidance}</p>}
+          {type.sampleStorageKey && (
+            <a href={`/api/document-samples/${type.code}`} target="_blank" rel="noreferrer" className="text-xs font-medium text-brand-600 hover:underline">See a sample</a>
+          )}
         </div>
         {canWrite && <div className="min-w-0"><UploadForm studentId={studentId} types={[]} defaultType={type.code} compact /></div>}
       </div>
@@ -105,7 +109,18 @@ function DocTypeCard({
           {files.map((f) => (
             <li key={f.id} className="flex items-center gap-2 rounded bg-ground px-2 py-1 text-xs">
               <a href={`/api/documents/${f.id}`} className="text-brand-600 hover:underline">📄 {f.fileName}</a>
-              <span className="text-muted">{fmtDateTime(f.createdAt)} · {f.uploadedBy?.deskLabel ?? f.uploadedBy?.name ?? "Student"}</span>
+              <span className="text-muted">{fmtDateTime(f.createdAt)} · {f.uploadedBy?.role === "STUDENT" ? "From the student" : f.uploadedBy?.deskLabel ?? f.uploadedBy?.name ?? "Student"}</span>
+              {f.uploadedBy?.role !== "STUDENT" &&
+                (canWrite ? (
+                  <form action={shareDocumentAction}>
+                    <input type="hidden" name="documentId" value={f.id} />
+                    <button className={cn("rounded px-1.5 py-0.5 font-medium", f.sharedWithStudent ? "bg-emerald-50 text-emerald-700" : "text-brand-600 hover:underline")} aria-label={f.sharedWithStudent ? `Stop sharing ${f.fileName}` : `Share ${f.fileName} with the student`}>
+                      {f.sharedWithStudent ? "Shared with student ✓" : "Share with student"}
+                    </button>
+                  </form>
+                ) : (
+                  f.sharedWithStudent && <span className="text-emerald-700">Shared with student</span>
+                ))}
               {canWrite && (canProcess || role === "PARTNER" || f.uploadedById === userId) && (
                 <form action={deleteDocumentAction}>
                   <input type="hidden" name="documentId" value={f.id} />

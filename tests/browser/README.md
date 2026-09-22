@@ -42,6 +42,7 @@ node tests/browser/dashboards.mjs
 | `programs.mjs` | The program and university pages, the admin edit screen and its rules, and that an unverified fee never reads as free |
 | `search-upgrades.mjs` | Program labels (bulk and one at a time), several levels and seasons at once, chip counts, open or closed by deadline, eligibility from typed scores, the universities view, compare and download, and the new program-page details (needs the catalogue) |
 | `student-profile.mjs` | Mailing address and second citizenship, the background questions and their rules, important contacts, the ACT, section and tab status, the visa-refusal warning, and application priority on the file, list, filter, sort and export |
+| `documents-share.mjs` | Guidance and a sample per document type, a text file refused as a sample, sharing one file with the student, what the portal can and cannot open, and stopping the share |
 | `shortlist.mjs` | Shortlisting from search and a program page, the side by side comparison, removal, read-only roles and branch isolation |
 
 Screenshots land in `/tmp/smoke-*`. Each script exits non-zero if a check fails.
