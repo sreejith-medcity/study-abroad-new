@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { profileCompleteness } from "@/lib/checks";
@@ -9,6 +9,8 @@ import { Alert, Button, Card, Chip } from "@/components/ui";
 import { deleteProfileRowAction, revealPassportAction, toggleLockAction, togglePortalAccessAction } from "../../actions";
 import { AcademicForm, BackgroundForm, ContactForm, PersonalForm, PortalInviteForm, RequestEditForm, TestForm, WorkForm } from "./forms";
 import { BACKGROUND_QUESTIONS, backgroundComplete } from "@/lib/background";
+import { aiFeatureOn } from "@/server/ai";
+import { AutofillPanel } from "./autofill";
 
 export const metadata = { title: "Student profile" };
 
@@ -28,6 +30,15 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
     db.select().from(schema.studentContacts).where(eq(schema.studentContacts.studentId, id)).orderBy(asc(schema.studentContacts.createdAt)),
   ]);
 
+  const autofill = await aiFeatureOn("autofill");
+  const readable = autofill
+    ? await db.query.documents.findMany({
+        where: and(eq(schema.documents.studentId, id), inArray(schema.documents.typeCode, ["PASSPORT", "MARKSHEET_12", "DEGREE_MARKSHEETS", "DEGREE_CERTIFICATE", "ENGLISH_TEST"])),
+        with: { type: { columns: { label: true } } },
+        orderBy: desc(schema.documents.createdAt),
+        limit: 8,
+      })
+    : [];
   const done = profileCompleteness({ ...student, academics, tests, documentTypeCodes: [] });
   const readOnly = user.role === "MANAGEMENT" || (student.profileLocked && !isAdmin(user));
   const showFull = canSeeFullPassport(user) || reveal === "1";
@@ -120,6 +131,14 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
           <PortalInviteForm studentId={id} invited={!!portalAccount} />
         </div>
       </Card>
+
+      {autofill && !readOnly && readable.length > 0 && (
+        <Card className="p-4" id="autofill">
+          <h2 className="font-semibold">Fill from a document</h2>
+          <p className="mb-3 text-[13px] text-muted">The file is sent to an AI service to be read. You check what it found before anything is saved.</p>
+          <AutofillPanel studentId={id} docs={readable.map((d) => ({ id: d.id, label: d.type?.label ?? d.fileName }))} />
+        </Card>
+      )}
 
       <Card id="personal" className="scroll-mt-20 p-5">
         {!showFull && student.passportNumber && (

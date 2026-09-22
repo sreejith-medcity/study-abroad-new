@@ -184,6 +184,7 @@ tests/                          node:test unit tests
 - Uploads: PDF / JPG / PNG / WebP up to 10 MB, stored outside the web root, served with `no-store` and `nosniff`.
 - In production the WhatsApp webhook refuses requests unless `WHATSAPP_APP_SECRET` is set.
 - Razorpay: keys come from `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` and `RAZORPAY_WEBHOOK_SECRET` when set, otherwise from Settings, Platform, where the two secrets are sealed with AES-256-GCM under a key derived from `AUTH_SECRET` (changing `AUTH_SECRET` means entering them again). The webhook at `/api/razorpay/webhook` refuses anything unsigned. Fees are charged in the program's own currency; nothing is converted.
+- AI features (assistant, practice interviews, reading documents) use Anthropic's Messages API with `ANTHROPIC_API_KEY`, or a key sealed in Settings, Platform. They are off without a key and the owner's switch, count against a monthly allowance per branch tier, and never save anything a person has not checked. The assistant sees only the catalogue; interviews send the course, university, country and intake, never the student's name.
 - A portal student opens only their own documents: what they uploaded and what the branch shared with them.
 
 ## Before going live

@@ -22,3 +22,8 @@ test("rich text: WhatsApp markers and plain previews", () => {
   assert.equal(toPlain("**Offer** is *in*"), "Offer is in");
   assert.deepEqual(parseInline("javascript:alert(1)"), [{ t: "text", v: "javascript:alert(1)" }]);
 });
+
+test("rich text: links to programs in the portal", () => {
+  assert.deepEqual(parseInline("See /programs/mucg7hioxZrCN9DRgW7z now"), [{ t: "text", v: "See " }, { t: "a", v: "/programs/mucg7hioxZrCN9DRgW7z" }, { t: "text", v: " now" }]);
+  assert.deepEqual(parseInline("path /etc/passwd"), [{ t: "text", v: "path /etc/passwd" }]);
+});

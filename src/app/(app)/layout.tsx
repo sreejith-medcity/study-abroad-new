@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { aiConfig } from "@/server/ai";
 import { commissionVisible } from "@/server/commission-visibility";
 import { and, count, desc, eq, isNull } from "drizzle-orm";
 import { db, schema } from "@/db";
@@ -173,8 +174,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               ? COUNSELLOR_NAV
               : COUNSELLOR_NAV.filter((g) => g.title !== "Money");
 
+  // The AI pages appear for branches only once the owner has switched them on.
+  const ai = await aiConfig();
+  const aiItems = [
+    ...(ai?.enabled && ai.features.assistant ? [{ href: "/assistant", label: "Assistant", icon: "spark" as const }] : []),
+    ...(ai?.enabled && ai.features.interview ? [{ href: "/interview", label: "Practice interview", icon: "learning" as const }] : []),
+  ];
+  const withAi = groups.map((g) => (g.title === "Find programs" && aiItems.length ? { ...g, items: [...g.items, ...aiItems] } : g));
   const navGroups: NavGroup[] = [
-    ...groups,
+    ...withAi,
     { title: "Account", items: [{ href: "/settings", label: "Settings", icon: "settings" }] },
   ];
 

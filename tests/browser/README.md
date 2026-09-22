@@ -48,6 +48,7 @@ node tests/browser/dashboards.mjs
 | `student-platform.mjs` | The branch's name, colour and logo on its portal and enquiry form with the colour and file rules, the WhatsApp switches, and the sign-up question builder with answers on the enquiry |
 | `rich-prep.mjs` | Comment formatting (the format bar, what renders and what stays text, previews) and the branch test preparation page: courses and their rules, the owner's switch, and an enquiry from the page |
 | `payments.mjs` | The owner's Razorpay keys (sealed, never shown again), a partner paying a due fee against a stand-in for Razorpay's API, the signed webhook marking it paid once, the lists, and the switch. Start the server with `RAZORPAY_API_BASE=http://localhost:4010` |
+| `ai.mjs` | AI features against a stand-in for Anthropic's API: off without a key, the owner's settings, the assistant and its catalogue tool, a practice interview that never sends the student's name, reading a passport into the profile after a person checks it, the monthly allowance and the switch. Start the server with `ANTHROPIC_API_BASE=http://localhost:4011` |
 | `shortlist.mjs` | Shortlisting from search and a program page, the side by side comparison, removal, read-only roles and branch isolation |
 
 Screenshots land in `/tmp/smoke-*`. Each script exits non-zero if a check fails.

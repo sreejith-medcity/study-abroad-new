@@ -1200,6 +1200,56 @@ export const payments = pgTable(
   (t) => [index("payments_org_idx").on(t.orgId, t.createdAt), index("payments_app_idx").on(t.applicationId)],
 );
 
+/** The AI features' switch, key and monthly allowances. ANTHROPIC_API_KEY, when set, wins over the stored key. */
+export const aiSettings = pgTable("ai_settings", {
+  id: text("id").primaryKey().default("app"),
+  enabled: boolean("enabled").notNull().default(false),
+  apiKeyEnc: text("api_key_enc"),
+  model: text("model").notNull().default("claude-sonnet-4-5"),
+  /** Requests a branch may make a month, by tier. */
+  monthlyQuota: jsonb("monthly_quota").$type<Record<string, number>>().notNull().default(sql`'{"SILVER":100,"GOLD":250,"ELITE":500,"PLATINUM":1000}'::jsonb`),
+  assistant: boolean("assistant").notNull().default(true),
+  interview: boolean("interview").notNull().default(true),
+  autofill: boolean("autofill").notNull().default(true),
+  updatedById: text("updated_by_id").references(() => users.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const aiUsage = pgTable(
+  "ai_usage",
+  {
+    id: id(),
+    orgId: text("org_id")
+      .notNull()
+      .references(() => organizations.id),
+    userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
+    feature: text("feature").notNull(),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (t) => [index("ai_usage_org_idx").on(t.orgId, t.createdAt)],
+);
+
+/** A finished practice interview: the questions, the answers and the feedback. */
+export const interviewSessions = pgTable(
+  "interview_sessions",
+  {
+    id: id(),
+    orgId: text("org_id")
+      .notNull()
+      .references(() => organizations.id),
+    studentId: text("student_id").references(() => students.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    context: text("context").notNull(),
+    transcript: jsonb("transcript").$type<{ role: "interviewer" | "student"; text: string }[]>().notNull(),
+    feedback: text("feedback").notNull(),
+    createdById: text("created_by_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("interview_sessions_org_idx").on(t.orgId, t.createdAt)],
+);
+
 /** Test preparation courses Medcity runs, offered on each branch's own prep page. */
 export const prepCourses = pgTable("prep_courses", {
   id: id(),
@@ -1393,6 +1443,10 @@ export const optionRequestFilesRelations = relations(optionRequestFiles, ({ one 
 export const optionRequestMessagesRelations = relations(optionRequestMessages, ({ one }) => ({
   request: one(optionRequests, { fields: [optionRequestMessages.requestId], references: [optionRequests.id] }),
   author: one(users, { fields: [optionRequestMessages.authorId], references: [users.id] }),
+}));
+
+export const interviewSessionsRelations = relations(interviewSessions, ({ one }) => ({
+  student: one(students, { fields: [interviewSessions.studentId], references: [students.id] }),
 }));
 
 export const bulletinsRelations = relations(bulletins, ({ one }) => ({

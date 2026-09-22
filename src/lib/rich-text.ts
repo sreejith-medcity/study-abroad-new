@@ -6,7 +6,7 @@
 export type Inline = { t: "text" | "b" | "i" | "a"; v: string };
 export type Block = { t: "p"; lines: Inline[][] } | { t: "ul" | "ol"; items: Inline[][] };
 
-const LINK = /https?:\/\/[^\s<>"')]+[^\s<>"').,;:!?]/;
+const LINK = /https?:\/\/[^\s<>"')]+[^\s<>"').,;:!?]|\/(?:programs|universities)\/[A-Za-z0-9_-]{8,40}/;
 
 export function parseInline(s: string): Inline[] {
   const out: Inline[] = [];

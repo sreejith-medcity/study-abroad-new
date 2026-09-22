@@ -11,7 +11,11 @@ function Line({ parts }: { parts: Inline[] }) {
         ) : p.t === "i" ? (
           <em key={i}>{p.v}</em>
         ) : p.t === "a" ? (
-          <a key={i} href={p.v} target="_blank" rel="noopener noreferrer nofollow" className="break-all text-brand-600 underline">{p.v}</a>
+          p.v.startsWith("/") ? (
+            <a key={i} href={p.v} className="text-brand-600 underline">{p.v.startsWith("/universities") ? "Open the university" : "Open the program"}</a>
+          ) : (
+            <a key={i} href={p.v} target="_blank" rel="noopener noreferrer nofollow" className="break-all text-brand-600 underline">{p.v}</a>
+          )
         ) : (
           <Fragment key={i}>{p.v}</Fragment>
         ),

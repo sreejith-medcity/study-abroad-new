@@ -139,37 +139,39 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export function AcademicForm({ studentId }: { studentId: string }) {
+type AcademicDefaults = { level?: string | null; institution?: string | null; course?: string | null; gradingSystem?: string | null; score?: number | null; yearCompleted?: number | null };
+
+export function AcademicForm({ studentId, defaults = {}, idPrefix = "" }: { studentId: string; defaults?: AcademicDefaults; idPrefix?: string }) {
   return (
     <ActionForm action={addAcademicAction} submitLabel="Add qualification" resetOnSuccess submitVariant="secondary">
       <input type="hidden" name="studentId" value={studentId} />
       <div className="grid gap-3 sm:grid-cols-3">
-        <SelectField label="Level" name="level" defaultValue="UG" required>
+        <SelectField id={`${idPrefix}level`} label="Level" name="level" defaultValue={defaults.level ?? "UG"} required>
           <option value="SCHOOL">Std. 12th / school</option><option value="UG_DIPLOMA">Diploma</option><option value="UG">Bachelor's</option>
           <option value="PG_DIPLOMA">PG diploma</option><option value="PG">Master's</option><option value="PHD">PhD</option>
         </SelectField>
-        <TextField label="Institution" name="institution" required />
-        <TextField label="Course" name="course" />
-        <SelectField label="Grading" name="gradingSystem" defaultValue="percentage">
+        <TextField id={`${idPrefix}institution`} label="Institution" name="institution" defaultValue={defaults.institution ?? ""} required />
+        <TextField id={`${idPrefix}course`} label="Course" name="course" defaultValue={defaults.course ?? ""} />
+        <SelectField id={`${idPrefix}gradingSystem`} label="Grading" name="gradingSystem" defaultValue={defaults.gradingSystem ?? "percentage"}>
           <option value="percentage">Percentage</option><option value="cgpa10">CGPA out of 10</option><option value="cgpa4">GPA out of 4</option>
         </SelectField>
-        <TextField label="Score" name="score" type="number" step="0.01" />
-        <TextField label="Year completed" name="yearCompleted" type="number" />
+        <TextField id={`${idPrefix}score`} label="Score" name="score" type="number" step="0.01" defaultValue={defaults.score ?? ""} />
+        <TextField id={`${idPrefix}yearCompleted`} label="Year completed" name="yearCompleted" type="number" defaultValue={defaults.yearCompleted ?? ""} />
       </div>
     </ActionForm>
   );
 }
 
-export function TestForm({ studentId }: { studentId: string }) {
+export function TestForm({ studentId, defaults = {}, idPrefix = "" }: { studentId: string; defaults?: { test?: string | null; overall?: string | null; takenOn?: string | null }; idPrefix?: string }) {
   return (
     <ActionForm action={addTestAction} submitLabel="Add test score" resetOnSuccess submitVariant="secondary">
       <input type="hidden" name="studentId" value={studentId} />
       <div className="grid gap-3 sm:grid-cols-3">
-        <SelectField label="Test" name="test" defaultValue="IELTS" required>
+        <SelectField id={`${idPrefix}test`} label="Test" name="test" defaultValue={defaults.test ?? "IELTS"} required>
           <option>IELTS</option><option>PTE</option><option>OET</option><option value="TOEFL">TOEFL iBT</option><option value="DUOLINGO">Duolingo</option><option value="GERMAN">German (CEFR)</option><option>GRE</option><option>GMAT</option><option>SAT</option><option>ACT</option>
         </SelectField>
-        <TextField label="Overall score / grade" name="overall" required placeholder="6.5, B, B1" />
-        <TextField label="Test date" name="takenOn" type="date" />
+        <TextField id={`${idPrefix}overall`} label="Overall score / grade" name="overall" required placeholder="6.5, B, B1" defaultValue={defaults.overall ?? ""} />
+        <TextField id={`${idPrefix}takenOn`} label="Test date" name="takenOn" type="date" defaultValue={defaults.takenOn ?? ""} />
       </div>
     </ActionForm>
   );

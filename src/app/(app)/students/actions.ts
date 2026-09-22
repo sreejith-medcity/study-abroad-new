@@ -396,3 +396,28 @@ export async function togglePortalAccessAction(formData: FormData) {
   await audit(user.id, account.active ? "portal.disable" : "portal.enable", "student", studentId, {});
   revalidatePath(`/students/${studentId}`, "layout");
 }
+
+const passportFields = z.object({
+  passportNumber: z.string().trim().toUpperCase().max(20).optional().transform((v) => v || null).refine((v) => v === null || /^[A-Z][0-9]{7}$/.test(v), "An Indian passport number is a letter and seven digits"),
+  passportIssue: optionalDate,
+  passportExpiry: optionalDate,
+  passportIssueCountry: optionalText,
+  dateOfBirth: optionalDate,
+  cityOfBirth: optionalText,
+});
+
+/** Saves the passport details a person checked after a document was read. Blank boxes leave what is on file. */
+export async function applyPassportAction(_: FormState, formData: FormData): Promise<FormState> {
+  const studentId = String(formData.get("studentId"));
+  const { user, locked } = await editableStudent(studentId);
+  if (locked) return { error: "This profile is locked. Use Request edit." };
+  const parsed = passportFields.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Check the highlighted fields." };
+  const set = Object.fromEntries(Object.entries(parsed.data).filter(([, v]) => v !== null));
+  if (!Object.keys(set).length) return { error: "Nothing to save." };
+  if (parsed.data.passportIssue && parsed.data.passportExpiry && parsed.data.passportExpiry <= parsed.data.passportIssue) return { fieldErrors: { passportExpiry: ["Expiry must be after issue"] }, error: "Check the highlighted fields." };
+  await db.update(schema.students).set({ ...set, updatedAt: new Date() }).where(eq(schema.students.id, studentId));
+  await audit(user.id, "student.profile.update", "student", studentId, { section: "passport", source: "document" });
+  revalidatePath(`/students/${studentId}`, "layout");
+  return { ok: "Passport details saved." };
+}
