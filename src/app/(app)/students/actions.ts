@@ -190,7 +190,7 @@ export async function addAcademicAction(_: FormState, formData: FormData): Promi
 }
 
 const test = z.object({
-  test: z.enum(["IELTS", "PTE", "OET", "TOEFL", "DUOLINGO", "GERMAN"]),
+  test: z.enum(["IELTS", "PTE", "OET", "TOEFL", "DUOLINGO", "GERMAN", "GRE", "GMAT", "SAT"]),
   overall: z.string().trim().min(1, "Score is required").max(10),
   takenOn: optionalDate,
 });

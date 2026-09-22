@@ -127,6 +127,13 @@
       "when": 1790016271973,
       "tag": "0017_scholarships",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790047776669,
+      "tag": "0018_program_requirements",
+      "breakpoints": true
     }
   ]
 }

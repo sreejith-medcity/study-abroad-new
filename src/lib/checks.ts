@@ -1,3 +1,5 @@
+import { ADMISSION_TESTS, ENGLISH_TESTS, QUALIFYING_LABEL, TEST_LABEL, bestPercents, qualifyingLevel } from "./eligibility";
+
 /**
  * Pre-submission quality check. Pure functions so they can run on the server,
  * in tests, and (later) in the partner UI before the Apply button.
@@ -15,13 +17,20 @@ export type CheckStudent = {
   passportExpiry: Date | null;
   backlogs: number | null;
   gapYears: number | null;
-  academics: { level: string }[];
+  academics: { level: string; gradingSystem?: string | null; score?: number | null }[];
   tests: { test: string; overall: string; isMock: boolean }[];
   documentTypeCodes: string[];
 };
 
 export type CheckProgram = {
+  level?: string;
   durationMonths: number | null;
+  minToefl?: number | null;
+  minDuolingo?: number | null;
+  minGre?: number | null;
+  minGmat?: number | null;
+  minSat?: number | null;
+  minAcademicPercent?: number | null;
   minIelts: number | null;
   minPte: number | null;
   minOetGrade: string | null;
@@ -75,19 +84,41 @@ export function runPreSubmissionCheck(
     }
   }
 
-  // English / language requirements
-  if (p.minIelts != null || p.minPte != null) {
-    const ielts = bestScore(s.tests, "IELTS").map(Number).filter((n) => !Number.isNaN(n));
-    const pte = bestScore(s.tests, "PTE").map(Number).filter((n) => !Number.isNaN(n));
-    const ieltsOk = p.minIelts != null && ielts.some((v) => v >= p.minIelts!);
-    const pteOk = p.minPte != null && pte.some((v) => v >= p.minPte!);
-    if (ieltsOk || pteOk) {
-      out.push({ code: "english", severity: "pass", message: ieltsOk ? `IELTS ${Math.max(...ielts)} meets ${p.minIelts}` : `PTE ${Math.max(...pte)} meets ${p.minPte}` });
+  // English / language requirements: any one named test at its minimum will do.
+  const named = ENGLISH_TESTS.map((e) => ({ ...e, min: (p as Record<string, unknown>)[e.key] as number | null | undefined })).filter((e) => e.min != null);
+  if (named.length) {
+    const hit = named
+      .map((e) => ({ e, scores: bestScore(s.tests, e.test).map(Number).filter((n) => !Number.isNaN(n)) }))
+      .find(({ e, scores }) => scores.some((v) => v >= e.min!));
+    if (hit) {
+      out.push({ code: "english", severity: "pass", message: `${TEST_LABEL[hit.e.test]} ${Math.max(...hit.scores)} meets ${hit.e.min}` });
     } else if (p.moiAccepted) {
       out.push({ code: "english", severity: "warning", message: "No qualifying English test; program accepts Medium of Instruction letter" });
     } else {
-      const need = [p.minIelts != null && `IELTS ${p.minIelts}`, p.minPte != null && `PTE ${p.minPte}`].filter(Boolean).join(" or ");
+      const need = named.map((e) => `${TEST_LABEL[e.test]} ${e.min}`).join(" or ");
       out.push({ code: "english", severity: "blocker", message: `English requirement not met (needs ${need})`, section: "profile" });
+    }
+  }
+
+  for (const t of ADMISSION_TESTS) {
+    const min = p[t.key];
+    if (min == null) continue;
+    const scores = bestScore(s.tests, t.test).map(Number).filter((n) => !Number.isNaN(n));
+    out.push(scores.some((v) => v >= min)
+      ? { code: t.test.toLowerCase(), severity: "pass", message: `${t.test} ${Math.max(...scores)} meets ${min}` }
+      : { code: t.test.toLowerCase(), severity: "blocker", message: `${t.test} ${min} or above required`, section: "profile" });
+  }
+
+  const qLevel = qualifyingLevel(p.level);
+  if (p.minAcademicPercent != null && qLevel) {
+    const label = QUALIFYING_LABEL[qLevel];
+    const pct = bestPercents(s.academics.map((a) => ({ level: a.level, gradingSystem: a.gradingSystem ?? null, score: a.score ?? null })))[qLevel];
+    if (pct != null) {
+      out.push(pct >= p.minAcademicPercent
+        ? { code: "academic", severity: "pass", message: `${label} ${pct}% meets ${p.minAcademicPercent}%` }
+        : { code: "academic", severity: "blocker", message: `${label} ${pct}% is below the ${p.minAcademicPercent}% minimum`, section: "profile" });
+    } else {
+      out.push({ code: "academic", severity: "warning", message: `Needs ${p.minAcademicPercent}% in the ${label}; no percentage recorded (CGPA is not converted here)`, section: "profile" });
     }
   }
 

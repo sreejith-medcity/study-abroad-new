@@ -22,6 +22,12 @@ export type EditableProgram = {
   minIelts: number | null;
   minPte: number | null;
   minOetGrade: string | null;
+  minToefl: number | null;
+  minDuolingo: number | null;
+  minGre: number | null;
+  minGmat: number | null;
+  minSat: number | null;
+  minAcademicPercent: number | null;
   minGermanLevel: string | null;
   maxBacklogs: number | null;
   maxGapYears: number | null;
@@ -88,8 +94,14 @@ export function ProgramEditForm({ program, currency, docs }: { program: Editable
       <Section title="Entry requirements" note="Blank means the program sets no rule for it, so the eligibility check will not test it.">
         <TextField label="IELTS overall" name="minIelts" inputMode="decimal" defaultValue={v(program.minIelts)} />
         <TextField label="PTE Academic" name="minPte" inputMode="numeric" defaultValue={v(program.minPte)} />
+        <TextField label="TOEFL iBT" name="minToefl" inputMode="numeric" defaultValue={v(program.minToefl)} />
+        <TextField label="Duolingo" name="minDuolingo" inputMode="numeric" defaultValue={v(program.minDuolingo)} />
         <TextField label="OET grade" name="minOetGrade" defaultValue={v(program.minOetGrade)} placeholder="A, B, C+…" />
         <TextField label="German level" name="minGermanLevel" defaultValue={v(program.minGermanLevel)} placeholder="A1 to C2" />
+        <TextField label="Minimum marks in the qualifying study (%)" name="minAcademicPercent" inputMode="decimal" defaultValue={v(program.minAcademicPercent)} placeholder="12th for a bachelor's, bachelor's for a master's" />
+        <TextField label="GRE (only if required)" name="minGre" inputMode="numeric" defaultValue={v(program.minGre)} />
+        <TextField label="GMAT (only if required)" name="minGmat" inputMode="numeric" defaultValue={v(program.minGmat)} />
+        <TextField label="SAT (only if required)" name="minSat" inputMode="numeric" defaultValue={v(program.minSat)} />
         <TextField label="Backlogs allowed" name="maxBacklogs" inputMode="numeric" defaultValue={v(program.maxBacklogs)} />
         <TextField label="Study gap allowed (years)" name="maxGapYears" inputMode="numeric" defaultValue={v(program.maxGapYears)} />
         <div className="sm:col-span-2">

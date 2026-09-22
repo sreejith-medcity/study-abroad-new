@@ -71,7 +71,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   if (f.noAppFee) conds.push(eq(p.applicationFee, 0));
   if (f.moi) conds.push(eq(p.moiAccepted, true));
   if (f.lowDeposit) conds.push(or(lte(p.initialDeposit, 1500), sql`${p.initialDeposit} is null`));
-  if (f.noEnglish) conds.push(and(sql`${p.minIelts} is null`, sql`${p.minPte} is null`, sql`${p.minOetGrade} is null`));
+  if (f.noEnglish) conds.push(and(sql`${p.minIelts} is null`, sql`${p.minPte} is null`, sql`${p.minToefl} is null`, sql`${p.minDuolingo} is null`, sql`${p.minOetGrade} is null`));
   if (f.ausbildung) conds.push(eq(p.pathway, "AUSBILDUNG"));
   if (f.nursing) conds.push(eq(p.pathway, "NURSING"));
   // Only programmes the institution itself confirms, never the unknowns. A
@@ -79,7 +79,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   if (f.workRights) conds.push(eq(p.workRights, "ELIGIBLE"));
   if (f.scholarship) conds.push(hasOpenScholarship);
   const student = f.student
-    ? await db.query.students.findFirst({ where: and(eq(s.id, f.student), isStaff(user) ? undefined : eq(s.orgId, user.orgId)), with: { tests: true } })
+    ? await db.query.students.findFirst({ where: and(eq(s.id, f.student), isStaff(user) ? undefined : eq(s.orgId, user.orgId)), with: { tests: true, academics: true } })
     : null;
   // Hide what the student cannot meet yet; on-track programs stay.
   if (student && f.fit) conds.push(notBlockedWhere(student));
@@ -102,6 +102,12 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       minPte: p.minPte,
       minOetGrade: p.minOetGrade,
       minGermanLevel: p.minGermanLevel,
+      minToefl: p.minToefl,
+      minDuolingo: p.minDuolingo,
+      minGre: p.minGre,
+      minGmat: p.minGmat,
+      minSat: p.minSat,
+      minAcademicPercent: p.minAcademicPercent,
       maxBacklogs: p.maxBacklogs,
       maxGapYears: p.maxGapYears,
       moiAccepted: p.moiAccepted,
@@ -166,7 +172,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const eligibility = new Map<string, Eligibility>();
   if (student) {
     for (const row of list) {
-      eligibility.set(row.id, checkEligibility({ backlogs: student.backlogs, gapYears: student.gapYears, tests: student.tests }, row));
+      eligibility.set(row.id, checkEligibility({ backlogs: student.backlogs, gapYears: student.gapYears, tests: student.tests, academics: student.academics }, row));
     }
   }
 
@@ -385,11 +391,17 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                       <div className="flex max-w-[15rem] flex-wrap gap-1">
                         {r.minIelts && <Chip>IELTS {r.minIelts}</Chip>}
                         {r.minPte && <Chip>PTE {r.minPte}</Chip>}
+                        {r.minToefl != null && <Chip>TOEFL {r.minToefl}</Chip>}
+                        {r.minDuolingo != null && <Chip>Duolingo {r.minDuolingo}</Chip>}
                         {r.minOetGrade && <Chip>OET {r.minOetGrade}</Chip>}
+                        {r.minGre != null && <Chip>GRE {r.minGre}</Chip>}
+                        {r.minGmat != null && <Chip>GMAT {r.minGmat}</Chip>}
+                        {r.minSat != null && <Chip>SAT {r.minSat}</Chip>}
+                        {r.minAcademicPercent != null && <Chip>Marks {r.minAcademicPercent}%+</Chip>}
                         {r.minGermanLevel && <Chip>German {r.minGermanLevel}</Chip>}
                         {r.maxBacklogs != null && <Chip>Backlogs ≤ {r.maxBacklogs}</Chip>}
                         {r.moiAccepted && <Chip tone="ok">MOI</Chip>}
-                        {!r.minIelts && !r.minPte && !r.minOetGrade && !r.minGermanLevel && <span className="text-xs text-muted">No test requirement recorded</span>}
+                        {!r.minIelts && !r.minPte && r.minToefl == null && r.minDuolingo == null && !r.minOetGrade && !r.minGermanLevel && r.minGre == null && r.minGmat == null && r.minSat == null && r.minAcademicPercent == null && <span className="text-xs text-muted">No test requirement recorded</span>}
                       </div>
                     </Td>
                     {student && fit && (

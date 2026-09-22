@@ -24,8 +24,9 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
   const student = await getStudentForUser(user, id);
   const canEdit = CAN_EDIT.includes(user.role);
 
-  const [tests, items] = await Promise.all([
+  const [tests, academics, items] = await Promise.all([
     db.query.testScores.findMany({ where: eq(schema.testScores.studentId, student.id) }),
+    db.query.academicRecords.findMany({ where: eq(schema.academicRecords.studentId, student.id) }),
     db.query.shortlists.findMany({
       where: eq(schema.shortlists.studentId, student.id),
       orderBy: asc(schema.shortlists.createdAt),
@@ -49,7 +50,7 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
   const cols = items.map((it) => {
     const p = it.program;
     const cur = p.university.country.currency;
-    const fit = checkEligibility({ backlogs: student.backlogs, gapYears: student.gapYears, tests }, p);
+    const fit = checkEligibility({ backlogs: student.backlogs, gapYears: student.gapYears, tests, academics }, p);
     return { it, p, cur, fit };
   });
 
@@ -84,8 +85,12 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
     { label: "Application fee", cell: ({ p, cur }) => <Muted on={p.applicationFee == null}>{feeText(p.applicationFee, cur, { zero: "No application fee" })}</Muted> },
     { label: "Deposit", cell: ({ p, cur }) => <Muted on={p.initialDeposit == null}>{feeText(p.initialDeposit, cur, { zero: "No deposit" })}</Muted> },
     { label: "English", cell: ({ p }) => {
-      const parts = [p.minIelts != null && `IELTS ${p.minIelts}`, p.minPte != null && `PTE ${p.minPte}`, p.minOetGrade && `OET ${p.minOetGrade}`].filter(Boolean);
+      const parts = [p.minIelts != null && `IELTS ${p.minIelts}`, p.minPte != null && `PTE ${p.minPte}`, p.minToefl != null && `TOEFL ${p.minToefl}`, p.minDuolingo != null && `Duolingo ${p.minDuolingo}`, p.minOetGrade && `OET ${p.minOetGrade}`].filter(Boolean);
       return parts.length ? parts.join(" · ") + (p.moiAccepted ? " · MOI accepted" : "") : <Muted on>{p.moiAccepted ? "MOI accepted" : "Not recorded"}</Muted>;
+    } },
+    { label: "Marks and admission tests", cell: ({ p }) => {
+      const parts = [p.minAcademicPercent != null && `${p.minAcademicPercent}% in the qualifying study`, p.minGre != null && `GRE ${p.minGre}`, p.minGmat != null && `GMAT ${p.minGmat}`, p.minSat != null && `SAT ${p.minSat}`].filter(Boolean);
+      return parts.length ? parts.join(" · ") : <Muted on>Not recorded</Muted>;
     } },
     { label: "German", cell: ({ p }) => <Muted on={!p.minGermanLevel}>{p.minGermanLevel ?? "Not required"}</Muted> },
     { label: "Backlogs / gap", cell: ({ p }) => (

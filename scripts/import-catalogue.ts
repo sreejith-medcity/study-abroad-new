@@ -29,6 +29,7 @@ async function main() {
         durationMonths: r.durationMonths, tuitionPerYear: r.tuitionPerYear, applicationFee: r.applicationFee,
         initialDeposit: r.initialDeposit, intakeMonths: r.intakeMonths, minIelts: r.minIelts, minPte: r.minPte,
         minOetGrade: r.minOetGrade, minGermanLevel: r.minGermanLevel, maxBacklogs: r.maxBacklogs,
+        minToefl: r.minToefl, minDuolingo: r.minDuolingo, minGre: r.minGre, minGmat: r.minGmat, minSat: r.minSat, minAcademicPercent: r.minAcademicPercent,
         maxGapYears: r.maxGapYears, moiAccepted: r.moiAccepted, workRights: r.workRights,
         workRightsNote: r.workRightsNote, requiredDocs: r.requiredDocs, status: r.status, updatedAt: new Date(),
       };

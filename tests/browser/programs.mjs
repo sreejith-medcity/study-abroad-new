@@ -147,6 +147,19 @@ await ap.locator('[role="status"]').filter({ hasText: /Saved 1 change/ }).first(
 text = await go(pp, programUrl.replace(BASE, ""));
 check(/Application fee\s*Not recorded/.test(text), "program page: a cleared fee goes back to not recorded");
 
+// The wider requirements: TOEFL and a minimum mark on the qualifying study.
+await ap.fill('input[name="minToefl"]', "90");
+await ap.fill('input[name="minAcademicPercent"]', "60");
+await ap.getByRole("button", { name: "Save program" }).click();
+await ap.locator('[role="status"]').filter({ hasText: /Saved 2 changes/ }).first().waitFor({ timeout: 10000 }).then(() => ok("admin edit: TOEFL and minimum marks save"), () => bad("admin edit: TOEFL and minimum marks"));
+text = await go(pp, programUrl.replace(BASE, ""));
+check(/TOEFL iBT\s*90/.test(text) && /Minimum marks, bachelor's\s*60%/.test(text), "program page: TOEFL and the minimum marks on the bachelor's show");
+await go(ap, `/admin/programs/${id}`);
+await ap.fill('input[name="minToefl"]', "");
+await ap.fill('input[name="minAcademicPercent"]', "");
+await ap.getByRole("button", { name: "Save program" }).click();
+await ap.locator('[role="status"]').filter({ hasText: /Saved 2 changes/ }).first().waitFor({ timeout: 10000 }).catch(() => {});
+
 // A draft is invisible to partners but visible to the team.
 await go(ap, `/admin/programs/${id}`);
 await ap.selectOption('select[name="status"]', "DRAFT");

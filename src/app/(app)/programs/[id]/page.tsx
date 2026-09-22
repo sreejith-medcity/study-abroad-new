@@ -5,7 +5,7 @@ import { db, schema } from "@/db";
 import { DOCUMENT_TYPES } from "@/db/statuses";
 import { requireUser } from "@/lib/auth";
 import { LEVEL_LABEL, PATHWAY_LABEL, SHORTLIST_LIMIT, durationText, feeText, inrApprox, intakesText, tuitionText } from "@/lib/catalogue";
-import { checkEligibility } from "@/lib/eligibility";
+import { QUALIFYING_LABEL, checkEligibility, qualifyingLevel } from "@/lib/eligibility";
 import { fullName } from "@/lib/format";
 import { ADMIN_ROLES, APP_ROLES, isAdmin, isStaff } from "@/lib/permissions";
 import { openScholarships } from "@/server/scholarships";
@@ -45,7 +45,7 @@ export default async function ProgramPage({
   const scope = isStaff(user) ? undefined : eq(s.orgId, user.orgId);
   const [students, student, siblings, [{ siblingTotal }]] = await Promise.all([
     db.select({ id: s.id, firstName: s.firstName, lastName: s.lastName }).from(s).where(and(eq(s.archived, false), scope)).orderBy(asc(s.firstName)).limit(300),
-    studentId ? db.query.students.findFirst({ where: and(eq(s.id, studentId), scope), with: { tests: true } }) : Promise.resolve(undefined),
+    studentId ? db.query.students.findFirst({ where: and(eq(s.id, studentId), scope), with: { tests: true, academics: true } }) : Promise.resolve(undefined),
     db.query.programs.findMany({
       where: and(eq(schema.programs.universityId, university.id), eq(schema.programs.status, "LIVE"), ne(schema.programs.id, program.id)),
       orderBy: asc(schema.programs.name),
@@ -94,14 +94,21 @@ export default async function ProgramPage({
     return inr ? <span>{text}<span className="block text-xs font-normal text-muted">{inr} at the team&apos;s indicative rate</span></span> : text;
   };
 
-  const fit = student ? checkEligibility({ backlogs: student.backlogs, gapYears: student.gapYears, tests: student.tests }, program) : null;
-  const hasEnglish = program.minIelts != null || program.minPte != null || program.minOetGrade != null;
+  const fit = student ? checkEligibility({ backlogs: student.backlogs, gapYears: student.gapYears, tests: student.tests, academics: student.academics }, program) : null;
+  const hasEnglish = program.minIelts != null || program.minPte != null || program.minToefl != null || program.minDuolingo != null || program.minOetGrade != null;
+  const qLevel = qualifyingLevel(program.level);
 
   const requirements = [
     program.minIelts != null && { label: "IELTS overall", value: program.minIelts.toFixed(1) },
     program.minPte != null && { label: "PTE Academic", value: String(program.minPte) },
+    program.minToefl != null && { label: "TOEFL iBT", value: String(program.minToefl) },
+    program.minDuolingo != null && { label: "Duolingo", value: String(program.minDuolingo) },
     program.minOetGrade && { label: "OET grade", value: program.minOetGrade },
     program.minGermanLevel && { label: "German (CEFR)", value: program.minGermanLevel },
+    program.minAcademicPercent != null && qLevel && { label: `Minimum marks, ${QUALIFYING_LABEL[qLevel]}`, value: `${program.minAcademicPercent}%` },
+    program.minGre != null && { label: "GRE", value: String(program.minGre) },
+    program.minGmat != null && { label: "GMAT", value: String(program.minGmat) },
+    program.minSat != null && { label: "SAT", value: String(program.minSat) },
     program.maxBacklogs != null && { label: "Backlogs allowed", value: `Up to ${program.maxBacklogs}` },
     program.maxGapYears != null && { label: "Study gap allowed", value: `Up to ${program.maxGapYears} year${program.maxGapYears === 1 ? "" : "s"}` },
     // The flag is only ever set when someone confirmed it, so "false" means

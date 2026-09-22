@@ -182,6 +182,16 @@ export const programs = pgTable(
     minPte: integer("min_pte"),
     minOetGrade: text("min_oet_grade"),
     minGermanLevel: text("min_german_level"),
+    // More English tests an institution may accept instead of IELTS or PTE.
+    minToefl: integer("min_toefl"),
+    minDuolingo: integer("min_duolingo"),
+    // Admission tests, only where the institution requires them.
+    minGre: integer("min_gre"),
+    minGmat: integer("min_gmat"),
+    minSat: integer("min_sat"),
+    // Minimum marks in the qualifying study, as a percentage: Std. 12th for a
+    // bachelor's or diploma, the bachelor's for a master's, the master's for a PhD.
+    minAcademicPercent: real("min_academic_percent"),
     maxBacklogs: integer("max_backlogs"),
     maxGapYears: integer("max_gap_years"),
     moiAccepted: boolean("moi_accepted").notNull().default(false),

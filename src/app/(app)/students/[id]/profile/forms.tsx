@@ -92,7 +92,7 @@ export function TestForm({ studentId }: { studentId: string }) {
       <input type="hidden" name="studentId" value={studentId} />
       <div className="grid gap-3 sm:grid-cols-3">
         <SelectField label="Test" name="test" defaultValue="IELTS" required>
-          <option>IELTS</option><option>PTE</option><option>OET</option><option>TOEFL</option><option>DUOLINGO</option><option value="GERMAN">German (CEFR)</option>
+          <option>IELTS</option><option>PTE</option><option>OET</option><option value="TOEFL">TOEFL iBT</option><option value="DUOLINGO">Duolingo</option><option value="GERMAN">German (CEFR)</option><option>GRE</option><option>GMAT</option><option>SAT</option>
         </SelectField>
         <TextField label="Overall score / grade" name="overall" required placeholder="6.5, B, B1" />
         <TextField label="Test date" name="takenOn" type="date" />

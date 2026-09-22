@@ -10,6 +10,8 @@ export const IMPORT_COLUMNS = [
   "tuition_per_year", "application_fee", "initial_deposit", "intakes", "min_ielts", "min_pte", "min_oet_grade",
   "min_german_level", "max_backlogs", "max_gap_years", "moi_accepted", "work_rights", "work_rights_note",
   "required_docs", "status",
+  // Optional: leave the column out and a re-import keeps what is already recorded.
+  "min_toefl", "min_duolingo", "min_gre", "min_gmat", "min_sat", "min_academic_percent",
 ] as const;
 
 const PATHWAYS = ["DEGREE", "AUSBILDUNG", "NURSING"] as const;
@@ -49,6 +51,13 @@ export type ImportRow = {
   minPte: number | null;
   minOetGrade: string | null;
   minGermanLevel: string | null;
+  /** Left undefined when the file has no such column, so a re-import keeps what is there. */
+  minToefl?: number | null;
+  minDuolingo?: number | null;
+  minGre?: number | null;
+  minGmat?: number | null;
+  minSat?: number | null;
+  minAcademicPercent?: number | null;
   maxBacklogs: number | null;
   maxGapYears: number | null;
   moiAccepted: boolean;
@@ -93,6 +102,7 @@ export function parseProgramCsv(text: string, validDocCodes: string[]): { rows: 
   parsed.data.forEach((r, i) => {
     const line = i + 2;
     const e: string[] = [];
+    const optional = (v: string | undefined, field: string, opts: { int?: boolean }) => (v === undefined ? undefined : num(v, field, e, opts));
     const pathway = ((r.pathway || "DEGREE").trim().toUpperCase()) as ImportRow["pathway"];
     const level = (r.level ?? "").trim().toUpperCase() as ImportRow["level"];
     const status = ((r.status || "LIVE").trim().toUpperCase()) as ImportRow["status"];
@@ -131,6 +141,12 @@ export function parseProgramCsv(text: string, validDocCodes: string[]): { rows: 
       minPte: num(r.min_pte, "min_pte", e, { int: true }),
       minOetGrade: r.min_oet_grade?.trim().toUpperCase() || null,
       minGermanLevel: cefr || null,
+      minToefl: optional(r.min_toefl, "min_toefl", { int: true }),
+      minDuolingo: optional(r.min_duolingo, "min_duolingo", { int: true }),
+      minGre: optional(r.min_gre, "min_gre", { int: true }),
+      minGmat: optional(r.min_gmat, "min_gmat", { int: true }),
+      minSat: optional(r.min_sat, "min_sat", { int: true }),
+      minAcademicPercent: optional(r.min_academic_percent, "min_academic_percent", {}),
       maxBacklogs: num(r.max_backlogs, "max_backlogs", e, { int: true }),
       maxGapYears: num(r.max_gap_years, "max_gap_years", e, { int: true }),
       moiAccepted: ["yes", "true", "1", "y"].includes((r.moi_accepted ?? "").trim().toLowerCase()),

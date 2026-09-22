@@ -63,3 +63,16 @@ test("the template shown in the admin paste box parses with no errors", async ()
   assert.equal(rows.length, 1);
   assert.equal(rows[0].workRights, "ELIGIBLE");
 });
+
+test("the wider requirement columns are read, and a file without them leaves them untouched", () => {
+  const head = "program,university,country_code,level,intakes";
+  const withCols = parseProgramCsv(`${head},min_toefl,min_gre,min_academic_percent\nMS Data Science,Test University,US,PG,Sep,90,310,60`, []);
+  assert.equal(withCols.errors.length, 0);
+  assert.equal(withCols.rows[0].minToefl, 90);
+  assert.equal(withCols.rows[0].minGre, 310);
+  assert.equal(withCols.rows[0].minAcademicPercent, 60);
+  const without = parseProgramCsv(`${head}\nMS Data Science,Test University,US,PG,Sep`, []);
+  assert.equal(without.rows[0].minToefl, undefined);
+  const blank = parseProgramCsv(`${head},min_toefl\nMS Data Science,Test University,US,PG,Sep,`, []);
+  assert.equal(blank.rows[0].minToefl, null);
+});

@@ -46,3 +46,20 @@ test("missing required documents and gap warnings are reported", () => {
   assert.ok(r.some((x) => x.code === "gap" && x.severity === "warning"));
   assert.equal(r[0].severity, "blocker", "blockers sort first");
 });
+
+test("TOEFL or Duolingo satisfies English when the program names them", () => {
+  const s = { ...student, tests: [{ test: "TOEFL", overall: "92", isMock: false }] };
+  const r = runPreSubmissionCheck(s, { ...program, minToefl: 90 }, intake);
+  assert.equal(r.find((x) => x.code === "english")?.severity, "pass");
+  const r2 = runPreSubmissionCheck(s, program, intake);
+  assert.equal(r2.find((x) => x.code === "english")?.severity, "blocker", "TOEFL does not count where only IELTS is named");
+});
+
+test("admission tests and the academic minimum", () => {
+  const s = { ...student, academics: [{ level: "UG", gradingSystem: "percentage", score: 58 }] };
+  const r = runPreSubmissionCheck(s, { ...program, level: "PG", minGre: 310, minAcademicPercent: 60 }, intake);
+  assert.equal(r.find((x) => x.code === "gre")?.severity, "blocker");
+  assert.match(r.find((x) => x.code === "academic")?.message ?? "", /bachelor's 58% is below the 60%/);
+  const cgpa = { ...student, academics: [{ level: "UG", gradingSystem: "cgpa10", score: 7.2 }] };
+  assert.equal(runPreSubmissionCheck(cgpa, { ...program, level: "PG", minAcademicPercent: 60 }, intake).find((x) => x.code === "academic")?.severity, "warning", "CGPA is never converted");
+});

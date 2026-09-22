@@ -20,6 +20,9 @@ const students: (EligibilityInput & { label: string })[] = [
   { label: "practice OET C+ and IELTS 6.5", backlogs: 1, gapYears: 0, tests: [t("OET", "C+", true), t("IELTS", "6.5")] },
   { label: "German B1", backlogs: 0, gapYears: 0, tests: [t("GERMAN", "B1")] },
   { label: "practice German B2", backlogs: 0, gapYears: 0, tests: [t("GERMAN", "B2", true)] },
+  { label: "TOEFL 95, GRE 312, UG 62%", backlogs: 0, gapYears: 0, tests: [t("TOEFL", "95"), t("GRE", "312")], academics: [{ level: "UG", gradingSystem: "percentage", score: 62 }] },
+  { label: "Duolingo 110, 12th 74%, UG CGPA", backlogs: 1, gapYears: 0, tests: [t("DUOLINGO", "110")], academics: [{ level: "SCHOOL", gradingSystem: "percentage", score: 74 }, { level: "UG", gradingSystem: "cgpa10", score: 7.5 }] },
+  { label: "GMAT 650, SAT 1300, UG 51%", backlogs: 0, gapYears: 0, tests: [t("GMAT", "650"), t("SAT", "1300"), t("IELTS", "7")], academics: [{ level: "UG", gradingSystem: "percentage", score: 51 }, { level: "PG", gradingSystem: "percentage", score: 70 }] },
 ];
 
 async function main() {
