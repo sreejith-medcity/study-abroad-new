@@ -7,6 +7,12 @@ import { fmtDateTime } from "@/lib/format";
 import { ADMIN_ROLES } from "@/lib/permissions";
 import { Card, CardHeader, LinkButton, PageHeader } from "@/components/ui";
 import { ProgramEditForm } from "./edit-form";
+import { DeadlineForm } from "./deadlines";
+import { deleteDeadlineAction } from "./deadline-actions";
+import { programDeadlines } from "@/server/deadlines";
+import { deadlineText, intakesText } from "@/lib/catalogue";
+import { MONTHS } from "@/lib/format";
+import { Button } from "@/components/ui";
 
 export const metadata = { title: "Edit program" };
 
@@ -16,7 +22,7 @@ export default async function EditProgramPage({ params }: { params: Promise<{ id
   const program = await db.query.programs.findFirst({ where: eq(schema.programs.id, id), with: { university: { with: { country: true } } } });
   if (!program) notFound();
 
-  const [docs, history] = await Promise.all([
+  const [docs, history, deadlines] = await Promise.all([
     db.select({ code: schema.documentTypes.code, label: schema.documentTypes.label }).from(schema.documentTypes).orderBy(asc(schema.documentTypes.sortOrder)),
     db
       .select({ id: schema.auditLogs.id, action: schema.auditLogs.action, meta: schema.auditLogs.meta, createdAt: schema.auditLogs.createdAt, actor: schema.users.name })
@@ -25,6 +31,7 @@ export default async function EditProgramPage({ params }: { params: Promise<{ id
       .where(and(eq(schema.auditLogs.entityType, "program"), eq(schema.auditLogs.entityId, id)))
       .orderBy(desc(schema.auditLogs.createdAt))
       .limit(10),
+    programDeadlines(id),
   ]);
 
   return (
@@ -43,7 +50,28 @@ export default async function EditProgramPage({ params }: { params: Promise<{ id
         <Card className="p-5">
           <ProgramEditForm program={program} currency={program.university.country.currency} docs={docs} />
         </Card>
-        <Card className="self-start">
+        <div className="space-y-5 self-start">
+        <Card>
+          <CardHeader title="Application deadlines" subtitle={`Intakes: ${intakesText(program.intakeMonths)}. Only dates the institution publishes.`} />
+          {deadlines.length > 0 && (
+            <ul className="divide-y divide-line border-b border-line text-[13px]">
+              {deadlines.map((d) => (
+                <li key={d.id} className="flex items-start justify-between gap-2 px-4 py-2.5">
+                  <div>
+                    <p className="font-medium">{MONTHS[d.intakeMonth - 1]} {d.intakeYear} intake</p>
+                    <p className="text-xs text-muted">{deadlineText(d.deadline)}{d.note ? ` · ${d.note}` : ""}</p>
+                  </div>
+                  <form action={deleteDeadlineAction}>
+                    <input type="hidden" name="id" value={d.id} />
+                    <Button type="submit" variant="quiet" size="sm" aria-label={`Remove the ${MONTHS[d.intakeMonth - 1]} ${d.intakeYear} deadline`}>Remove</Button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="p-4"><DeadlineForm programId={program.id} intakeMonths={program.intakeMonths} /></div>
+        </Card>
+        <Card>
           <CardHeader title="Changes" subtitle="Most recent first" />
           {history.length === 0 ? (
             <p className="px-4 py-6 text-center text-[13px] text-muted">No edits recorded yet.</p>
@@ -63,6 +91,7 @@ export default async function EditProgramPage({ params }: { params: Promise<{ id
             </ul>
           )}
         </Card>
+        </div>
       </div>
     </>
   );

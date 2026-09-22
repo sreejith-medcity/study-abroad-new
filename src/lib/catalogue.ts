@@ -66,3 +66,23 @@ export function inrApprox(amount: number | null | undefined, currency: string, r
   if (inr >= 1e5) return `≈ ₹${(inr / 1e5).toFixed(inr >= 1e7 ? 0 : 1)} lakh`;
   return `≈ ₹${(inr >= 1000 ? Math.round(inr / 1000) * 1000 : Math.round(inr)).toLocaleString("en-IN")}`;
 }
+
+/** Whole days from today (local midnight) to a yyyy-mm-dd date; negative once it has passed. */
+export function daysUntil(isoDate: string, today = new Date()) {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  return Math.round((new Date(y, m - 1, d).getTime() - start.getTime()) / 86_400_000);
+}
+
+/** "30 Jun 2027" for a yyyy-mm-dd date, without a time zone shifting the day. */
+export function dayText(isoDate: string) {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  return `${d} ${MONTHS[m - 1]} ${y}`;
+}
+
+/** "30 Jun 2027 (12 days left)", "closes today", or "closed 3 days ago". */
+export function deadlineText(isoDate: string, today = new Date()) {
+  const n = daysUntil(isoDate, today);
+  const when = n === 0 ? "closes today" : n === 1 ? "1 day left" : n > 1 ? `${n} days left` : n === -1 ? "closed yesterday" : `closed ${-n} days ago`;
+  return `${dayText(isoDate)} (${when})`;
+}

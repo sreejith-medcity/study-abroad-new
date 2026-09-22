@@ -68,17 +68,26 @@ export async function importProgramsAction(prev: ImportState, formData: FormData
         name: r.program, universityId, campus: r.city, pathway: r.pathway, level: r.level, studyArea: r.studyArea, durationMonths: r.durationMonths,
         tuitionPerYear: r.tuitionPerYear, applicationFee: r.applicationFee, initialDeposit: r.initialDeposit, intakeMonths: r.intakeMonths,
         minIelts: r.minIelts, minPte: r.minPte, minOetGrade: r.minOetGrade, minGermanLevel: r.minGermanLevel, maxBacklogs: r.maxBacklogs,
-        minToefl: r.minToefl, minDuolingo: r.minDuolingo, minGre: r.minGre, minGmat: r.minGmat, minSat: r.minSat, minAcademicPercent: r.minAcademicPercent,
+        minToefl: r.minToefl, minDuolingo: r.minDuolingo, minGre: r.minGre, minGmat: r.minGmat, minSat: r.minSat, minAcademicPercent: r.minAcademicPercent, feeWaiver: r.feeWaiver,
         maxGapYears: r.maxGapYears, moiAccepted: r.moiAccepted, workRights: r.workRights, workRightsNote: r.workRightsNote,
         requiredDocs: r.requiredDocs, status: r.status, updatedAt: new Date(),
       };
       const existing = await tx.query.programs.findFirst({ where: and(eq(schema.programs.name, r.program), eq(schema.programs.universityId, universityId)) });
+      let programId: string;
       if (existing) {
         await tx.update(schema.programs).set(values).where(eq(schema.programs.id, existing.id));
+        programId = existing.id;
         updated++;
       } else {
-        await tx.insert(schema.programs).values(values);
+        [{ id: programId }] = await tx.insert(schema.programs).values(values).returning({ id: schema.programs.id });
         created++;
+      }
+      // Listed intakes get their deadline set; intakes the file does not list keep theirs.
+      for (const d of r.deadlines ?? []) {
+        await tx
+          .insert(schema.programDeadlines)
+          .values({ programId, intakeMonth: d.month, intakeYear: d.year, deadline: d.deadline, createdById: user.id })
+          .onConflictDoUpdate({ target: [schema.programDeadlines.programId, schema.programDeadlines.intakeYear, schema.programDeadlines.intakeMonth], set: { deadline: d.deadline } });
       }
     }
   });
@@ -216,6 +225,7 @@ export async function updateProgramAction(_: FormState, fd: FormData): Promise<F
     maxBacklogs: optionalNumber(fd, "maxBacklogs", errors, { int: true, min: 0 }),
     maxGapYears: optionalNumber(fd, "maxGapYears", errors, { int: true, min: 0 }),
     moiAccepted: fd.get("moiAccepted") === "on",
+    feeWaiver: String(fd.get("feeWaiver") ?? "").trim() || null,
     workRights,
     workRightsNote,
     requiredDocs,

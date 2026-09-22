@@ -76,3 +76,13 @@ test("the wider requirement columns are read, and a file without them leaves the
   const blank = parseProgramCsv(`${head},min_toefl\nMS Data Science,Test University,US,PG,Sep,`, []);
   assert.equal(blank.rows[0].minToefl, null);
 });
+
+test("deadlines per intake and a fee waiver are read from their optional columns", () => {
+  const head = "program,university,country_code,level,intakes,fee_waiver,deadlines";
+  const ok = parseProgramCsv(`${head}\nMSc X,Test University,GB,PG,Jan|Sep,Waived until 30 June,2027-09=2027-06-30|2028-01=2027-10-31`, []);
+  assert.equal(ok.errors.length, 0);
+  assert.equal(ok.rows[0].feeWaiver, "Waived until 30 June");
+  assert.deepEqual(ok.rows[0].deadlines, [{ year: 2027, month: 9, deadline: "2027-06-30" }, { year: 2028, month: 1, deadline: "2027-10-31" }]);
+  const bad = parseProgramCsv(`${head}\nMSc X,Test University,GB,PG,Sep,,Sep 2027 by June`, []);
+  assert.match(bad.errors[0]?.message ?? "", /deadlines: "Sep 2027 by June"/);
+});

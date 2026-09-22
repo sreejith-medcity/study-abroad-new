@@ -195,6 +195,9 @@ export const programs = pgTable(
     maxBacklogs: integer("max_backlogs"),
     maxGapYears: integer("max_gap_years"),
     moiAccepted: boolean("moi_accepted").notNull().default(false),
+    // Set only when a waiver is confirmed, in the words of whoever confirmed it
+    // ("Waived for Medcity applicants until 30 June"). Null means none on record.
+    feeWaiver: text("fee_waiver"),
     // Post-study work: PGWP in Canada, STEM OPT in the US, the Graduate Route in
     // the UK. The note carries the institution's own wording, so a counsellor can
     // see why the flag says what it says.
@@ -707,6 +710,27 @@ export const scholarships = pgTable(
   (t) => [index("scholarships_university_idx").on(t.universityId)],
 );
 
+/**
+ * The last day to apply for one intake of one program, as the institution
+ * publishes it. Kept per intake and year because deadlines move every cycle.
+ */
+export const programDeadlines = pgTable(
+  "program_deadlines",
+  {
+    id: id(),
+    programId: text("program_id")
+      .notNull()
+      .references(() => programs.id, { onDelete: "cascade" }),
+    intakeMonth: integer("intake_month").notNull(),
+    intakeYear: integer("intake_year").notNull(),
+    deadline: date("deadline").notNull(),
+    note: text("note"),
+    createdById: text("created_by_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("program_deadlines_intake_uq").on(t.programId, t.intakeYear, t.intakeMonth), index("program_deadlines_deadline_idx").on(t.deadline)],
+);
+
 // ---------- Enquiries ----------
 
 export const enquiries = pgTable(
@@ -805,6 +829,11 @@ export const scholarshipsRelations = relations(scholarships, ({ one }) => ({
 export const programsRelations = relations(programs, ({ one, many }) => ({
   university: one(universities, { fields: [programs.universityId], references: [universities.id] }),
   applications: many(applications),
+  deadlines: many(programDeadlines),
+}));
+
+export const programDeadlinesRelations = relations(programDeadlines, ({ one }) => ({
+  program: one(programs, { fields: [programDeadlines.programId], references: [programs.id] }),
 }));
 
 export const studentsRelations = relations(students, ({ one, many }) => ({

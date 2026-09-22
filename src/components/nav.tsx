@@ -7,6 +7,7 @@ import { cn } from "./ui";
 import {
   IconApplications,
   IconBuilding,
+  IconClock,
   IconCommission,
   IconDashboard,
   IconEnquiry,
@@ -43,6 +44,7 @@ const ICONS = {
   settings: IconSettings,
   spark: IconSpark,
   universities: IconBuilding,
+  deadlines: IconClock,
 } as const;
 
 export type NavItem = { href: string; label: string; icon: keyof typeof ICONS; soon?: string };

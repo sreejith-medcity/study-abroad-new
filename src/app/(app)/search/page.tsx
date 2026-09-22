@@ -10,7 +10,8 @@ import { readFilters } from "@/server/queries";
 import { fxRates, getSettings } from "@/server/settings";
 import { notBlockedWhere } from "@/server/eligibility-sql";
 import { hasOpenScholarship } from "@/server/scholarships";
-import { LEVEL_LABEL, SHORTLIST_LIMIT, inrApprox, intakesText, tuitionText } from "@/lib/catalogue";
+import { closingWithin, nextDeadlines } from "@/server/deadlines";
+import { LEVEL_LABEL, SHORTLIST_LIMIT, dayText, daysUntil, inrApprox, intakesText, tuitionText } from "@/lib/catalogue";
 import { Button, Card, Chip, EmptyState, Input, LinkButton, PageHeader, Select, Table, Td, Th, Toolbar, cn } from "@/components/ui";
 import { IconCheck, IconAlert, IconClock, IconGlobe, IconSearch, IconSpark } from "@/components/icons";
 
@@ -27,6 +28,8 @@ const QUICK = [
   { key: "nursing", label: "Nurse registration" },
   { key: "workRights", label: "Post-study work" },
   { key: "scholarship", label: "Scholarship available" },
+  { key: "closing", label: "Deadline in the next 30 days" },
+  { key: "waiver", label: "Application fee waiver" },
 ] as const;
 
 const BUDGETS = [5, 10, 15, 20, 25, 30, 40, 50];
@@ -78,6 +81,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   // partner filtering on this is telling a student the work rights are there.
   if (f.workRights) conds.push(eq(p.workRights, "ELIGIBLE"));
   if (f.scholarship) conds.push(hasOpenScholarship);
+  if (f.closing) conds.push(closingWithin(30));
+  if (f.waiver) conds.push(sql`${p.feeWaiver} is not null`);
   const student = f.student
     ? await db.query.students.findFirst({ where: and(eq(s.id, f.student), isStaff(user) ? undefined : eq(s.orgId, user.orgId)), with: { tests: true, academics: true } })
     : null;
@@ -108,6 +113,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       minGmat: p.minGmat,
       minSat: p.minSat,
       minAcademicPercent: p.minAcademicPercent,
+      feeWaiver: p.feeWaiver,
       maxBacklogs: p.maxBacklogs,
       maxGapYears: p.maxGapYears,
       moiAccepted: p.moiAccepted,
@@ -139,6 +145,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
   const hasNext = rows.length > PAGE;
   const list = rows.slice(0, PAGE);
+  const next = await nextDeadlines(list.map((r) => r.id));
   const [{ total }] = await db
     .select({ total: count() })
     .from(p)
@@ -378,7 +385,15 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                         {r.isPublic && <Chip className="ml-1">Public</Chip>}
                       </p>
                     </Td>
-                    <Td className={cn("whitespace-nowrap text-[13px]", !r.intakeMonths.length && "text-muted")}>{intakesText(r.intakeMonths)}</Td>
+                    <Td className={cn("whitespace-nowrap text-[13px]", !r.intakeMonths.length && "text-muted")}>
+                      {intakesText(r.intakeMonths)}
+                      {next.get(r.id) && (() => {
+                        const d = next.get(r.id)!;
+                        const left = daysUntil(d.deadline);
+                        return <p className={cn("text-xs", left <= 14 ? "font-medium text-amber-700" : "text-muted")}>{MONTHS[d.intakeMonth - 1]} {d.intakeYear}: apply by {dayText(d.deadline)}</p>;
+                      })()}
+                      {r.feeWaiver && <p className="text-xs font-medium text-emerald-700">Fee waiver</p>}
+                    </Td>
                     <Td className="whitespace-nowrap tabular">
                       {r.tuition == null && r.tuitionTotal == null ? <span className="text-muted">Tuition not recorded</span> : tuitionText(r.tuition, r.tuitionTotal, r.currency)}
                       {inrApprox(r.tuition ?? r.tuitionTotal, r.currency, rates) && <span className="block text-xs text-muted">{inrApprox(r.tuition ?? r.tuitionTotal, r.currency, rates)}</span>}

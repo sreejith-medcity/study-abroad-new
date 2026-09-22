@@ -31,7 +31,7 @@ export async function GET(req: Request) {
       code: p.externalCode, source: p.source, name: p.name, university: u.name, campus: p.campus, country: c.name, currency: c.currency,
       level: p.level, pathway: p.pathway, field: p.studyArea, months: p.durationMonths, perYear: p.tuitionPerYear, total: p.tuitionTotal,
       appFee: p.applicationFee, deposit: p.initialDeposit, intakes: p.intakeMonths, ielts: p.minIelts, pte: p.minPte, oet: p.minOetGrade,
-      german: p.minGermanLevel, toefl: p.minToefl, duolingo: p.minDuolingo, gre: p.minGre, gmat: p.minGmat, sat: p.minSat, academic: p.minAcademicPercent, workRights: p.workRights, note: p.workRightsNote, status: p.status,
+      german: p.minGermanLevel, toefl: p.minToefl, duolingo: p.minDuolingo, gre: p.minGre, gmat: p.minGmat, sat: p.minSat, academic: p.minAcademicPercent, waiver: p.feeWaiver, workRights: p.workRights, note: p.workRightsNote, status: p.status,
     })
     .from(p)
     .innerJoin(u, eq(p.universityId, u.id))
@@ -40,12 +40,12 @@ export async function GET(req: Request) {
     .orderBy(asc(c.name), asc(u.name), asc(p.name))
     .limit(60000);
 
-  const header = ["Program", "University", "Campus", "Country", "Level", "Pathway", "Field of study", "Duration (months)", "Tuition per year", "Tuition, whole course", "Currency", "Application fee", "Deposit", "Intakes", "Min IELTS", "Min PTE", "Min OET", "German level", "Min TOEFL iBT", "Min Duolingo", "Min GRE", "Min GMAT", "Min SAT", "Min marks (%)", "Post-study work", "Work rights evidence", "Status", "Source", "Register code"];
+  const header = ["Program", "University", "Campus", "Country", "Level", "Pathway", "Field of study", "Duration (months)", "Tuition per year", "Tuition, whole course", "Currency", "Application fee", "Deposit", "Intakes", "Min IELTS", "Min PTE", "Min OET", "German level", "Min TOEFL iBT", "Min Duolingo", "Min GRE", "Min GMAT", "Min SAT", "Min marks (%)", "Application fee waiver", "Post-study work", "Work rights evidence", "Status", "Source", "Register code"];
   const lines = [header.map(csvCell).join(",")];
   for (const r of rows) {
     lines.push([
       r.name, r.university, r.campus, r.country, LEVEL_LABEL[r.level] ?? r.level, r.pathway, r.field, r.months, r.perYear, r.total, r.currency,
-      r.appFee, r.deposit, r.intakes.map((m) => MONTHS[m - 1]).join(" "), r.ielts, r.pte, r.oet, r.german, r.toefl, r.duolingo, r.gre, r.gmat, r.sat, r.academic,
+      r.appFee, r.deposit, r.intakes.map((m) => MONTHS[m - 1]).join(" "), r.ielts, r.pte, r.oet, r.german, r.toefl, r.duolingo, r.gre, r.gmat, r.sat, r.academic, r.waiver,
       r.workRights === "ELIGIBLE" ? "Eligible" : r.workRights === "INELIGIBLE" ? "Not eligible" : "Not confirmed", r.note, r.status,
       r.source ?? "Researched catalogue", r.code,
     ].map(csvCell).join(","));

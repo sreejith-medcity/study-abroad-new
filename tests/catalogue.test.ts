@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { durationText, feeText, intakesText } from "../src/lib/catalogue";
+import { daysUntil, deadlineText, durationText, feeText, intakesText } from "../src/lib/catalogue";
 import { fmtMoney } from "../src/lib/format";
 
 test("an unverified fee never reads as free", () => {
@@ -28,4 +28,12 @@ test("rupee figures are rough, marked, and only with a rate", async () => {
   assert.equal(inrApprox(19355, "NZD", rates), null);
   assert.equal(inrApprox(null, "GBP", rates), null);
   assert.equal(inrApprox(0, "GBP", rates), null);
+});
+
+test("deadlines count whole days and say when they have passed", () => {
+  const today = new Date(2027, 5, 18, 15, 30);
+  assert.equal(daysUntil("2027-06-30", today), 12);
+  assert.equal(deadlineText("2027-06-30", today), "30 Jun 2027 (12 days left)");
+  assert.equal(deadlineText("2027-06-18", today), "18 Jun 2027 (closes today)");
+  assert.equal(deadlineText("2027-06-15", today), "15 Jun 2027 (closed 3 days ago)");
 });

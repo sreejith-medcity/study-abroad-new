@@ -11,7 +11,7 @@ export const IMPORT_COLUMNS = [
   "min_german_level", "max_backlogs", "max_gap_years", "moi_accepted", "work_rights", "work_rights_note",
   "required_docs", "status",
   // Optional: leave the column out and a re-import keeps what is already recorded.
-  "min_toefl", "min_duolingo", "min_gre", "min_gmat", "min_sat", "min_academic_percent",
+  "min_toefl", "min_duolingo", "min_gre", "min_gmat", "min_sat", "min_academic_percent", "fee_waiver", "deadlines",
 ] as const;
 
 const PATHWAYS = ["DEGREE", "AUSBILDUNG", "NURSING"] as const;
@@ -58,6 +58,9 @@ export type ImportRow = {
   minGmat?: number | null;
   minSat?: number | null;
   minAcademicPercent?: number | null;
+  feeWaiver?: string | null;
+  /** Deadlines per intake from the optional `deadlines` column: 2027-09=2027-06-30|2028-01=2027-10-31. */
+  deadlines?: { month: number; year: number; deadline: string }[];
   maxBacklogs: number | null;
   maxGapYears: number | null;
   moiAccepted: boolean;
@@ -68,6 +71,19 @@ export type ImportRow = {
 };
 
 export type ImportError = { line: number; message: string };
+
+function parseDeadlines(v: string, errors: string[]) {
+  const out: { month: number; year: number; deadline: string }[] = [];
+  for (const part of v.split("|").map((x) => x.trim()).filter(Boolean)) {
+    const m = part.match(/^(\d{4})-(\d{1,2})\s*=\s*(\d{4}-\d{2}-\d{2})$/);
+    if (!m || Number(m[2]) < 1 || Number(m[2]) > 12) {
+      errors.push(`deadlines: "${part}" should look like 2027-09=2027-06-30`);
+      continue;
+    }
+    out.push({ year: Number(m[1]), month: Number(m[2]), deadline: m[3] });
+  }
+  return out;
+}
 
 function num(v: string | undefined, field: string, errors: string[], opts: { int?: boolean } = {}) {
   const t = (v ?? "").replace(/,/g, "").trim();
@@ -147,6 +163,8 @@ export function parseProgramCsv(text: string, validDocCodes: string[]): { rows: 
       minGmat: optional(r.min_gmat, "min_gmat", { int: true }),
       minSat: optional(r.min_sat, "min_sat", { int: true }),
       minAcademicPercent: optional(r.min_academic_percent, "min_academic_percent", {}),
+      feeWaiver: r.fee_waiver === undefined ? undefined : r.fee_waiver.trim() || null,
+      deadlines: r.deadlines === undefined ? undefined : parseDeadlines(r.deadlines, e),
       maxBacklogs: num(r.max_backlogs, "max_backlogs", e, { int: true }),
       maxGapYears: num(r.max_gap_years, "max_gap_years", e, { int: true }),
       moiAccepted: ["yes", "true", "1", "y"].includes((r.moi_accepted ?? "").trim().toLowerCase()),

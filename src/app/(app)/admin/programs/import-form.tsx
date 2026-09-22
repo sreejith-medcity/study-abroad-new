@@ -34,7 +34,7 @@ export function ImportForm() {
           <summary className="cursor-pointer text-brand-600">Or paste CSV (template)</summary>
           <label htmlFor="csv-text" className="sr-only">CSV text</label>
           <Textarea id="csv-text" name="csv" rows={5} className="mt-2 font-mono text-xs" defaultValue={TEMPLATE} />
-          <p className="mt-1 text-xs text-muted">Intakes: month names or numbers separated by |. Required docs: document codes separated by |. Existing programs with the same name and university are updated. Optional columns: min_toefl, min_duolingo, min_gre, min_gmat, min_sat, min_academic_percent; a file without one of them leaves that value as it is.</p>
+          <p className="mt-1 text-xs text-muted">Intakes: month names or numbers separated by |. Required docs: document codes separated by |. Existing programs with the same name and university are updated. Optional columns: min_toefl, min_duolingo, min_gre, min_gmat, min_sat, min_academic_percent, fee_waiver, and deadlines as 2027-09=2027-06-30|2028-01=2027-10-31; a file without one of them leaves that value as it is.</p>
         </details>
         <div className="flex gap-2">
           <Button type="submit" name="mode" value="preview" variant="secondary" disabled={pending}>{pending ? "Checking…" : "Preview import"}</Button>

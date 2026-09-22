@@ -32,6 +32,7 @@ export type EditableProgram = {
   maxBacklogs: number | null;
   maxGapYears: number | null;
   moiAccepted: boolean;
+  feeWaiver: string | null;
   workRights: string;
   workRightsNote: string | null;
   requiredDocs: string[];
@@ -76,6 +77,7 @@ export function ProgramEditForm({ program, currency, docs }: { program: Editable
         <TextField label="Tuition per year" name="tuitionPerYear" inputMode="numeric" defaultValue={v(program.tuitionPerYear)} />
         <TextField label="Application fee" name="applicationFee" inputMode="numeric" defaultValue={v(program.applicationFee)} />
         <TextField label="Deposit" name="initialDeposit" inputMode="numeric" defaultValue={v(program.initialDeposit)} />
+        <TextField label="Application fee waiver" name="feeWaiver" defaultValue={v(program.feeWaiver)} placeholder="Only if confirmed, in its terms: 'Waived for Medcity applicants until 30 June'" />
       </Section>
 
       <Section title="Intakes">

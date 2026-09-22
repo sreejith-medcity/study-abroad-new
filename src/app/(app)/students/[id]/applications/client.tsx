@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { ActionForm, FieldError } from "@/components/action-form";
 import { Field, Select, Textarea } from "@/components/ui";
+import { dayText, daysUntil } from "@/lib/catalogue";
 import { addCommentAction, changeStatusAction, createApplicationAction } from "./actions";
 
 type ProgramOption = {
@@ -15,6 +16,8 @@ type ProgramOption = {
   shortlisted: boolean;
   tuition: string;
   requirements: string;
+  /** Last day to apply, keyed "yyyy-m" by intake. */
+  deadlines: Record<string, string>;
 };
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -31,6 +34,7 @@ export function ApplyForm({
   /** True when more programs matched than were sent; the counsellor should narrow the search. */
   limited: boolean;
 }) {
+  const [intake, setIntake] = useState("");
   const [programId, setProgramId] = useState(programs.some((p) => p.id === preselectProgramId) ? preselectProgramId! : "");
   const program = programs.find((p) => p.id === programId);
   const picked = programs.filter((p) => p.shortlisted);
@@ -57,7 +61,7 @@ export function ApplyForm({
     <ActionForm action={createApplicationAction} submitLabel="Create application" pendingLabel="Creating…">
       <input type="hidden" name="studentId" value={studentId} />
       <Field label="Program" htmlFor="programId" required hint={limited ? "Showing the first 50 matches. Search above to narrow the list." : programs.length ? undefined : "Nothing open for applications matches. Change the search above."}>
-        <Select id="programId" name="programId" value={programId} onChange={(e) => setProgramId(e.target.value)}>
+        <Select id="programId" name="programId" value={programId} onChange={(e) => { setProgramId(e.target.value); setIntake(""); }}>
           <option value="">Choose a program</option>
           {picked.length > 0 && (
             <optgroup label="Shortlisted">
@@ -80,11 +84,21 @@ export function ApplyForm({
         </div>
       )}
       <Field label="Intake" htmlFor="intake" required hint={program && !program.intakeMonths.length ? "No intakes are recorded for this program. Pick the one the student is aiming for; the Overseas team confirms it with the institution." : undefined}>
-        <Select id="intake" name="intake" disabled={!program} defaultValue="">
+        <Select id="intake" name="intake" disabled={!program} value={intake} onChange={(e) => setIntake(e.target.value)}>
           <option value="">{program ? "Choose an intake" : "Choose a program first"}</option>
-          {intakes.map((i) => <option key={i.value} value={i.value}>{i.label}</option>)}
+          {intakes.map((i) => (
+            <option key={i.value} value={i.value}>
+              {i.label}
+              {program?.deadlines[i.value] ? ` (apply by ${dayText(program.deadlines[i.value])})` : ""}
+            </option>
+          ))}
         </Select>
         <FieldError name="intake" />
+        {program && intake && program.deadlines[intake] && daysUntil(program.deadlines[intake]) < 0 && (
+          <p className="text-xs font-medium text-red-700">
+            The institution&apos;s deadline for this intake was {dayText(program.deadlines[intake])}. You can still create the application, but the team may not be able to submit it; check before promising the student.
+          </p>
+        )}
       </Field>
     </ActionForm>
   );

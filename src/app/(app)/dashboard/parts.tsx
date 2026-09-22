@@ -129,6 +129,9 @@ export function DeadlinesCard({
         ))}
         {rows.length === 0 && <li className="px-4 py-6 text-center text-muted">No deadlines in the next {days} days.</li>}
       </ul>
+      <div className="border-t border-line px-4 py-2.5">
+        <Link href="/deadlines?mine=1" className="text-[13px] font-medium text-brand-600 hover:underline">Institution deadlines on your students&apos; shortlists</Link>
+      </div>
     </Card>
   );
 }

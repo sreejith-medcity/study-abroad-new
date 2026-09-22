@@ -4,11 +4,13 @@ import { and, asc, count, eq, ne, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { DOCUMENT_TYPES } from "@/db/statuses";
 import { requireUser } from "@/lib/auth";
-import { LEVEL_LABEL, PATHWAY_LABEL, SHORTLIST_LIMIT, durationText, feeText, inrApprox, intakesText, tuitionText } from "@/lib/catalogue";
+import { LEVEL_LABEL, PATHWAY_LABEL, SHORTLIST_LIMIT, daysUntil, deadlineText, durationText, feeText, inrApprox, intakesText, tuitionText } from "@/lib/catalogue";
 import { QUALIFYING_LABEL, checkEligibility, qualifyingLevel } from "@/lib/eligibility";
 import { fullName } from "@/lib/format";
 import { ADMIN_ROLES, APP_ROLES, isAdmin, isStaff } from "@/lib/permissions";
 import { openScholarships } from "@/server/scholarships";
+import { programDeadlines } from "@/server/deadlines";
+import { MONTHS } from "@/lib/format";
 import { fxRates, getSettings } from "@/server/settings";
 import { ScholarshipList } from "@/components/scholarship-list";
 import { ShortlistButton } from "@/components/shortlist-button";
@@ -87,6 +89,7 @@ export default async function ProgramPage({
         .limit(6)
     : [];
   const scholarships = await openScholarships(university.id, program.level);
+  const deadlines = await programDeadlines(program.id);
   const rates = fxRates(await getSettings());
   // The rupee figure sits under the real one, smaller, and says it is rough.
   const withInr = (amount: number | null, text: string) => {
@@ -159,11 +162,28 @@ export default async function ProgramPage({
                 { label: "Tuition per year", value: withInr(program.tuitionPerYear, feeText(program.tuitionPerYear, cur, { zero: "No tuition fee" })) },
                 ...(program.tuitionTotal != null ? [{ label: "Tuition, whole course", value: withInr(program.tuitionTotal, feeText(program.tuitionTotal, cur, { zero: "No tuition fee" })) }] : []),
                 { label: "Application fee", value: feeText(program.applicationFee, cur, { zero: "No application fee" }) },
+                ...(program.feeWaiver ? [{ label: "Application fee waiver", value: program.feeWaiver, tone: "ok" as const }] : []),
                 { label: "Deposit to confirm a place", value: feeText(program.initialDeposit, cur, { zero: "No deposit" }) },
                 ...(program.externalCode ? [{ label: program.source === "CRICOS" ? "Source" : "CRICOS code", value: program.source === "CRICOS" ? `CRICOS register, course ${program.externalCode}` : program.externalCode }] : []),
               ]}
             />
           </Card>
+
+          {deadlines.length > 0 && (
+            <Card>
+              <CardHeader title="Application deadlines" subtitle="As the institution publishes them. Apply well before: the team needs time to check and submit." />
+              <DataList
+                rows={deadlines.map((d) => {
+                  const left = daysUntil(d.deadline);
+                  return {
+                    label: `${MONTHS[d.intakeMonth - 1]} ${d.intakeYear} intake`,
+                    value: `${deadlineText(d.deadline)}${d.note ? ` · ${d.note}` : ""}`,
+                    tone: left < 0 ? ("bad" as const) : left <= 14 ? ("warn" as const) : undefined,
+                  };
+                })}
+              />
+            </Card>
+          )}
 
           <Card>
             <CardHeader title="Post-study work" subtitle="Only marked eligible where the institution or an official register says so" />

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, asc, desc, eq, ilike, or } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, or } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { summarise } from "@/lib/checks";
@@ -90,7 +90,7 @@ async function ApplyPanel({ studentId, pathway, preselectProgramId, q, country }
   const columns = {
     id: p.id, name: p.name, pathway: p.pathway, intakeMonths: p.intakeMonths, campus: p.campus,
     tuitionPerYear: p.tuitionPerYear, tuitionTotal: p.tuitionTotal,
-    minIelts: p.minIelts, minPte: p.minPte, minOetGrade: p.minOetGrade, minGermanLevel: p.minGermanLevel, maxBacklogs: p.maxBacklogs, moiAccepted: p.moiAccepted,
+    minIelts: p.minIelts, minPte: p.minPte, minOetGrade: p.minOetGrade, minGermanLevel: p.minGermanLevel, maxBacklogs: p.maxBacklogs, moiAccepted: p.moiAccepted, minToefl: p.minToefl, minDuolingo: p.minDuolingo, minAcademicPercent: p.minAcademicPercent,
     university: u.name, country: c.name, currency: c.currency,
   };
   const base = () => db.select(columns).from(p).innerJoin(u, eq(p.universityId, u.id)).innerJoin(c, eq(u.countryId, c.id));
@@ -111,6 +111,12 @@ async function ApplyPanel({ studentId, pathway, preselectProgramId, q, country }
   const seen = new Set<string>();
   const rows = [...preselected, ...picked, ...matches].filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
   const shortlisted = new Set(picked.map((r) => r.id));
+  const deadlineRows = rows.length
+    ? await db
+        .select({ programId: schema.programDeadlines.programId, month: schema.programDeadlines.intakeMonth, year: schema.programDeadlines.intakeYear, deadline: schema.programDeadlines.deadline })
+        .from(schema.programDeadlines)
+        .where(inArray(schema.programDeadlines.programId, rows.map((r) => r.id)))
+    : [];
   const programs = rows.map((r) => ({
     id: r.id,
     name: r.name,
@@ -120,9 +126,13 @@ async function ApplyPanel({ studentId, pathway, preselectProgramId, q, country }
     intakeMonths: r.intakeMonths,
     shortlisted: shortlisted.has(r.id),
     tuition: tuitionText(r.tuitionPerYear, r.tuitionTotal, r.currency),
+    deadlines: Object.fromEntries(deadlineRows.filter((d) => d.programId === r.id).map((d) => [`${d.year}-${d.month}`, d.deadline])),
     requirements: [
       r.minIelts && `IELTS ${r.minIelts}`,
       r.minPte && `PTE ${r.minPte}`,
+      r.minToefl != null && `TOEFL ${r.minToefl}`,
+      r.minDuolingo != null && `Duolingo ${r.minDuolingo}`,
+      r.minAcademicPercent != null && `marks ${r.minAcademicPercent}%+`,
       r.minOetGrade && `OET ${r.minOetGrade}`,
       r.minGermanLevel && `German ${r.minGermanLevel}`,
       r.maxBacklogs != null && `backlogs ≤ ${r.maxBacklogs}`,
