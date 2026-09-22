@@ -11,6 +11,7 @@ export default async function SettingsLayout({ children }: { children: React.Rea
     ...(user.role === "PARTNER"
       ? [
           { href: "/settings/branch", label: "Branch" },
+          { href: "/settings/team", label: "Team" },
           { href: "/settings/students", label: "Students" },
         ]
       : []),
