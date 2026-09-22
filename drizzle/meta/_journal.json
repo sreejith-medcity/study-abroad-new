@@ -232,6 +232,13 @@
       "when": 1790071258614,
       "tag": "0032_billing_companies",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1790072008794,
+      "tag": "0033_contacts_promotions",
+      "breakpoints": true
     }
   ]
 }

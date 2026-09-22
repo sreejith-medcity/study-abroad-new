@@ -75,3 +75,15 @@ test("billing identifiers: PAN, GSTIN with its PAN, IFSC, masking and LUT dates"
   assert.equal(lutState("2027-03-31", new Date("2026-09-22")), "valid");
   assert.equal(lutState("2026-03-31", new Date("2026-09-22")), "expired");
 });
+
+import { daysLeft, promotionState } from "../src/lib/promotions";
+
+test("promotions: state and days left by the IST calendar day", () => {
+  // 20:00 UTC on 21 Sep is already 22 Sep in India.
+  const now = new Date("2026-09-21T20:00:00Z");
+  assert.equal(promotionState("2026-09-22", "2026-09-30", now), "running");
+  assert.equal(promotionState("2026-09-23", "2026-09-30", now), "upcoming");
+  assert.equal(promotionState("2026-09-01", "2026-09-21", now), "ended");
+  assert.equal(daysLeft("2026-09-22", now), 1);
+  assert.equal(daysLeft("2026-09-30", now), 9);
+});

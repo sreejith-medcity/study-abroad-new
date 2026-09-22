@@ -38,6 +38,7 @@ const partnerNav = (home: string): NavGroup[] => [
     items: [
       { href: "/wallet", label: "Wallet", icon: "wallet" },
       { href: "/commission", label: "Commission", icon: "commission" },
+      { href: "/promotions", label: "Schemes", icon: "spark" },
     ],
   },
   {
@@ -46,6 +47,7 @@ const partnerNav = (home: string): NavGroup[] => [
       { href: "/updates", label: "Updates", icon: "spark" },
       { href: "/events", label: "Events", icon: "events" },
       { href: "/support", label: "Help desk", icon: "support" },
+      { href: "/contacts", label: "Contacts", icon: "partners" },
       { href: "/learning", label: "Learning resources", icon: "learning" },
       { href: "/training", label: "Training", icon: "training" },
     ],
@@ -87,6 +89,8 @@ const ADMIN_NAV: NavGroup[] = [
       { href: "/enquiries", label: "Enquiries", icon: "enquiry" },
       { href: "/admin/partners", label: "Partners", icon: "partners" },
       { href: "/admin/updates", label: "Updates", icon: "spark" },
+      { href: "/admin/promotions", label: "Schemes", icon: "commission" },
+      { href: "/admin/contacts", label: "Contacts and links", icon: "partners" },
       { href: "/admin/events", label: "Events", icon: "events" },
       { href: "/admin/training", label: "Training", icon: "training" },
       { href: "/admin/insights", label: "Insights", icon: "insights" },

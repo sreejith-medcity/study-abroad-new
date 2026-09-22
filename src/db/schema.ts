@@ -1111,6 +1111,51 @@ export const bulletins = pgTable(
   (t) => [index("bulletins_kind_idx").on(t.kind, t.createdAt)],
 );
 
+/** The Overseas team's people partners may call, grouped by what they handle. */
+export const teamContacts = pgTable("team_contacts", {
+  id: id(),
+  area: text("area").notNull(),
+  name: text("name").notNull(),
+  title: text("title"),
+  phone: text("phone"),
+  email: text("email"),
+  whatsapp: boolean("whatsapp").notNull().default(false),
+  /** 1 is the first call; higher levels are where to escalate. */
+  level: integer("level").notNull().default(1),
+  hours: text("hours"),
+  active: boolean("active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(100),
+  createdAt: createdAt(),
+});
+
+/** Incentive schemes for partners, with the dates they run and their terms. */
+export const promotions = pgTable(
+  "promotions",
+  {
+    id: id(),
+    title: text("title").notNull(),
+    summary: text("summary").notNull(),
+    terms: text("terms").notNull(),
+    countries: text("countries").array().notNull().default(sql`'{}'::text[]`),
+    startsOn: date("starts_on").notNull(),
+    endsOn: date("ends_on").notNull(),
+    published: boolean("published").notNull().default(true),
+    createdById: text("created_by_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("promotions_dates_idx").on(t.endsOn)],
+);
+
+/** Links partners use often: institution portals, embassy pages, forms. */
+export const quickLinks = pgTable("quick_links", {
+  id: id(),
+  label: text("label").notNull(),
+  url: text("url").notNull(),
+  note: text("note"),
+  sortOrder: integer("sort_order").notNull().default(100),
+  createdAt: createdAt(),
+});
+
 // ---------- Enquiries ----------
 
 export const enquiries = pgTable(

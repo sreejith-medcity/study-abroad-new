@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { currentPromotions, quickLinkList } from "@/server/directory-queries";
+import { promotionState, rangeText } from "@/lib/promotions";
 import { commissionVisible } from "@/server/commission-visibility";
 import { and, asc, count, eq, gte } from "drizzle-orm";
 import { db, schema } from "@/db";
@@ -67,6 +69,7 @@ export default async function PartnerDashboard({
   const filters: ApplicationFilters = { from: f.from, to: f.to, country: f.country, intakeYear: f.intakeYear, intakeMonth: f.intakeMonth };
   const mine = variant === "counsellor" ? eq(s.assignedToId, user.id) : undefined;
   const showMoney = await commissionVisible(user);
+  const [schemes, links] = await Promise.all([showMoney ? currentPromotions() : Promise.resolve([]), quickLinkList()]);
 
   const [kpis, work, deadlines, recent, org, countries, destinations, points, steps, enquiries, followUps, wallet, commission] = await Promise.all([
     kpiTotals(user, and(applicationWhere(user, filters), mine)),
@@ -343,6 +346,35 @@ export default async function PartnerDashboard({
               <a href={`mailto:${org.relationshipManager.email}`} className="text-brand-600 hover:underline">
                 {org.relationshipManager.email}
               </a>
+              <Link href="/contacts" className="mt-2 block text-[13px] font-medium text-brand-600 hover:underline">Everyone to contact</Link>
+            </Card>
+          )}
+
+          {showMoney && schemes.length > 0 && (
+            <Card>
+              <CardHeader title="Schemes running" subtitle="On top of the usual commission" />
+              <ul className="divide-y divide-line">
+                {schemes.slice(0, 3).map((p) => (
+                  <li key={p.id} className="px-4 py-2.5 text-[13px]">
+                    <Link href={`/promotions#${p.id}`} className="font-medium text-ink hover:text-brand-700 hover:underline">{p.title}</Link>
+                    <p className="text-emerald-700">{p.summary}</p>
+                    <p className="text-xs text-muted">{promotionState(p.startsOn, p.endsOn) === "running" ? `Until ${rangeText(p.startsOn, p.endsOn).split(" to ")[1]}` : `From ${rangeText(p.startsOn, p.endsOn).split(" to ")[0]}`}</p>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
+          {links.length > 0 && (
+            <Card>
+              <CardHeader title="Quick links" />
+              <ul className="divide-y divide-line">
+                {links.slice(0, 6).map((l) => (
+                  <li key={l.id} className="px-4 py-2 text-[13px]">
+                    <a href={l.url} target="_blank" rel="noopener noreferrer" className="font-medium text-brand-600 hover:underline">{l.label} ↗</a>
+                  </li>
+                ))}
+              </ul>
             </Card>
           )}
         </div>

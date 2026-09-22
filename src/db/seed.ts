@@ -94,6 +94,16 @@ async function main() {
     .returning();
   const c = Object.fromEntries(countryRows.map((r) => [r.code, r.id]));
 
+  // Fictional people; the links are the governments' own pages.
+  await db.insert(schema.teamContacts).values([
+    { area: "UK admissions", name: "Sample Admissions Officer", title: "Admissions, United Kingdom", phone: "+91 90000 00001", email: "uk.admissions@medcityoverseas.test", whatsapp: true, level: 1, hours: "Mon to Sat, 9.30 to 6 IST" },
+    { area: "UK admissions", name: "Sample Team Lead", title: "Head of admissions", phone: "+91 90000 00002", email: "admissions.lead@medcityoverseas.test", level: 2 },
+  ]);
+  await db.insert(schema.quickLinks).values([
+    { label: "UK Student visa", url: "https://www.gov.uk/student-visa", note: "UKVI's own guidance", sortOrder: 10 },
+    { label: "Australian Student visa (subclass 500)", url: "https://immi.homeaffairs.gov.au/visas/getting-a-visa/visa-listing/student-500", note: "Department of Home Affairs", sortOrder: 20 },
+  ]);
+
   const uni = async (name: string, city: string, code: string, isPublic = true) =>
     (await db.insert(schema.universities).values({ name, city, countryId: c[code], isPublic }).returning())[0];
 
