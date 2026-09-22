@@ -49,7 +49,7 @@ export const ADMISSION_TESTS = [
   { test: "GMAT", key: "minGmat" },
   { test: "SAT", key: "minSat" },
 ] as const;
-export const TEST_LABEL: Record<string, string> = { IELTS: "IELTS", PTE: "PTE", TOEFL: "TOEFL iBT", DUOLINGO: "Duolingo", GRE: "GRE", GMAT: "GMAT", SAT: "SAT", OET: "OET", GERMAN: "German" };
+export const TEST_LABEL: Record<string, string> = { IELTS: "IELTS", PTE: "PTE", TOEFL: "TOEFL iBT", DUOLINGO: "Duolingo", GRE: "GRE", GMAT: "GMAT", SAT: "SAT", ACT: "ACT", OET: "OET", GERMAN: "German" };
 
 /**
  * Which earlier study the academic minimum is measured on: Std. 12th for a

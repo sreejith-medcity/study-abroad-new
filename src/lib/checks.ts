@@ -1,3 +1,4 @@
+import { backgroundComplete, type BackgroundAnswers } from "./background";
 import { ADMISSION_TESTS, ENGLISH_TESTS, QUALIFYING_LABEL, TEST_LABEL, bestPercents, qualifyingLevel } from "./eligibility";
 
 /**
@@ -20,6 +21,8 @@ export type CheckStudent = {
   academics: { level: string; gradingSystem?: string | null; score?: number | null }[];
   tests: { test: string; overall: string; isMock: boolean }[];
   documentTypeCodes: string[];
+  /** Left out, the background questions are not checked. */
+  background?: BackgroundAnswers;
 };
 
 export type CheckProgram = {
@@ -68,6 +71,10 @@ export function runPreSubmissionCheck(
 
   if (!done.personal) out.push({ code: "profile.personal", severity: "blocker", message: "Personal information, address or passport details are incomplete", section: "profile" });
   if (!done.academics) out.push({ code: "profile.academics", severity: "blocker", message: "No academic qualifications added", section: "profile" });
+  if (s.background) {
+    if (!backgroundComplete(s.background)) out.push({ code: "profile.background", severity: "warning", message: "Background questions are not all answered: the institution will ask them", section: "profile" });
+    if (s.background.visaRefused?.answer) out.push({ code: "profile.visa_refusal", severity: "warning", message: "An earlier visa refusal is recorded: declare it on the application with the details", section: "profile" });
+  }
 
   // Passport validity must cover the whole course
   if (s.passportExpiry) {

@@ -7,7 +7,8 @@ import { APP_ROLES, canSeeFullPassport, isAdmin, maskPassport } from "@/lib/perm
 import { getStudentForUser } from "@/server/queries";
 import { Alert, Button, Card, Chip } from "@/components/ui";
 import { deleteProfileRowAction, revealPassportAction, toggleLockAction, togglePortalAccessAction } from "../../actions";
-import { AcademicForm, PersonalForm, PortalInviteForm, RequestEditForm, TestForm, WorkForm } from "./forms";
+import { AcademicForm, BackgroundForm, ContactForm, PersonalForm, PortalInviteForm, RequestEditForm, TestForm, WorkForm } from "./forms";
+import { BACKGROUND_QUESTIONS, backgroundComplete } from "@/lib/background";
 
 export const metadata = { title: "Student profile" };
 
@@ -18,12 +19,13 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
   const { reveal } = await searchParams;
   const user = await requireUser([...APP_ROLES]);
   const student = await getStudentForUser(user, id);
-  const [academics, tests, work, openRequests, portalAccount] = await Promise.all([
+  const [academics, tests, work, openRequests, portalAccount, contacts] = await Promise.all([
     db.select().from(schema.academicRecords).where(eq(schema.academicRecords.studentId, id)).orderBy(asc(schema.academicRecords.yearCompleted)),
     db.select().from(schema.testScores).where(eq(schema.testScores.studentId, id)),
     db.select().from(schema.workExperience).where(eq(schema.workExperience.studentId, id)).orderBy(asc(schema.workExperience.startDate)),
     db.select().from(schema.editRequests).where(and(eq(schema.editRequests.studentId, id), eq(schema.editRequests.status, "OPEN"))),
     db.query.users.findFirst({ where: eq(schema.users.studentId, id) }),
+    db.select().from(schema.studentContacts).where(eq(schema.studentContacts.studentId, id)).orderBy(asc(schema.studentContacts.createdAt)),
   ]);
 
   const done = profileCompleteness({ ...student, academics, tests, documentTypeCodes: [] });
@@ -36,11 +38,13 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
     { href: "#academics", label: "Academic qualifications", state: done.academics ? "Complete" : "Incomplete" },
     { href: "#work", label: "Work experience", state: work.length ? "Complete" : "Optional" },
     { href: "#tests", label: "Tests", state: done.tests ? "Complete" : "Incomplete" },
+    { href: "#background", label: "Background", state: backgroundComplete(student.background) ? "Complete" : "Incomplete" },
+    { href: "#contacts", label: "Contacts", state: contacts.length ? "Complete" : "Optional" },
   ];
 
   return (
     <div className="space-y-5">
-      <Card className="grid grid-cols-2 gap-px overflow-hidden bg-line sm:grid-cols-4">
+      <Card className="grid grid-cols-2 gap-px overflow-hidden bg-line sm:grid-cols-3 xl:grid-cols-6">
         {sections.map((s) => (
           <a key={s.href} href={s.href} className="bg-white px-4 py-3 text-center hover:bg-ground">
             <p className="font-medium">{s.label}</p>
@@ -157,6 +161,36 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
         />
         {!readOnly && <div className="mt-4 border-t border-line pt-4"><TestForm studentId={id} /></div>}
       </Card>
+
+      <Card id="background" className="scroll-mt-20 p-5">
+        <h2 className="font-semibold text-brand-700">Background</h2>
+        <p className="mb-3 text-[13px] text-muted">Institutions and visa forms ask these of every applicant. Answer once here; a yes needs the details.</p>
+        {readOnly ? (
+          <ul className="space-y-2 text-sm">
+            {BACKGROUND_QUESTIONS.map((q) => {
+              const a = student.background[q.key];
+              return (
+                <li key={q.key}>
+                  <p>{q.text}</p>
+                  <p className="text-muted">{a ? (a.answer ? `Yes: ${a.details}` : "No") : "Not answered"}</p>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <BackgroundForm studentId={id} answers={student.background} disabled={false} />
+        )}
+      </Card>
+
+      <Card id="contacts" className="scroll-mt-20 p-5">
+        <h2 className="mb-3 font-semibold text-brand-700">Important contacts <span className="text-xs font-normal text-muted">(parents, guardians, sponsor)</span></h2>
+        <RowList
+          empty="No contacts added."
+          rows={contacts.map((c) => ({ id: c.id, title: `${c.name} (${c.relation})`, sub: [c.phone, c.email].filter(Boolean).join(" · "), badge: c.emergency ? "Emergency" : undefined }))}
+          kind="contact" studentId={id} canDelete={!readOnly}
+        />
+        {!readOnly && <div className="mt-4 border-t border-line pt-4"><ContactForm studentId={id} /></div>}
+      </Card>
     </div>
   );
 }
@@ -187,6 +221,6 @@ function RowList({ rows, empty, kind, studentId, canDelete }: { rows: { id: stri
 
 /** Only plain profile fields go to the client form (never related user records). */
 function pickProfile(s: typeof schema.students.$inferSelect) {
-  const { id, firstName, lastName, email, phone, dateOfBirth, gender, maritalStatus, nationality, addressLine1, addressLine2, city, state, pincode, passportIssue, passportExpiry, passportIssueCountry, cityOfBirth, backlogs, gapYears, preferredLanguage, whatsappOptIn } = s;
-  return { id, firstName, lastName, email, phone, dateOfBirth, gender, maritalStatus, nationality, addressLine1, addressLine2, city, state, pincode, passportIssue, passportExpiry, passportIssueCountry, cityOfBirth, backlogs, gapYears, preferredLanguage, whatsappOptIn };
+  const { id, firstName, lastName, email, phone, dateOfBirth, gender, maritalStatus, nationality, addressLine1, addressLine2, city, state, pincode, passportIssue, passportExpiry, passportIssueCountry, cityOfBirth, backlogs, gapYears, preferredLanguage, whatsappOptIn, mailingSameAsPermanent, mailingAddress, otherCitizenship, livingInCountry } = s;
+  return { id, firstName, lastName, email, phone, dateOfBirth, gender, maritalStatus, nationality, addressLine1, addressLine2, city, state, pincode, passportIssue, passportExpiry, passportIssueCountry, cityOfBirth, backlogs, gapYears, preferredLanguage, whatsappOptIn, mailingSameAsPermanent, mailingAddress, otherCitizenship, livingInCountry };
 }

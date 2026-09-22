@@ -63,3 +63,16 @@ test("admission tests and the academic minimum", () => {
   const cgpa = { ...student, academics: [{ level: "UG", gradingSystem: "cgpa10", score: 7.2 }] };
   assert.equal(runPreSubmissionCheck(cgpa, { ...program, level: "PG", minAcademicPercent: 60 }, intake).find((x) => x.code === "academic")?.severity, "warning", "CGPA is never converted");
 });
+
+test("background questions: unanswered and an earlier visa refusal are warnings, never blockers", () => {
+  const none = runPreSubmissionCheck({ ...student, background: {} }, program, intake);
+  assert.ok(none.some((c) => c.code === "profile.background" && c.severity === "warning"));
+  const refused = runPreSubmissionCheck(
+    { ...student, background: { visaRefused: { answer: true, details: "UK, 2022" }, immigrationApplied: { answer: false, details: null }, medicalCondition: { answer: false, details: null }, criminalConviction: { answer: false, details: null } } },
+    program,
+    intake,
+  );
+  assert.ok(!refused.some((c) => c.code === "profile.background"));
+  assert.ok(refused.some((c) => c.code === "profile.visa_refusal" && c.severity === "warning"));
+  assert.ok(!runPreSubmissionCheck(student, program, intake).some((c) => c.code.startsWith("profile.b")));
+});

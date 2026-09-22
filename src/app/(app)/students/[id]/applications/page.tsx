@@ -9,7 +9,8 @@ import { checkApplication, statusesFor } from "@/server/applications";
 import { getStudentForUser } from "@/server/queries";
 import { Button, Card, CardHeader, Chip, DataList, EmptyState, Input, Select, StatusBadge, cn } from "@/components/ui";
 import { confirmationLabel, dayText, daysUntil, deadlineText, tuitionText } from "@/lib/catalogue";
-import { markFeePaidAction, setDeadlineDoneAction, setDocumentTypeAction } from "./actions";
+import { markFeePaidAction, setDeadlineDoneAction, setDocumentTypeAction, setPriorityAction } from "./actions";
+import { PRIORITY_LABEL } from "@/lib/priority";
 import { ApplyForm, CommentComposer, DeadlineAddForm, OfferVisaForm, StatusForm, type OfferVisaValues } from "./client";
 import { DEADLINE_LABEL } from "@/lib/deadline-types";
 
@@ -53,7 +54,11 @@ export default async function StudentApplicationsPage({ params, searchParams }: 
                   aria-current={a.id === selected.id ? "true" : undefined}
                   className={cn("block overflow-hidden rounded-md border bg-white", a.id === selected.id ? "border-brand-600 ring-2 ring-brand-100" : "border-line hover:border-brand-500")}
                 >
-                  <div className="border-b border-line px-3 py-1.5"><StatusBadge group={a.status.group} label={a.status.label} /></div>
+                  <div className="flex items-center justify-between gap-2 border-b border-line px-3 py-1.5">
+                    <StatusBadge group={a.status.group} label={a.status.label} />
+                    {a.priority === "HIGH" && <Chip tone="bad">High priority</Chip>}
+                    {a.priority === "LOW" && <Chip>Low priority</Chip>}
+                  </div>
                   <dl className="grid grid-cols-[80px_1fr] gap-x-2 gap-y-1 px-3 py-2 text-xs">
                     <dt className="text-muted">Ack. no</dt><dd className="tabular">{a.ackNo}</dd>
                     <dt className="text-muted">Date</dt><dd>{fmtDateTime(a.createdAt)}</dd>
@@ -207,6 +212,17 @@ async function ApplicationDetail({ appId, studentId, channel, canProcess, canChe
           {app.feeStatus === "NOT_APPLICABLE" ? <Chip tone="ok">No application fee</Chip> : app.feeStatus === "PAID" ? <Chip tone="ok">Paid{app.program.applicationFee != null ? ` ${fmtMoney(app.program.applicationFee, currency)}` : ""}</Chip> : app.program.applicationFee == null ? <Chip tone="warn">Fee to confirm</Chip> : <Chip tone="warn">Due {fmtMoney(app.program.applicationFee, currency)}</Chip>}
           {app.feeStatus === "DUE" && canProcess && (
             <form action={markFeePaidAction}><input type="hidden" name="applicationId" value={app.id} /><Button variant="quiet" className="py-1 text-xs">Mark paid</Button></form>
+          )}
+          {canWrite ? (
+            <form action={setPriorityAction} className="flex items-center gap-1.5">
+              <input type="hidden" name="applicationId" value={app.id} />
+              <Select name="priority" aria-label="Priority" defaultValue={app.priority} className="w-40 py-1 text-xs">
+                {Object.entries(PRIORITY_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </Select>
+              <Button variant="quiet" className="py-1 text-xs">Set</Button>
+            </form>
+          ) : (
+            <Chip tone={app.priority === "HIGH" ? "bad" : undefined}>{PRIORITY_LABEL[app.priority]}</Chip>
           )}
           <span className="ml-auto text-muted">Officer: {app.officer ? `${app.officer.name}${app.officer.phone ? ` · ${app.officer.phone}` : ""}` : "not assigned yet"}</span>
         </div>

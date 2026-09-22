@@ -27,6 +27,8 @@ export type ApplicationFilters = {
   dlType?: string;
   dlFrom?: string;
   dlTo?: string;
+  priority?: string;
+  sort?: string;
 };
 
 export function readFilters(sp: Record<string, string | string[] | undefined>): ApplicationFilters {
@@ -66,6 +68,7 @@ export function applicationWhere(user: SessionUser, f: ApplicationFilters): SQL 
   if (f.student) conds.push(or(ilike(s.firstName, `%${f.student}%`), ilike(s.lastName, `%${f.student}%`), ilike(sql`${s.firstName} || ' ' || ${s.lastName}`, `%${f.student}%`)));
   if (f.assignedTo) conds.push(eq(s.assignedToId, f.assignedTo));
   if (f.org && isStaff(user)) conds.push(eq(a.orgId, f.org));
+  if (f.priority && (schema.applicationPriority.enumValues as readonly string[]).includes(f.priority)) conds.push(eq(a.priority, f.priority as "HIGH"));
   // Applications with an open deadline of this type (or any type) in the date range.
   if (f.dlType || f.dlFrom || f.dlTo) {
     const typed = f.dlType && (DEADLINE_TYPES as readonly string[]).includes(f.dlType) ? sql` and ad.type = ${f.dlType}::deadline_type` : sql``;
@@ -88,6 +91,7 @@ export function applicationsBase() {
       deadline: a.deadline,
       statusChangedAt: a.statusChangedAt,
       nextDue: sql<string | null>`(select min(ad.due_on)::text from application_deadlines ad where ad.application_id = ${a.id} and ad.done_at is null and ad.due_on >= current_date)`,
+      priority: a.priority,
       offerType: a.offerType,
       offerDate: a.offerDate,
       depositPaidOn: a.depositPaidOn,

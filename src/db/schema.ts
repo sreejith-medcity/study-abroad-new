@@ -56,6 +56,7 @@ export const visaDecision = pgEnum("visa_decision", ["GRANTED", "REFUSED"]);
 export const serviceType = pgEnum("service_type", ["EDUCATION_LOAN", "FOREX", "ACCOMMODATION", "INSURANCE", "FLIGHT", "OTHER"]);
 export const serviceStatus = pgEnum("service_status", ["NEW", "IN_PROGRESS", "DONE", "CANCELLED"]);
 export const eventKind = pgEnum("event_kind", ["WEBINAR", "UNIVERSITY_VISIT", "TRAINING", "FAIR"]);
+export const applicationPriority = pgEnum("application_priority", ["HIGH", "NORMAL", "LOW"]);
 export const ticketCategory = pgEnum("ticket_category", ["APPLICATION", "COMMISSION", "CATALOGUE", "ACCESS", "OTHER"]);
 export const ticketStatus = pgEnum("ticket_status", ["OPEN", "WAITING_PARTNER", "RESOLVED"]);
 export const optionsStatus = pgEnum("options_status", ["REQUESTED", "OPTIONS_SENT", "APPLIED"]);
@@ -306,6 +307,13 @@ export const students = pgTable(
     city: text("city"),
     state: text("state"),
     pincode: text("pincode"),
+    // Where letters reach the student now, when that is not the permanent address.
+    mailingSameAsPermanent: boolean("mailing_same_as_permanent").notNull().default(true),
+    mailingAddress: text("mailing_address"),
+    otherCitizenship: text("other_citizenship"),
+    livingInCountry: text("living_in_country"),
+    /** Answers to the background questions institutions ask, keyed by question. */
+    background: jsonb("background").$type<Record<string, { answer: boolean; details: string | null }>>().notNull().default(sql`'{}'::jsonb`),
 
     passportNumber: text("passport_number"),
     passportIssue: timestamp("passport_issue", { mode: "date" }),
@@ -363,6 +371,20 @@ export const workExperience = pgTable("work_experience", {
   startDate: timestamp("start_date", { mode: "date" }).notNull(),
   endDate: timestamp("end_date", { mode: "date" }),
 });
+
+/** Parents, guardians and emergency contacts. */
+export const studentContacts = pgTable("student_contacts", {
+  id: id(),
+  studentId: text("student_id")
+    .notNull()
+    .references(() => students.id, { onDelete: "cascade" }),
+  relation: text("relation").notNull(),
+  name: text("name").notNull(),
+  phone: text("phone"),
+  email: text("email"),
+  emergency: boolean("emergency").notNull().default(false),
+  createdAt: createdAt(),
+}, (t) => [index("student_contacts_student_idx").on(t.studentId)]);
 
 export const editRequests = pgTable("edit_requests", {
   id: id(),
@@ -428,6 +450,7 @@ export const applications = pgTable(
       .references(() => users.id),
     deadline: timestamp("deadline", { mode: "date" }),
     feeStatus: feeStatus("fee_status").notNull().default("NOT_APPLICABLE"),
+    priority: applicationPriority("priority").notNull().default("NORMAL"),
     // The offer, as the institution issued it.
     offerType: offerType("offer_type"),
     offerDate: date("offer_date"),

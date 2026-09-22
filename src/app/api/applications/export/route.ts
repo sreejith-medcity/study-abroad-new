@@ -19,7 +19,7 @@ export async function GET(req: Request) {
   const f = readFilters(params);
   const rows = await applicationsBase().where(applicationWhere(user, f)).orderBy(desc(schema.applications.createdAt)).limit(10000);
 
-  const header = ["Ack no", "Date created", "Student", "University", "Country", "Program", "Intake", "Pathway", "Status", "Status since", "Deadline", "Created by", "Officer", "Offer", "Offer date", "Deposit paid", "CAS / I-20 / CoE", "Visa lodged", "Visa decision", "Decision date"];
+  const header = ["Ack no", "Date created", "Student", "University", "Country", "Program", "Intake", "Pathway", "Status", "Status since", "Deadline", "Created by", "Officer", "Offer", "Offer date", "Deposit paid", "CAS / I-20 / CoE", "Visa lodged", "Visa decision", "Decision date", "Priority"];
   const lines = [header.map(csvCell).join(",")];
   for (const r of rows) {
     lines.push([
@@ -28,6 +28,7 @@ export async function GET(req: Request) {
       r.createdByName ?? r.createdByFallback, r.officerName ?? "",
       r.offerType === "UNCONDITIONAL" ? "Unconditional" : r.offerType === "CONDITIONAL" ? "Conditional" : "", r.offerDate, r.depositPaidOn,
       r.confirmationNumber, r.visaLodgedOn, r.visaDecision === "GRANTED" ? "Granted" : r.visaDecision === "REFUSED" ? "Refused" : "", r.visaDecisionOn,
+      r.priority === "HIGH" ? "High" : r.priority === "LOW" ? "Low" : "Normal",
     ].map(csvCell).join(","));
   }
   await audit(user.id, "applications.export", "application", "*", { count: rows.length, filters: f });

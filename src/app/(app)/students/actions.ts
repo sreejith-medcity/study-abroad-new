@@ -11,6 +11,7 @@ import { audit } from "@/lib/audit";
 import { ADMIN_ROLES, isAdmin, isStaff } from "@/lib/permissions";
 import { adminIds, notifyUsers } from "@/server/notify";
 import { getStudentForUser } from "@/server/queries";
+import { BACKGROUND_QUESTIONS, CONTACT_RELATIONS } from "@/lib/background";
 
 import type { FormState } from "@/lib/form-state";
 export type { FormState };
@@ -142,6 +143,10 @@ const personal = z.object({
   city: optionalText,
   state: optionalText,
   pincode: optionalText,
+  mailingSameAsPermanent: z.string().optional().transform((v) => v === "on"),
+  mailingAddress: z.string().trim().max(400).optional().transform((v) => v || null),
+  otherCitizenship: optionalText,
+  livingInCountry: optionalText,
   passportNumber: z.string().trim().toUpperCase().max(20).optional().transform((v) => v || null),
   passportIssue: optionalDate,
   passportExpiry: optionalDate,
@@ -160,6 +165,8 @@ export async function savePersonalAction(_: FormState, formData: FormData): Prom
   const parsed = personal.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Check the highlighted fields." };
   const data = parsed.data;
+  if (data.mailingSameAsPermanent) data.mailingAddress = null;
+  else if (!data.mailingAddress) return { fieldErrors: { mailingAddress: ["Enter the mailing address, or tick that it is the same as the permanent one"] }, error: "Check the highlighted fields." };
   // Counsellors see a masked passport; an unchanged masked value must not overwrite the real number.
   if (data.passportNumber?.includes("•")) data.passportNumber = student.passportNumber;
   await db.update(schema.students).set({ ...data, updatedAt: new Date() }).where(eq(schema.students.id, studentId));
@@ -190,7 +197,7 @@ export async function addAcademicAction(_: FormState, formData: FormData): Promi
 }
 
 const test = z.object({
-  test: z.enum(["IELTS", "PTE", "OET", "TOEFL", "DUOLINGO", "GERMAN", "GRE", "GMAT", "SAT"]),
+  test: z.enum(["IELTS", "PTE", "OET", "TOEFL", "DUOLINGO", "GERMAN", "GRE", "GMAT", "SAT", "ACT"]),
   overall: z.string().trim().min(1, "Score is required").max(10),
   takenOn: optionalDate,
 });
@@ -205,6 +212,55 @@ export async function addTestAction(_: FormState, formData: FormData): Promise<F
   await audit(user.id, "student.profile.update", "student", studentId, { section: "tests" });
   revalidatePath(`/students/${studentId}`, "layout");
   return { ok: "Test score added." };
+}
+
+export async function saveBackgroundAction(_: FormState, formData: FormData): Promise<FormState> {
+  const studentId = String(formData.get("studentId"));
+  const { user, locked } = await editableStudent(studentId);
+  if (locked) return { error: "Profile is locked. Use Request edit." };
+  const answers: Record<string, { answer: boolean; details: string | null }> = {};
+  const fieldErrors: Record<string, string[]> = {};
+  for (const q of BACKGROUND_QUESTIONS) {
+    const a = formData.get(`bg_${q.key}`);
+    const details = String(formData.get(`bg_${q.key}_details`) ?? "").trim().slice(0, 1000) || null;
+    if (a !== "yes" && a !== "no") {
+      fieldErrors[`bg_${q.key}`] = ["Answer yes or no"];
+      continue;
+    }
+    if (a === "yes" && !details) {
+      fieldErrors[`bg_${q.key}_details`] = ["Give the details: the institution will ask"];
+      continue;
+    }
+    answers[q.key] = { answer: a === "yes", details: a === "yes" ? details : null };
+  }
+  if (Object.keys(fieldErrors).length) return { fieldErrors, error: "Answer every question; a yes needs details." };
+  await db.update(schema.students).set({ background: answers, updatedAt: new Date() }).where(eq(schema.students.id, studentId));
+  await audit(user.id, "student.profile.update", "student", studentId, { section: "background" });
+  revalidatePath(`/students/${studentId}`, "layout");
+  return { ok: "Background answers saved." };
+}
+
+const contact = z.object({
+  relation: z.enum(CONTACT_RELATIONS),
+  name: z.string().trim().min(1, "Name is required").max(120),
+  phone: z.string().trim().max(20).optional().transform((v) => v || null).refine((v) => v === null || /^\+?[\d\s-]{8,16}$/.test(v), "Enter a valid phone number"),
+  email: z.string().trim().toLowerCase().max(160).optional().transform((v) => v || null).refine((v) => v === null || z.string().email().safeParse(v).success, "Enter a valid email"),
+  emergency: z.string().optional().transform((v) => v === "on"),
+});
+
+export async function addContactAction(_: FormState, formData: FormData): Promise<FormState> {
+  const studentId = String(formData.get("studentId"));
+  const { user, locked } = await editableStudent(studentId);
+  if (locked) return { error: "Profile is locked. Use Request edit." };
+  const parsed = contact.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Check the highlighted fields." };
+  if (!parsed.data.phone && !parsed.data.email) return { fieldErrors: { phone: ["Give a phone number or an email"] }, error: "Check the highlighted fields." };
+  const [{ n }] = await db.select({ n: count() }).from(schema.studentContacts).where(eq(schema.studentContacts.studentId, studentId));
+  if (n >= 6) return { error: "Six contacts at most. Remove one first." };
+  await db.insert(schema.studentContacts).values({ studentId, ...parsed.data });
+  await audit(user.id, "student.profile.update", "student", studentId, { section: "contacts" });
+  revalidatePath(`/students/${studentId}`, "layout");
+  return { ok: "Contact added." };
 }
 
 const work = z.object({
@@ -232,7 +288,12 @@ export async function deleteProfileRowAction(formData: FormData) {
   const rowId = String(formData.get("rowId"));
   const { user, locked } = await editableStudent(studentId);
   if (locked) return;
-  const table = kind === "academic" ? schema.academicRecords : kind === "test" ? schema.testScores : kind === "work" ? schema.workExperience : null;
+  const table =
+    kind === "academic" ? schema.academicRecords
+    : kind === "test" ? schema.testScores
+    : kind === "work" ? schema.workExperience
+    : kind === "contact" ? schema.studentContacts
+    : null;
   if (!table) return;
   await db.delete(table).where(and(eq(table.id, rowId), eq(table.studentId, studentId)));
   await audit(user.id, "student.profile.delete", "student", studentId, { kind, rowId });

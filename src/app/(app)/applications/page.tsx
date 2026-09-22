@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PRIORITY_LABEL } from "@/lib/priority";
 import { DEADLINE_LABEL, DEADLINE_TYPES } from "@/lib/deadline-types";
 import { daysUntil } from "@/lib/catalogue";
 import { asc, desc, sql } from "drizzle-orm";
@@ -27,7 +28,7 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
   const where = applicationWhere(user, f);
   const staff = isStaff(user);
 
-  const rows = await applicationsBase().where(where).orderBy(desc(schema.applications.createdAt)).limit(PAGE + 1).offset((page - 1) * PAGE);
+  const rows = await applicationsBase().where(where).orderBy(...(f.sort === "priority" ? [asc(schema.applications.priority), desc(schema.applications.createdAt)] : [desc(schema.applications.createdAt)])).limit(PAGE + 1).offset((page - 1) * PAGE);
   const hasNext = rows.length > PAGE;
   const list = rows.slice(0, PAGE);
 
@@ -95,6 +96,14 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
           <Input name="ack" placeholder="Acknowledgement no." aria-label="Acknowledgement number" defaultValue={f.ack} />
           <Input name="program" placeholder="Program name" aria-label="Program" defaultValue={f.program} />
           <Input name="student" placeholder="Student name" aria-label="Student" defaultValue={f.student} />
+          <Select name="priority" aria-label="Priority" defaultValue={f.priority ?? ""}>
+            <option value="">Any priority</option>
+            {Object.entries(PRIORITY_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </Select>
+          <Select name="sort" aria-label="Sort" defaultValue={f.sort ?? ""}>
+            <option value="">Newest first</option>
+            <option value="priority">High priority first</option>
+          </Select>
           <Select name="dlType" aria-label="Deadline type" defaultValue={f.dlType ?? ""}>
             <option value="">Any deadline</option>
             {DEADLINE_TYPES.map((t) => <option key={t} value={t}>{DEADLINE_LABEL[t]} deadline</option>)}
@@ -134,7 +143,7 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
                 const overdue = r.deadline && r.deadline < now;
                 return (
                   <tr key={r.id} className="hover:bg-ground/40">
-                    <Td><Link href={`/students/${r.studentId}/applications?app=${r.id}`} className="ack font-medium text-brand-700 hover:underline">{r.ackNo}</Link></Td>
+                    <Td><Link href={`/students/${r.studentId}/applications?app=${r.id}`} className="ack font-medium text-brand-700 hover:underline">{r.ackNo}</Link>{r.priority === "HIGH" && <span className="block text-xs font-medium text-red-700">High priority</span>}{r.priority === "LOW" && <span className="block text-xs text-muted">Low priority</span>}</Td>
                     <Td className="whitespace-nowrap tabular">{fmtDate(r.createdAt)}</Td>
                     <Td>{fullName(r)}</Td>
                     <Td>{r.universityName}<p className="text-xs text-muted">{r.countryName}</p></Td>

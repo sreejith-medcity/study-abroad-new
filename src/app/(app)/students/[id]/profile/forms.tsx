@@ -1,8 +1,10 @@
 "use client";
 
-import { ActionForm } from "@/components/action-form";
+import { useState } from "react";
+import { ActionForm, FieldError } from "@/components/action-form";
+import { BACKGROUND_QUESTIONS, CONTACT_RELATIONS, type BackgroundAnswers } from "@/lib/background";
 import { SelectField, TextField, TextareaField } from "@/components/fields";
-import { addAcademicAction, addTestAction, addWorkAction, invitePortalAction, requestEditAction, savePersonalAction } from "../../actions";
+import { addAcademicAction, addContactAction, addTestAction, addWorkAction, invitePortalAction, requestEditAction, saveBackgroundAction, savePersonalAction } from "../../actions";
 
 type Student = Record<string, unknown> & { id: string };
 const d = (v: unknown) => (v instanceof Date ? v.toISOString().slice(0, 10) : typeof v === "string" && v ? v.slice(0, 10) : "");
@@ -24,6 +26,8 @@ export function PersonalForm({ student, passportDisplay, disabled }: { student: 
             <option value="">Select</option><option>Single</option><option>Married</option><option>Divorced</option><option>Widowed</option>
           </SelectField>
           <TextField label="Nationality" name="nationality" defaultValue={s(student.nationality)} required />
+          <TextField label="Other citizenship" name="otherCitizenship" defaultValue={s(student.otherCitizenship)} hint="Only if a citizen of a second country" />
+          <TextField label="Living or studying in another country" name="livingInCountry" defaultValue={s(student.livingInCountry)} hint="Leave blank if living in India" />
           <TextField label="Email" name="email" type="email" defaultValue={s(student.email)} required />
           <TextField label="Mobile (WhatsApp)" name="phone" defaultValue={s(student.phone)} required />
           <SelectField label="Language for messages" name="preferredLanguage" defaultValue={s(student.preferredLanguage)}>
@@ -39,6 +43,7 @@ export function PersonalForm({ student, passportDisplay, disabled }: { student: 
           <TextField label="City" name="city" defaultValue={s(student.city)} />
           <TextField label="State" name="state" defaultValue={s(student.state)} />
           <TextField label="Pincode" name="pincode" defaultValue={s(student.pincode)} />
+          <MailingAddress same={student.mailingSameAsPermanent !== false} address={s(student.mailingAddress)} />
         </Section>
         <Section title="Passport">
           <TextField label="Passport number" name="passportNumber" defaultValue={passportDisplay} />
@@ -52,6 +57,75 @@ export function PersonalForm({ student, passportDisplay, disabled }: { student: 
           <TextField label="Study gap (years)" name="gapYears" type="number" min={0} defaultValue={s(student.gapYears)} />
         </Section>
       </fieldset>
+    </ActionForm>
+  );
+}
+
+function MailingAddress({ same: initial, address }: { same: boolean; address: string }) {
+  const [same, setSame] = useState(initial);
+  return (
+    <div className="sm:col-span-2 lg:col-span-3">
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" name="mailingSameAsPermanent" checked={same} onChange={(e) => setSame(e.target.checked)} className="size-4" />
+        Mailing address is the same as the permanent address
+      </label>
+      {!same && (
+        <div className="mt-3">
+          <TextareaField label="Mailing address" name="mailingAddress" rows={2} defaultValue={address} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function BackgroundForm({ studentId, answers, disabled }: { studentId: string; answers: BackgroundAnswers; disabled: boolean }) {
+  const [yes, setYes] = useState<Record<string, boolean>>(Object.fromEntries(BACKGROUND_QUESTIONS.map((q) => [q.key, answers[q.key]?.answer === true])));
+  return (
+    <ActionForm action={saveBackgroundAction} submitLabel="Save background answers" hideSubmit={disabled} submitVariant="secondary">
+      <input type="hidden" name="studentId" value={studentId} />
+      <fieldset disabled={disabled} className="space-y-4">
+        {BACKGROUND_QUESTIONS.map((q) => {
+          const a = answers[q.key];
+          return (
+            <div key={q.key} role="radiogroup" aria-label={q.text} className="rounded-lg border border-line p-3">
+              <p className="text-sm font-medium">{q.text}</p>
+              <div className="mt-2 flex gap-5 text-sm">
+                <label className="flex items-center gap-1.5">
+                  <input type="radio" name={`bg_${q.key}`} value="yes" defaultChecked={a?.answer === true} onChange={() => setYes((y) => ({ ...y, [q.key]: true }))} /> Yes
+                </label>
+                <label className="flex items-center gap-1.5">
+                  <input type="radio" name={`bg_${q.key}`} value="no" defaultChecked={a?.answer === false} onChange={() => setYes((y) => ({ ...y, [q.key]: false }))} /> No
+                </label>
+              </div>
+              <FieldError name={`bg_${q.key}`} />
+              {yes[q.key] && (
+                <div className="mt-2">
+                  <TextareaField label="Details" name={`bg_${q.key}_details`} rows={2} defaultValue={a?.details ?? ""} />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </fieldset>
+    </ActionForm>
+  );
+}
+
+export function ContactForm({ studentId }: { studentId: string }) {
+  return (
+    <ActionForm action={addContactAction} submitLabel="Add contact" resetOnSuccess submitVariant="secondary">
+      <input type="hidden" name="studentId" value={studentId} />
+      <div className="grid gap-3 sm:grid-cols-4">
+        <SelectField label="Relation" name="relation" id="contact-relation" defaultValue="Father" required>
+          {CONTACT_RELATIONS.map((r) => <option key={r}>{r}</option>)}
+        </SelectField>
+        <TextField label="Contact name" name="name" id="contact-name" required />
+        <TextField label="Contact phone" name="phone" id="contact-phone" />
+        <TextField label="Contact email" name="email" id="contact-email" type="email" />
+        <label className="flex items-center gap-2 text-sm sm:col-span-4">
+          <input type="checkbox" name="emergency" className="size-4" /> Emergency contact
+        </label>
+      </div>
     </ActionForm>
   );
 }
@@ -92,7 +166,7 @@ export function TestForm({ studentId }: { studentId: string }) {
       <input type="hidden" name="studentId" value={studentId} />
       <div className="grid gap-3 sm:grid-cols-3">
         <SelectField label="Test" name="test" defaultValue="IELTS" required>
-          <option>IELTS</option><option>PTE</option><option>OET</option><option value="TOEFL">TOEFL iBT</option><option value="DUOLINGO">Duolingo</option><option value="GERMAN">German (CEFR)</option><option>GRE</option><option>GMAT</option><option>SAT</option>
+          <option>IELTS</option><option>PTE</option><option>OET</option><option value="TOEFL">TOEFL iBT</option><option value="DUOLINGO">Duolingo</option><option value="GERMAN">German (CEFR)</option><option>GRE</option><option>GMAT</option><option>SAT</option><option>ACT</option>
         </SelectField>
         <TextField label="Overall score / grade" name="overall" required placeholder="6.5, B, B1" />
         <TextField label="Test date" name="takenOn" type="date" />
@@ -121,7 +195,7 @@ export function RequestEditForm({ studentId }: { studentId: string }) {
       <input type="hidden" name="studentId" value={studentId} />
       <div className="grid gap-3 sm:grid-cols-[200px_1fr]">
         <SelectField label="Section" name="section" defaultValue="Personal information">
-          <option>Personal information</option><option>Address</option><option>Passport</option><option>Academic qualifications</option><option>Work experience</option><option>Tests</option>
+          <option>Personal information</option><option>Address</option><option>Passport</option><option>Academic qualifications</option><option>Work experience</option><option>Tests</option><option>Background</option><option>Contacts</option>
         </SelectField>
         <TextareaField label="What needs to change?" name="message" rows={2} required />
       </div>

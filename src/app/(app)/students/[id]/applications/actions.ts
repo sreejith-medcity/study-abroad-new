@@ -293,3 +293,16 @@ export async function setDeadlineDoneAction(fd: FormData) {
   await audit(user.id, "application.deadline_done", "application", app.id, { type: d.type });
   revalidatePath(`/students/${app.studentId}/applications`);
 }
+
+/** Branch's own ordering of its applications: which to chase first. */
+export async function setPriorityAction(fd: FormData) {
+  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const priority = String(fd.get("priority") ?? "");
+  if (!(schema.applicationPriority.enumValues as readonly string[]).includes(priority)) return;
+  const app = await getApplicationForUser(user, String(fd.get("applicationId") ?? ""));
+  if (app.priority === priority) return;
+  await db.update(schema.applications).set({ priority: priority as "HIGH" }).where(eq(schema.applications.id, app.id));
+  await audit(user.id, "application.priority", "application", app.id, { from: app.priority, to: priority });
+  revalidatePath(`/students/${app.studentId}/applications`);
+  revalidatePath("/applications");
+}

@@ -7,6 +7,8 @@ import { APP_ROLES, isStaff } from "@/lib/permissions";
 import { getStudentForUser } from "@/server/queries";
 import { Card, Chip } from "@/components/ui";
 import { StepTabs } from "@/components/tabs";
+import { profileCompleteness } from "@/lib/checks";
+import { backgroundComplete } from "@/lib/background";
 
 const PATHWAY_LABEL = { DEGREE: "Degree", AUSBILDUNG: "Ausbildung", NURSING: "Nurse registration" } as const;
 
@@ -17,6 +19,9 @@ export default async function StudentLayout({ children, params }: { children: Re
   const [{ apps }] = await db.select({ apps: count() }).from(schema.applications).where(eq(schema.applications.studentId, id));
   const [{ docs }] = await db.select({ docs: count() }).from(schema.documents).where(eq(schema.documents.studentId, id));
   const [{ picks }] = await db.select({ picks: count() }).from(schema.shortlists).where(eq(schema.shortlists.studentId, id));
+  const [{ quals }] = await db.select({ quals: count() }).from(schema.academicRecords).where(eq(schema.academicRecords.studentId, id));
+  const profileDone = profileCompleteness({ ...student, academics: Array(quals).fill({ level: "" }), tests: [], documentTypeCodes: [] });
+  const profileReady = profileDone.personal && profileDone.academics && backgroundComplete(student.background);
   const [{ services }] = await db.select({ services: count() }).from(schema.serviceRequests).where(eq(schema.serviceRequests.studentId, id));
   // The student's preferred destination is stored by name; search filters by code.
   const preferred = student.preferredCountry
@@ -53,7 +58,7 @@ export default async function StudentLayout({ children, params }: { children: Re
           <div className="w-full">
             <StepTabs
               steps={[
-                { href: `/students/${id}/profile`, label: "Profile" },
+                { href: `/students/${id}/profile`, label: "Profile", done: profileReady },
                 { href: `/students/${id}/shortlist`, label: `Shortlist (${picks})`, done: picks > 0 },
                 { href: `/students/${id}/applications`, label: `Applications (${apps})`, done: apps > 0 },
                 { href: `/students/${id}/documents`, label: `Documents (${docs})`, done: docs > 0 },

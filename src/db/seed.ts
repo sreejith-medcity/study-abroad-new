@@ -1,5 +1,6 @@
 /* Sample data for local development. Every person, university and figure here is fictional. */
 import "dotenv/config";
+import { BACKGROUND_QUESTIONS } from "../lib/background";
 import { LIVING_FUNDS } from "./living-funds";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
@@ -181,12 +182,14 @@ async function main() {
         passportNumber: `Z${Math.floor(1000000 + Math.random() * 8999999)}`, passportIssue: new Date("2023-01-01"), passportExpiry: new Date(s.passportExpiry),
         passportIssueCountry: "India", cityOfBirth: s.org.city ?? "Kochi",
         backlogs: s.backlogs, gapYears: s.gap,
+        background: Object.fromEntries(BACKGROUND_QUESTIONS.map((q) => [q.key, { answer: false, details: null }])),
         consentAt: months(dayOffset), consentText: "I agree to Medcity Overseas processing my data to apply to institutions and employers on my behalf.",
         profileLocked: s.apps.some((a) => a.status !== "ASSESSMENT"),
         createdAt: months(dayOffset),
       })
       .returning();
     if (!firstStudentId) firstStudentId = st.id;
+    await db.insert(schema.studentContacts).values({ studentId: st.id, relation: "Father", name: `${s.last} (father)`, phone: "+91 94470 00000", emergency: true });
     logged(s.creator.id, "student.create", "student", st.id, months(dayOffset), { consent: true });
     dayOffset -= 3;
 
