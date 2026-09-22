@@ -7,7 +7,9 @@ import { submitPublicEnquiryAction } from "./actions";
 const CONSENT =
   "I agree to Medcity Overseas contacting me about studying or working abroad, and to their keeping the details I have given here for that purpose.";
 
-export function PublicEnquiryForm({ slug, countries }: { slug: string; countries: string[] }) {
+type Question = { id: string; label: string; kind: "text" | "choice" | "yesno"; options: string[]; required: boolean };
+
+export function PublicEnquiryForm({ slug, countries, questions = [] }: { slug: string; countries: string[]; questions?: Question[] }) {
   const year = new Date().getFullYear();
   return (
     <ActionForm action={submitPublicEnquiryAction} submitLabel="Send my details" pendingLabel="Sending…">
@@ -43,6 +45,21 @@ export function PublicEnquiryForm({ slug, countries }: { slug: string; countries
           <option value={year + 2}>{year + 2}</option>
         </SelectField>
       </div>
+
+      {questions.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {questions.map((q) =>
+            q.kind === "text" ? (
+              <TextField key={q.id} id={`qa-${q.id}`} label={q.label} name={`qa_${q.id}`} required={q.required} className="sm:col-span-2" />
+            ) : (
+              <SelectField key={q.id} id={`qa-${q.id}`} label={q.label} name={`qa_${q.id}`} required={q.required} defaultValue="">
+                <option value="">{q.required ? "Choose" : "Rather not say"}</option>
+                {(q.kind === "yesno" ? ["Yes", "No"] : q.options).map((o) => <option key={o}>{o}</option>)}
+              </SelectField>
+            ),
+          )}
+        </div>
+      )}
 
       <TextareaField label="Anything you want us to know" name="message" rows={3} hint="Your qualification, your IELTS score, a question" />
 

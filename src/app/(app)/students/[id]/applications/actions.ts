@@ -139,13 +139,15 @@ export async function addCommentAction(_: FormState, formData: FormData): Promis
     await notifyUsers(full.officerId ? [full.officerId] : await adminIds(), title, body.slice(0, 120), href);
   }
 
-  if (channel === "STUDENT" && full.student.whatsappOptIn && body) {
+  const branch = await db.query.organizations.findFirst({ where: eq(schema.organizations.id, full.orgId), columns: { studentWhatsappMessages: true } });
+  const viaWhatsapp = channel === "STUDENT" && full.student.whatsappOptIn && branch?.studentWhatsappMessages !== false;
+  if (viaWhatsapp && body) {
     const sent = await sendWhatsApp({ to: full.student.phone, body: `${body}\n\n(${full.ackNo}, Medcity Overseas. Reply to this chat to respond.)` });
     if (sent) await db.update(schema.comments).set({ deliveredAt: new Date() }).where(eq(schema.comments.id, comment.id));
   }
 
   revalidatePath(`/students/${full.studentId}`, "layout");
-  return { ok: channel === "STUDENT" && full.student.whatsappOptIn ? "Sent. Also delivered on WhatsApp." : "Comment posted." };
+  return { ok: viaWhatsapp ? "Sent. Also delivered on WhatsApp." : "Comment posted." };
 }
 
 /** Pre-submission check: turn every blocker and warning into one request to the partner. */

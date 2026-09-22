@@ -69,7 +69,7 @@ export default async function StudentApplicationsPage({ params, searchParams }: 
               </li>
             ))}
           </ul>
-          <ApplicationDetail appId={selected.id} studentId={id} channel={channel} canProcess={isAdmin(user)} canCheck={isAdmin(user) || isDocumentationTeam(user)} staff={isStaff(user)} canWrite={canWrite} whatsapp={student.whatsappOptIn} />
+          <ApplicationDetail appId={selected.id} studentId={id} channel={channel} canProcess={isAdmin(user)} canCheck={isAdmin(user) || isDocumentationTeam(user)} staff={isStaff(user)} canWrite={canWrite} whatsapp={student.whatsappOptIn && student.org.studentWhatsappMessages} />
         </div>
       ) : null}
     </Card>

@@ -7,6 +7,7 @@ import { z } from "zod";
 import { db, schema } from "@/db";
 import { audit } from "@/lib/audit";
 import { orgForPublicSlug } from "@/server/public-form";
+import { answerError } from "@/lib/signup-questions";
 import { rateLimit } from "@/server/rate-limit";
 import { notifyUsers, partnerRecipients } from "@/server/notify";
 
@@ -42,6 +43,16 @@ export async function submitPublicEnquiryAction(_: PublicFormState, formData: Fo
 
   const org = await orgForPublicSlug(d.slug);
   if (!org) return { error: "This form is no longer open. Please contact the branch directly." };
+  // The branch's own questions, checked against the questions as they stand now.
+  const answers: { question: string; answer: string }[] = [];
+  const answerErrors: Record<string, string[]> = {};
+  for (const q of org.signupQuestions) {
+    const raw = formData.get(`qa_${q.id}`);
+    const err = answerError(q, typeof raw === "string" ? raw : null);
+    if (err) answerErrors[`qa_${q.id}`] = [err];
+    else if (typeof raw === "string" && raw.trim()) answers.push({ question: q.label, answer: raw.trim() });
+  }
+  if (Object.keys(answerErrors).length) return { fieldErrors: answerErrors, error: "Please check the highlighted fields." };
 
   const head = await headers();
   const caller = (head.get("x-forwarded-for") ?? head.get("x-real-ip") ?? "unknown").split(",")[0].trim();
@@ -77,6 +88,7 @@ export async function submitPublicEnquiryAction(_: PublicFormState, formData: Fo
       interestPathway: d.interestPathway,
       intakeYear: d.intakeYear,
       notes: d.message,
+      answers,
       nextFollowUpAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
     })
     .returning();

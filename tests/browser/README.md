@@ -45,6 +45,7 @@ node tests/browser/dashboards.mjs
 | `documents-share.mjs` | Guidance and a sample per document type, a text file refused as a sample, sharing one file with the student, what the portal can and cannot open, and stopping the share |
 | `billing.mjs` | Billing companies with PAN, GSTIN, LUT and IFSC rules, the limit of four, editing without the account number, the default, a payout to a chosen company and the team's view, removal rules, the owner's switch that hides commission from counsellors, and the commission structure page |
 | `directory.mjs` | The team's contact list with its rules and escalation levels, quick links, promotional schemes with dates, destinations and who is told, the partner pages and dashboard cards, and the owner's commission switch |
+| `student-platform.mjs` | The branch's name, colour and logo on its portal and enquiry form with the colour and file rules, the WhatsApp switches, and the sign-up question builder with answers on the enquiry |
 | `shortlist.mjs` | Shortlisting from search and a program page, the side by side comparison, removal, read-only roles and branch isolation |
 
 Screenshots land in `/tmp/smoke-*`. Each script exits non-zero if a check fails.

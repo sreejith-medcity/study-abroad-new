@@ -3,7 +3,7 @@ import { asc } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { orgForPublicSlug } from "@/server/public-form";
 import { Card } from "@/components/ui";
-import { BrandLogo, BrandStyle } from "@/components/brand";
+import { OrgBrandLogo, OrgBrandStyle } from "@/components/brand";
 import { ToastHost } from "@/components/toast";
 import { getSettings } from "@/server/settings";
 import { IconCheck } from "@/components/icons";
@@ -27,10 +27,10 @@ export default async function ApplyPage({ params }: { params: Promise<{ slug: st
 
   return (
     <main className="grid min-h-screen lg:grid-cols-[1fr_1.05fr]">
-      <BrandStyle />
+      <OrgBrandStyle org={org} />
       <ToastHost />
       <section className="brand-wash grain relative hidden flex-col justify-between p-10 lg:flex">
-        <BrandLogo className="relative z-10" />
+        <OrgBrandLogo org={org} className="relative z-10" />
         <div className="relative z-10 max-w-md">
           <h1 className="font-display text-[32px] font-semibold leading-[1.15] text-white">
             Tell us what you want to study, and we will take it from there.
@@ -55,7 +55,7 @@ export default async function ApplyPage({ params }: { params: Promise<{ slug: st
       <section className="px-4 py-10 md:px-10">
         <div className="mx-auto w-full max-w-xl">
           <div className="mb-6 lg:hidden">
-            <BrandLogo tone="dark" />
+            <OrgBrandLogo org={org} tone="dark" />
           </div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-600">
             {org.name}
@@ -66,7 +66,7 @@ export default async function ApplyPage({ params }: { params: Promise<{ slug: st
             Two minutes now, and a counsellor from this branch will call you. Nothing is charged and nothing is committed.
           </p>
           <Card className="mt-5 p-5">
-            <PublicEnquiryForm slug={slug} countries={countries.map((c) => c.name)} />
+            <PublicEnquiryForm slug={slug} countries={countries.map((c) => c.name)} questions={org.signupQuestions} />
           </Card>
           <p className="mt-4 text-[12px] leading-relaxed text-muted">
             We use your details only to answer this enquiry. Ask us at any time to correct or delete them.

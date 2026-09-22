@@ -91,6 +91,8 @@ export const resourceKind = pgEnum("resource_kind", ["GUIDE", "TEMPLATE", "POLIC
 
 // ---------- Organisation and users ----------
 
+export type SignupQuestion = { id: string; label: string; kind: "text" | "choice" | "yesno"; options: string[]; required: boolean };
+
 export const organizations = pgTable("organizations", {
   id: id(),
   name: text("name").notNull(),
@@ -107,6 +109,16 @@ export const organizations = pgTable("organizations", {
   relationshipManagerId: text("relationship_manager_id"),
   /** The owner decides whether counsellors see commission figures and the wallet. */
   counsellorsSeeCommission: boolean("counsellors_see_commission").notNull().default(true),
+  /** How the branch's students see the portal and the branch form. */
+  portalName: text("portal_name"),
+  portalColor: text("portal_color"),
+  portalLogoKey: text("portal_logo_key"),
+  portalLogoMimeType: text("portal_logo_mime_type"),
+  /** WhatsApp messages the branch's students get: status milestones and team messages. */
+  studentWhatsappMilestones: boolean("student_whatsapp_milestones").notNull().default(true),
+  studentWhatsappMessages: boolean("student_whatsapp_messages").notNull().default(true),
+  /** Extra questions on the branch's public enquiry form. */
+  signupQuestions: jsonb("signup_questions").$type<SignupQuestion[]>().notNull().default(sql`'[]'::jsonb`),
   active: boolean("active").notNull().default(true),
   createdAt: createdAt(),
 });
@@ -1184,6 +1196,8 @@ export const enquiries = pgTable(
     nextFollowUpAt: timestamp("next_follow_up_at", { withTimezone: true }),
     lastContactedAt: timestamp("last_contacted_at", { withTimezone: true }),
     lostReason: text("lost_reason"),
+    /** Answers to the branch's own questions, with each question as it was asked. */
+    answers: jsonb("answers").$type<{ question: string; answer: string }[]>().notNull().default(sql`'[]'::jsonb`),
     studentId: text("student_id").references(() => students.id),
     createdAt: createdAt(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

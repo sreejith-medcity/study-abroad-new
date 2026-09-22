@@ -72,6 +72,12 @@ export default async function EnquiryPage({ params }: { params: Promise<{ id: st
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-5">
+          {enquiry.answers.length > 0 && (
+            <Card>
+              <CardHeader title="Answers on your form" subtitle="To the questions you added in Settings, Students" />
+              <DataList rows={enquiry.answers.map((a) => ({ label: a.question, value: a.answer }))} />
+            </Card>
+          )}
           {open && (
             <Card>
               <CardHeader title="Log a follow up" subtitle="Every call, message and visit, in one line each" />

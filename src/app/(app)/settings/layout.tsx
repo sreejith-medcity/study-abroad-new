@@ -8,7 +8,12 @@ export default async function SettingsLayout({ children }: { children: React.Rea
   const tabs = [
     { href: "/settings", label: "Profile" },
     { href: "/settings/security", label: "Security" },
-    ...(user.role === "PARTNER" ? [{ href: "/settings/branch", label: "Branch" }] : []),
+    ...(user.role === "PARTNER"
+      ? [
+          { href: "/settings/branch", label: "Branch" },
+          { href: "/settings/students", label: "Students" },
+        ]
+      : []),
     ...(canManageSettings(user) ? [{ href: "/settings/platform", label: "Platform" }] : []),
   ];
 

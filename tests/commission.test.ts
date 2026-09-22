@@ -87,3 +87,18 @@ test("promotions: state and days left by the IST calendar day", () => {
   assert.equal(daysLeft("2026-09-22", now), 1);
   assert.equal(daysLeft("2026-09-30", now), 9);
 });
+
+import { contrastWithWhite } from "../src/lib/color";
+import { answerError } from "../src/lib/signup-questions";
+
+test("portal colour contrast and sign-up answers", () => {
+  assert.ok(contrastWithWhite("#c01f53") >= 4.5);
+  assert.ok(contrastWithWhite("#f7ec22") < 4.5);
+  assert.equal(Math.round(contrastWithWhite("#000000")), 21);
+  const q = { id: "a", label: "Current qualification", kind: "choice" as const, options: ["12th", "Degree"], required: true };
+  assert.equal(answerError(q, ""), "Please answer this");
+  assert.equal(answerError(q, "PhD"), "Please pick one of the options");
+  assert.equal(answerError(q, "Degree"), null);
+  assert.equal(answerError({ ...q, kind: "yesno", options: [], required: false }, ""), null);
+  assert.equal(answerError({ ...q, kind: "yesno", options: [] }, "Maybe"), "Please answer yes or no");
+});

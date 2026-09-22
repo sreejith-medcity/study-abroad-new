@@ -78,7 +78,8 @@ export async function changeStatus(user: SessionUser, applicationId: string, toS
     }
   }
 
-  if (to.isMilestone && app.student.whatsappOptIn) {
+  const branch = await db.query.organizations.findFirst({ where: eq(schema.organizations.id, app.orgId), columns: { studentWhatsappMilestones: true } });
+  if (to.isMilestone && app.student.whatsappOptIn && branch?.studentWhatsappMilestones !== false) {
     await sendWhatsApp({
       to: app.student.phone,
       template: "status_milestone",

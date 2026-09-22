@@ -132,7 +132,7 @@ export function CommentComposer({ applicationId, channel, whatsapp }: { applicat
       <input type="hidden" name="applicationId" value={applicationId} />
       <input type="hidden" name="channel" value={channel} />
       <label htmlFor={`body-${channel}`} className="sr-only">Message</label>
-      <Textarea id={`body-${channel}`} name="body" rows={3} placeholder={channel === "TEAM" ? "Message the Medcity Overseas team. The student can't see this." : "Message the student. They'll also get it on WhatsApp."} />
+      <Textarea id={`body-${channel}`} name="body" rows={3} placeholder={channel === "TEAM" ? "Message the Medcity Overseas team. The student can't see this." : whatsapp ? "Message the student. They'll also get it on WhatsApp." : "Message the student. They'll see it in their portal."} />
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
         <label htmlFor={`file-${channel}`}>Attach</label>
         <input id={`file-${channel}`} type="file" name="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="text-xs" />
