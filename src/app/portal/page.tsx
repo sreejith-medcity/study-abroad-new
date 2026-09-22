@@ -89,6 +89,25 @@ export default async function PortalHome() {
                     <dd className="font-medium">{fmtDate(a.changedAt)}</dd>
                   </div>
                 </dl>
+                {(a.offerType || a.visaLodgedOn || a.visaDecision) && (
+                  <dl className="grid gap-x-4 gap-y-3 border-b border-line px-4 py-3 text-[13px] sm:grid-cols-2">
+                    {a.offerType && (
+                      <div>
+                        <dt className="text-muted">{t(a.offerType === "UNCONDITIONAL" ? "unconditionalOffer" : "conditionalOffer")}</dt>
+                        <dd className="font-medium">{a.offerAcceptBy ? `${t("acceptBy")}: ${fmtDate(a.offerAcceptBy)}` : "✓"}</dd>
+                        {a.offerConditions && <dd className="mt-1 text-xs text-muted">{t("conditions")}: {a.offerConditions}</dd>}
+                      </div>
+                    )}
+                    {(a.visaLodgedOn || a.visaDecision) && (
+                      <div>
+                        <dt className="text-muted">{t("visa")}</dt>
+                        <dd className={`font-medium ${a.visaDecision === "GRANTED" ? "text-good-700" : a.visaDecision === "REFUSED" ? "text-red-700" : ""}`}>
+                          {a.visaDecision ? `${t(a.visaDecision === "GRANTED" ? "visaGranted" : "visaRefused")}${a.visaDecisionOn ? ` · ${fmtDate(a.visaDecisionOn)}` : ""}` : t("visaLodged")}
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
+                )}
                 <div className="p-4">
                   <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted">{t("milestones")}</p>
                   {steps.length === 0 ? (

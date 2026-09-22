@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { ActionForm, FieldError } from "@/components/action-form";
-import { Field, Select, Textarea } from "@/components/ui";
+import { Field, Input, Select, Textarea } from "@/components/ui";
 import { dayText, daysUntil } from "@/lib/catalogue";
-import { addCommentAction, changeStatusAction, createApplicationAction } from "./actions";
+import { addCommentAction, changeStatusAction, createApplicationAction, saveOfferVisaAction } from "./actions";
 
 type ProgramOption = {
   id: string;
@@ -136,6 +136,73 @@ export function CommentComposer({ applicationId, channel, whatsapp }: { applicat
         <label htmlFor={`file-${channel}`}>Attach</label>
         <input id={`file-${channel}`} type="file" name="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="text-xs" />
         <span>PDF or image, up to 10 MB</span>
+      </div>
+    </ActionForm>
+  );
+}
+
+export type OfferVisaValues = {
+  offerType: string | null;
+  offerDate: string | null;
+  offerConditions: string | null;
+  offerAcceptBy: string | null;
+  depositAmount: number | null;
+  depositPaidOn: string | null;
+  confirmationNumber: string | null;
+  confirmationIssuedOn: string | null;
+  visaLodgedOn: string | null;
+  visaDecision: string | null;
+  visaDecisionOn: string | null;
+};
+
+export function OfferVisaForm({ applicationId, values, currency, confirmation }: { applicationId: string; values: OfferVisaValues; currency: string; confirmation: string }) {
+  const v = (x: string | number | null) => (x == null ? "" : String(x));
+  const date = (name: keyof OfferVisaValues, label: string) => (
+    <Field label={label} htmlFor={`ov-${name}`}>
+      <Input id={`ov-${name}`} name={name} type="date" defaultValue={v(values[name])} />
+      <FieldError name={name} />
+    </Field>
+  );
+  return (
+    <ActionForm action={saveOfferVisaAction} submitLabel="Save offer and visa" submitVariant="secondary">
+      <input type="hidden" name="applicationId" value={applicationId} />
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Field label="Offer" htmlFor="ov-offerType">
+          <Select id="ov-offerType" name="offerType" defaultValue={v(values.offerType)}>
+            <option value="">No offer yet</option>
+            <option value="CONDITIONAL">Conditional</option>
+            <option value="UNCONDITIONAL">Unconditional</option>
+          </Select>
+          <FieldError name="offerType" />
+        </Field>
+        {date("offerDate", "Offer issued")}
+        {date("offerAcceptBy", "Accept by")}
+      </div>
+      <Field label="Conditions to meet" htmlFor="ov-offerConditions">
+        <Textarea id="ov-offerConditions" name="offerConditions" rows={2} defaultValue={v(values.offerConditions)} placeholder="Final marksheets, IELTS 6.5 with no band below 6.0…" />
+      </Field>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Field label={`Deposit paid (${currency})`} htmlFor="ov-depositAmount">
+          <Input id="ov-depositAmount" name="depositAmount" inputMode="numeric" defaultValue={v(values.depositAmount)} />
+          <FieldError name="depositAmount" />
+        </Field>
+        {date("depositPaidOn", "Deposit paid on")}
+        <div />
+        <Field label={`${confirmation} number`} htmlFor="ov-confirmationNumber">
+          <Input id="ov-confirmationNumber" name="confirmationNumber" defaultValue={v(values.confirmationNumber)} />
+        </Field>
+        {date("confirmationIssuedOn", `${confirmation} issued`)}
+        <div />
+        {date("visaLodgedOn", "Visa lodged")}
+        <Field label="Visa decision" htmlFor="ov-visaDecision">
+          <Select id="ov-visaDecision" name="visaDecision" defaultValue={v(values.visaDecision)}>
+            <option value="">Awaiting</option>
+            <option value="GRANTED">Granted</option>
+            <option value="REFUSED">Refused</option>
+          </Select>
+          <FieldError name="visaDecision" />
+        </Field>
+        {date("visaDecisionOn", "Decision date")}
       </div>
     </ActionForm>
   );

@@ -86,3 +86,8 @@ export function deadlineText(isoDate: string, today = new Date()) {
   const when = n === 0 ? "closes today" : n === 1 ? "1 day left" : n > 1 ? `${n} days left` : n === -1 ? "closed yesterday" : `closed ${-n} days ago`;
   return `${dayText(isoDate)} (${when})`;
 }
+
+/** What the visa rests on, by destination. */
+export function confirmationLabel(countryCode: string) {
+  return ({ GB: "CAS", US: "I-20", AU: "CoE", CA: "LOA", NZ: "Offer of place", IE: "Letter of acceptance", DE: "Admission letter" } as Record<string, string>)[countryCode] ?? "Confirmation of enrolment";
+}

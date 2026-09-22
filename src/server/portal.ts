@@ -52,6 +52,12 @@ export async function studentApplications(studentId: string, locale: Locale = "e
       university: u.name,
       country: c.name,
       requiredDocs: p.requiredDocs,
+      offerType: a.offerType,
+      offerAcceptBy: a.offerAcceptBy,
+      offerConditions: a.offerConditions,
+      visaLodgedOn: a.visaLodgedOn,
+      visaDecision: a.visaDecision,
+      visaDecisionOn: a.visaDecisionOn,
     })
     .from(a)
     .innerJoin(sd, eq(a.statusId, sd.id))

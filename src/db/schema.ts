@@ -51,6 +51,8 @@ export const statusGroup = pgEnum("status_group", [
   "HOLD",
   "CLOSED",
 ]);
+export const offerType = pgEnum("offer_type", ["CONDITIONAL", "UNCONDITIONAL"]);
+export const visaDecision = pgEnum("visa_decision", ["GRANTED", "REFUSED"]);
 export const feeStatus = pgEnum("fee_status", ["NOT_APPLICABLE", "DUE", "PAID"]);
 export const commentChannel = pgEnum("comment_channel", ["TEAM", "STUDENT"]);
 export const messageSource = pgEnum("message_source", ["WEB", "WHATSAPP", "SYSTEM"]);
@@ -390,6 +392,20 @@ export const applications = pgTable(
       .references(() => users.id),
     deadline: timestamp("deadline", { mode: "date" }),
     feeStatus: feeStatus("fee_status").notNull().default("NOT_APPLICABLE"),
+    // The offer, as the institution issued it.
+    offerType: offerType("offer_type"),
+    offerDate: date("offer_date"),
+    offerConditions: text("offer_conditions"),
+    offerAcceptBy: date("offer_accept_by"),
+    // Tuition deposit paid to secure the place, in the program's currency.
+    depositAmount: integer("deposit_amount"),
+    depositPaidOn: date("deposit_paid_on"),
+    // The document the visa rests on: CAS (UK), I-20 (US), CoE (Australia), LOA (Canada).
+    confirmationNumber: text("confirmation_number"),
+    confirmationIssuedOn: date("confirmation_issued_on"),
+    visaLodgedOn: date("visa_lodged_on"),
+    visaDecision: visaDecision("visa_decision"),
+    visaDecisionOn: date("visa_decision_on"),
     createdAt: createdAt(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

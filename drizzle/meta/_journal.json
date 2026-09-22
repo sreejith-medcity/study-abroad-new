@@ -141,6 +141,13 @@
       "when": 1790048335422,
       "tag": "0019_deadlines_and_waivers",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1790049038606,
+      "tag": "0020_offer_and_visa",
+      "breakpoints": true
     }
   ]
 }

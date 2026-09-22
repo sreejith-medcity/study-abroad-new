@@ -197,3 +197,55 @@ export async function markFeePaidAction(formData: FormData) {
   await audit(user.id, "application.fee_paid", "application", applicationId);
   revalidatePath("/", "layout");
 }
+
+const isoDate = z.union([z.literal(""), z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use a date")]).transform((v) => v || null);
+const offerVisa = z
+  .object({
+    applicationId: z.string().min(1),
+    offerType: z.union([z.literal(""), z.enum(["CONDITIONAL", "UNCONDITIONAL"])]).transform((v) => v || null),
+    offerDate: isoDate,
+    offerConditions: z.string().trim().max(2000).transform((v) => v || null),
+    offerAcceptBy: isoDate,
+    depositAmount: z.union([z.literal(""), z.coerce.number().int("Whole number").min(0)]).transform((v) => (v === "" ? null : v)),
+    depositPaidOn: isoDate,
+    confirmationNumber: z.string().trim().max(60).transform((v) => v || null),
+    confirmationIssuedOn: isoDate,
+    visaLodgedOn: isoDate,
+    visaDecision: z.union([z.literal(""), z.enum(["GRANTED", "REFUSED"])]).transform((v) => v || null),
+    visaDecisionOn: isoDate,
+  })
+  .superRefine((v, ctx) => {
+    if (v.offerType && !v.offerDate) ctx.addIssue({ code: "custom", path: ["offerDate"], message: "When was the offer issued?" });
+    if (!v.offerType && (v.offerDate || v.offerAcceptBy || v.offerConditions)) ctx.addIssue({ code: "custom", path: ["offerType"], message: "Say which kind of offer it is" });
+    if (v.offerDate && v.offerAcceptBy && v.offerAcceptBy < v.offerDate) ctx.addIssue({ code: "custom", path: ["offerAcceptBy"], message: "Before the offer date" });
+    if (v.depositPaidOn && v.depositAmount == null) ctx.addIssue({ code: "custom", path: ["depositAmount"], message: "How much was paid?" });
+    if (v.visaDecision && !v.visaDecisionOn) ctx.addIssue({ code: "custom", path: ["visaDecisionOn"], message: "When was the decision?" });
+    if (v.visaDecisionOn && !v.visaDecision) ctx.addIssue({ code: "custom", path: ["visaDecision"], message: "Granted or refused?" });
+    if (v.visaLodgedOn && v.visaDecisionOn && v.visaDecisionOn < v.visaLodgedOn) ctx.addIssue({ code: "custom", path: ["visaDecisionOn"], message: "Before the visa was lodged" });
+  });
+
+/** The offer, deposit, CAS / I-20 / CoE and visa facts on one application. */
+export async function saveOfferVisaAction(_: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser([...PROCESSING_ROLES]);
+  const parsed = offerVisa.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Check the highlighted fields." };
+  const { applicationId, ...values } = parsed.data;
+  const app = await getApplicationForUser(user, applicationId);
+  const changed: Record<string, { from: unknown; to: unknown }> = {};
+  for (const [k, v] of Object.entries(values)) {
+    const before = app[k as keyof typeof app] ?? null;
+    if (String(before ?? "") !== String(v ?? "")) changed[k] = { from: before, to: v };
+  }
+  if (!Object.keys(changed).length) return { ok: "Nothing changed." };
+  await db.update(schema.applications).set({ ...values, updatedAt: new Date() }).where(eq(schema.applications.id, app.id));
+  await audit(user.id, "application.offer_visa", "application", app.id, { changed });
+  const student = await db.query.students.findFirst({ where: eq(schema.students.id, app.studentId), columns: { assignedToId: true } });
+  const headline = changed.visaDecision
+    ? `Visa ${values.visaDecision === "GRANTED" ? "granted" : "refused"}`
+    : changed.offerType
+      ? `${values.offerType === "UNCONDITIONAL" ? "Unconditional" : "Conditional"} offer recorded`
+      : "Offer and visa details updated";
+  await notifyUsers(await partnerRecipients(app.orgId, student?.assignedToId), `${app.ackNo}: ${headline}`, Object.keys(changed).join(", "), `/students/${app.studentId}/applications?app=${app.id}`);
+  revalidatePath(`/students/${app.studentId}/applications`);
+  return { ok: `Saved ${Object.keys(changed).length} change${Object.keys(changed).length === 1 ? "" : "s"}.` };
+}

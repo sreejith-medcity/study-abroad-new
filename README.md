@@ -35,6 +35,7 @@ This repository currently contains **Phase 0 basics and Phase 1 (core pipeline)*
 | Scholarships | Admins publish, all read | Kept per university by the Overseas team with the amount as the institution words it, levels, eligibility, deadline and a required link to the institution's page. Shown on university and program pages; search filters by "Scholarship available". |
 | Wider requirements | Admins set, all read | Besides IELTS, PTE, OET and German: TOEFL iBT and Duolingo (any named English test at its minimum will do), GRE, GMAT and SAT where required, and a minimum percentage in the qualifying study (12th for a bachelor's, the bachelor's for a master's). The fit check, "hide what the student cannot meet" and the pre-submission check all read them; a CGPA is never converted. |
 | Deadlines and fee waivers | Admins set, all read | The last day to apply per intake and year, from the institution, with a note. Shown on the program page, in search ("apply by"), on a **Deadlines** page soonest first with the branch's students who shortlisted each program, and in the apply form, which warns when the intake's deadline has passed. A fee waiver is recorded in the words of whoever confirmed it; search filters by both. |
+| Offer and visa | Team records, partners and students read | Per application: conditional or unconditional offer with its date, conditions and accept-by date; the deposit paid; the CAS, I-20, CoE or LOA number (named by destination); visa lodged, decision and date. Partners see a summary and are notified on each change; the student sees the offer and visa in the portal, in English or Malayalam. In the applications CSV too. |
 | Rupee estimates | All | Fees show a rough rupee figure ("≈ ₹21.7 lakh") from the indicative rates in Platform settings, in the student portal too, and only for currencies that have a rate. |
 | Public enquiry form | Anyone with the link | A branch-specific form at `/apply/<slug>`, with no sign in: name, number, what they want and consent. Submissions arrive as enquiries owned by that branch with a follow-up due the next day. Opened per branch from Partners and people, which also prints the QR code for the counter. Protected by a honeypot field, per-caller and per-number rate limits, and a same-day duplicate check. |
 | Enquiries | Partners, staff | Every walk-in, call, website form and referral before a student file exists. Owner, stage (new, contacted, qualified, in counselling, converted, lost), follow-up date with overdue highlighting, a history line per contact, and one click to register the person as a student, which closes the enquiry as converted. Partners see their own branch; the Overseas team sees every branch. |
@@ -154,8 +155,10 @@ tests/                          node:test unit tests
   revalidate.** With a route-level loading boundary, the action's refreshed
   page could arrive and never be applied: the save happened, the screen kept the
   old state (about one run in three for opening a branch's public form). Routes
-  with forms have no `loading.tsx`; read-only ones (search, queue, audit,
-  insights, partner commission) keep their skeletons.
+  with forms have no `loading.tsx` (the student file, settings, enquiries,
+  learning, the work queue and the admin screens); read-only ones (search,
+  dashboard, applications list, audit, insights, partner commission) keep
+  their skeletons.
 - **No `redirect()` to the same page with other search params.** Return
   `redirectTo` in the form state and let `ActionForm` navigate. The redirect
   could leave the button on its pending label after the save.

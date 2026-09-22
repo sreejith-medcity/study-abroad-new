@@ -7,10 +7,10 @@ import { fmtDate, fmtDateTime, fmtMoney, intakeLabel } from "@/lib/format";
 import { APP_ROLES, isAdmin, isDocumentationTeam, isStaff } from "@/lib/permissions";
 import { checkApplication, statusesFor } from "@/server/applications";
 import { getStudentForUser } from "@/server/queries";
-import { Button, Card, Chip, EmptyState, Input, Select, StatusBadge, cn } from "@/components/ui";
-import { tuitionText } from "@/lib/catalogue";
+import { Button, Card, CardHeader, Chip, DataList, EmptyState, Input, Select, StatusBadge, cn } from "@/components/ui";
+import { confirmationLabel, dayText, daysUntil, deadlineText, tuitionText } from "@/lib/catalogue";
 import { markFeePaidAction, setDocumentTypeAction } from "./actions";
-import { ApplyForm, CommentComposer, StatusForm } from "./client";
+import { ApplyForm, CommentComposer, OfferVisaForm, StatusForm, type OfferVisaValues } from "./client";
 
 export const metadata = { title: "Applications" };
 
@@ -250,6 +250,8 @@ async function ApplicationDetail({ appId, studentId, channel, canProcess, canChe
         </Card>
       </div>
 
+      <OfferVisaCard app={app} currency={currency} canEdit={canCheck && canWrite} />
+
       <Card>
         <div className="flex items-center gap-6 border-b border-line px-4">
           <h3 className="py-3 font-semibold text-brand-600">Comments</h3>
@@ -298,5 +300,37 @@ async function ApplicationDetail({ appId, studentId, channel, canProcess, canChe
         </div>
       </Card>
     </div>
+  );
+}
+
+type OfferVisaApp = OfferVisaValues & { id: string; program: { university: { country: { code: string } } } };
+
+/** Offer, deposit, CAS / I-20 / CoE and visa: the team edits, partners read. */
+function OfferVisaCard({ app, currency, canEdit }: { app: OfferVisaApp; currency: string; canEdit: boolean }) {
+  const confirmation = confirmationLabel(app.program.university.country.code);
+  const day = (d: string | null) => (d ? dayText(d) : null);
+  const rows = [
+    { label: "Offer", value: app.offerType ? `${app.offerType === "UNCONDITIONAL" ? "Unconditional" : "Conditional"}${app.offerDate ? `, issued ${day(app.offerDate)}` : ""}` : "No offer yet", tone: app.offerType === "UNCONDITIONAL" ? ("ok" as const) : undefined },
+    ...(app.offerAcceptBy ? [{ label: "Accept by", value: deadlineText(app.offerAcceptBy), tone: daysUntil(app.offerAcceptBy) <= 7 ? ("warn" as const) : undefined }] : []),
+    ...(app.offerConditions ? [{ label: "Conditions", value: app.offerConditions }] : []),
+    { label: "Deposit", value: app.depositPaidOn ? `${fmtMoney(app.depositAmount, currency)} paid ${day(app.depositPaidOn)}` : app.depositAmount != null ? `${fmtMoney(app.depositAmount, currency)}, not paid yet` : "Not recorded" },
+    { label: confirmation, value: app.confirmationNumber ? `${app.confirmationNumber}${app.confirmationIssuedOn ? `, issued ${day(app.confirmationIssuedOn)}` : ""}` : "Not issued yet" },
+    {
+      label: "Visa",
+      value: app.visaDecision ? `${app.visaDecision === "GRANTED" ? "Granted" : "Refused"}${app.visaDecisionOn ? ` ${day(app.visaDecisionOn)}` : ""}` : app.visaLodgedOn ? `Lodged ${day(app.visaLodgedOn)}, awaiting decision` : "Not lodged yet",
+      tone: app.visaDecision === "GRANTED" ? ("ok" as const) : app.visaDecision === "REFUSED" ? ("bad" as const) : undefined,
+    },
+  ];
+  return (
+    <Card>
+      <CardHeader title="Offer and visa" subtitle={canEdit ? "Partners see this summary; they are notified when it changes." : "Kept by the Overseas team"} />
+      <DataList rows={rows} />
+      {canEdit && (
+        <details className="border-t border-line px-4 py-3">
+          <summary className="cursor-pointer text-[13px] font-medium text-brand-600">Update offer and visa</summary>
+          <div className="mt-3"><OfferVisaForm applicationId={app.id} values={app} currency={currency} confirmation={confirmation} /></div>
+        </details>
+      )}
+    </Card>
   );
 }
