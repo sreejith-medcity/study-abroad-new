@@ -69,6 +69,7 @@ const ADMIN_NAV: NavGroup[] = [
       { href: "/deadlines", label: "Deadlines", icon: "deadlines" },
       { href: "/admin/programs", label: "Programs", icon: "programs" },
       { href: "/admin/scholarships", label: "Scholarships", icon: "spark" },
+      { href: "/admin/destinations", label: "Destinations and rankings", icon: "universities" },
       { href: "/admin/statuses", label: "Status flows", icon: "flow" },
     ],
   },

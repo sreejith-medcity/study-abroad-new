@@ -30,6 +30,7 @@ node tests/browser/dashboards.mjs
 | `scholarships.mjs` | Adding a scholarship and its rules, where it shows, the search filter, and pausing it |
 | `deadlines.mjs` | Recording deadlines and a fee waiver, the date rules, and where partners see them: program page, search filters, the deadlines page and the apply form warning |
 | `offer-visa.mjs` | Recording an offer, a CAS number and a visa decision with their rules, what the partner sees and is told, and the portal view |
+| `destinations.mjs` | The visa living-cost figures, a rankings CSV with errors, and where rankings and funds show: search, the universities index, program and university pages |
 | `events.mjs` | Publishing a webinar with its rules, the partner's notice, taking a seat and the join link, registering a student, seat counts and cancelling |
 | `services.mjs` | A partner requests an education loan, the team works it from the queue, and the partner sees and is told of each change |
 | `universities.mjs` | The universities index: destination, level and name filters, sorting by size, and the links to each university and its programs |

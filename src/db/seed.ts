@@ -1,5 +1,6 @@
 /* Sample data for local development. Every person, university and figure here is fictional. */
 import "dotenv/config";
+import { LIVING_FUNDS } from "./living-funds";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import bcrypt from "bcryptjs";
@@ -88,7 +89,7 @@ async function main() {
       { code: "FI", name: "Finland", currency: "EUR" },
       { code: "PT", name: "Portugal", currency: "EUR" },
       { code: "ES", name: "Spain", currency: "EUR" },
-    ])
+    ].map((c) => (LIVING_FUNDS[c.code] ? { ...c, visaLivingFunds: LIVING_FUNDS[c.code].amount, visaLivingNote: LIVING_FUNDS[c.code].note, visaLivingSource: LIVING_FUNDS[c.code].source, visaLivingChecked: "2026-09-22" } : c)))
     .returning();
   const c = Object.fromEntries(countryRows.map((r) => [r.code, r.id]));
 

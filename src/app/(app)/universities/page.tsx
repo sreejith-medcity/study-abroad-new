@@ -4,6 +4,7 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { APP_ROLES } from "@/lib/permissions";
 import { LEVEL_LABEL } from "@/lib/catalogue";
+import { rankLabels } from "@/lib/rankings";
 import { readFilters } from "@/server/queries";
 import { Button, Card, Chip, EmptyState, Input, LinkButton, PageHeader, Select, Table, Td, Th, Toolbar } from "@/components/ui";
 import { IconBuilding, IconSearch } from "@/components/icons";
@@ -31,6 +32,7 @@ export default async function UniversitiesPage({ searchParams }: { searchParams:
   if (f.country) conds.push(eq(c.code, f.country));
   if (f.type === "public") conds.push(eq(u.isPublic, true));
   if (f.type === "private") conds.push(eq(u.isPublic, false));
+  if (["200", "500", "1000"].includes(f.top)) conds.push(sql`${u.rankSort} <= ${Number(f.top)}`);
   if (f.scholarship) conds.push(sql`exists (select 1 from scholarships sc where sc.university_id = ${u.id} and sc.active and (sc.deadline is null or sc.deadline >= current_date))`);
 
   const live = count(p.id);
@@ -40,6 +42,10 @@ export default async function UniversitiesPage({ searchParams }: { searchParams:
       name: u.name,
       city: u.city,
       isPublic: u.isPublic,
+      qsRank: u.qsRank,
+      qsYear: u.qsYear,
+      theRank: u.theRank,
+      theYear: u.theYear,
       country: c.name,
       programs: live,
       eligible: sql<number>`count(*) filter (where ${p.workRights} = 'ELIGIBLE')`.mapWith(Number),
@@ -51,7 +57,7 @@ export default async function UniversitiesPage({ searchParams }: { searchParams:
     .innerJoin(p, and(eq(p.universityId, u.id), ...programConds))
     .where(and(...conds))
     .groupBy(u.id, c.name)
-    .orderBy(...(f.sort === "programs" ? [desc(live), asc(u.name)] : [asc(c.name), asc(u.name)]))
+    .orderBy(...(f.sort === "programs" ? [desc(live), asc(u.name)] : f.sort === "rank" ? [sql`${u.rankSort} asc nulls last`, asc(u.name)] : [asc(c.name), asc(u.name)]))
     .limit(PAGE + 1)
     .offset((page - 1) * PAGE);
   const hasNext = rows.length > PAGE;
@@ -100,6 +106,13 @@ export default async function UniversitiesPage({ searchParams }: { searchParams:
           <Select name="sort" aria-label="Sort" defaultValue={f.sort ?? ""}>
             <option value="">Sort by country and name</option>
             <option value="programs">Most programs first</option>
+            <option value="rank">Best ranking first</option>
+          </Select>
+          <Select name="top" aria-label="Ranking" defaultValue={f.top ?? ""}>
+            <option value="">Any ranking</option>
+            <option value="200">Top 200 (QS or THE)</option>
+            <option value="500">Top 500</option>
+            <option value="1000">Top 1,000</option>
           </Select>
           <label className="flex items-center gap-2 text-[13px] text-ink-soft sm:col-span-2">
             <input type="checkbox" name="scholarship" value="1" defaultChecked={!!f.scholarship} className="size-4 accent-brand-600" />
@@ -127,6 +140,7 @@ export default async function UniversitiesPage({ searchParams }: { searchParams:
                     <Link prefetch={false} href={`/universities/${r.id}${f.level ? `?level=${f.level}` : ""}`} className="font-medium text-ink hover:text-brand-700 hover:underline">{r.name}</Link>
                     <p className="text-xs text-muted">
                       {r.isPublic ? "Public" : "Private"}
+                      {rankLabels(r).length > 0 && <span className="font-medium text-ink-soft"> · {rankLabels(r).join(" · ")}</span>}
                       {r.scholarships > 0 && <Chip tone="ok" className="ml-1.5">Scholarship</Chip>}
                     </p>
                   </Td>

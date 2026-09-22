@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth";
 import { LEVEL_LABEL, durationText, feeText, intakesText, tuitionText } from "@/lib/catalogue";
 import { APP_ROLES, isStaff } from "@/lib/permissions";
 import { openScholarships } from "@/server/scholarships";
+import { rankLabels } from "@/lib/rankings";
 import { ScholarshipList } from "@/components/scholarship-list";
 import { Card, CardHeader, Chip, DataList, EmptyState, PageHeader, Table, Td, Th, cn } from "@/components/ui";
 import { IconAlert, IconCheck, IconPrograms } from "@/components/icons";
@@ -150,6 +151,10 @@ export default async function UniversityPage({
                   : "Not recorded",
               },
               { label: "Intakes offered", value: intakesText(intakes) },
+              ...(rankLabels(university).length ? [{ label: "Rankings", value: rankLabels(university).join(" · ") }] : []),
+              ...(university.country.visaLivingFunds != null
+                ? [{ label: "Visa living funds, first year", value: `${feeText(university.country.visaLivingFunds, cur, { zero: "" })} (${university.country.name} government figure)` }]
+                : []),
               ...(multiCampus ? [{ label: "Campuses", value: campuses.join(", ") }] : []),
               { label: "Post-study work confirmed", value: String(eligible), tone: eligible ? "ok" : undefined },
               { label: "Confirmed not eligible", value: String(ineligible), tone: ineligible ? "bad" : undefined },

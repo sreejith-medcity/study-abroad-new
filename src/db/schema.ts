@@ -137,6 +137,13 @@ export const countries = pgTable("countries", {
   code: text("code").notNull().unique(),
   name: text("name").notNull(),
   currency: text("currency").notNull(),
+  // What a student must show for living costs in the first year of a student
+  // visa, as the government states it, in the local currency, with its wording
+  // and the page it came from. Null where there is no single national figure.
+  visaLivingFunds: integer("visa_living_funds"),
+  visaLivingNote: text("visa_living_note"),
+  visaLivingSource: text("visa_living_source"),
+  visaLivingChecked: date("visa_living_checked"),
 });
 
 export const universities = pgTable(
@@ -152,6 +159,13 @@ export const universities = pgTable(
     website: text("website"),
     // The register's own identifier, a CRICOS provider code for Australia.
     externalCode: text("external_code"),
+    // Rankings as published ("154", "=154", "601-650"), with the edition year.
+    qsRank: text("qs_rank"),
+    qsYear: integer("qs_year"),
+    theRank: text("the_rank"),
+    theYear: integer("the_year"),
+    // The best position either ranking gives, for sorting: the top of a band.
+    rankSort: integer("rank_sort"),
   },
   (t) => [uniqueIndex("universities_name_country_uq").on(t.name, t.countryId), uniqueIndex("universities_external_code_uq").on(t.externalCode)],
 );

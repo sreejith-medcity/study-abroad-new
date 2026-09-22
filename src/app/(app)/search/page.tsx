@@ -13,6 +13,7 @@ import { hasOpenScholarship } from "@/server/scholarships";
 import { closingWithin, nextDeadlines } from "@/server/deadlines";
 import { activeRules, hasCommissionRule, partnerShareJoins } from "@/server/commission-estimate";
 import { partnerEstimate, pickRule } from "@/lib/money";
+import { rankLabels } from "@/lib/rankings";
 import { LEVEL_LABEL, SHORTLIST_LIMIT, dayText, daysUntil, inrApprox, intakesText, tuitionText } from "@/lib/catalogue";
 import { Button, Card, Chip, EmptyState, Input, LinkButton, PageHeader, Select, Table, Td, Th, Toolbar, cn } from "@/components/ui";
 import { IconCheck, IconAlert, IconClock, IconGlobe, IconSearch, IconSpark } from "@/components/icons";
@@ -129,6 +130,10 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       university: u.name,
       city: sql<string | null>`coalesce(${p.campus}, ${u.city})`,
       isPublic: u.isPublic,
+      qsRank: u.qsRank,
+      qsYear: u.qsYear,
+      theRank: u.theRank,
+      theYear: u.theYear,
       country: c.name,
       countryCode: c.code,
       currency: c.currency,
@@ -141,7 +146,9 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     .leftJoin(byShare.rc, eq(byShare.rc.key, u.countryId))
     .where(where)
     .orderBy(
-      ...(f.sort === "commission"
+      ...(f.sort === "rank"
+        ? [sql`${u.rankSort} asc nulls last`, asc(u.name), asc(p.name)]
+        : f.sort === "commission"
         ? [sql`${byShare.expr} desc nulls last`, asc(p.name)]
         : f.sort === "fee"
         ? // Per-year figures first, then whole-course ones: the two are never
@@ -282,6 +289,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             <option value="name">Sort by program name</option>
             <option value="fee">Lowest fee first</option>
             <option value="commission">Highest commission first</option>
+            <option value="rank">Best university ranking first</option>
           </Select>
           <Select name="student" aria-label="Check against student" defaultValue={f.student ?? ""}>
             <option value="">Check eligibility for…</option>
@@ -397,6 +405,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                         <IconGlobe className="size-3.5" /> {r.city ? `${r.city}, ` : ""}{r.country}
                         {r.isPublic && <Chip className="ml-1">Public</Chip>}
                       </p>
+                      {rankLabels(r).length > 0 && <p className="text-xs font-medium text-ink-soft">{rankLabels(r).join(" · ")}</p>}
                     </Td>
                     <Td className={cn("whitespace-nowrap text-[13px]", !r.intakeMonths.length && "text-muted")}>
                       {intakesText(r.intakeMonths)}

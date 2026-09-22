@@ -164,6 +164,23 @@ export default async function ProgramPage({
                 { label: "Intakes", value: intakesText(program.intakeMonths) },
                 { label: "Tuition per year", value: withInr(program.tuitionPerYear, feeText(program.tuitionPerYear, cur, { zero: "No tuition fee" })) },
                 ...(program.tuitionTotal != null ? [{ label: "Tuition, whole course", value: withInr(program.tuitionTotal, feeText(program.tuitionTotal, cur, { zero: "No tuition fee" })) }] : []),
+                ...(country.visaLivingFunds != null
+                  ? [{
+                      label: "Funds to show for the visa",
+                      value: (
+                        <>
+                          {program.tuitionPerYear != null
+                            ? withInr(program.tuitionPerYear + country.visaLivingFunds, `${feeText(program.tuitionPerYear + country.visaLivingFunds, cur, { zero: "" })}: first-year tuition plus ${feeText(country.visaLivingFunds, cur, { zero: "" })} living costs`)
+                            : `${feeText(country.visaLivingFunds, cur, { zero: "" })} living costs, plus first-year tuition`}
+                          {country.visaLivingSource && (
+                            <a href={country.visaLivingSource} target="_blank" rel="noopener noreferrer" className="block text-xs text-brand-600 hover:underline">
+                              {country.name} government figure{country.visaLivingNote ? `: ${country.visaLivingNote}` : ""} ↗
+                            </a>
+                          )}
+                        </>
+                      ),
+                    }]
+                  : []),
                 { label: "Application fee", value: feeText(program.applicationFee, cur, { zero: "No application fee" }) },
                 ...(program.feeWaiver ? [{ label: "Application fee waiver", value: program.feeWaiver, tone: "ok" as const }] : []),
                 ...(commission
