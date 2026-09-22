@@ -35,6 +35,7 @@ node tests/browser/dashboards.mjs
 | `support.mjs` | Raising a ticket, the team's notice and reply, who it waits on, resolving, and branch isolation |
 | `services.mjs` | A partner requests an education loan, the team works it from the queue, and the partner sees and is told of each change |
 | `training.mjs` | Building and publishing a course with its rules, failing and passing the quiz, the certificate, team progress and who may open a certificate |
+| `updates.mjs` | Publishing an update, an announcement and a What's New item, who is told, the dashboard banner and country tabs, and the What's New dot |
 | `universities.mjs` | The universities index: destination, level and name filters, sorting by size, and the links to each university and its programs |
 | `program-options.mjs` | Requesting options for a new and a registered student, the team's list, shortlisting it all, linking, archiving and branch isolation |
 | `programs.mjs` | The program and university pages, the admin edit screen and its rules, and that an unverified fee never reads as free |

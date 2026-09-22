@@ -27,6 +27,7 @@ import {
 } from "@/components/ui";
 import { IconAlert, IconApplications, IconChat, IconCheck, IconClock, IconDoc, IconEnquiry, IconPlus, IconSearch, IconSpark } from "@/components/icons";
 import { AgingCard, DashboardFilters, DeadlinesCard, RecentChangesCard } from "./parts";
+import { AnnouncementBanner, UpdatesCard } from "./updates-card";
 
 const TILES = [
   { key: "", label: "All applications", tone: "brand" as const, icon: <IconApplications className="size-4" /> },
@@ -141,6 +142,7 @@ export default async function PartnerDashboard({
               ]
         }
       />
+      <AnnouncementBanner />
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-5">
@@ -316,6 +318,8 @@ export default async function PartnerDashboard({
           )}
 
           <DeadlinesCard rows={deadlines} />
+
+          <UpdatesCard country={(f as Record<string, string | undefined>).uc} />
 
           <Card>
             <CardHeader title="Where you send students" subtitle="Applications by destination" />

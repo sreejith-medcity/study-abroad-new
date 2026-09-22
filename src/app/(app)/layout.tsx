@@ -42,6 +42,7 @@ const partnerNav = (home: string): NavGroup[] => [
   {
     title: "Support",
     items: [
+      { href: "/updates", label: "Updates", icon: "spark" },
       { href: "/events", label: "Events", icon: "events" },
       { href: "/support", label: "Help desk", icon: "support" },
       { href: "/learning", label: "Learning resources", icon: "learning" },
@@ -83,6 +84,7 @@ const ADMIN_NAV: NavGroup[] = [
     items: [
       { href: "/enquiries", label: "Enquiries", icon: "enquiry" },
       { href: "/admin/partners", label: "Partners", icon: "partners" },
+      { href: "/admin/updates", label: "Updates", icon: "spark" },
       { href: "/admin/events", label: "Events", icon: "events" },
       { href: "/admin/training", label: "Training", icon: "training" },
       { href: "/admin/insights", label: "Insights", icon: "insights" },
@@ -170,6 +172,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     .select({ unread: count() })
     .from(schema.notifications)
     .where(and(eq(schema.notifications.userId, user.id), isNull(schema.notifications.readAt)));
+  // What's New carries a dot until the person has opened it since the newest item.
+  const me = await db.query.users.findFirst({ where: eq(schema.users.id, user.id), columns: { whatsNewSeenAt: true } });
+  const [newest] = await db
+    .select({ at: schema.bulletins.createdAt })
+    .from(schema.bulletins)
+    .where(and(eq(schema.bulletins.kind, "WHATS_NEW"), eq(schema.bulletins.published, true)))
+    .orderBy(desc(schema.bulletins.createdAt))
+    .limit(1);
+  const freshNews = !!newest && (!me?.whatsNewSeenAt || me.whatsNewSeenAt < newest.at);
   const latest = await db
     .select()
     .from(schema.notifications)
@@ -190,6 +201,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
         <div className="relative z-10 ml-auto flex items-center gap-1.5">
           <CommandPalette groups={navGroups} />
+          <Link href="/whats-new" className="relative hidden items-center rounded-lg px-2.5 py-2 text-[13px] font-medium text-white/90 hover:bg-white/10 sm:flex">
+            What&apos;s new
+            {freshNews && <span className="ml-1 size-2 rounded-full bg-gold-400" aria-label="New items" />}
+          </Link>
           <details className="group relative">
             <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-lg px-2.5 py-2 text-white/90 transition-colors hover:bg-white/10" aria-label={`Notifications, ${unread} unread`}>
               <IconBell />

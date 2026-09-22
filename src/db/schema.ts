@@ -59,6 +59,7 @@ export const eventKind = pgEnum("event_kind", ["WEBINAR", "UNIVERSITY_VISIT", "T
 export const ticketCategory = pgEnum("ticket_category", ["APPLICATION", "COMMISSION", "CATALOGUE", "ACCESS", "OTHER"]);
 export const ticketStatus = pgEnum("ticket_status", ["OPEN", "WAITING_PARTNER", "RESOLVED"]);
 export const optionsStatus = pgEnum("options_status", ["REQUESTED", "OPTIONS_SENT", "APPLIED"]);
+export const bulletinKind = pgEnum("bulletin_kind", ["UPDATE", "ANNOUNCEMENT", "WHATS_NEW"]);
 export const feeStatus = pgEnum("fee_status", ["NOT_APPLICABLE", "DUE", "PAID"]);
 export const commentChannel = pgEnum("comment_channel", ["TEAM", "STUDENT"]);
 export const messageSource = pgEnum("message_source", ["WEB", "WHATSAPP", "SYSTEM"]);
@@ -128,6 +129,8 @@ export const users = pgTable(
     mustChangePassword: boolean("must_change_password").notNull().default(false),
     passwordUpdatedAt: timestamp("password_updated_at", { withTimezone: true }),
     lastSignInAt: timestamp("last_sign_in_at", { withTimezone: true }),
+    // When this person last opened What's New, so newer items can be flagged.
+    whatsNewSeenAt: timestamp("whats_new_seen_at", { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("users_email_uq").on(t.email)],
@@ -996,6 +999,30 @@ export const optionRequestMessages = pgTable("option_request_messages", {
   createdAt: createdAt(),
 });
 
+/**
+ * What the Overseas team tells partners: important updates from institutions
+ * and governments (tagged by country, university and intake), announcements
+ * with an action, and What's New in the portal itself.
+ */
+export const bulletins = pgTable(
+  "bulletins",
+  {
+    id: id(),
+    kind: bulletinKind("kind").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    countries: text("countries").array().notNull().default(sql`'{}'::text[]`),
+    universityId: text("university_id").references(() => universities.id, { onDelete: "set null" }),
+    intakes: text("intakes"),
+    ctaLabel: text("cta_label"),
+    ctaUrl: text("cta_url"),
+    published: boolean("published").notNull().default(true),
+    createdById: text("created_by_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("bulletins_kind_idx").on(t.kind, t.createdAt)],
+);
+
 // ---------- Enquiries ----------
 
 export const enquiries = pgTable(
@@ -1163,6 +1190,11 @@ export const optionRequestFilesRelations = relations(optionRequestFiles, ({ one 
 export const optionRequestMessagesRelations = relations(optionRequestMessages, ({ one }) => ({
   request: one(optionRequests, { fields: [optionRequestMessages.requestId], references: [optionRequests.id] }),
   author: one(users, { fields: [optionRequestMessages.authorId], references: [users.id] }),
+}));
+
+export const bulletinsRelations = relations(bulletins, ({ one }) => ({
+  university: one(universities, { fields: [bulletins.universityId], references: [universities.id] }),
+  createdBy: one(users, { fields: [bulletins.createdById], references: [users.id] }),
 }));
 
 export const programDeadlinesRelations = relations(programDeadlines, ({ one }) => ({
