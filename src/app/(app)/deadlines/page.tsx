@@ -1,8 +1,10 @@
 import Link from "next/link";
-import { and, asc, count, eq, gte, ilike, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, eq, gte, ilike, isNull, lte, or, sql, type SQL } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
-import { APP_ROLES, isStaff } from "@/lib/permissions";
+import { APP_ROLES, isStaff, orgScope } from "@/lib/permissions";
+import type { SessionUser } from "@/lib/auth";
+import { DEADLINE_LABEL, DEADLINE_TYPES } from "@/lib/deadline-types";
 import { LEVEL_LABEL, dayText, daysUntil } from "@/lib/catalogue";
 import { MONTHS } from "@/lib/format";
 import { readFilters } from "@/server/queries";
@@ -21,6 +23,7 @@ const WINDOWS = [30, 60, 120, 365] as const;
 export default async function DeadlinesPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const user = await requireUser([...APP_ROLES]);
   const f = readFilters(await searchParams) as Record<string, string>;
+  if (f.tab === "applications") return <ApplicationDeadlines user={user} f={f} />;
   const page = Math.max(1, Number(f.page ?? 1) || 1);
   const days = (WINDOWS as readonly number[]).includes(Number(f.days)) ? Number(f.days) : 60;
   const { programDeadlines: d, programs: p, universities: u, countries: c, shortlists: sl, students: st } = schema;
@@ -66,7 +69,8 @@ export default async function DeadlinesPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
-      <PageHeader title="Deadlines" subtitle={`${total.toLocaleString("en-IN")} application deadline${total === 1 ? "" : "s"} in the next ${days} days`} />
+      <PageHeader title="Deadlines" subtitle={`${total.toLocaleString("en-IN")} institution deadline${total === 1 ? "" : "s"} in the next ${days} days`} />
+      <DeadlineTabs on="programs" />
       <Toolbar>
         <form className="grid w-full gap-2.5 sm:grid-cols-2 xl:grid-cols-6 [&>*]:min-w-0">
           <Input name="q" defaultValue={f.q} placeholder="Program or university" aria-label="Search" className="sm:col-span-2" />
@@ -141,6 +145,85 @@ export default async function DeadlinesPage({ searchParams }: { searchParams: Pr
               {page * PAGE < total && <LinkButton prefetch={false} variant="secondary" size="sm" href={qs({ page: String(page + 1) })}>Next</LinkButton>}
             </div>
           </div>
+        )}
+      </Card>
+    </>
+  );
+}
+
+function DeadlineTabs({ on }: { on: "programs" | "applications" }) {
+  const pill = (href: string, label: string, active: boolean) => (
+    <Link href={href} className={cn("rounded-full border px-3 py-1 text-[13px] font-medium", active ? "border-brand-600 bg-brand-600 text-white" : "border-line-strong text-ink-soft hover:border-brand-300")}>{label}</Link>
+  );
+  return (
+    <div className="mb-4 flex flex-wrap gap-2">
+      {pill("/deadlines", "Institution deadlines", on === "programs")}
+      {pill("/deadlines?tab=applications", "Your applications", on === "applications")}
+    </div>
+  );
+}
+
+/** Open milestones on applications (pay by, CAS by, accept by...), soonest first, overdue ones on top. */
+async function ApplicationDeadlines({ user, f }: { user: SessionUser; f: Record<string, string> }) {
+  const d = schema.applicationDeadlines;
+  const a = schema.applications;
+  const days = (WINDOWS as readonly number[]).includes(Number(f.days)) ? Number(f.days) : 60;
+  const conds: (SQL | undefined)[] = [isNull(d.doneAt), sql`${d.dueOn} <= current_date + ${days}::int`, orgScope(user, a.orgId)];
+  if ((DEADLINE_TYPES as readonly string[]).includes(f.type)) conds.push(sql`${d.type} = ${f.type}::deadline_type`);
+  if (f.country) conds.push(eq(schema.countries.code, f.country));
+  const rows = await db
+    .select({ id: d.id, type: d.type, dueOn: d.dueOn, note: d.note, appId: a.id, ackNo: a.ackNo, studentId: schema.students.id, firstName: schema.students.firstName, lastName: schema.students.lastName, program: schema.programs.name, university: schema.universities.name })
+    .from(d)
+    .innerJoin(a, eq(d.applicationId, a.id))
+    .innerJoin(schema.students, eq(a.studentId, schema.students.id))
+    .innerJoin(schema.programs, eq(a.programId, schema.programs.id))
+    .innerJoin(schema.universities, eq(schema.programs.universityId, schema.universities.id))
+    .innerJoin(schema.countries, eq(schema.universities.countryId, schema.countries.id))
+    .where(and(...conds))
+    .orderBy(asc(d.dueOn))
+    .limit(300);
+  const countries = await db.select({ code: schema.countries.code, name: schema.countries.name }).from(schema.countries).orderBy(asc(schema.countries.name));
+  return (
+    <>
+      <PageHeader title="Deadlines" subtitle={`${rows.length} open application deadline${rows.length === 1 ? "" : "s"} in the next ${days} days, overdue first`} />
+      <DeadlineTabs on="applications" />
+      <Toolbar>
+        <form className="grid w-full gap-2.5 sm:grid-cols-4 [&>*]:min-w-0">
+          <input type="hidden" name="tab" value="applications" />
+          <Select name="type" aria-label="Deadline type" defaultValue={f.type ?? ""}>
+            <option value="">Any deadline</option>
+            {DEADLINE_TYPES.map((t) => <option key={t} value={t}>{DEADLINE_LABEL[t]}</option>)}
+          </Select>
+          <Select name="country" aria-label="Country" defaultValue={f.country ?? ""}>
+            <option value="">All destinations</option>
+            {countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+          </Select>
+          <Select name="days" aria-label="Window" defaultValue={String(days)}>
+            {WINDOWS.map((w) => <option key={w} value={w}>Next {w} days</option>)}
+          </Select>
+          <Button type="submit" size="sm">Show</Button>
+        </form>
+      </Toolbar>
+      <Card>
+        {rows.length === 0 ? (
+          <EmptyState icon={<IconClock />} title="Nothing due">No open application deadlines in this window.</EmptyState>
+        ) : (
+          <Table tableClassName="min-w-[760px]">
+            <thead><tr><Th>Due</Th><Th>What</Th><Th>Student and program</Th><Th>Ack. no</Th></tr></thead>
+            <tbody>
+              {rows.map((r) => {
+                const left = daysUntil(r.dueOn);
+                return (
+                  <tr key={r.id}>
+                    <Td className="whitespace-nowrap"><p className="font-medium">{dayText(r.dueOn)}</p><p className={cn("text-xs", left < 0 ? "font-medium text-red-700" : left <= 3 ? "font-medium text-amber-700" : "text-muted")}>{left < 0 ? `${-left} days overdue` : left === 0 ? "Today" : `${left} days`}</p></Td>
+                    <Td>{DEADLINE_LABEL[r.type]}{r.note ? <p className="text-xs text-muted">{r.note}</p> : null}</Td>
+                    <Td><Link prefetch={false} href={`/students/${r.studentId}/applications?app=${r.appId}`} className="font-medium hover:underline">{r.firstName} {r.lastName}</Link><p className="text-xs text-muted">{r.program} · {r.university}</p></Td>
+                    <Td className="tabular text-[13px]">{r.ackNo}</Td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </Table>
         )}
       </Card>
     </>

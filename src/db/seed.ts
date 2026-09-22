@@ -218,6 +218,13 @@ async function main() {
           deadline: a.deadline ? new Date(a.deadline) : null, createdAt: created, statusChangedAt: created,
         })
         .returning();
+      if (a.deadline) {
+        await db.insert(schema.applicationDeadlines).values([
+          { applicationId: app.id, type: "APPLICATION", dueOn: a.deadline, createdById: admin.id },
+          // One due within the week, so the dashboards have something to show on a fresh seed.
+          { applicationId: app.id, type: "PAYMENT", dueOn: new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10), note: "Tuition deposit", createdById: admin.id },
+        ]);
+      }
       // Two rows when the application has moved on, so "days to offer" means something.
       const firstStatusId = statusIds[`${pw}.${pw === "DEGREE" ? "ASSESSMENT" : pw === "AUSBILDUNG" ? "LANGUAGE_PENDING" : "CREDENTIAL_CHECK"}`] ?? statusId;
       await db.insert(schema.statusHistory).values({ applicationId: app.id, toStatusId: firstStatusId, changedById: s.creator.id, createdAt: created });

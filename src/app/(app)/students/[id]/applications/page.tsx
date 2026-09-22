@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, asc, desc, eq, ilike, inArray, or } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { summarise } from "@/lib/checks";
@@ -9,8 +9,9 @@ import { checkApplication, statusesFor } from "@/server/applications";
 import { getStudentForUser } from "@/server/queries";
 import { Button, Card, CardHeader, Chip, DataList, EmptyState, Input, Select, StatusBadge, cn } from "@/components/ui";
 import { confirmationLabel, dayText, daysUntil, deadlineText, tuitionText } from "@/lib/catalogue";
-import { markFeePaidAction, setDocumentTypeAction } from "./actions";
-import { ApplyForm, CommentComposer, OfferVisaForm, StatusForm, type OfferVisaValues } from "./client";
+import { markFeePaidAction, setDeadlineDoneAction, setDocumentTypeAction } from "./actions";
+import { ApplyForm, CommentComposer, DeadlineAddForm, OfferVisaForm, StatusForm, type OfferVisaValues } from "./client";
+import { DEADLINE_LABEL } from "@/lib/deadline-types";
 
 export const metadata = { title: "Applications" };
 
@@ -250,6 +251,8 @@ async function ApplicationDetail({ appId, studentId, channel, canProcess, canChe
         </Card>
       </div>
 
+      <DeadlinesPanel applicationId={app.id} canEdit={canCheck && canWrite} canTick={canWrite} />
+
       <OfferVisaCard app={app} currency={currency} canEdit={canCheck && canWrite} />
 
       <Card>
@@ -331,6 +334,49 @@ function OfferVisaCard({ app, currency, canEdit }: { app: OfferVisaApp; currency
           <div className="mt-3"><OfferVisaForm applicationId={app.id} values={app} currency={currency} confirmation={confirmation} /></div>
         </details>
       )}
+    </Card>
+  );
+}
+
+/** Dated milestones on the application, soonest first; done ones fall to the bottom. */
+async function DeadlinesPanel({ applicationId, canEdit, canTick }: { applicationId: string; canEdit: boolean; canTick: boolean }) {
+  const d = schema.applicationDeadlines;
+  const rows = await db.select().from(d).where(eq(d.applicationId, applicationId)).orderBy(sql`${d.doneAt} is not null`, asc(d.dueOn));
+  if (!rows.length && !canEdit) return null;
+  return (
+    <Card>
+      <CardHeader title="Deadlines" subtitle="Payment, CAS request, offer acceptance and the rest, as the institution sets them" />
+      {rows.length > 0 && (
+        <ul className="divide-y divide-line border-b border-line text-[13px]">
+          {rows.map((r) => {
+            const left = daysUntil(r.dueOn);
+            return (
+              <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5">
+                <div className={cn(r.doneAt && "text-muted line-through")}>
+                  <span className="font-medium">{DEADLINE_LABEL[r.type]}</span> · {deadlineText(r.dueOn)}{r.note ? ` · ${r.note}` : ""}
+                </div>
+                <div className="flex items-center gap-1">
+                  {!r.doneAt && left <= 3 && <Chip tone="bad">{left < 0 ? "Overdue" : "Due soon"}</Chip>}
+                  {canTick && (
+                    <form action={setDeadlineDoneAction}>
+                      <input type="hidden" name="id" value={r.id} />
+                      <Button type="submit" variant="quiet" size="sm">{r.doneAt ? "Reopen" : "Mark done"}</Button>
+                    </form>
+                  )}
+                  {canEdit && (
+                    <form action={setDeadlineDoneAction}>
+                      <input type="hidden" name="id" value={r.id} />
+                      <input type="hidden" name="remove" value="1" />
+                      <Button type="submit" variant="quiet" size="sm">Remove</Button>
+                    </form>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {canEdit && <div className="p-4"><DeadlineAddForm applicationId={applicationId} /></div>}
     </Card>
   );
 }

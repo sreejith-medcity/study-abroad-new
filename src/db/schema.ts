@@ -60,6 +60,7 @@ export const ticketCategory = pgEnum("ticket_category", ["APPLICATION", "COMMISS
 export const ticketStatus = pgEnum("ticket_status", ["OPEN", "WAITING_PARTNER", "RESOLVED"]);
 export const optionsStatus = pgEnum("options_status", ["REQUESTED", "OPTIONS_SENT", "APPLIED"]);
 export const bulletinKind = pgEnum("bulletin_kind", ["UPDATE", "ANNOUNCEMENT", "WHATS_NEW"]);
+export const deadlineType = pgEnum("deadline_type", ["APPLICATION", "PAYMENT", "CAS_REQUEST", "OFFER_ACCEPTANCE", "GS_SUBMISSION", "ENROLMENT", "VISA", "COURSE_START", "OTHER"]);
 export const feeStatus = pgEnum("fee_status", ["NOT_APPLICABLE", "DUE", "PAID"]);
 export const commentChannel = pgEnum("comment_channel", ["TEAM", "STUDENT"]);
 export const messageSource = pgEnum("message_source", ["WEB", "WHATSAPP", "SYSTEM"]);
@@ -433,6 +434,24 @@ export const applications = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("applications_org_idx").on(t.orgId), index("applications_status_idx").on(t.statusId)],
+);
+
+/** Dated milestones on one application: pay by, request the CAS by, accept the offer by. */
+export const applicationDeadlines = pgTable(
+  "application_deadlines",
+  {
+    id: id(),
+    applicationId: text("application_id")
+      .notNull()
+      .references(() => applications.id, { onDelete: "cascade" }),
+    type: deadlineType("type").notNull(),
+    dueOn: date("due_on").notNull(),
+    note: text("note"),
+    doneAt: timestamp("done_at", { withTimezone: true }),
+    createdById: text("created_by_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("application_deadlines_due_idx").on(t.dueOn), index("application_deadlines_app_idx").on(t.applicationId)],
 );
 
 export const statusHistory = pgTable("status_history", {
@@ -1197,6 +1216,10 @@ export const bulletinsRelations = relations(bulletins, ({ one }) => ({
   createdBy: one(users, { fields: [bulletins.createdById], references: [users.id] }),
 }));
 
+export const applicationDeadlinesRelations = relations(applicationDeadlines, ({ one }) => ({
+  application: one(applications, { fields: [applicationDeadlines.applicationId], references: [applications.id] }),
+}));
+
 export const programDeadlinesRelations = relations(programDeadlines, ({ one }) => ({
   program: one(programs, { fields: [programDeadlines.programId], references: [programs.id] }),
 }));
@@ -1243,6 +1266,7 @@ export const applicationsRelations = relations(applications, ({ one, many }) => 
   history: many(statusHistory),
   comments: many(comments),
   documents: many(documents),
+  deadlines: many(applicationDeadlines),
 }));
 
 export const statusHistoryRelations = relations(statusHistory, ({ one }) => ({

@@ -5,6 +5,7 @@ import type { SessionUser } from "@/lib/auth";
 import { orgScope } from "@/lib/permissions";
 import { getSettings, slaDays } from "./settings";
 import { MONTHS } from "@/lib/format";
+import { DEADLINE_WINDOWS } from "@/lib/deadline-types";
 import { KPI_WHERE } from "./queries";
 
 const {
@@ -172,26 +173,39 @@ export async function kpiTotals(user: SessionUser, where?: SQL) {
   return row as Record<string, number>;
 }
 
-export async function deadlineList(user: SessionUser, days = 14, limit = 6, extra?: SQL) {
-  const now = new Date();
-  const until = new Date(Date.now() + days * 86400000);
+/** The dashboard's window key (today, tomorrow, 7, 14) as a range of days from today. */
+export function windowFor(key: string | undefined): readonly [number, number] {
+  const w = DEADLINE_WINDOWS.find(([k]) => k === key);
+  return w ? [w[2], w[3]] : [0, 14];
+}
+
+/**
+ * Open milestones on applications (pay by, request the CAS by, accept the offer
+ * by...) falling in a window of days from today: [0, 0] is today, [1, 1]
+ * tomorrow, [0, 7] the coming week.
+ */
+export async function deadlineList(user: SessionUser, window: readonly [number, number] = [0, 14], limit = 6, extra?: SQL) {
+  const d = schema.applicationDeadlines;
   return db
     .select({
       id: a.id,
+      deadlineId: d.id,
       ackNo: a.ackNo,
-      deadline: a.deadline,
+      type: d.type,
+      dueOn: d.dueOn,
       studentId: s.id,
       firstName: s.firstName,
       lastName: s.lastName,
       program: p.name,
       university: u.name,
     })
-    .from(a)
+    .from(d)
+    .innerJoin(a, eq(d.applicationId, a.id))
     .innerJoin(s, eq(a.studentId, s.id))
     .innerJoin(p, eq(a.programId, p.id))
     .innerJoin(u, eq(p.universityId, u.id))
-    .where(and(scope(user), isNotNull(a.deadline), gte(a.deadline, now), lte(a.deadline, until), extra))
-    .orderBy(asc(a.deadline))
+    .where(and(scope(user), isNull(d.doneAt), sql`${d.dueOn} between current_date + ${window[0]}::int and current_date + ${window[1]}::int`, extra))
+    .orderBy(asc(d.dueOn))
     .limit(limit);
 }
 

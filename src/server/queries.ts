@@ -1,4 +1,5 @@
 import "server-only";
+import { DEADLINE_TYPES } from "@/lib/deadline-types";
 import { and, eq, gte, ilike, inArray, lte, or, sql, type SQL } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { db, schema } from "@/db";
@@ -23,6 +24,9 @@ export type ApplicationFilters = {
   assignedTo?: string;
   org?: string;
   pathway?: string;
+  dlType?: string;
+  dlFrom?: string;
+  dlTo?: string;
 };
 
 export function readFilters(sp: Record<string, string | string[] | undefined>): ApplicationFilters {
@@ -62,6 +66,13 @@ export function applicationWhere(user: SessionUser, f: ApplicationFilters): SQL 
   if (f.student) conds.push(or(ilike(s.firstName, `%${f.student}%`), ilike(s.lastName, `%${f.student}%`), ilike(sql`${s.firstName} || ' ' || ${s.lastName}`, `%${f.student}%`)));
   if (f.assignedTo) conds.push(eq(s.assignedToId, f.assignedTo));
   if (f.org && isStaff(user)) conds.push(eq(a.orgId, f.org));
+  // Applications with an open deadline of this type (or any type) in the date range.
+  if (f.dlType || f.dlFrom || f.dlTo) {
+    const typed = f.dlType && (DEADLINE_TYPES as readonly string[]).includes(f.dlType) ? sql` and ad.type = ${f.dlType}::deadline_type` : sql``;
+    const from = f.dlFrom && /^\d{4}-\d{2}-\d{2}$/.test(f.dlFrom) ? sql` and ad.due_on >= ${f.dlFrom}::date` : sql``;
+    const to = f.dlTo && /^\d{4}-\d{2}-\d{2}$/.test(f.dlTo) ? sql` and ad.due_on <= ${f.dlTo}::date` : sql``;
+    conds.push(sql`exists (select 1 from application_deadlines ad where ad.application_id = ${a.id} and ad.done_at is null${typed}${from}${to})`);
+  }
   return and(...conds);
 }
 
@@ -76,6 +87,7 @@ export function applicationsBase() {
       intakeYear: a.intakeYear,
       deadline: a.deadline,
       statusChangedAt: a.statusChangedAt,
+      nextDue: sql<string | null>`(select min(ad.due_on)::text from application_deadlines ad where ad.application_id = ${a.id} and ad.done_at is null and ad.due_on >= current_date)`,
       offerType: a.offerType,
       offerDate: a.offerDate,
       depositPaidOn: a.depositPaidOn,

@@ -8,7 +8,7 @@ import {
   GROUP_LABEL,
   agingList,
   countryMix,
-  deadlineList,
+  deadlineList, windowFor,
   groupCounts,
   kpiTotals,
   lateWork,
@@ -52,7 +52,7 @@ export default async function AdminDashboard({ user, f, showMoney = true }: { us
       todayCounts(user),
       agingList(user, 8, and(isNotNull(a.officerId), ne(a.officerId, user.id))),
       agingList(user, 6, isNull(a.officerId)),
-      deadlineList(user, 14, 6),
+      deadlineList(user, windowFor((f as Record<string, string | undefined>).dw), 6),
       recentChanges(user, 8),
       partnerLeaderboard(6),
       db.select().from(c).orderBy(asc(c.name)),
@@ -226,7 +226,7 @@ export default async function AdminDashboard({ user, f, showMoney = true }: { us
             />
           </Card>
 
-          <DeadlinesCard rows={deadlines} />
+          <DeadlinesCard rows={deadlines} window={(f as Record<string, string | undefined>).dw ?? "14"} />
 
           <Card>
             <CardHeader title="Destinations" subtitle="Applications by country" />

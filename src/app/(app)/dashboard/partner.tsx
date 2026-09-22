@@ -5,7 +5,7 @@ import type { SessionUser } from "@/lib/auth";
 import { fmtDate, fullName, greetingName } from "@/lib/format";
 import { applicationWhere, type ApplicationFilters } from "@/server/queries";
 import { getSettings, tierTargets } from "@/server/settings";
-import { agingList, countryMix, deadlineList, funnel, kpiTotals, monthlyPoints, myWork, recentChanges, teamLoad } from "@/server/dashboard";
+import { agingList, countryMix, deadlineList, windowFor, funnel, kpiTotals, monthlyPoints, myWork, recentChanges, teamLoad } from "@/server/dashboard";
 import { STAGE_LABEL, STAGE_TONE, enquiryCounts, followUpQueue } from "@/server/enquiries";
 import { commissionTotals, inr, walletBalance } from "@/server/commission";
 import {
@@ -69,7 +69,7 @@ export default async function PartnerDashboard({
   const [kpis, work, deadlines, recent, org, countries, destinations, points, steps, enquiries, followUps, wallet, commission] = await Promise.all([
     kpiTotals(user, and(applicationWhere(user, filters), mine)),
     myWork(user),
-    deadlineList(user, 14, 6, mine),
+    deadlineList(user, windowFor((f as Record<string, string | undefined>).dw), 6, mine),
     recentChanges(user, 6, mine),
     db.query.organizations.findFirst({ where: eq(og.id, user.orgId), with: { relationshipManager: true } }),
     db.select().from(c).orderBy(asc(c.name)),
@@ -317,7 +317,7 @@ export default async function PartnerDashboard({
             </Card>
           )}
 
-          <DeadlinesCard rows={deadlines} />
+          <DeadlinesCard rows={deadlines} window={(f as Record<string, string | undefined>).dw ?? "14"} />
 
           <UpdatesCard country={(f as Record<string, string | undefined>).uc} />
 

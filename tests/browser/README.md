@@ -23,6 +23,7 @@ node tests/browser/dashboards.mjs
 | `super-actions.mjs` | Role change, password reset and the forced password change |
 | `settings.mjs` | The four settings tabs per role, a platform save that sticks, and the colour and password rules |
 | `polish.mjs` | The command palette and its scoping, toasts, and the shell at phone width |
+| `app-deadlines.mjs` | Typed application deadlines: adding, telling the partner, dashboard windows, the list filter, ticking off, and the offer's accept-by date |
 | `artwork.mjs` | The logo and favicon uploader, what it serves, and who may change it |
 | `golive.mjs` | The sample-data cleanup: what it lists, what it refuses, what survives |
 | `catalogue.mjs` | The catalogue at full size: paging, the count, a bulk publish across every match, and post-study work rights |

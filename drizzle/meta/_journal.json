@@ -197,6 +197,13 @@
       "when": 1790066480758,
       "tag": "0027_bulletins",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1790066855674,
+      "tag": "0028_application_deadlines",
+      "breakpoints": true
     }
   ]
 }

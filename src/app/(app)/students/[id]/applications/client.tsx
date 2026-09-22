@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import { ActionForm, FieldError } from "@/components/action-form";
 import { Field, Input, Select, Textarea } from "@/components/ui";
 import { dayText, daysUntil } from "@/lib/catalogue";
-import { addCommentAction, changeStatusAction, createApplicationAction, saveOfferVisaAction } from "./actions";
+import { addCommentAction, addDeadlineAction, changeStatusAction, createApplicationAction, saveOfferVisaAction } from "./actions";
+import { DEADLINE_LABEL, DEADLINE_TYPES } from "@/lib/deadline-types";
 
 type ProgramOption = {
   id: string;
@@ -203,6 +204,30 @@ export function OfferVisaForm({ applicationId, values, currency, confirmation }:
           <FieldError name="visaDecision" />
         </Field>
         {date("visaDecisionOn", "Decision date")}
+      </div>
+    </ActionForm>
+  );
+}
+
+export function DeadlineAddForm({ applicationId }: { applicationId: string }) {
+  return (
+    <ActionForm action={addDeadlineAction} submitLabel="Add deadline" submitVariant="secondary" resetOnSuccess>
+      <input type="hidden" name="applicationId" value={applicationId} />
+      <div className="grid gap-2 sm:grid-cols-3">
+        <Field label="What is due" htmlFor={`dl-type-${applicationId}`}>
+          <Select id={`dl-type-${applicationId}`} name="type" defaultValue="">
+            <option value="">Choose</option>
+            {DEADLINE_TYPES.map((t) => <option key={t} value={t}>{DEADLINE_LABEL[t]}</option>)}
+          </Select>
+          <FieldError name="type" />
+        </Field>
+        <Field label="By" htmlFor={`dl-due-${applicationId}`}>
+          <Input id={`dl-due-${applicationId}`} name="dueOn" type="date" />
+          <FieldError name="dueOn" />
+        </Field>
+        <Field label="Note" htmlFor={`dl-note-${applicationId}`}>
+          <Input id={`dl-note-${applicationId}`} name="note" />
+        </Field>
       </div>
     </ActionForm>
   );

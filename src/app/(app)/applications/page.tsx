@@ -1,11 +1,13 @@
 import Link from "next/link";
+import { DEADLINE_LABEL, DEADLINE_TYPES } from "@/lib/deadline-types";
+import { daysUntil } from "@/lib/catalogue";
 import { asc, desc, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fmtDate, fullName, intakeLabel, MONTHS } from "@/lib/format";
 import { APP_ROLES, isStaff } from "@/lib/permissions";
 import { applicationsBase, applicationWhere, orgUsers, readFilters } from "@/server/queries";
-import { Button, Card, EmptyState, DateInput, Input, LinkButton, PageHeader, Select, StatusBadge, Table, Td, Th, Toolbar } from "@/components/ui";
+import { Button, Card, EmptyState, DateInput, Input, LinkButton, PageHeader, Select, StatusBadge, Table, Td, Th, Toolbar, cn } from "@/components/ui";
 import { IconApplications, IconExport } from "@/components/icons";
 
 export const metadata = { title: "Applications" };
@@ -93,6 +95,14 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
           <Input name="ack" placeholder="Acknowledgement no." aria-label="Acknowledgement number" defaultValue={f.ack} />
           <Input name="program" placeholder="Program name" aria-label="Program" defaultValue={f.program} />
           <Input name="student" placeholder="Student name" aria-label="Student" defaultValue={f.student} />
+          <Select name="dlType" aria-label="Deadline type" defaultValue={f.dlType ?? ""}>
+            <option value="">Any deadline</option>
+            {DEADLINE_TYPES.map((t) => <option key={t} value={t}>{DEADLINE_LABEL[t]} deadline</option>)}
+          </Select>
+          <div className="flex gap-2">
+            <DateInput label="Due from" name="dlFrom" defaultValue={f.dlFrom} />
+            <DateInput label="Due to" name="dlTo" defaultValue={f.dlTo} />
+          </div>
           <div className="flex gap-2 lg:col-span-5">
             <Button type="submit">Search</Button>
             <LinkButton variant="quiet" href="/applications">Clear all</LinkButton>
@@ -131,6 +141,7 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
                     <Td className="max-w-64">{r.programName}</Td>
                     <Td className="whitespace-nowrap">
                       {intakeLabel(r.intakeMonth, r.intakeYear)}
+                      {r.nextDue && <span className={cn("block text-xs", daysUntil(r.nextDue) <= 3 ? "font-medium text-red-700" : "text-muted")}>{daysUntil(r.nextDue) === 0 ? "Due today" : `Due in ${daysUntil(r.nextDue)}d`}</span>}
                       {r.deadline && <p className={overdue ? "text-xs text-muted line-through" : "text-xs text-red-600"}>⏱ {fmtDate(r.deadline)}</p>}
                     </Td>
                     <Td>{r.createdByName ?? r.createdByFallback}</Td>

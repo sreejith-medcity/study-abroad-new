@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { dayText, daysUntil } from "@/lib/catalogue";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { DEADLINE_LABEL, DEADLINE_TYPES } from "@/lib/deadline-types";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
@@ -239,6 +240,12 @@ export async function saveOfferVisaAction(_: FormState, formData: FormData): Pro
   if (!Object.keys(changed).length) return { ok: "Nothing changed." };
   await db.update(schema.applications).set({ ...values, updatedAt: new Date() }).where(eq(schema.applications.id, app.id));
   await audit(user.id, "application.offer_visa", "application", app.id, { changed });
+  // An accept-by date is a deadline like any other, so it shows on dashboards.
+  if (changed.offerAcceptBy) {
+    const d = schema.applicationDeadlines;
+    await db.delete(d).where(and(eq(d.applicationId, app.id), eq(d.type, "OFFER_ACCEPTANCE"), isNull(d.doneAt)));
+    if (values.offerAcceptBy) await db.insert(d).values({ applicationId: app.id, type: "OFFER_ACCEPTANCE", dueOn: values.offerAcceptBy, note: "From the offer", createdById: user.id });
+  }
   const student = await db.query.students.findFirst({ where: eq(schema.students.id, app.studentId), columns: { assignedToId: true } });
   const headline = changed.visaDecision
     ? `Visa ${values.visaDecision === "GRANTED" ? "granted" : "refused"}`
@@ -248,4 +255,41 @@ export async function saveOfferVisaAction(_: FormState, formData: FormData): Pro
   await notifyUsers(await partnerRecipients(app.orgId, student?.assignedToId), `${app.ackNo}: ${headline}`, Object.keys(changed).join(", "), `/students/${app.studentId}/applications?app=${app.id}`);
   revalidatePath(`/students/${app.studentId}/applications`);
   return { ok: `Saved ${Object.keys(changed).length} change${Object.keys(changed).length === 1 ? "" : "s"}.` };
+}
+
+const deadlineInput = z.object({
+  applicationId: z.string().min(1),
+  type: z.enum(DEADLINE_TYPES, { message: "Choose what is due" }),
+  dueOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose the date"),
+  note: z.string().trim().max(300).transform((v) => v || null),
+});
+
+/** The team dates a milestone on an application; the partner is told. */
+export async function addDeadlineAction(_: FormState, fd: FormData): Promise<FormState> {
+  const user = await requireUser([...PROCESSING_ROLES]);
+  const parsed = deadlineInput.safeParse(Object.fromEntries(fd));
+  if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Check the highlighted fields." };
+  const app = await getApplicationForUser(user, parsed.data.applicationId);
+  await db.insert(schema.applicationDeadlines).values({ applicationId: app.id, type: parsed.data.type, dueOn: parsed.data.dueOn, note: parsed.data.note, createdById: user.id });
+  await audit(user.id, "application.deadline", "application", app.id, { type: parsed.data.type, dueOn: parsed.data.dueOn });
+  const student = await db.query.students.findFirst({ where: eq(schema.students.id, app.studentId), columns: { assignedToId: true } });
+  await notifyUsers(await partnerRecipients(app.orgId, student?.assignedToId), `${app.ackNo}: ${DEADLINE_LABEL[parsed.data.type]} due ${dayText(parsed.data.dueOn)}`, parsed.data.note ?? undefined, `/students/${app.studentId}/applications?app=${app.id}`);
+  revalidatePath(`/students/${app.studentId}/applications`);
+  return { ok: "Deadline added." };
+}
+
+/** Either side can tick a milestone off; the team can also remove one. */
+export async function setDeadlineDoneAction(fd: FormData) {
+  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const d = await db.query.applicationDeadlines.findFirst({ where: eq(schema.applicationDeadlines.id, String(fd.get("id") ?? "")) });
+  if (!d) return;
+  const app = await getApplicationForUser(user, d.applicationId);
+  if (fd.get("remove") === "1") {
+    if (!(PROCESSING_ROLES as readonly string[]).includes(user.role)) return;
+    await db.delete(schema.applicationDeadlines).where(eq(schema.applicationDeadlines.id, d.id));
+  } else {
+    await db.update(schema.applicationDeadlines).set({ doneAt: d.doneAt ? null : new Date() }).where(eq(schema.applicationDeadlines.id, d.id));
+  }
+  await audit(user.id, "application.deadline_done", "application", app.id, { type: d.type });
+  revalidatePath(`/students/${app.studentId}/applications`);
 }

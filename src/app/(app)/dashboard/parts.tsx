@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { dayText, daysUntil } from "@/lib/catalogue";
+import { DEADLINE_LABEL, DEADLINE_WINDOWS, type DeadlineType } from "@/lib/deadline-types";
 import { fmtDate, fmtDateTime, fullName, intakeLabel, MONTHS } from "@/lib/format";
 import { GROUP_LABEL, getSlaDays } from "@/server/dashboard";
 import type { StatusGroup } from "@/db/schema";
-import { Button, Card, CardHeader, Chip, DateInput, LinkButton, Select, StatusBadge, Table, Td, Th, Toolbar } from "@/components/ui";
+import { Button, Card, CardHeader, Chip, DateInput, LinkButton, Select, StatusBadge, Table, Td, Th, Toolbar, cn } from "@/components/ui";
 import { IconClock } from "@/components/icons";
 
 /** Shared date, intake and destination filter used by the dashboards that report numbers. */
@@ -105,29 +107,34 @@ export function RecentChangesCard({ rows, showOrg = false, title = "Latest movem
 
 export function DeadlinesCard({
   rows,
-  days = 14,
+  window = "14",
 }: {
-  rows: { id: string; deadline: Date | null; studentId: string; firstName: string; lastName: string; program: string; university: string }[];
-  days?: number;
+  rows: { deadlineId: string; id: string; type: DeadlineType; dueOn: string; studentId: string; firstName: string; lastName: string; program: string; university: string }[];
+  window?: string;
 }) {
   return (
     <Card>
-      <CardHeader title="Upcoming deadlines" subtitle={`Next ${days} days`} />
+      <CardHeader title="Upcoming deadlines" action={<Link href="/deadlines?tab=applications" className="text-[13px] font-medium text-brand-600 hover:underline">View all</Link>} />
+      <div className="flex flex-wrap gap-1.5 border-b border-line px-4 pb-3">
+        {DEADLINE_WINDOWS.map(([key, label]) => (
+          <Link key={key} href={`/dashboard?dw=${key}`} scroll={false} className={cn("rounded-full border px-2.5 py-0.5 text-xs font-medium", window === key ? "border-brand-600 bg-brand-600 text-white" : "border-line-strong text-ink-soft")}>{label}</Link>
+        ))}
+      </div>
       <ul>
         {rows.map((d) => (
-          <li key={d.id} className="border-b border-line px-4 py-2.5 last:border-0">
+          <li key={d.deadlineId} className="border-b border-line px-4 py-2.5 last:border-0">
             <div className="flex items-center justify-between gap-2">
               <Link href={`/students/${d.studentId}/applications?app=${d.id}`} className="font-medium hover:underline">
                 {fullName(d)}
               </Link>
-              <Chip tone="bad">
-                <IconClock className="size-3.5" /> {fmtDate(d.deadline)}
+              <Chip tone={daysUntil(d.dueOn) <= 2 ? "bad" : "warn"}>
+                <IconClock className="size-3.5" /> {DEADLINE_LABEL[d.type]} · {dayText(d.dueOn)}
               </Chip>
             </div>
             <p className="text-xs text-muted">{d.program} · {d.university}</p>
           </li>
         ))}
-        {rows.length === 0 && <li className="px-4 py-6 text-center text-muted">No deadlines in the next {days} days.</li>}
+        {rows.length === 0 && <li className="px-4 py-6 text-center text-muted">Nothing due in this window.</li>}
       </ul>
       <div className="border-t border-line px-4 py-2.5">
         <Link href="/deadlines?mine=1" className="text-[13px] font-medium text-brand-600 hover:underline">Institution deadlines on your students&apos; shortlists</Link>
