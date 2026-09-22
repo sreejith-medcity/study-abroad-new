@@ -7,6 +7,7 @@ import { cn } from "./ui";
 import {
   IconApplications,
   IconBuilding,
+  IconCalendar,
   IconClock,
   IconCommission,
   IconDashboard,
@@ -47,6 +48,7 @@ const ICONS = {
   universities: IconBuilding,
   deadlines: IconClock,
   services: IconGlobe,
+  events: IconCalendar,
 } as const;
 
 export type NavItem = { href: string; label: string; icon: keyof typeof ICONS; soon?: string };

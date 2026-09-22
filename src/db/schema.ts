@@ -55,6 +55,7 @@ export const offerType = pgEnum("offer_type", ["CONDITIONAL", "UNCONDITIONAL"]);
 export const visaDecision = pgEnum("visa_decision", ["GRANTED", "REFUSED"]);
 export const serviceType = pgEnum("service_type", ["EDUCATION_LOAN", "FOREX", "ACCOMMODATION", "INSURANCE", "FLIGHT", "OTHER"]);
 export const serviceStatus = pgEnum("service_status", ["NEW", "IN_PROGRESS", "DONE", "CANCELLED"]);
+export const eventKind = pgEnum("event_kind", ["WEBINAR", "UNIVERSITY_VISIT", "TRAINING", "FAIR"]);
 export const feeStatus = pgEnum("fee_status", ["NOT_APPLICABLE", "DUE", "PAID"]);
 export const commentChannel = pgEnum("comment_channel", ["TEAM", "STUDENT"]);
 export const messageSource = pgEnum("message_source", ["WEB", "WHATSAPP", "SYSTEM"]);
@@ -777,6 +778,52 @@ export const serviceRequests = pgTable(
   (t) => [index("service_requests_student_idx").on(t.studentId), index("service_requests_status_idx").on(t.status)],
 );
 
+/**
+ * Webinars, university delegate visits, training sessions and fairs the
+ * Overseas team runs for partners, some open to their students too.
+ */
+export const events = pgTable(
+  "events",
+  {
+    id: id(),
+    title: text("title").notNull(),
+    kind: eventKind("kind").notNull(),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+    endsAt: timestamp("ends_at", { withTimezone: true }),
+    // Either a place (city and venue) or a link, or both for a hybrid session.
+    location: text("location"),
+    joinUrl: text("join_url"),
+    universityId: text("university_id").references(() => universities.id, { onDelete: "set null" }),
+    description: text("description"),
+    openToStudents: boolean("open_to_students").notNull().default(false),
+    capacity: integer("capacity"),
+    published: boolean("published").notNull().default(true),
+    createdById: text("created_by_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("events_starts_idx").on(t.startsAt)],
+);
+
+/** Who is coming: a partner's own seat (no student), or a student they registered. */
+export const eventRegistrations = pgTable(
+  "event_registrations",
+  {
+    id: id(),
+    eventId: text("event_id")
+      .notNull()
+      .references(() => events.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    studentId: text("student_id").references(() => students.id, { onDelete: "cascade" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("event_registrations_self_uq").on(t.eventId, t.userId).where(sql`${t.studentId} is null`),
+    uniqueIndex("event_registrations_student_uq").on(t.eventId, t.studentId).where(sql`${t.studentId} is not null`),
+  ],
+);
+
 // ---------- Enquiries ----------
 
 export const enquiries = pgTable(
@@ -883,6 +930,17 @@ export const serviceRequestsRelations = relations(serviceRequests, ({ one }) => 
   org: one(organizations, { fields: [serviceRequests.orgId], references: [organizations.id] }),
   requestedBy: one(users, { fields: [serviceRequests.requestedById], references: [users.id], relationName: "serviceRequester" }),
   owner: one(users, { fields: [serviceRequests.ownerId], references: [users.id], relationName: "serviceOwner" }),
+}));
+
+export const eventsRelations = relations(events, ({ one, many }) => ({
+  university: one(universities, { fields: [events.universityId], references: [universities.id] }),
+  registrations: many(eventRegistrations),
+}));
+
+export const eventRegistrationsRelations = relations(eventRegistrations, ({ one }) => ({
+  event: one(events, { fields: [eventRegistrations.eventId], references: [events.id] }),
+  user: one(users, { fields: [eventRegistrations.userId], references: [users.id] }),
+  student: one(students, { fields: [eventRegistrations.studentId], references: [students.id] }),
 }));
 
 export const programDeadlinesRelations = relations(programDeadlines, ({ one }) => ({

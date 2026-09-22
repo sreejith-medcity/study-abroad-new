@@ -38,7 +38,13 @@ const partnerNav = (home: string): NavGroup[] => [
       { href: "/commission", label: "Commission", icon: "commission" },
     ],
   },
-  { title: "Support", items: [{ href: "/learning", label: "Learning resources", icon: "learning" }] },
+  {
+    title: "Support",
+    items: [
+      { href: "/events", label: "Events", icon: "events" },
+      { href: "/learning", label: "Learning resources", icon: "learning" },
+    ],
+  },
 ];
 
 const PARTNER_NAV = partnerNav("Dashboard");
@@ -71,6 +77,7 @@ const ADMIN_NAV: NavGroup[] = [
     items: [
       { href: "/enquiries", label: "Enquiries", icon: "enquiry" },
       { href: "/admin/partners", label: "Partners", icon: "partners" },
+      { href: "/admin/events", label: "Events", icon: "events" },
       { href: "/admin/insights", label: "Insights", icon: "insights" },
     ],
   },
@@ -112,6 +119,7 @@ const DOCUMENTATION_NAV: NavGroup[] = [
       { href: "/universities", label: "Universities", icon: "universities" },
       { href: "/deadlines", label: "Deadlines", icon: "deadlines" },
       { href: "/learning", label: "Learning resources", icon: "learning" },
+      { href: "/events", label: "Events", icon: "events" },
     ],
   },
 ];

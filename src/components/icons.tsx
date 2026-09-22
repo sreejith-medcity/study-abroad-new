@@ -105,3 +105,6 @@ export const IconKey = (p: P) => (
 export const IconBuilding = (p: P) => (
   <svg {...base} {...p}><path d="M4 21V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v15M14 10h4a2 2 0 0 1 2 2v9M3 21h18M8 8h2M8 12h2M8 16h2M17 14h1M17 18h1" /></svg>
 );
+export const IconCalendar = (p: P) => (
+  <svg {...base} {...p}><rect x="3.5" y="5" width="17" height="15" rx="2" /><path d="M3.5 10h17M8 3v4M16 3v4" /></svg>
+);
