@@ -40,7 +40,7 @@ export function durationText(months: number | null | undefined) {
 }
 
 /** Long enough to compare honestly, short enough that it is still a shortlist. */
-export const SHORTLIST_LIMIT = 12;
+export const SHORTLIST_LIMIT = 15;
 
 /**
  * Tuition as the source published it: per year where known, otherwise the

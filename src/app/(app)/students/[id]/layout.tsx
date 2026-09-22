@@ -41,6 +41,9 @@ export default async function StudentLayout({ children, params }: { children: Re
           <Link href={findHref} data-print="hide" className="mt-2 inline-block text-[13px] font-medium text-brand-600 hover:underline">
             Find programs for {student.firstName}{preferred ? ` in ${preferred.name}` : ""}
           </Link>
+          <Link href={`/program-options/new?student=${id}`} data-print="hide" className="ml-3 mt-2 inline-block text-[13px] font-medium text-brand-600 hover:underline">
+            Ask the team for options
+          </Link>
           <p className="mt-2 text-xs text-muted">
             {isStaff(user) ? `${student.org.name} · ` : ""}Assigned to {student.assignedTo ? student.assignedTo.deskLabel ?? student.assignedTo.name : "nobody"}
             {student.consentAt ? " · Consent recorded" : " · No consent on file"}

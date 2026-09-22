@@ -104,6 +104,7 @@ export async function clearDemoData(actorId: string): Promise<Record<string, num
       sql`delete from applications where id in (select id from _apps)`,
       sql`delete from enquiries where org_id in (select id from _orgs) or email like '%@example.com'`,
       sql`delete from tickets where org_id in (select id from _orgs)`,
+      sql`delete from option_requests where org_id in (select id from _orgs)`,
       sql`delete from service_requests where student_id in (select id from _students) or org_id in (select id from _orgs)`,
       sql`delete from students where id in (select id from _students) or org_id in (select id from _orgs)`,
 

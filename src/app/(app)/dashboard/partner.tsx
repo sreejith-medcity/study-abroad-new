@@ -115,6 +115,9 @@ export default async function PartnerDashboard({
             <LinkButton href="/search" variant="secondary">
               <IconSearch className="size-4" /> Find programs
             </LinkButton>
+            <LinkButton href="/program-options/new" variant="secondary">
+              Request program options
+            </LinkButton>
             <LinkButton href="/students/new">
               <IconPlus className="size-4" /> Register student
             </LinkButton>

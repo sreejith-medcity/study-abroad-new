@@ -36,6 +36,7 @@ node tests/browser/dashboards.mjs
 | `services.mjs` | A partner requests an education loan, the team works it from the queue, and the partner sees and is told of each change |
 | `training.mjs` | Building and publishing a course with its rules, failing and passing the quiz, the certificate, team progress and who may open a certificate |
 | `universities.mjs` | The universities index: destination, level and name filters, sorting by size, and the links to each university and its programs |
+| `program-options.mjs` | Requesting options for a new and a registered student, the team's list, shortlisting it all, linking, archiving and branch isolation |
 | `programs.mjs` | The program and university pages, the admin edit screen and its rules, and that an unverified fee never reads as free |
 | `shortlist.mjs` | Shortlisting from search and a program page, the side by side comparison, removal, read-only roles and branch isolation |
 

@@ -26,6 +26,7 @@ const partnerNav = (home: string): NavGroup[] => [
     title: "Find programs",
     items: [
       { href: "/search", label: "Search programs", icon: "search" },
+      { href: "/program-options", label: "Program options", icon: "spark" },
       { href: "/universities", label: "Universities", icon: "universities" },
       { href: "/deadlines", label: "Deadlines", icon: "deadlines" },
       { href: "/enquiries", label: "Enquiries", icon: "enquiry" },
@@ -60,6 +61,7 @@ const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/queue", label: "Work queue", icon: "queue" },
       { href: "/applications", label: "Applications", icon: "applications" },
       { href: "/students", label: "Students", icon: "students" },
+      { href: "/program-options", label: "Program options", icon: "spark" },
       { href: "/admin/services", label: "Services", icon: "services" },
       { href: "/support", label: "Help desk", icon: "support" },
     ],

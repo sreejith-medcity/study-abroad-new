@@ -58,6 +58,7 @@ export const serviceStatus = pgEnum("service_status", ["NEW", "IN_PROGRESS", "DO
 export const eventKind = pgEnum("event_kind", ["WEBINAR", "UNIVERSITY_VISIT", "TRAINING", "FAIR"]);
 export const ticketCategory = pgEnum("ticket_category", ["APPLICATION", "COMMISSION", "CATALOGUE", "ACCESS", "OTHER"]);
 export const ticketStatus = pgEnum("ticket_status", ["OPEN", "WAITING_PARTNER", "RESOLVED"]);
+export const optionsStatus = pgEnum("options_status", ["REQUESTED", "OPTIONS_SENT", "APPLIED"]);
 export const feeStatus = pgEnum("fee_status", ["NOT_APPLICABLE", "DUE", "PAID"]);
 export const commentChannel = pgEnum("comment_channel", ["TEAM", "STUDENT"]);
 export const messageSource = pgEnum("message_source", ["WEB", "WHATSAPP", "SYSTEM"]);
@@ -925,6 +926,76 @@ export const trainingAttempts = pgTable(
   (t) => [index("training_attempts_user_idx").on(t.userId, t.courseId)],
 );
 
+/**
+ * A partner asks the Overseas team which programs suit a student; the team
+ * answers with a list the partner can shortlist or apply to. The student may
+ * not have a file yet, so the request carries enough of the profile to answer.
+ */
+export const optionRequests = pgTable(
+  "option_requests",
+  {
+    id: id(),
+    requestNo: text("request_no").notNull().unique(),
+    orgId: text("org_id")
+      .notNull()
+      .references(() => organizations.id),
+    requestedById: text("requested_by_id").references(() => users.id, { onDelete: "set null" }),
+    studentId: text("student_id").references(() => students.id, { onDelete: "set null" }),
+    studentName: text("student_name").notNull(),
+    educationCountry: text("education_country"),
+    highestLevel: text("highest_level"),
+    destinations: text("destinations").array().notNull().default(sql`'{}'::text[]`),
+    studyLevels: text("study_levels").array().notNull().default(sql`'{}'::text[]`),
+    studyAreas: text("study_areas").array().notNull().default(sql`'{}'::text[]`),
+    additionalInfo: text("additional_info"),
+    status: optionsStatus("status").notNull().default("REQUESTED"),
+    archived: boolean("archived").notNull().default(false),
+    assignedToId: text("assigned_to_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("option_requests_org_idx").on(t.orgId)],
+);
+
+export const optionRequestPrograms = pgTable(
+  "option_request_programs",
+  {
+    id: id(),
+    requestId: text("request_id")
+      .notNull()
+      .references(() => optionRequests.id, { onDelete: "cascade" }),
+    programId: text("program_id")
+      .notNull()
+      .references(() => programs.id, { onDelete: "cascade" }),
+    note: text("note"),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("option_request_programs_uq").on(t.requestId, t.programId)],
+);
+
+export const optionRequestFiles = pgTable("option_request_files", {
+  id: id(),
+  requestId: text("request_id")
+    .notNull()
+    .references(() => optionRequests.id, { onDelete: "cascade" }),
+  storageKey: text("storage_key").notNull(),
+  fileName: text("file_name").notNull(),
+  mimeType: text("mime_type").notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  uploadedById: text("uploaded_by_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: createdAt(),
+});
+
+export const optionRequestMessages = pgTable("option_request_messages", {
+  id: id(),
+  requestId: text("request_id")
+    .notNull()
+    .references(() => optionRequests.id, { onDelete: "cascade" }),
+  authorId: text("author_id").references(() => users.id, { onDelete: "set null" }),
+  body: text("body").notNull(),
+  createdAt: createdAt(),
+});
+
 // ---------- Enquiries ----------
 
 export const enquiries = pgTable(
@@ -1068,6 +1139,30 @@ export const trainingQuestionsRelations = relations(trainingQuestions, ({ one })
 export const trainingAttemptsRelations = relations(trainingAttempts, ({ one }) => ({
   course: one(trainingCourses, { fields: [trainingAttempts.courseId], references: [trainingCourses.id] }),
   user: one(users, { fields: [trainingAttempts.userId], references: [users.id] }),
+}));
+
+export const optionRequestsRelations = relations(optionRequests, ({ one, many }) => ({
+  org: one(organizations, { fields: [optionRequests.orgId], references: [organizations.id] }),
+  requestedBy: one(users, { fields: [optionRequests.requestedById], references: [users.id], relationName: "optionRequester" }),
+  assignedTo: one(users, { fields: [optionRequests.assignedToId], references: [users.id], relationName: "optionAssignee" }),
+  student: one(students, { fields: [optionRequests.studentId], references: [students.id] }),
+  programs: many(optionRequestPrograms),
+  files: many(optionRequestFiles),
+  messages: many(optionRequestMessages),
+}));
+
+export const optionRequestProgramsRelations = relations(optionRequestPrograms, ({ one }) => ({
+  request: one(optionRequests, { fields: [optionRequestPrograms.requestId], references: [optionRequests.id] }),
+  program: one(programs, { fields: [optionRequestPrograms.programId], references: [programs.id] }),
+}));
+
+export const optionRequestFilesRelations = relations(optionRequestFiles, ({ one }) => ({
+  request: one(optionRequests, { fields: [optionRequestFiles.requestId], references: [optionRequests.id] }),
+}));
+
+export const optionRequestMessagesRelations = relations(optionRequestMessages, ({ one }) => ({
+  request: one(optionRequests, { fields: [optionRequestMessages.requestId], references: [optionRequests.id] }),
+  author: one(users, { fields: [optionRequestMessages.authorId], references: [users.id] }),
 }));
 
 export const programDeadlinesRelations = relations(programDeadlines, ({ one }) => ({
