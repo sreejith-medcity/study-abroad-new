@@ -12,6 +12,9 @@ import { Button, Card, CardHeader, Chip, DataList, EmptyState, Input, Select, St
 import { confirmationLabel, dayText, daysUntil, deadlineText, tuitionText } from "@/lib/catalogue";
 import { markFeePaidAction, setDeadlineDoneAction, setDocumentTypeAction, setPriorityAction } from "./actions";
 import { PRIORITY_LABEL } from "@/lib/priority";
+import { RAZORPAY_CURRENCIES } from "@/lib/razorpay";
+import { razorpayConfig } from "@/server/razorpay";
+import { PayFeeButton } from "@/components/pay-button";
 import { ApplyForm, CommentComposer, DeadlineAddForm, OfferVisaForm, StatusForm, type OfferVisaValues } from "./client";
 import { DEADLINE_LABEL } from "@/lib/deadline-types";
 
@@ -191,6 +194,7 @@ async function ApplicationDetail({ appId, studentId, channel, canProcess, canChe
   const { blockers, warnings } = summarise(checks);
   const statuses = canProcess ? await statusesFor(app.status.pathway) : [];
   const currency = app.program.university.country.currency;
+  const payOnline = (await razorpayConfig())?.enabled ?? false;
 
   return (
     <div className="space-y-4">
@@ -211,6 +215,9 @@ async function ApplicationDetail({ appId, studentId, channel, canProcess, canChe
         <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-line pt-3">
           <span className="text-muted">Application fee:</span>
           {app.feeStatus === "NOT_APPLICABLE" ? <Chip tone="ok">No application fee</Chip> : app.feeStatus === "PAID" ? <Chip tone="ok">Paid{app.program.applicationFee != null ? ` ${fmtMoney(app.program.applicationFee, currency)}` : ""}</Chip> : app.program.applicationFee == null ? <Chip tone="warn">Fee to confirm</Chip> : <Chip tone="warn">Due {fmtMoney(app.program.applicationFee, currency)}</Chip>}
+          {app.feeStatus === "DUE" && canWrite && payOnline && app.program.applicationFee != null && app.program.applicationFee > 0 && (RAZORPAY_CURRENCIES as readonly string[]).includes(currency) && (
+            <PayFeeButton applicationId={app.id} label={`Pay ${fmtMoney(app.program.applicationFee, currency)} online`} />
+          )}
           {app.feeStatus === "DUE" && canProcess && (
             <form action={markFeePaidAction}><input type="hidden" name="applicationId" value={app.id} /><Button variant="quiet" className="py-1 text-xs">Mark paid</Button></form>
           )}

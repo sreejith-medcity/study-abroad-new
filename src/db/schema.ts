@@ -1160,6 +1160,46 @@ export const promotions = pgTable(
   (t) => [index("promotions_dates_idx").on(t.endsOn)],
 );
 
+/**
+ * Razorpay keys, apart from the other settings so they are never loaded with
+ * them. The two secrets are encrypted with a key derived from AUTH_SECRET.
+ * Environment variables, when set, take precedence over this row.
+ */
+export const paymentSettings = pgTable("payment_settings", {
+  id: text("id").primaryKey().default("app"),
+  enabled: boolean("enabled").notNull().default(false),
+  razorpayKeyId: text("razorpay_key_id"),
+  razorpayKeySecretEnc: text("razorpay_key_secret_enc"),
+  razorpayWebhookSecretEnc: text("razorpay_webhook_secret_enc"),
+  updatedById: text("updated_by_id").references(() => users.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const paymentStatus = pgEnum("payment_status", ["CREATED", "PAID", "FAILED"]);
+
+/** Money taken online, one row per Razorpay order. */
+export const payments = pgTable(
+  "payments",
+  {
+    id: id(),
+    orgId: text("org_id")
+      .notNull()
+      .references(() => organizations.id),
+    applicationId: text("application_id").references(() => applications.id, { onDelete: "set null" }),
+    purpose: text("purpose").notNull(),
+    amountMinor: integer("amount_minor").notNull(),
+    currency: text("currency").notNull(),
+    status: paymentStatus("status").notNull().default("CREATED"),
+    razorpayOrderId: text("razorpay_order_id").notNull().unique(),
+    razorpayPaymentId: text("razorpay_payment_id"),
+    failureReason: text("failure_reason"),
+    createdById: text("created_by_id").references(() => users.id, { onDelete: "set null" }),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("payments_org_idx").on(t.orgId, t.createdAt), index("payments_app_idx").on(t.applicationId)],
+);
+
 /** Test preparation courses Medcity runs, offered on each branch's own prep page. */
 export const prepCourses = pgTable("prep_courses", {
   id: id(),

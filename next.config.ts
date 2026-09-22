@@ -23,7 +23,9 @@ const securityHeaders = [
     value: [
       "default-src 'self'",
       // Next.js inlines a bootstrap script and the brand palette is an inline style tag.
-      "script-src 'self' 'unsafe-inline'" + (process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""),
+      // Razorpay Checkout loads its script and opens its payment window in a frame.
+      "script-src 'self' 'unsafe-inline' https://checkout.razorpay.com" + (process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""),
+      "frame-src https://api.razorpay.com https://checkout.razorpay.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
       "img-src 'self' data: blob: https:",

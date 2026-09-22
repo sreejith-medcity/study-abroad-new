@@ -99,7 +99,10 @@ const ADMIN_NAV: NavGroup[] = [
   },
   {
     title: "Money",
-    items: [{ href: "/admin/commission", label: "Commission", icon: "commission" }],
+    items: [
+      { href: "/admin/commission", label: "Commission", icon: "commission" },
+      { href: "/admin/payments", label: "Online payments", icon: "wallet" },
+    ],
   },
   {
     title: "Support",

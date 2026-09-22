@@ -8,6 +8,8 @@ import { commissionTotals, inr, payoutList, walletBalance, walletLedger } from "
 import { Alert, Card, CardHeader, Chip, DataList, EmptyState, PageHeader, Stat, Table, Td, Th } from "@/components/ui";
 import { IconWallet, IconCheck, IconClock } from "@/components/icons";
 import { PayoutForm, CancelPayoutButton } from "./forms";
+import { paymentList } from "@/server/payment-queries";
+import { PaymentTable } from "@/components/payment-table";
 
 export const metadata = { title: "Wallet" };
 
@@ -41,6 +43,7 @@ export default async function WalletPage() {
 
   const pending = payouts.find((p) => p.status === "REQUESTED");
   const owner = user.role === "PARTNER";
+  const paidOnline = await paymentList(user.orgId, 25);
   const companies = owner
     ? await db.query.billingCompanies.findMany({ where: eq(schema.billingCompanies.orgId, user.orgId), columns: { id: true, legalName: true, gstin: true, isDefault: true } })
     : [];
@@ -159,6 +162,12 @@ export default async function WalletPage() {
           </Card>
         </div>
       </div>
+      {paidOnline.length > 0 && (
+        <Card className="mt-5">
+          <CardHeader title="Paid online" subtitle="Application fees your branch paid through Razorpay" />
+          <PaymentTable rows={paidOnline} showOrg={false} />
+        </Card>
+      )}
     </>
   );
 }

@@ -7,6 +7,7 @@ import { getSettings, fxRates, signInPoints, tierTargets } from "@/server/settin
 import { Alert, Card, CardHeader } from "@/components/ui";
 import { PlatformForm } from "../forms";
 import { ArtworkPanel } from "../artwork";
+import { PaymentSettingsForm } from "./payments";
 
 export const metadata = { title: "Platform settings" };
 
@@ -17,6 +18,9 @@ export default async function PlatformSettingsPage() {
   }
 
   const settings = await getSettings();
+  const pay = await db.query.paymentSettings.findFirst({ where: eq(schema.paymentSettings.id, "app") });
+  const envKeys = !!(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET);
+  const base = (process.env.PUBLIC_BASE_URL ?? "https://doc.medcityoverseas.com").replace(/\/$/, "");
   const editor = settings.updatedById
     ? await db.query.users.findFirst({ where: eq(schema.users.id, settings.updatedById) })
     : null;
@@ -28,6 +32,16 @@ export default async function PlatformSettingsPage() {
         favicon={Boolean(settings.faviconKey)}
         version={`${settings.logoKey ?? "none"}-${settings.faviconKey ?? "none"}`}
       />
+
+      <Card id="payments">
+        <CardHeader title="Online payments" subtitle="Razorpay, for application fees in the currency the program records. International currencies must be enabled on the Razorpay account." />
+        <div className="space-y-3 p-4 pt-0">
+          <PaymentSettingsForm keyId={pay?.razorpayKeyId ?? null} secretSet={!!pay?.razorpayKeySecretEnc} webhookSet={!!pay?.razorpayWebhookSecretEnc || !!process.env.RAZORPAY_WEBHOOK_SECRET} enabled={pay?.enabled ?? false} envKeys={envKeys} />
+          <p className="text-xs text-muted">
+            In the Razorpay dashboard, add a webhook to <span className="font-mono text-ink-soft">{base}/api/razorpay/webhook</span> for payment.captured, order.paid and payment.failed, with the same webhook secret.
+          </p>
+        </div>
+      </Card>
 
       <Card>
       <CardHeader

@@ -120,6 +120,7 @@ All seeded users share the password `Password@123`. Every person, university and
 | `npm run db:seed` | Reset and load sample data |
 | `npm run db:promote -- you@example.com` | Make an existing account a super admin (safe to run against production) |
 | `npm run db:demo-off` | Switch off every sample `.test` account and scramble its password. Add `--delete-enquiries` to drop the sample enquiries too |
+| `POST /api/razorpay/webhook` | Razorpay's webhook for payment.captured, order.paid and payment.failed, signed with the webhook secret |
 | `POST /api/cron/cricos` | Monthly CRICOS refresh for a scheduler, with `Authorization: Bearer $CRON_SECRET`. New courses land as drafts |
 | `npx tsx scripts/sync-cricos.ts <folder> [--publish]` | Load the CRICOS register from its three downloaded CSVs (the admin screen does the same from data.gov.au) |
 | `npx tsx scripts/supabase-part.ts <migration tag> "<title>"` | Write a migration as SQL that is safe to run twice in the Supabase SQL editor, with the migration recorded |
@@ -182,6 +183,8 @@ tests/                          node:test unit tests
 - Audit log covers profile edits, reassignments, status changes, passport reveals, document uploads, downloads and deletes, exports and imports.
 - Uploads: PDF / JPG / PNG / WebP up to 10 MB, stored outside the web root, served with `no-store` and `nosniff`.
 - In production the WhatsApp webhook refuses requests unless `WHATSAPP_APP_SECRET` is set.
+- Razorpay: keys come from `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` and `RAZORPAY_WEBHOOK_SECRET` when set, otherwise from Settings, Platform, where the two secrets are sealed with AES-256-GCM under a key derived from `AUTH_SECRET` (changing `AUTH_SECRET` means entering them again). The webhook at `/api/razorpay/webhook` refuses anything unsigned. Fees are charged in the program's own currency; nothing is converted.
+- A portal student opens only their own documents: what they uploaded and what the branch shared with them.
 
 ## Before going live
 

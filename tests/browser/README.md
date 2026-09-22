@@ -47,6 +47,7 @@ node tests/browser/dashboards.mjs
 | `directory.mjs` | The team's contact list with its rules and escalation levels, quick links, promotional schemes with dates, destinations and who is told, the partner pages and dashboard cards, and the owner's commission switch |
 | `student-platform.mjs` | The branch's name, colour and logo on its portal and enquiry form with the colour and file rules, the WhatsApp switches, and the sign-up question builder with answers on the enquiry |
 | `rich-prep.mjs` | Comment formatting (the format bar, what renders and what stays text, previews) and the branch test preparation page: courses and their rules, the owner's switch, and an enquiry from the page |
+| `payments.mjs` | The owner's Razorpay keys (sealed, never shown again), a partner paying a due fee against a stand-in for Razorpay's API, the signed webhook marking it paid once, the lists, and the switch. Start the server with `RAZORPAY_API_BASE=http://localhost:4010` |
 | `shortlist.mjs` | Shortlisting from search and a program page, the side by side comparison, removal, read-only roles and branch isolation |
 
 Screenshots land in `/tmp/smoke-*`. Each script exits non-zero if a check fails.
