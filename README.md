@@ -161,14 +161,13 @@ tests/                          node:test unit tests
 
 ### Two rules for server actions
 
-- **No `loading.tsx` on a route whose page posts server actions that
-  revalidate.** With a route-level loading boundary, the action's refreshed
-  page could arrive and never be applied: the save happened, the screen kept the
-  old state (about one run in three for opening a branch's public form). Routes
-  with forms have no `loading.tsx` (the student file, settings, enquiries,
-  learning, the work queue and the admin screens); read-only ones (search,
-  dashboard, applications list, audit, insights, partner commission) keep
-  their skeletons.
+- **No `loading.tsx` anywhere in the app.** A route-level loading boundary
+  breaks two things. After a server action that revalidates, the refreshed page
+  could arrive and never be applied: the save happened, the screen kept the old
+  state (about one run in three for opening a branch's public form). And a link
+  to the same page with other search params (a filter chip, a tab, the next
+  page) could fetch the new page and never show it: search chips failed about
+  half the time. Both went away with the skeletons.
 - **No `redirect()` to the same page with other search params.** Return
   `redirectTo` in the form state and let `ActionForm` navigate. The redirect
   could leave the button on its pending label after the save.

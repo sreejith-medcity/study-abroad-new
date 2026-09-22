@@ -8,6 +8,7 @@ import { LEVEL_LABEL, PATHWAY_LABEL, SHORTLIST_LIMIT, daysUntil, deadlineText, d
 import { QUALIFYING_LABEL, checkEligibility, qualifyingLevel } from "@/lib/eligibility";
 import { MONTHS, fmtMoney, fullName } from "@/lib/format";
 import { ADMIN_ROLES, APP_ROLES, isAdmin, isStaff } from "@/lib/permissions";
+import { PROGRAM_TAGS } from "@/lib/program-tags";
 import { openScholarships } from "@/server/scholarships";
 import { programDeadlines } from "@/server/deadlines";
 import { activeRules } from "@/server/commission-estimate";
@@ -105,7 +106,7 @@ export default async function ProgramPage({
   const qLevel = qualifyingLevel(program.level);
 
   const requirements = [
-    program.minIelts != null && { label: "IELTS overall", value: program.minIelts.toFixed(1) },
+    program.minIelts != null && { label: "IELTS overall", value: `${program.minIelts.toFixed(1)}${program.minIeltsBand != null ? `, no band below ${program.minIeltsBand.toFixed(1)}` : ""}` },
     program.minPte != null && { label: "PTE Academic", value: String(program.minPte) },
     program.minToefl != null && { label: "TOEFL iBT", value: String(program.minToefl) },
     program.minDuolingo != null && { label: "Duolingo", value: String(program.minDuolingo) },
@@ -187,6 +188,12 @@ export default async function ProgramPage({
                   ? [{ label: "Your commission (estimate)", value: commission.amount != null ? `≈ ${fmtMoney(commission.amount, commission.currency)} (${commission.terms})` : `${commission.terms}; tuition not recorded yet`, tone: "ok" as const }]
                   : []),
                 { label: "Deposit to confirm a place", value: feeText(program.initialDeposit, cur, { zero: "No deposit" }) },
+                ...(program.balanceDeposit != null ? [{ label: "Balance deposit", value: feeText(program.balanceDeposit, cur, { zero: "No balance deposit" }) }] : []),
+                ...(program.typicalScholarship ? [{ label: "Typical scholarship", value: program.typicalScholarship, tone: "ok" as const }] : []),
+                ...(program.tags.length ? [{ label: "Labels", value: <span className="flex flex-wrap gap-1">{program.tags.map((t) => <Chip key={t} tone="info">{PROGRAM_TAGS[t as keyof typeof PROGRAM_TAGS] ?? t}</Chip>)}</span> }] : []),
+                ...(program.programUrl
+                  ? [{ label: "Program page", value: <a href={program.programUrl} target="_blank" rel="noopener noreferrer" className="break-all text-brand-600 hover:underline">{new URL(program.programUrl).hostname} ↗</a> }]
+                  : []),
                 ...(program.externalCode ? [{ label: program.source === "CRICOS" ? "Source" : "CRICOS code", value: program.source === "CRICOS" ? `CRICOS register, course ${program.externalCode}` : program.externalCode }] : []),
               ]}
             />
@@ -230,6 +237,12 @@ export default async function ProgramPage({
           <Card>
             <CardHeader title="Entry requirements" subtitle={hasEnglish ? undefined : "No English test requirement recorded"} />
             <DataList rows={requirements} />
+            {program.entryRequirements && (
+              <div className="border-t border-line p-4">
+                <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">In the institution&apos;s words</p>
+                <p className="whitespace-pre-line text-[13px] leading-relaxed text-ink-soft">{program.entryRequirements}</p>
+              </div>
+            )}
             {program.requiredDocs.length > 0 && (
               <div className="border-t border-line p-4">
                 <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted">Documents for the application</p>
@@ -320,6 +333,17 @@ export default async function ProgramPage({
               </Link>
             </div>
           </Card>
+
+          <p className="px-1 text-[13px] text-muted">
+            Something&apos;s not right?{" "}
+            <Link
+              prefetch={false}
+              href={`/support?${new URLSearchParams({ category: "CATALOGUE", subject: `Correction: ${program.name}, ${university.name}`.slice(0, 200), body: `Program: ${program.name}\nUniversity: ${university.name}\nLink: /programs/${program.id}\n\nWhat looks wrong, and where you saw the right figure:\n` })}`}
+              className="font-medium text-brand-600 hover:underline"
+            >
+              Tell the Overseas team
+            </Link>
+          </p>
 
           {similar.length > 0 && (
             <Card>

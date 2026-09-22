@@ -40,6 +40,7 @@ node tests/browser/dashboards.mjs
 | `universities.mjs` | The universities index: destination, level and name filters, sorting by size, and the links to each university and its programs |
 | `program-options.mjs` | Requesting options for a new and a registered student, the team's list, shortlisting it all, linking, archiving and branch isolation |
 | `programs.mjs` | The program and university pages, the admin edit screen and its rules, and that an unverified fee never reads as free |
+| `search-upgrades.mjs` | Program labels (bulk and one at a time), several levels and seasons at once, chip counts, open or closed by deadline, eligibility from typed scores, the universities view, compare and download, and the new program-page details (needs the catalogue) |
 | `shortlist.mjs` | Shortlisting from search and a program page, the side by side comparison, removal, read-only roles and branch isolation |
 
 Screenshots land in `/tmp/smoke-*`. Each script exits non-zero if a check fails.
@@ -68,9 +69,10 @@ Two more things, both consequences of the polish pass:
 
 - Success messages are toasts now, not inline notes, so assert against
   `[role="status"]` rather than `main`.
-- Pages stream behind a loading skeleton, so `domcontentloaded` fires before the
-  content arrives. Wait for `[aria-busy="true"]` to detach, and use `waitForURL`
-  rather than `page.url()` when checking that a role is redirected away.
+- There are no loading skeletons any more (see the main README), but the
+  `settle` helper that waits for `[aria-busy="true"]` to detach is harmless.
+  Use `waitForURL` rather than `page.url()` when checking that a role is
+  redirected away, and after a client-side link wait for the new content.
 
 If a whole suite suddenly fails at the sign-in step, it is almost certainly the
 rate limiter: eight attempts per email per ten minutes. `select outcome, count(*)

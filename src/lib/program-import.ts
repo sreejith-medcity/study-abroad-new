@@ -1,3 +1,4 @@
+import { TAG_KEYS } from "./program-tags";
 import Papa from "papaparse";
 import { MONTHS } from "./format";
 
@@ -12,6 +13,7 @@ export const IMPORT_COLUMNS = [
   "required_docs", "status",
   // Optional: leave the column out and a re-import keeps what is already recorded.
   "min_toefl", "min_duolingo", "min_gre", "min_gmat", "min_sat", "min_academic_percent", "fee_waiver", "deadlines",
+  "program_url", "min_ielts_band", "entry_requirements", "balance_deposit", "typical_scholarship", "tags",
 ] as const;
 
 const PATHWAYS = ["DEGREE", "AUSBILDUNG", "NURSING"] as const;
@@ -59,6 +61,12 @@ export type ImportRow = {
   minSat?: number | null;
   minAcademicPercent?: number | null;
   feeWaiver?: string | null;
+  programUrl?: string | null;
+  minIeltsBand?: number | null;
+  entryRequirements?: string | null;
+  balanceDeposit?: number | null;
+  typicalScholarship?: string | null;
+  tags?: string[];
   /** Deadlines per intake from the optional `deadlines` column: 2027-09=2027-06-30|2028-01=2027-10-31. */
   deadlines?: { month: number; year: number; deadline: string }[];
   maxBacklogs: number | null;
@@ -71,6 +79,13 @@ export type ImportRow = {
 };
 
 export type ImportError = { line: number; message: string };
+
+function parseTags(v: string, errors: string[]) {
+  const tags = v.split("|").map((t) => t.trim().toUpperCase()).filter(Boolean);
+  const bad = tags.filter((t) => !(TAG_KEYS as string[]).includes(t));
+  if (bad.length) errors.push(`tags: ${bad.join(", ")} not known (use ${TAG_KEYS.join(", ")})`);
+  return tags.filter((t) => (TAG_KEYS as string[]).includes(t)).sort();
+}
 
 function parseDeadlines(v: string, errors: string[]) {
   const out: { month: number; year: number; deadline: string }[] = [];
@@ -164,6 +179,12 @@ export function parseProgramCsv(text: string, validDocCodes: string[]): { rows: 
       minSat: optional(r.min_sat, "min_sat", { int: true }),
       minAcademicPercent: optional(r.min_academic_percent, "min_academic_percent", {}),
       feeWaiver: r.fee_waiver === undefined ? undefined : r.fee_waiver.trim() || null,
+      programUrl: r.program_url === undefined ? undefined : r.program_url.trim() || null,
+      minIeltsBand: optional(r.min_ielts_band, "min_ielts_band", {}),
+      entryRequirements: r.entry_requirements === undefined ? undefined : r.entry_requirements.trim() || null,
+      balanceDeposit: optional(r.balance_deposit, "balance_deposit", { int: true }),
+      typicalScholarship: r.typical_scholarship === undefined ? undefined : r.typical_scholarship.trim() || null,
+      tags: r.tags === undefined ? undefined : parseTags(r.tags, e),
       deadlines: r.deadlines === undefined ? undefined : parseDeadlines(r.deadlines, e),
       maxBacklogs: num(r.max_backlogs, "max_backlogs", e, { int: true }),
       maxGapYears: num(r.max_gap_years, "max_gap_years", e, { int: true }),

@@ -1,8 +1,9 @@
 "use client";
 
 import { ActionForm, FieldError } from "@/components/action-form";
+import { PROGRAM_TAGS, TAG_KEYS } from "@/lib/program-tags";
 import { SelectField, TextField, TextareaField } from "@/components/fields";
-import { Checkbox, Field } from "@/components/ui";
+import { Checkbox, Field, Textarea } from "@/components/ui";
 import { MONTHS } from "@/lib/format";
 import { updateProgramAction } from "../actions";
 
@@ -33,6 +34,12 @@ export type EditableProgram = {
   maxGapYears: number | null;
   moiAccepted: boolean;
   feeWaiver: string | null;
+  programUrl: string | null;
+  minIeltsBand: number | null;
+  entryRequirements: string | null;
+  balanceDeposit: number | null;
+  typicalScholarship: string | null;
+  tags: string[];
   workRights: string;
   workRightsNote: string | null;
   requiredDocs: string[];
@@ -77,6 +84,8 @@ export function ProgramEditForm({ program, currency, docs }: { program: Editable
         <TextField label="Tuition per year" name="tuitionPerYear" inputMode="numeric" defaultValue={v(program.tuitionPerYear)} />
         <TextField label="Application fee" name="applicationFee" inputMode="numeric" defaultValue={v(program.applicationFee)} />
         <TextField label="Deposit" name="initialDeposit" inputMode="numeric" defaultValue={v(program.initialDeposit)} />
+        <TextField label="Balance deposit" name="balanceDeposit" inputMode="numeric" defaultValue={v(program.balanceDeposit)} />
+        <TextField label="Typical scholarship" name="typicalScholarship" defaultValue={v(program.typicalScholarship)} placeholder="As the institution words it: 'Up to 20% of first-year tuition'" />
         <TextField label="Application fee waiver" name="feeWaiver" defaultValue={v(program.feeWaiver)} placeholder="Only if confirmed, in its terms: 'Waived for Medcity applicants until 30 June'" />
       </Section>
 
@@ -96,6 +105,7 @@ export function ProgramEditForm({ program, currency, docs }: { program: Editable
       <Section title="Entry requirements" note="Blank means the program sets no rule for it, so the eligibility check will not test it.">
         <TextField label="IELTS overall" name="minIelts" inputMode="decimal" defaultValue={v(program.minIelts)} />
         <TextField label="PTE Academic" name="minPte" inputMode="numeric" defaultValue={v(program.minPte)} />
+        <TextField label="IELTS lowest band" name="minIeltsBand" inputMode="decimal" defaultValue={v(program.minIeltsBand)} />
         <TextField label="TOEFL iBT" name="minToefl" inputMode="numeric" defaultValue={v(program.minToefl)} />
         <TextField label="Duolingo" name="minDuolingo" inputMode="numeric" defaultValue={v(program.minDuolingo)} />
         <TextField label="OET grade" name="minOetGrade" defaultValue={v(program.minOetGrade)} placeholder="A, B, C+…" />
@@ -108,6 +118,18 @@ export function ProgramEditForm({ program, currency, docs }: { program: Editable
         <TextField label="Study gap allowed (years)" name="maxGapYears" inputMode="numeric" defaultValue={v(program.maxGapYears)} />
         <div className="sm:col-span-2">
           <Checkbox name="moiAccepted" label="Accepts a medium of instruction letter instead of an English test" defaultChecked={program.moiAccepted} />
+        </div>
+      </Section>
+
+      <Section title="Program page and labels" note="Labels drive the quick filters in search. Set one only when the institution or experience with it bears it out.">
+        <TextField label="Program page on the institution's site" name="programUrl" defaultValue={v(program.programUrl)} placeholder="https://" />
+        <div className="sm:col-span-2">
+          <Field label="Entry requirements, in the institution's words" htmlFor="entryRequirements">
+            <Textarea id="entryRequirements" name="entryRequirements" rows={3} defaultValue={v(program.entryRequirements)} />
+          </Field>
+        </div>
+        <div className="grid gap-1 sm:col-span-2 sm:grid-cols-2">
+          {TAG_KEYS.map((t) => <Checkbox key={t} name="tag" value={t} label={PROGRAM_TAGS[t]} defaultChecked={program.tags.includes(t)} />)}
         </div>
       </Section>
 

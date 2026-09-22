@@ -1,8 +1,8 @@
-import { and, eq, ilike, isNull, or, type SQL } from "drizzle-orm";
+import { and, eq, ilike, isNull, or, sql, type SQL } from "drizzle-orm";
 import { schema } from "@/db";
 
 /** The admin Programs filters. One definition for the list and for the bulk action, so "All N matching" is exactly the list. */
-export const PROGRAM_FILTER_KEYS = ["q", "country", "pathway", "status", "level", "source", "workRights"] as const;
+export const PROGRAM_FILTER_KEYS = ["q", "country", "pathway", "status", "level", "source", "workRights", "tag"] as const;
 export type ProgramFilters = Partial<Record<(typeof PROGRAM_FILTER_KEYS)[number], string>>;
 
 export function programFilterWhere(f: ProgramFilters): SQL | undefined {
@@ -15,6 +15,7 @@ export function programFilterWhere(f: ProgramFilters): SQL | undefined {
     f.level ? eq(p.level, f.level as "PG") : undefined,
     f.source === "CRICOS" ? eq(p.source, "CRICOS") : f.source === "catalogue" ? isNull(p.source) : undefined,
     f.workRights ? eq(p.workRights, f.workRights as "ELIGIBLE") : undefined,
+    f.tag === "none" ? sql`cardinality(${p.tags}) = 0` : f.tag ? sql`${f.tag} = any(${p.tags})` : undefined,
   );
 }
 

@@ -4,14 +4,14 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fmtDateTime } from "@/lib/format";
 import { PROCESSING_ROLES, isStaff } from "@/lib/permissions";
-import { CATEGORY_LABEL, TICKET_STATUSES, TICKET_STATUS_LABEL, TICKET_STATUS_TONE, type TicketStatus } from "@/lib/tickets";
+import { CATEGORY_LABEL, TICKET_CATEGORIES, TICKET_STATUSES, TICKET_STATUS_LABEL, TICKET_STATUS_TONE, type TicketStatus } from "@/lib/tickets";
 import { Card, CardHeader, Chip, EmptyState, PageHeader, cn } from "@/components/ui";
 import { OpenTicketForm } from "@/components/ticket-forms";
 
 export const metadata = { title: "Help desk" };
 
 /** Partners see their branch's tickets; the Overseas team sees every branch, open ones first. */
-export default async function SupportPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
+export default async function SupportPage({ searchParams }: { searchParams: Promise<{ status?: string; category?: string; subject?: string; body?: string }> }) {
   const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
   const staff = isStaff(user);
   const sp = await searchParams;
@@ -70,7 +70,13 @@ export default async function SupportPage({ searchParams }: { searchParams: Prom
         {!staff && (
           <Card className="h-fit">
             <CardHeader title="New ticket" />
-            <div className="p-4"><OpenTicketForm /></div>
+            <div className="p-4"><OpenTicketForm
+              defaults={{
+                category: (TICKET_CATEGORIES as readonly string[]).includes(sp.category ?? "") ? sp.category : undefined,
+                subject: sp.subject?.slice(0, 200),
+                body: sp.body?.slice(0, 2000),
+              }}
+            /></div>
           </Card>
         )}
       </div>

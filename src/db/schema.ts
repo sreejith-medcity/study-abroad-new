@@ -224,6 +224,18 @@ export const programs = pgTable(
     // Set only when a waiver is confirmed, in the words of whoever confirmed it
     // ("Waived for Medcity applicants until 30 June"). Null means none on record.
     feeWaiver: text("fee_waiver"),
+    // The institution's own page for this program.
+    programUrl: text("program_url"),
+    // The lowest band IELTS accepts in any one skill, alongside the overall.
+    minIeltsBand: real("min_ielts_band"),
+    // Entry requirements in the institution's words, for what the fields cannot hold.
+    entryRequirements: text("entry_requirements"),
+    // Paid after the deposit to confirm a place, where the institution splits it.
+    balanceDeposit: integer("balance_deposit"),
+    // A typical scholarship, as the institution words it ("Up to 20% of tuition").
+    typicalScholarship: text("typical_scholarship"),
+    // Curated labels partners filter by (see PROGRAM_TAGS): faster offers, no interview, STEM...
+    tags: text("tags").array().notNull().default(sql`'{}'::text[]`),
     // Post-study work: PGWP in Canada, STEM OPT in the US, the Graduate Route in
     // the UK. The note carries the institution's own wording, so a counsellor can
     // see why the flag says what it says.

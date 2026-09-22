@@ -204,6 +204,13 @@
       "when": 1790066855674,
       "tag": "0028_application_deadlines",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1790067333046,
+      "tag": "0029_program_details",
+      "breakpoints": true
     }
   ]
 }

@@ -1,17 +1,17 @@
 import Link from "next/link";
-import { and, asc, count, eq, ilike, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, eq, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { checkEligibility, type Eligibility } from "@/lib/eligibility";
 import { fmtMoney, fullName, MONTHS } from "@/lib/format";
 import { ADMIN_ROLES, APP_ROLES, isStaff } from "@/lib/permissions";
 import { ShortlistButton } from "@/components/shortlist-button";
-import { readFilters } from "@/server/queries";
+import { CheckDropdown } from "@/components/check-dropdown";
 import { fxRates, getSettings } from "@/server/settings";
-import { notBlockedWhere } from "@/server/eligibility-sql";
-import { hasOpenScholarship } from "@/server/scholarships";
-import { closingWithin, nextDeadlines } from "@/server/deadlines";
-import { activeRules, hasCommissionRule, partnerShareJoins } from "@/server/commission-estimate";
+import { nextDeadlines } from "@/server/deadlines";
+import { activeRules, partnerShareJoins } from "@/server/commission-estimate";
+import { AE_KEYS, LEVELS, QUICK, adhocStudent, listOf, readSearch, searchConds, tagCond } from "@/server/program-search";
+import { PROGRAM_TAGS, SEASON_LABEL, TAG_KEYS } from "@/lib/program-tags";
 import { partnerEstimate, pickRule } from "@/lib/money";
 import { rankLabels } from "@/lib/rankings";
 import { LEVEL_LABEL, SHORTLIST_LIMIT, dayText, daysUntil, inrApprox, intakesText, tuitionText } from "@/lib/catalogue";
@@ -21,156 +21,153 @@ import { IconCheck, IconAlert, IconClock, IconGlobe, IconSearch, IconSpark } fro
 export const metadata = { title: "Search programs" };
 
 const PAGE = 25;
-
-const QUICK = [
-  { key: "noAppFee", label: "No application fee" },
-  { key: "moi", label: "MOI accepted" },
-  { key: "lowDeposit", label: "Deposit under 1,500" },
-  { key: "noEnglish", label: "No English test needed" },
-  { key: "ausbildung", label: "Ausbildung" },
-  { key: "nursing", label: "Nurse registration" },
-  { key: "workRights", label: "Post-study work" },
-  { key: "scholarship", label: "Scholarship available" },
-  { key: "closing", label: "Deadline in the next 30 days" },
-  { key: "waiver", label: "Application fee waiver" },
-  { key: "commission", label: "Commission on offer" },
-] as const;
-
 const BUDGETS = [5, 10, 15, 20, 25, 30, 40, 50];
-
-/**
- * A yearly budget in rupees, against fees in each destination's currency at
- * the platform's indicative rates. A per-year fee is compared directly. A
- * whole-course fee is only used to rule a program out when its average year
- * is over budget, which is certain without inventing a yearly figure. Programs
- * with no fee on record, or in a currency with no rate, stay in the list.
- */
-function budgetWhere(budgetInr: number, rates: Record<string, number>): SQL {
-  const { programs: p, countries: c } = schema;
-  const known = Object.entries(rates).filter(([k]) => /^[A-Z]{3}$/.test(k));
-  const rate = sql`(case ${c.currency} ${sql.join(known.map(([k, v]) => sql`when ${k} then ${v}::numeric`), sql` `)} end)`;
-  return sql`(case
-    when ${rate} is null then true
-    when ${p.tuitionPerYear} is not null then ${p.tuitionPerYear} * ${rate} <= ${budgetInr}::numeric
-    when ${p.tuitionTotal} is not null and ${p.durationMonths} > 0 then ${p.tuitionTotal} * ${rate} * 12 <= ${budgetInr}::numeric * ${p.durationMonths}
-    else true end)`;
-}
+/** Kept across the filter form, which does not show them as fields. */
+const CARRIED = [...QUICK.map((q) => q.key), "tags", "fit", "view", "apply", ...AE_KEYS];
 
 export default async function SearchPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const user = await requireUser([...APP_ROLES]);
-  const f = readFilters(await searchParams) as Record<string, string>;
+  const f = readSearch(await searchParams);
   const page = Math.max(1, Number(f.page ?? 1));
+  const view = f.view === "universities" ? "universities" : "programs";
   const { programs: p, universities: u, countries: c, students: s } = schema;
 
-  const conds: (SQL | undefined)[] = [eq(p.status, "LIVE")];
-  if (f.q) conds.push(or(ilike(p.name, `%${f.q}%`), ilike(u.name, `%${f.q}%`), ilike(p.studyArea, `%${f.q}%`), ilike(p.campus, `%${f.q}%`)));
-  if (f.country) conds.push(eq(c.code, f.country));
-  if (f.field) conds.push(eq(p.studyArea, f.field));
-  if (f.pathway) conds.push(eq(p.pathway, f.pathway as schema.Pathway));
-  if (f.level) conds.push(eq(p.level, f.level as "PG"));
-  if (f.intakeMonth) conds.push(sql`${Number(f.intakeMonth)} = any(${p.intakeMonths})`);
-  // Older links carried a figure in the destination's own currency.
-  if (f.maxTuition && f.country) conds.push(or(lte(p.tuitionPerYear, Number(f.maxTuition)), sql`${p.tuitionPerYear} is null`));
   const rates = fxRates(await getSettings());
-  const budget = Number(f.budget) > 0 ? Number(f.budget) * 1e5 : null;
-  if (budget) conds.push(budgetWhere(budget, rates));
-  if (f.minIelts) conds.push(or(lte(p.minIelts, Number(f.minIelts)), sql`${p.minIelts} is null`));
-  if (f.noAppFee) conds.push(eq(p.applicationFee, 0));
-  if (f.moi) conds.push(eq(p.moiAccepted, true));
-  if (f.lowDeposit) conds.push(or(lte(p.initialDeposit, 1500), sql`${p.initialDeposit} is null`));
-  if (f.noEnglish) conds.push(and(sql`${p.minIelts} is null`, sql`${p.minPte} is null`, sql`${p.minToefl} is null`, sql`${p.minDuolingo} is null`, sql`${p.minOetGrade} is null`));
-  if (f.ausbildung) conds.push(eq(p.pathway, "AUSBILDUNG"));
-  if (f.nursing) conds.push(eq(p.pathway, "NURSING"));
-  // Only programmes the institution itself confirms, never the unknowns. A
-  // partner filtering on this is telling a student the work rights are there.
-  if (f.workRights) conds.push(eq(p.workRights, "ELIGIBLE"));
-  if (f.scholarship) conds.push(hasOpenScholarship);
-  if (f.closing) conds.push(closingWithin(30));
-  if (f.waiver) conds.push(sql`${p.feeWaiver} is not null`);
-  if (f.commission) conds.push(hasCommissionRule);
+  const budget = Number(f.budget) > 0;
   const student = f.student
     ? await db.query.students.findFirst({ where: and(eq(s.id, f.student), isStaff(user) ? undefined : eq(s.orgId, user.orgId)), with: { tests: true, academics: true } })
     : null;
-  // Hide what the student cannot meet yet; on-track programs stay.
-  if (student && f.fit) conds.push(notBlockedWhere(student));
-  const where = and(...conds);
+  // Scores typed into search stand in for a student when none is picked.
+  const adhoc = student ? null : adhocStudent(f);
+  const checker = student ? { backlogs: student.backlogs, gapYears: student.gapYears, tests: student.tests, academics: student.academics } : adhoc;
+  const where = and(...searchConds(f, checker, rates));
   const byShare = partnerShareJoins(rates);
+  const levelsOn = listOf(f.level);
+  const seasonsOn = listOf(f.season);
+  const tagsOn = listOf(f.tags);
 
-  const rows = await db
+  // Totals and what each chip would leave, in one pass over the matches.
+  const [counts] = await db
     .select({
-      id: p.id,
-      name: p.name,
-      pathway: p.pathway,
-      level: p.level,
-      studyArea: p.studyArea,
-      durationMonths: p.durationMonths,
-      tuition: p.tuitionPerYear,
-      tuitionTotal: p.tuitionTotal,
-      applicationFee: p.applicationFee,
-      deposit: p.initialDeposit,
-      intakeMonths: p.intakeMonths,
-      minIelts: p.minIelts,
-      minPte: p.minPte,
-      minOetGrade: p.minOetGrade,
-      minGermanLevel: p.minGermanLevel,
-      minToefl: p.minToefl,
-      minDuolingo: p.minDuolingo,
-      minGre: p.minGre,
-      minGmat: p.minGmat,
-      minSat: p.minSat,
-      minAcademicPercent: p.minAcademicPercent,
-      feeWaiver: p.feeWaiver,
-      maxBacklogs: p.maxBacklogs,
-      maxGapYears: p.maxGapYears,
-      moiAccepted: p.moiAccepted,
-      workRights: p.workRights,
-      workRightsNote: p.workRightsNote,
-      universityId: u.id,
-      countryId: c.id,
-      university: u.name,
-      city: sql<string | null>`coalesce(${p.campus}, ${u.city})`,
-      isPublic: u.isPublic,
-      qsRank: u.qsRank,
-      qsYear: u.qsYear,
-      theRank: u.theRank,
-      theYear: u.theYear,
-      country: c.name,
-      countryCode: c.code,
-      currency: c.currency,
+      total: count(),
+      unis: sql<number>`count(distinct ${u.id})`.mapWith(Number),
+      ...Object.fromEntries(QUICK.map((q) => [q.key, sql<number>`count(*) filter (where ${q.cond()})`.mapWith(Number)])),
+      ...Object.fromEntries(TAG_KEYS.map((t) => [`tag_${t}`, sql<number>`count(*) filter (where ${tagCond(t)})`.mapWith(Number)])),
     })
     .from(p)
     .innerJoin(u, eq(p.universityId, u.id))
     .innerJoin(c, eq(u.countryId, c.id))
-    .leftJoin(byShare.rp, eq(byShare.rp.key, p.id))
-    .leftJoin(byShare.ru, eq(byShare.ru.key, p.universityId))
-    .leftJoin(byShare.rc, eq(byShare.rc.key, u.countryId))
-    .where(where)
-    .orderBy(
-      ...(f.sort === "rank"
-        ? [sql`${u.rankSort} asc nulls last`, asc(u.name), asc(p.name)]
-        : f.sort === "commission"
-        ? [sql`${byShare.expr} desc nulls last`, asc(p.name)]
-        : f.sort === "fee"
-        ? // Per-year figures first, then whole-course ones: the two are never
-          // compared with each other, and currencies only line up within a country.
-          [sql`${p.tuitionPerYear} is null`, asc(p.tuitionPerYear), sql`${p.tuitionTotal} is null`, asc(p.tuitionTotal), asc(p.name)]
-        : f.sort === "name"
-          ? [asc(p.name), asc(u.name)]
-          : [asc(c.name), asc(u.name), asc(p.name)]),
-    )
-    .limit(PAGE + 1)
-    .offset((page - 1) * PAGE);
+    .where(where);
+  const total = counts.total;
+  const chipCount = (k: string) => (counts as unknown as Record<string, number>)[k] ?? 0;
 
-  const hasNext = rows.length > PAGE;
+  const rows =
+    view === "programs"
+      ? await db
+          .select({
+            id: p.id,
+            name: p.name,
+            pathway: p.pathway,
+            level: p.level,
+            studyArea: p.studyArea,
+            durationMonths: p.durationMonths,
+            tuition: p.tuitionPerYear,
+            tuitionTotal: p.tuitionTotal,
+            applicationFee: p.applicationFee,
+            deposit: p.initialDeposit,
+            balanceDeposit: p.balanceDeposit,
+            typicalScholarship: p.typicalScholarship,
+            tags: p.tags,
+            intakeMonths: p.intakeMonths,
+            minIelts: p.minIelts,
+            minIeltsBand: p.minIeltsBand,
+            minPte: p.minPte,
+            minOetGrade: p.minOetGrade,
+            minGermanLevel: p.minGermanLevel,
+            minToefl: p.minToefl,
+            minDuolingo: p.minDuolingo,
+            minGre: p.minGre,
+            minGmat: p.minGmat,
+            minSat: p.minSat,
+            minAcademicPercent: p.minAcademicPercent,
+            feeWaiver: p.feeWaiver,
+            maxBacklogs: p.maxBacklogs,
+            maxGapYears: p.maxGapYears,
+            moiAccepted: p.moiAccepted,
+            workRights: p.workRights,
+            workRightsNote: p.workRightsNote,
+            universityId: u.id,
+            countryId: c.id,
+            university: u.name,
+            city: sql<string | null>`coalesce(${p.campus}, ${u.city})`,
+            isPublic: u.isPublic,
+            qsRank: u.qsRank,
+            qsYear: u.qsYear,
+            theRank: u.theRank,
+            theYear: u.theYear,
+            country: c.name,
+            countryCode: c.code,
+            currency: c.currency,
+          })
+          .from(p)
+          .innerJoin(u, eq(p.universityId, u.id))
+          .innerJoin(c, eq(u.countryId, c.id))
+          .leftJoin(byShare.rp, eq(byShare.rp.key, p.id))
+          .leftJoin(byShare.ru, eq(byShare.ru.key, p.universityId))
+          .leftJoin(byShare.rc, eq(byShare.rc.key, u.countryId))
+          .where(where)
+          .orderBy(
+            ...(f.sort === "rank"
+              ? [sql`${u.rankSort} asc nulls last`, asc(u.name), asc(p.name)]
+              : f.sort === "commission"
+              ? [sql`${byShare.expr} desc nulls last`, asc(p.name)]
+              : f.sort === "fee"
+              ? // Per-year figures first, then whole-course ones: the two are never
+                // compared with each other, and currencies only line up within a country.
+                [sql`${p.tuitionPerYear} is null`, asc(p.tuitionPerYear), sql`${p.tuitionTotal} is null`, asc(p.tuitionTotal), asc(p.name)]
+              : f.sort === "name"
+                ? [asc(p.name), asc(u.name)]
+                : [asc(c.name), asc(u.name), asc(p.name)]),
+          )
+          .limit(PAGE + 1)
+          .offset((page - 1) * PAGE)
+      : [];
+
+  // The same matches, one line per university.
+  const uniRows =
+    view === "universities"
+      ? await db
+          .select({
+            id: u.id,
+            name: u.name,
+            city: u.city,
+            isPublic: u.isPublic,
+            qsRank: u.qsRank,
+            qsYear: u.qsYear,
+            theRank: u.theRank,
+            theYear: u.theYear,
+            country: c.name,
+            programs: count(),
+            levels: sql<string[]>`array_agg(distinct ${p.level})`,
+            // One bit per intake month across the matches; empty arrays cannot be concatenated.
+            intakeMask: sql<number>`bit_or((select coalesce(bit_or(1 << m), 0) from unnest(${p.intakeMonths}) m))`.mapWith(Number),
+            noAppFee: sql<number>`count(*) filter (where ${p.applicationFee} = 0)`.mapWith(Number),
+          })
+          .from(p)
+          .innerJoin(u, eq(p.universityId, u.id))
+          .innerJoin(c, eq(u.countryId, c.id))
+          .where(where)
+          .groupBy(u.id, c.id)
+          .orderBy(...(f.sort === "rank" ? [sql`${u.rankSort} asc nulls last`, asc(u.name)] : f.sort === "name" ? [asc(u.name)] : [asc(c.name), asc(u.name)]))
+          .limit(PAGE + 1)
+          .offset((page - 1) * PAGE)
+      : [];
+
+  const hasNext = view === "programs" ? rows.length > PAGE : uniRows.length > PAGE;
   const list = rows.slice(0, PAGE);
+  const unis = uniRows.slice(0, PAGE).map((r) => ({ ...r, intakes: Array.from({ length: 12 }, (_, i) => i + 1).filter((m) => (r.intakeMask >> m) & 1) }));
   const next = await nextDeadlines(list.map((r) => r.id));
   const rules = await activeRules();
-  const [{ total }] = await db
-    .select({ total: count() })
-    .from(p)
-    .innerJoin(u, eq(p.universityId, u.id))
-    .innerJoin(c, eq(u.countryId, c.id))
-    .where(where);
 
   const countries = await db.select().from(c).orderBy(asc(c.name));
   // Fields with a meaningful number of live programs, so the list stays usable.
@@ -196,10 +193,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const shortlistFull = picked.size >= SHORTLIST_LIMIT;
 
   const eligibility = new Map<string, Eligibility>();
-  if (student) {
-    for (const row of list) {
-      eligibility.set(row.id, checkEligibility({ backlogs: student.backlogs, gapYears: student.gapYears, tests: student.tests, academics: student.academics }, row));
-    }
+  if (checker) {
+    for (const row of list) eligibility.set(row.id, checkEligibility(checker, row));
   }
 
   const qs = (extra: Record<string, string | undefined>) => {
@@ -211,14 +206,29 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     params.delete("page");
     return params.toString();
   };
-  const years = [new Date().getFullYear(), new Date().getFullYear() + 1, new Date().getFullYear() + 2];
+  const toggleIn = (key: string, value: string) => {
+    const cur = listOf(f[key]);
+    const nextList = cur.includes(value) ? cur.filter((x) => x !== value) : [...cur, value];
+    return qs({ [key]: nextList.length ? nextList.join(",") : undefined });
+  };
+  const chipClass = (on: boolean) =>
+    cn(
+      "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[13px] font-medium transition-colors",
+      on ? "border-brand-600 bg-brand-600 text-white" : "border-line-strong bg-surface text-ink-soft hover:border-brand-300 hover:text-brand-700",
+    );
+  const countBadge = (n: number, on: boolean) => (
+    <span className={cn("tabular text-xs", on ? "text-white/80" : "text-muted")}>{n.toLocaleString("en-IN")}</span>
+  );
+  const seasonText = seasonsOn.map((x) => SEASON_LABEL[x as keyof typeof SEASON_LABEL]?.split(" (")[0]).filter(Boolean).join(", ");
+  const levelText = levelsOn.map((l) => LEVELS.find(([k]) => k === l)?.[1]).filter(Boolean).join(", ");
+  const exportQs = qs({ view: undefined });
 
   return (
     <>
       <PageHeader
         eyebrow="Phase 2"
         title="Search programs"
-        subtitle={`${total.toLocaleString("en-IN")} live program${total === 1 ? "" : "s"} across ${countries.length} destinations${budget ? ". Fees are compared at the indicative rates in Settings; programs with no fee on record stay in the list" : ""}`}
+        subtitle={`${total.toLocaleString("en-IN")} live program${total === 1 ? "" : "s"} at ${counts.unis.toLocaleString("en-IN")} ${counts.unis === 1 ? "university" : "universities"}${budget ? ". Fees are compared at the indicative rates in Settings; programs with no fee on record stay in the list" : ""}`}
         actions={
           student ? (
             <LinkButton href={`/students/${student.id}/profile`} variant="secondary">
@@ -231,11 +241,10 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       <Toolbar className="mb-3">
         <form className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4 [&>*]:min-w-0">
           {Object.entries(f)
-            .filter(([k]) => QUICK.some((q) => q.key === k))
+            .filter(([k]) => CARRIED.includes(k))
             .map(([k, v]) => (
               <input key={k} type="hidden" name={k} value={v} />
             ))}
-          {f.fit && <input type="hidden" name="fit" value="1" />}
           <div className="relative sm:col-span-2">
             <IconSearch className="pointer-events-none absolute left-3 top-1/2 size-[18px] -translate-y-1/2 text-muted" />
             <Input name="q" defaultValue={f.q} placeholder="Program, university or study area" aria-label="Search" className="pl-10" />
@@ -246,27 +255,12 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
               <option key={x.id} value={x.code}>{x.name}</option>
             ))}
           </Select>
-          <Select name="level" aria-label="Level" defaultValue={f.level ?? ""}>
-            <option value="">Any level</option>
-            <option value="UG">Bachelor&apos;s</option>
-            <option value="PG">Master&apos;s</option>
-            <option value="PG_DIPLOMA">PG diploma</option>
-            <option value="UG_DIPLOMA">Diploma</option>
-            <option value="PHD">PhD</option>
-            <option value="VOCATIONAL">Vocational (Ausbildung)</option>
-            <option value="REGISTRATION">Registration route</option>
-            <option value="CERTIFICATE">Certificate</option>
-          </Select>
+          <CheckDropdown testId="level-picker" label="Any level" summary={levelText || null} name="level" options={LEVELS} selected={levelsOn} />
+          <CheckDropdown testId="season-picker" label="Any intake season" summary={seasonText ? `${seasonText} intake` : null} name="season" options={Object.entries(SEASON_LABEL)} selected={seasonsOn} />
           <Select name="intakeMonth" aria-label="Intake month" defaultValue={f.intakeMonth ?? ""}>
-            <option value="">Any intake</option>
+            <option value="">Any intake month</option>
             {MONTHS.map((m, i) => (
               <option key={m} value={i + 1}>{m} intake</option>
-            ))}
-          </Select>
-          <Select name="intakeYear" aria-label="Intake year" defaultValue={f.intakeYear ?? ""}>
-            <option value="">Any year</option>
-            {years.map((y) => (
-              <option key={y}>{y}</option>
             ))}
           </Select>
           <Select name="minIelts" aria-label="Student's IELTS" defaultValue={f.minIelts ?? ""}>
@@ -284,11 +278,16 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             <option value="">Any field of study</option>
             {fields.map((x) => <option key={x.field} value={x.field!}>{x.field} ({x.n.toLocaleString("en-IN")})</option>)}
           </Select>
+          <Select name="apply" aria-label="Applications open or closed" defaultValue={f.apply ?? ""}>
+            <option value="">Open or closed</option>
+            <option value="open">Applications open (a deadline ahead)</option>
+            <option value="closed">Closed for now (recorded deadlines passed)</option>
+          </Select>
           <Select name="sort" aria-label="Sort" defaultValue={f.sort ?? ""}>
             <option value="">Sort by country and university</option>
-            <option value="name">Sort by program name</option>
-            <option value="fee">Lowest fee first</option>
-            <option value="commission">Highest commission first</option>
+            <option value="name">Sort by name</option>
+            {view === "programs" && <option value="fee">Lowest fee first</option>}
+            {view === "programs" && <option value="commission">Highest commission first</option>}
             <option value="rank">Best university ranking first</option>
           </Select>
           <Select name="student" aria-label="Check against student" defaultValue={f.student ?? ""}>
@@ -304,69 +303,196 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         </form>
       </Toolbar>
 
-      <div className="mb-4 flex flex-wrap items-center gap-2">
+      <div className="mb-2 flex flex-wrap items-center gap-2">
         <span className="text-[13px] font-medium text-muted">Quick filters</span>
         {QUICK.map((q) => {
           const on = !!f[q.key];
+          const n = chipCount(q.key);
+          if (!on && n === 0) return null;
           return (
-            <Link
-              key={q.key}
-              href={`/search?${qs({ [q.key]: on ? undefined : "1" })}`}
-              className={cn(
-                "rounded-full border px-3 py-1 text-[13px] font-medium transition-colors",
-                on ? "border-brand-600 bg-brand-600 text-white" : "border-line-strong bg-surface text-ink-soft hover:border-brand-300 hover:text-brand-700",
-              )}
-            >
-              {q.label}
+            <Link key={q.key} href={`/search?${qs({ [q.key]: on ? undefined : "1" })}`} className={chipClass(on)}>
+              {q.label} {countBadge(n, on)}
             </Link>
           );
         })}
       </div>
+      {TAG_KEYS.some((t) => tagsOn.includes(t) || chipCount(`tag_${t}`) > 0) && (
+        <div className="mb-2 flex flex-wrap items-center gap-2" data-testid="label-chips">
+          <span className="text-[13px] font-medium text-muted">Labels</span>
+          {TAG_KEYS.map((t) => {
+            const on = tagsOn.includes(t);
+            const n = chipCount(`tag_${t}`);
+            if (!on && n === 0) return null;
+            return (
+              <Link key={t} href={`/search?${toggleIn("tags", t)}`} className={chipClass(on)}>
+                {PROGRAM_TAGS[t]} {countBadge(n, on)}
+              </Link>
+            );
+          })}
+        </div>
+      )}
 
-      {student && (
+      {!student && (
+        <details className="mb-4 rounded-xl border border-line bg-surface" open={!!adhoc}>
+          <summary className="cursor-pointer px-4 py-2.5 text-[13px] font-medium text-brand-700">
+            {adhoc ? `Checking scores: ${adhoc.label}` : "Check eligibility from scores, without a student file"}
+          </summary>
+          <form className="grid gap-2.5 border-t border-line p-4 sm:grid-cols-3 xl:grid-cols-5">
+            {Object.entries(f)
+              .filter(([k]) => k !== "page" && !(AE_KEYS as readonly string[]).includes(k))
+              .map(([k, v]) => (
+                <input key={k} type="hidden" name={k} value={v} />
+              ))}
+            {(
+              [
+                ["ae_ielts", "IELTS overall", "0.5"],
+                ["ae_pte", "PTE overall", "1"],
+                ["ae_toefl", "TOEFL iBT", "1"],
+                ["ae_duolingo", "Duolingo", "1"],
+                ["ae_gre", "GRE total", "1"],
+                ["ae_gmat", "GMAT total", "1"],
+                ["ae_12", "Std. 12th %", "0.1"],
+                ["ae_ug", "Bachelor's %", "0.1"],
+                ["ae_backlogs", "Backlogs", "1"],
+                ["ae_gap", "Gap years", "1"],
+              ] as const
+            ).map(([k, label, step]) => (
+              <label key={k} className="text-[13px] font-medium text-ink-soft">
+                {label}
+                <Input name={k} type="number" min="0" step={step} defaultValue={f[k]} className="mt-1" />
+              </label>
+            ))}
+            <p className="text-xs text-muted sm:col-span-3 xl:col-span-3">
+              Official scores only. Marks are percentages: a CGPA is never converted, so check the institution&apos;s own conversion.
+            </p>
+            <div className="flex items-end justify-end gap-2 sm:col-span-3 xl:col-span-2">
+              {adhoc && <LinkButton href={`/search?${qs(Object.fromEntries(AE_KEYS.map((k) => [k, undefined])))}`} variant="quiet" size="sm">Clear scores</LinkButton>}
+              <Button type="submit" size="sm" variant="secondary">Check these scores</Button>
+            </div>
+          </form>
+        </details>
+      )}
+
+      {(student || adhoc) && (
         <Card className="mb-4 border-brand-200 bg-brand-50/50 p-3.5">
           <p className="text-sm">
-            Checking against <span className="font-semibold">{fullName(student)}</span>
-            {student.tests.length > 0 && (
+            {student ? (
               <>
-                {" · "}
-                {student.tests.map((t) => (
-                  <Chip key={t.id} tone={t.isMock ? "info" : "ok"} className="mr-1">
-                    {t.test === "GERMAN" ? "German" : t.test} {t.overall}
-                    {t.isMock ? " (practice)" : ""}
-                  </Chip>
-                ))}
+                Checking against <span className="font-semibold">{fullName(student)}</span>
+                {student.tests.length > 0 && (
+                  <>
+                    {" · "}
+                    {student.tests.map((t) => (
+                      <Chip key={t.id} tone={t.isMock ? "info" : "ok"} className="mr-1">
+                        {t.test === "GERMAN" ? "German" : t.test} {t.overall}
+                        {t.isMock ? " (practice)" : ""}
+                      </Chip>
+                    ))}
+                  </>
+                )}
+                {student.backlogs != null && <span className="text-muted"> · {student.backlogs} backlogs</span>}
+                {student.gapYears != null && <span className="text-muted"> · {student.gapYears}-year gap</span>}
               </>
+            ) : (
+              <>Checking against <span className="font-semibold">{adhoc!.label}</span></>
             )}
-            {student.backlogs != null && <span className="text-muted"> · {student.backlogs} backlogs</span>}
-            {student.gapYears != null && <span className="text-muted"> · {student.gapYears}-year gap</span>}
           </p>
-          <p className="mt-1 text-[13px] text-muted">
-            Practice scores come from Medcity&apos;s own test platform, so a student still in class shows as on track rather than blocked.
-          </p>
+          {student && (
+            <p className="mt-1 text-[13px] text-muted">
+              Practice scores come from Medcity&apos;s own test platform, so a student still in class shows as on track rather than blocked.
+            </p>
+          )}
           <p className="mt-2 text-[13px]">
             <Link prefetch={false} href={`/search?${qs({ fit: f.fit ? undefined : "1" })}`} className="font-medium text-brand-600 hover:underline">
-              {f.fit ? "Show every program again" : `Hide programs ${student.firstName} cannot meet yet`}
+              {f.fit ? "Show every program again" : student ? `Hide programs ${student.firstName} cannot meet yet` : "Hide programs these scores cannot meet"}
             </Link>
           </p>
         </Card>
       )}
 
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="inline-flex rounded-lg border border-line-strong bg-surface p-0.5 text-[13px] font-medium" role="group" aria-label="Show">
+          <Link href={`/search?${qs({ view: undefined })}`} aria-current={view === "programs" ? "page" : undefined} className={cn("rounded-md px-3 py-1", view === "programs" ? "bg-brand-600 text-white" : "text-ink-soft hover:text-brand-700")}>
+            Programs ({total.toLocaleString("en-IN")})
+          </Link>
+          <Link href={`/search?${qs({ view: "universities" })}`} aria-current={view === "universities" ? "page" : undefined} className={cn("rounded-md px-3 py-1", view === "universities" ? "bg-brand-600 text-white" : "text-ink-soft hover:text-brand-700")}>
+            Universities ({counts.unis.toLocaleString("en-IN")})
+          </Link>
+        </div>
+        {view === "programs" && list.length > 0 && (
+          <form id="pick" className="flex flex-wrap items-center gap-2" action="/compare">
+            <span className="text-xs text-muted">Ticked programs:</span>
+            <Button type="submit" size="sm" variant="secondary">Compare</Button>
+            <Button type="submit" size="sm" variant="secondary" formAction="/api/programs/search-export">Download ticked</Button>
+            <a href={`/api/programs/search-export?${exportQs}`} className="text-[13px] font-medium text-brand-600 hover:underline">
+              Download the top {Math.min(total, 500).toLocaleString("en-IN")}
+            </a>
+          </form>
+        )}
+      </div>
+
+      {view === "universities" ? (
+        <Card>
+          {unis.length === 0 ? (
+            <EmptyState icon={<IconSearch />} title="No universities match these filters">Try removing a quick filter, or widen the destination and level.</EmptyState>
+          ) : (
+            <Table tableClassName="min-w-[820px]">
+              <thead>
+                <tr>
+                  <Th>University</Th>
+                  <Th>Matching programs</Th>
+                  <Th>Levels</Th>
+                  <Th>Intakes</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {unis.map((r) => (
+                  <tr key={r.id} className="hover:bg-surface-2/60">
+                    <Td>
+                      <Link prefetch={false} href={`/universities/${r.id}`} className="font-medium text-ink hover:text-brand-700 hover:underline">{r.name}</Link>
+                      <p className="flex items-center gap-1 text-xs text-muted">
+                        <IconGlobe className="size-3.5" /> {r.city ? `${r.city}, ` : ""}{r.country}
+                        {r.isPublic && <Chip className="ml-1">Public</Chip>}
+                      </p>
+                      {rankLabels(r).length > 0 && <p className="text-xs font-medium text-ink-soft">{rankLabels(r).join(" · ")}</p>}
+                    </Td>
+                    <Td>
+                      <Link prefetch={false} href={`/search?${qs({ view: undefined, uni: r.id })}`} className="font-medium text-brand-600 hover:underline">
+                        {r.programs.toLocaleString("en-IN")} program{r.programs === 1 ? "" : "s"}
+                      </Link>
+                      {r.noAppFee > 0 && <p className="text-xs text-muted">{r.noAppFee} with no application fee</p>}
+                    </Td>
+                    <Td className="text-[13px]">{r.levels.map((l) => LEVEL_LABEL[l] ?? l).join(", ")}</Td>
+                    <Td className={cn("text-[13px]", !r.intakes.length && "text-muted")}>{intakesText(r.intakes)}</Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          )}
+          {(page > 1 || hasNext) && pager(unis.length, counts.unis)}
+        </Card>
+      ) : (
       <Card>
+        {f.uni && (
+          <p className="border-b border-line px-4 py-2.5 text-[13px]">
+            Showing one university&apos;s programs. <Link href={`/search?${qs({ uni: undefined })}`} className="font-medium text-brand-600 hover:underline">Show every university</Link>
+          </p>
+        )}
         {list.length === 0 ? (
           <EmptyState icon={<IconSearch />} title="No programs match these filters">
             Try removing a quick filter, or widen the destination and level.
           </EmptyState>
         ) : (
-          <Table tableClassName="min-w-[1080px]">
+          <Table tableClassName="min-w-[1120px]">
             <thead>
               <tr>
+                <Th><span className="sr-only">Tick</span></Th>
                 <Th>Program</Th>
                 <Th>University</Th>
                 <Th>Intakes</Th>
                 <Th>Tuition</Th>
                 <Th>Entry requirements</Th>
-                {student && <Th>Fit</Th>}
+                {checker && <Th>Fit</Th>}
                 <Th><span className="sr-only">Apply</span></Th>
               </tr>
             </thead>
@@ -375,6 +501,9 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                 const fit = eligibility.get(r.id);
                 return (
                   <tr key={r.id} className="hover:bg-surface-2/60">
+                    <Td className="w-8">
+                      <input type="checkbox" form="pick" name="id" value={r.id} aria-label={`Tick ${r.name}`} className="size-4" />
+                    </Td>
                     <Td>
                       <Link prefetch={false} href={`/programs/${r.id}${student ? `?student=${student.id}` : ""}`} className="font-medium text-ink hover:text-brand-700 hover:underline">{r.name}</Link>
                       <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
@@ -396,6 +525,11 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                             )}
                           </Chip>
                           {r.workRightsNote && <span className="ml-1.5 text-xs text-muted">{r.workRightsNote}</span>}
+                        </p>
+                      )}
+                      {r.tags.length > 0 && (
+                        <p className="mt-1 flex flex-wrap gap-1">
+                          {r.tags.filter((t) => t in PROGRAM_TAGS).map((t) => <Chip key={t} tone="info">{PROGRAM_TAGS[t as keyof typeof PROGRAM_TAGS]}</Chip>)}
                         </p>
                       )}
                     </Td>
@@ -428,11 +562,13 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                       <p className="text-xs text-muted">
                         {r.applicationFee == null ? "App. fee not recorded" : r.applicationFee > 0 ? `App. fee ${fmtMoney(r.applicationFee, r.currency)}` : "No application fee"}
                         {r.deposit ? ` · deposit ${fmtMoney(r.deposit, r.currency)}` : ""}
+                        {r.balanceDeposit ? ` · balance ${fmtMoney(r.balanceDeposit, r.currency)}` : ""}
                       </p>
+                      {r.typicalScholarship && <p className="max-w-[14rem] truncate text-xs font-medium text-emerald-700" title={r.typicalScholarship}>Scholarship: {r.typicalScholarship}</p>}
                     </Td>
                     <Td>
                       <div className="flex max-w-[15rem] flex-wrap gap-1">
-                        {r.minIelts && <Chip>IELTS {r.minIelts}</Chip>}
+                        {r.minIelts && <Chip>IELTS {r.minIelts}{r.minIeltsBand != null ? ` (no band < ${r.minIeltsBand})` : ""}</Chip>}
                         {r.minPte && <Chip>PTE {r.minPte}</Chip>}
                         {r.minToefl != null && <Chip>TOEFL {r.minToefl}</Chip>}
                         {r.minDuolingo != null && <Chip>Duolingo {r.minDuolingo}</Chip>}
@@ -447,7 +583,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                         {!r.minIelts && !r.minPte && r.minToefl == null && r.minDuolingo == null && !r.minOetGrade && !r.minGermanLevel && r.minGre == null && r.minGmat == null && r.minSat == null && r.minAcademicPercent == null && <span className="text-xs text-muted">No test requirement recorded</span>}
                       </div>
                     </Td>
-                    {student && fit && (
+                    {checker && fit && (
                       <Td>
                         {fit.verdict === "eligible" && <Chip tone="ok"><IconCheck className="size-3.5" /> Eligible</Chip>}
                         {fit.verdict === "on-track" && <Chip tone="warn"><IconClock className="size-3.5" /> On track</Chip>}
@@ -483,33 +619,38 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             </tbody>
           </Table>
         )}
-        {(page > 1 || hasNext) && (
-          <div className="flex items-center justify-between border-t border-line px-4 py-3">
-            <span className="text-[13px] text-muted">
-              Showing {(page - 1) * PAGE + 1} to {(page - 1) * PAGE + list.length} of {total}
-            </span>
-            <div className="flex gap-2">
-              {page > 1 && (
-                <LinkButton variant="secondary" size="sm" href={`/search?${new URLSearchParams({ ...f, page: String(page - 1) })}`}>
-                  Previous
-                </LinkButton>
-              )}
-              {hasNext && (
-                <LinkButton variant="secondary" size="sm" href={`/search?${new URLSearchParams({ ...f, page: String(page + 1) })}`}>
-                  Next
-                </LinkButton>
-              )}
-            </div>
-          </div>
-        )}
+        {(page > 1 || hasNext) && pager(list.length, total)}
       </Card>
+      )}
 
-      {!student && (
+      {!student && !adhoc && (
         <p className="mt-4 flex items-center gap-2 text-[13px] text-muted">
           <IconSpark className="size-4 text-brand-600" />
-          Pick a student in &ldquo;Check eligibility for…&rdquo; to see which programs they already qualify for, and which ones they are on track for.
+          Pick a student in &ldquo;Check eligibility for…&rdquo;, or type scores above, to see which programs they already qualify for.
         </p>
       )}
     </>
   );
+
+  function pager(shown: number, of: number) {
+    return (
+      <div className="flex items-center justify-between border-t border-line px-4 py-3">
+        <span className="text-[13px] text-muted">
+          Showing {(page - 1) * PAGE + 1} to {(page - 1) * PAGE + shown} of {of.toLocaleString("en-IN")}
+        </span>
+        <div className="flex gap-2">
+          {page > 1 && (
+            <LinkButton variant="secondary" size="sm" href={`/search?${new URLSearchParams({ ...f, page: String(page - 1) })}`}>
+              Previous
+            </LinkButton>
+          )}
+          {hasNext && (
+            <LinkButton variant="secondary" size="sm" href={`/search?${new URLSearchParams({ ...f, page: String(page + 1) })}`}>
+              Next
+            </LinkButton>
+          )}
+        </div>
+      </div>
+    );
+  }
 }

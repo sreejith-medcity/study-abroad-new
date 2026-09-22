@@ -5,7 +5,8 @@ import { intakesText, LEVEL_LABEL, tuitionText } from "@/lib/catalogue";
 import { requireUser } from "@/lib/auth";
 import { readFilters } from "@/server/queries";
 import { Button, Card, Chip, EmptyState, Input, LinkButton, PageHeader, Select, Table, Td, Th } from "@/components/ui";
-import { bulkStatusAction, setProgramStatusAction } from "./actions";
+import { bulkStatusAction, bulkTagAction, setProgramStatusAction } from "./actions";
+import { PROGRAM_TAGS, TAG_KEYS } from "@/lib/program-tags";
 import { ImportForm } from "./import-form";
 import { PROGRAM_FILTER_KEYS, programFilterWhere } from "@/server/program-filters";
 import { CricosForm } from "./cricos-form";
@@ -77,6 +78,18 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
           ) : undefined
         }
       />
+      {total > 0 && (
+        <form action={bulkTagAction} className="-mt-2 mb-4 flex flex-wrap items-center justify-end gap-2 text-[13px]">
+          {PROGRAM_FILTER_KEYS.map((k) => <input key={k} type="hidden" name={k} value={f[k] ?? ""} />)}
+          <span className="text-muted">Label all {total} matching:</span>
+          <Select name="bulkTag" aria-label="Label to apply" defaultValue="" className="w-56 py-1 text-xs">
+            <option value="">Choose a label</option>
+            {TAG_KEYS.map((t) => <option key={t} value={t}>{PROGRAM_TAGS[t]}</option>)}
+          </Select>
+          <Button name="op" value="add" size="sm" variant="secondary">Add label</Button>
+          <Button name="op" value="remove" size="sm" variant="quiet">Remove label</Button>
+        </form>
+      )}
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="space-y-4">
           <Card className="p-4">
@@ -98,6 +111,11 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
                 <option value="">Any source</option>
                 <option value="catalogue">Researched catalogue</option>
                 <option value="CRICOS">CRICOS register</option>
+              </Select>
+              <Select name="tag" aria-label="Label" defaultValue={f.tag ?? ""}>
+                <option value="">Any label</option>
+                <option value="none">No label</option>
+                {TAG_KEYS.map((t) => <option key={t} value={t}>{PROGRAM_TAGS[t]}</option>)}
               </Select>
               <Select name="workRights" aria-label="Post-study work" defaultValue={f.workRights ?? ""}>
                 <option value="">Any work rights</option>
