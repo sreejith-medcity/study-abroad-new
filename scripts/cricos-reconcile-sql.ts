@@ -25,40 +25,49 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith(".csv")).sort()) {
   }
 }
 
+// No temporary tables and no explicit transaction: the Supabase SQL editor can
+// run each statement on its own connection, where a temp table from an earlier
+// statement does not exist. Each statement carries its own list instead.
+const hand = `hand as (
+  select h.id, cp.code
+  from (values
+${pairs.join(",\n")}
+  ) as cp(university, program, code)
+  join universities u on u.name = cp.university
+  join countries c on c.id = u.country_id and c.code = 'AU'
+  join programs h on h.university_id = u.id and h.name = cp.program
+  where h.external_code is null and h.source is distinct from 'CRICOS'
+)`;
+
 console.log(`-- Links ${pairs.length} hand-researched Australian programs to their CRICOS codes.
--- Safe to run more than once. Run it, then press "Sync from CRICOS" again.
-begin;
+-- Three statements; run the whole file. Safe to run more than once.
+-- Then press "Sync from CRICOS" again.
 
-create temp table cricos_pairs (university text, program text, code text) on commit drop;
-insert into cricos_pairs values
-${pairs.join(",\n")};
-
-create temp table cricos_hand on commit drop as
-select h.id, cp.code
-from cricos_pairs cp
-join universities u on u.name = cp.university
-join countries c on c.id = u.country_id and c.code = 'AU'
-join programs h on h.university_id = u.id and h.name = cp.program
-where h.external_code is null and h.source is distinct from 'CRICOS';
-
--- The twin the register added, while nothing points at it yet.
+-- 1. Remove the draft twin the register added, while nothing points at it yet.
+with ${hand}
 delete from programs t
-using cricos_hand ch
-where t.external_code = ch.code
+using hand
+where t.external_code = hand.code
   and t.source = 'CRICOS'
   and t.status = 'DRAFT'
   and not exists (select 1 from applications a where a.program_id = t.id)
   and not exists (select 1 from shortlists s where s.program_id = t.id)
   and not exists (select 1 from commission_rules r where r.program_id = t.id);
 
+-- 2. Give each hand-researched program its code, where no other row holds it.
+with ${hand}
 update programs h
-set external_code = ch.code, updated_at = now()
-from cricos_hand ch
-where h.id = ch.id
-  and not exists (select 1 from programs x where x.external_code = ch.code);
+set external_code = hand.code, updated_at = now()
+from hand
+where h.id = hand.id
+  and not exists (select 1 from programs x where x.external_code = hand.code);
 
-select count(*) filter (where external_code is not null) as linked,
-       count(*) filter (where external_code is null) as still_unlinked
-from programs where id in (select id from cricos_hand);
-
-commit;`);
+-- 3. How it went: linked should be ${pairs.length} or close, still_unlinked 0 or close.
+select count(*) filter (where p.external_code is not null) as linked,
+       count(*) filter (where p.external_code is null) as still_unlinked
+from (values
+${pairs.join(",\n")}
+) as cp(university, program, code)
+join universities u on u.name = cp.university
+join countries c on c.id = u.country_id and c.code = 'AU'
+join programs p on p.university_id = u.id and p.name = cp.program and p.source is distinct from 'CRICOS';`);
