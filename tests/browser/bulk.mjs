@@ -62,7 +62,7 @@ let text = await go(op, "/imports");
 check(/Students/.test(text) && /Enquiries/.test(text) && !/Application updates/.test(text) && !/Commission payments/.test(text), "owner: students and enquiries only");
 check(/Bulk upload/.test(await op.locator("nav").first().innerText()), "nav: Bulk upload for the owner");
 const tpl = await (await op.request.get(`${BASE}/api/imports/template/students`)).text();
-check(tpl.startsWith("﻿first_name,last_name,email,phone") && !tpl.includes("branch"), "template: the owner's has no branch column");
+check(tpl.startsWith("﻿name,first_name,last_name,email,phone") && !tpl.includes("branch"), "template: the owner's has no branch column");
 check((await op.request.get(`${BASE}/api/imports/template/commissions`)).status() === 404, "template: team templates are not the owner's");
 
 const csv = [
@@ -129,6 +129,33 @@ const manyBad = ["branch,first_name,last_name,email,phone,consent", ...Array.fro
 text = await upload(ap, "students", "many.csv", manyBad);
 check(/Lines 2, 3, 4 and 9 more: branch: no branch called "Ernakulam"/.test(text), `errors: identical problems are gathered (${(text.match(/Lines [^\n]+/) || [])[0] ?? "none"})`);
 check((text.match(/no branch called "Ernakulam"/g) || []).length === 1, "errors: the message is printed once, not twelve times");
+
+// --- The whole name in one column, and one confirmation of consent for the file.
+text = await upload(op, "students", "wholename.csv", `name,email,phone,consent\nDeepa Maria Nair,deepa.${tag}@example.com,+91 98470 55551,yes\nSingleword,single.${tag}@example.com,+91 98470 55552,yes`);
+check(/1 new/.test(text) && /1 with problems/.test(text), "whole name: the name column is read, a single name is not guessed at");
+check(/has no surname to take/.test(text), "whole name: says why the single name failed");
+await confirm(op);
+check(sql(`select first_name || '|' || last_name from students where email = 'deepa.${tag}@example.com'`) === "Deepa Maria|Nair", "whole name: split at the last space");
+
+const noConsent = `name,email,phone\nConsent Missing,noconsent2.${tag}@example.com,+91 98470 55553`;
+text = await upload(op, "students", "consent.csv", noConsent);
+check(/1 with problems/.test(text) && /a new student needs "yes"/.test(text), "consent: without the column or the tick, a new student is left out");
+await op.locator('input[name="consentAll"]').check();
+await op.getByRole("button", { name: "Check the file" }).click();
+{
+  const until = Date.now() + 20000;
+  text = "";
+  while (Date.now() < until) {
+    text = await op.getByTestId("import-result").innerText().catch(() => "");
+    if (/1 new/.test(text)) break;
+    await op.waitForTimeout(300);
+  }
+}
+check(/1 new/.test(text) && !/with problems/.test(text), `consent: the tick above the file stands for every row (${text.split("\n").slice(1, 3).join(" ")})`);
+await confirm(op);
+const consentText = sql(`select consent_text from students where email = 'noconsent2.${tag}@example.com'`);
+check(/Consent confirmed for the whole upload by .*kottayam@medcity.test/.test(consentText), `consent: whose confirmation it was is recorded (${consentText.slice(0, 60)})`);
+check(sql(`select count(*) from audit_logs where action = 'import.run' and meta->>'consentConfirmedForWholeFile' = 'true'`) !== "0", "consent: the audit log keeps the confirmation");
 
 // --- A preference nobody can act on does not cost a student.
 text = await upload(op, "students", "pathway.csv", `first_name,last_name,email,phone,consent,preferred_pathway\nPath,Way,pathway.${tag}@example.com,+91 98470 44444,yes,MSc Supply Chain Management`);

@@ -3,12 +3,12 @@ import { and, eq, inArray, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { EMAIL, PHONE, day, num, oneOf, text, yes, type Problems } from "@/lib/import-values";
+import { EMAIL, PHONE, day, num, oneOf, splitName, text, yes, type Problems } from "@/lib/import-values";
 import { createId } from "@/lib/id";
 import { branchOwner, branchResolver, emptyResult, lineOf, phoneKey, staffByEmail, type ImportResult } from "./common";
 
 export const STUDENT_COLUMNS = [
-  "branch", "first_name", "last_name", "email", "phone", "counsellor_email", "consent",
+  "branch", "name", "first_name", "last_name", "email", "phone", "counsellor_email", "consent",
   "date_of_birth", "gender", "marital_status", "nationality", "address_line1", "address_line2", "city", "state", "pincode",
   "passport_number", "passport_issue", "passport_expiry", "passport_issue_country", "city_of_birth",
   "backlogs", "gap_years", "preferred_country", "preferred_pathway",
@@ -18,7 +18,7 @@ export const STUDENT_COLUMNS = [
 ] as const;
 
 export const STUDENT_EXAMPLE = [
-  "", "Anjali", "Menon", "anjali.menon@example.com", "+91 98470 12345", "", "yes",
+  "", "", "Anjali", "Menon", "anjali.menon@example.com", "+91 98470 12345", "", "yes",
   "2003-04-18", "Female", "Single", "India", "Kizhakkedathu House", "Near Market Road", "Kottayam", "Kerala", "686001",
   "", "", "", "", "",
   "0", "1", "United Kingdom", "DEGREE",
@@ -28,6 +28,8 @@ export const STUDENT_EXAMPLE = [
 ];
 
 const CONSENT = "Consent confirmed by the branch when the student's details were uploaded in bulk.";
+/** What is recorded when one person confirms consent for a whole file. */
+const CONSENT_ALL = (who: string) => `Consent confirmed for the whole upload by ${who} when the student's details were uploaded in bulk.`;
 const TESTS = [["ielts", "IELTS"], ["pte", "PTE"], ["toefl", "TOEFL"], ["duolingo", "DUOLINGO"], ["oet", "OET"], ["german", "GERMAN"], ["gre", "GRE"], ["gmat", "GMAT"]] as const;
 
 type Row = Record<string, string>;
@@ -47,7 +49,7 @@ type Row = Record<string, string>;
  * The student portal needs an address, so the file says so and the profile
  * carries it until somebody adds one.
  */
-export async function importStudents(user: SessionUser, rows: Row[], commit: boolean): Promise<ImportResult> {
+export async function importStudents(user: SessionUser, rows: Row[], commit: boolean, opts: { consentAll?: boolean } = {}): Promise<ImportResult> {
   const out = emptyResult();
   const resolve = await branchResolver(user);
   const seen = new Set<string>();
@@ -74,12 +76,15 @@ export async function importStudents(user: SessionUser, rows: Row[], commit: boo
     const ignored: string[] = [];
     const org = resolve(r.branch);
     if (typeof org === "string") p.push(org);
-    const first = text(r.first_name, 80);
-    const last = text(r.last_name, 80);
+    // A file from another CRM usually holds one name column, so the full name
+    // is split where the columns are not filled in separately.
+    const named = splitName(r.name, r.first_name, r.last_name);
+    const first = text(named.first, 80);
+    const last = text(named.last, 80);
     const email = (r.email ?? "").trim().toLowerCase() || null;
     const phone = text(r.phone, 20);
     if (!first) p.push("first_name is required");
-    if (!last) p.push("last_name is required");
+    if (!last) p.push(first ? `last_name is required: "${first}" has no surname to take` : "last_name is required");
     if (email && !EMAIL.test(email)) p.push("email: that is not an email address");
     if (phone && !PHONE.test(phone)) p.push("phone: use a mobile number with country code, like +91 98470 12345");
     if (!email && !phone) p.push("give an email or a phone number, so the student can be told apart from the next one");
@@ -206,7 +211,7 @@ export async function importStudents(user: SessionUser, rows: Row[], commit: boo
       (plan.email ? byEmail.get(`${plan.orgId}|${plan.email}`) : undefined) ??
       (plan.phoneKey ? byPhone.get(`${plan.orgId}|${plan.phoneKey}|${String(plan.fields.firstName).toLowerCase()} ${String(plan.fields.lastName).toLowerCase()}`) : undefined);
     if (!current) {
-      if (!plan.consent) {
+      if (!plan.consent && !opts.consentAll) {
         out.errors.push({ line: plan.line, message: "consent: a new student needs \"yes\" to confirm the branch has their consent" });
         continue;
       }
@@ -277,7 +282,7 @@ export async function importStudents(user: SessionUser, rows: Row[], commit: boo
             createdById: user.id,
             assignedToId,
             consentAt: new Date(),
-            consentText: CONSENT,
+            consentText: opts.consentAll && !plan.consent ? CONSENT_ALL(`${user.name} (${user.email})`) : CONSENT,
             source: "import",
           } as typeof schema.students.$inferInsert;
         }),

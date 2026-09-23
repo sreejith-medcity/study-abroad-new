@@ -11,7 +11,7 @@ import { importEnquiries } from "./enquiries";
 import { MAX_ROWS, readSheet } from "./sheet";
 import { importStudents } from "./students";
 
-export type ImportState = { kind?: string; result?: ImportResult; committed?: boolean; rows?: Record<string, string>[]; fileName?: string; error?: string };
+export type ImportState = { kind?: string; result?: ImportResult; committed?: boolean; rows?: Record<string, string>[]; fileName?: string; error?: string; consentAll?: boolean };
 
 /**
  * Preview reads the file and checks every row without saving anything. Import
@@ -24,6 +24,9 @@ export async function runImportAction(prev: ImportState, fd: FormData): Promise<
   if (!isImportKind(kind)) return { error: "Choose what you are uploading." };
   if (IMPORT_KINDS[kind].team && !isAdmin(user)) return { error: "Only the Overseas team can upload this." };
   const commit = fd.get("mode") === "commit";
+  // One person confirming, for a whole file, in place of a consent column. The
+  // audit log keeps their name against it.
+  const consentAll = fd.get("consentAll") === "on";
 
   let rows: Record<string, string>[];
   let fileName = prev.fileName;
@@ -42,20 +45,33 @@ export async function runImportAction(prev: ImportState, fd: FormData): Promise<
   }
   const known = new Set<string>(IMPORT_KINDS[kind].header);
   const ignored = Object.keys(rows[0] ?? {}).filter((h) => !known.has(h));
-  const keyColumn = IMPORT_KINDS[kind].header[kind === "students" || kind === "enquiries" ? 1 : 0];
-  if (!(keyColumn in (rows[0] ?? {}))) return { kind, error: `The file has no "${keyColumn}" column. Download the template for the column names.` };
+  // The column the upload cannot do without. A student's name may arrive whole
+  // in one column or split in two, so either will do.
+  const first = rows[0] ?? {};
+  const missing =
+    kind === "students"
+      ? !("first_name" in first) && !("name" in first)
+        ? "first_name (or name)"
+        : null
+      : (() => {
+          const key = IMPORT_KINDS[kind].header[kind === "enquiries" ? 1 : 0];
+          return key in first ? null : key;
+        })();
+  if (missing) return { kind, error: `The file has no "${missing}" column. Download the template for the column names.` };
 
-  const run = { students: importStudents, enquiries: importEnquiries, applications: importApplicationUpdates, commissions: importCommissionPayments }[kind];
   let result: ImportResult;
   try {
-    result = await run(user, rows, commit);
+    result =
+      kind === "students"
+        ? await importStudents(user, rows, commit, { consentAll })
+        : await { enquiries: importEnquiries, applications: importApplicationUpdates, commissions: importCommissionPayments }[kind](user, rows, commit);
     if (ignored.length) result.notes.unshift({ line: 1, message: `Columns not used by this upload, ignored: ${ignored.slice(0, 8).join(", ")}` });
   } catch (e) {
     return { kind, rows, fileName, error: `The upload stopped: ${(e as Error).message}. Nothing after that row was saved.` };
   }
   if (commit) {
-    await audit(user.id, "import.run", "import", kind, { fileName, created: result.created, updated: result.updated, unchanged: result.unchanged, skipped: result.skipped, errors: result.errors.length });
-    return { kind, result, committed: true, fileName };
+    await audit(user.id, "import.run", "import", kind, { fileName, created: result.created, updated: result.updated, unchanged: result.unchanged, skipped: result.skipped, errors: result.errors.length, ...(kind === "students" && consentAll ? { consentConfirmedForWholeFile: true } : {}) });
+    return { kind, result, committed: true, fileName, consentAll };
   }
-  return { kind, result, rows, fileName };
+  return { kind, result, rows, fileName, consentAll };
 }

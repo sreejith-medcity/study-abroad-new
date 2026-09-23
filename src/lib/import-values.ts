@@ -52,3 +52,20 @@ export const yes = (v: string | undefined) => /^(y|yes|true|1)$/i.test((v ?? "")
 
 export const PHONE = /^\+?[\d\s-]{8,16}$/;
 export const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * A name as a sheet holds it. Files from another CRM usually carry one name
+ * column, so where the last name is missing the last word of the full name is
+ * taken as the surname and everything before it as the given names. A single
+ * word gives no surname to take, and the row says so rather than inventing one.
+ */
+export function splitName(full: string | undefined, first: string | undefined, last: string | undefined) {
+  const given = (first ?? "").trim().replace(/\s+/g, " ");
+  const family = (last ?? "").trim().replace(/\s+/g, " ");
+  if (given && family) return { first: given, last: family };
+  const whole = ((full ?? "").trim() || given).replace(/\s+/g, " ");
+  if (family) return whole ? { first: whole, last: family } : { first: "", last: family };
+  const cut = whole.lastIndexOf(" ");
+  if (cut < 0) return { first: whole, last: "" };
+  return { first: whole.slice(0, cut), last: whole.slice(cut + 1) };
+}

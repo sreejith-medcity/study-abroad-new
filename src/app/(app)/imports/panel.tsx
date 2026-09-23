@@ -43,6 +43,15 @@ export function ImportPanel({ kind }: { kind: string }) {
           <label htmlFor={`file-${kind}`} className="font-medium">CSV or Excel file</label>
           <input id={`file-${kind}`} type="file" name="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="text-xs" />
         </div>
+        {kind === "students" && (
+          <label className="flex items-start gap-2 text-[13px]" htmlFor={`consent-${kind}`}>
+            <input id={`consent-${kind}`} type="checkbox" name="consentAll" defaultChecked={mine.consentAll} className="mt-0.5 size-4 shrink-0" />
+            <span>
+              I confirm this branch has each student&apos;s consent to hold their personal details and documents. It stands for every row in the file, and is recorded against my name.
+              A <code>consent</code> column in the file still works on its own.
+            </span>
+          </label>
+        )}
         <div className="flex flex-wrap gap-2">
           <Button type="submit" name="mode" value="preview" variant="secondary" disabled={pending}>
             {pending ? "Working…" : "Check the file"}
