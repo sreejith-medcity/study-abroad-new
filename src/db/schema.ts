@@ -275,6 +275,10 @@ export const programs = pgTable(
     balanceDeposit: integer("balance_deposit"),
     // A typical scholarship, as the institution words it ("Up to 20% of tuition").
     typicalScholarship: text("typical_scholarship"),
+    // How long this institution has been taking to answer an application, in
+    // whole days, as the Overseas team records it from its own files. Null
+    // means nobody has recorded it, which reads as "Not recorded".
+    offerTatDays: integer("offer_tat_days"),
     // Curated labels partners filter by (see PROGRAM_TAGS): faster offers, no interview, STEM...
     tags: text("tags").array().notNull().default(sql`'{}'::text[]`),
     // Post-study work: PGWP in Canada, STEM OPT in the US, the Graduate Route in

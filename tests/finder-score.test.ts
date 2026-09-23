@@ -21,6 +21,7 @@ const program = (over: Partial<ScoreProgram> = {}): ScoreProgram => ({
   initialDeposit: null,
   moiAccepted: false,
   typicalScholarship: null,
+  offerTatDays: null,
   qsRank: null,
   theRank: null,
   ...over,
@@ -80,6 +81,16 @@ test("a preference only scores when the program records it", () => {
   const with_ = scoreMatch(program({ workRights: "ELIGIBLE" }), { fit: fit(), wants: wants({ prefs: ["workRights"] }), rates: RATES, deadline: null, today: TODAY });
   assert.equal(with_.score - without.score, 4);
   assert.ok(with_.reasons.some((r) => r.includes("Post-study work")));
+});
+
+test("a fast offer counts, and an unrecorded one is not guessed at", () => {
+  const fast = scoreMatch(program({ offerTatDays: 3 }), { fit: fit(), wants: wants(), rates: RATES, deadline: null, today: TODAY });
+  const slow = scoreMatch(program({ offerTatDays: 21 }), { fit: fit(), wants: wants(), rates: RATES, deadline: null, today: TODAY });
+  const none = scoreMatch(program(), { fit: fit(), wants: wants(), rates: RATES, deadline: null, today: TODAY });
+  assert.ok(fast.reasons.some((r) => r === "Offer usually in 3 days"));
+  assert.equal(fast.score - slow.score, 4);
+  assert.equal(slow.score, none.score);
+  assert.ok(!none.reasons.some((r) => /Offer usually/.test(r)));
 });
 
 test("a published rank is quoted as published", () => {

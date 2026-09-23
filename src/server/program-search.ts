@@ -10,7 +10,7 @@ import { hasCommissionRule } from "@/server/commission-estimate";
 const { programs: p, universities: u, countries: c } = schema;
 
 /** Keys that may carry several values; they travel comma-separated. */
-const MULTI = ["level", "season", "tags", "country"] as const;
+const MULTI = ["level", "season", "tags", "country", "uni"] as const;
 
 /**
  * Search parameters as one string per key. Checkbox groups submit a key more
@@ -61,6 +61,19 @@ export const QUICK: { key: string; label: string; cond: () => SQL }[] = [
 ];
 
 export const tagCond = (tag: string) => sql`${tag} = any(${p.tags})`;
+
+/**
+ * Programs whose qualifying study the student has already finished: Std. 12th
+ * for a bachelor's or a diploma, a bachelor's for a master's, a master's for a
+ * PhD. The same reading as qualifyingLevel(), as SQL.
+ */
+export function qualificationCond(held: "SCHOOL" | "UG" | "PG"): SQL {
+  const needsUg = sql`${p.level} in ('PG', 'PG_DIPLOMA', 'REGISTRATION')`;
+  const needsPg = sql`${p.level} = 'PHD'`;
+  if (held === "PG") return sql`true`;
+  if (held === "UG") return sql`not ${needsPg}`;
+  return sql`not (${needsUg} or ${needsPg})`;
+}
 
 /** Applications open: a recorded deadline still ahead. Closed: deadlines recorded, all passed. */
 export const openCond = sql`exists (select 1 from program_deadlines pd where pd.program_id = programs.id and pd.deadline >= current_date)`;
@@ -135,7 +148,19 @@ export function searchConds(
   const countries = listOf(f.country);
   if (countries.length === 1) conds.push(eq(c.code, countries[0]));
   else if (countries.length > 1) conds.push(sql`${c.code} in (${sql.join(countries.map((x) => sql`${x}`), sql`, `)})`);
-  if (f.uni) conds.push(eq(u.id, f.uni));
+  const unis = listOf(f.uni);
+  if (unis.length === 1) conds.push(eq(u.id, unis[0]));
+  else if (unis.length > 1) conds.push(sql`${u.id} in (${sql.join(unis.map((x) => sql`${x}`), sql`, `)})`);
+  if (f.uniType === "public") conds.push(eq(u.isPublic, true));
+  if (f.uniType === "private") conds.push(eq(u.isPublic, false));
+  // The gap the student has been out of study, in months, against the years a
+  // program allows. Programs that record no limit stay in the list.
+  if (Number(f.gapMonths) > 0) conds.push(sql`(${p.maxGapYears} is null or ${p.maxGapYears} * 12 >= ${Number(f.gapMonths)}::int)`);
+  if (f.qual === "SCHOOL" || f.qual === "UG" || f.qual === "PG") conds.push(qualificationCond(f.qual));
+  // An offer turnaround the team has recorded, and inside the days asked for.
+  if (Number(f.tat) > 0) conds.push(sql`(${p.offerTatDays} is not null and ${p.offerTatDays} <= ${Number(f.tat)}::int)`);
+  if (Number(f.durFrom) > 0) conds.push(sql`(${p.durationMonths} is not null and ${p.durationMonths} >= ${Number(f.durFrom)}::int)`);
+  if (Number(f.durTo) > 0) conds.push(sql`(${p.durationMonths} is not null and ${p.durationMonths} <= ${Number(f.durTo)}::int)`);
   if (f.field) conds.push(eq(p.studyArea, f.field));
   if (f.pathway) conds.push(eq(p.pathway, f.pathway as schema.Pathway));
   const levels = listOf(f.level).filter((l) => LEVELS.some(([k]) => k === l));

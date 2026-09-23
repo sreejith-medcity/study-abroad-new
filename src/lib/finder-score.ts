@@ -31,6 +31,8 @@ export type ScoreProgram = {
   initialDeposit: number | null;
   moiAccepted: boolean;
   typicalScholarship: string | null;
+  /** Days this institution has been taking to answer, as the team records it. */
+  offerTatDays: number | null;
   qsRank: string | null;
   theRank: string | null;
 };
@@ -161,6 +163,13 @@ export function scoreMatch(
       score += 4;
       reasons.push(hit);
     }
+  }
+
+  // A fast answer matters to a family deciding between offers, and it only
+  // counts where the team has recorded one.
+  if (p.offerTatDays != null && p.offerTatDays <= 7) {
+    score += 4;
+    reasons.push(`Offer usually in ${p.offerTatDays === 1 ? "1 day" : `${p.offerTatDays} days`}`);
   }
 
   // A published rank as it was published, never tidied into a number for show.

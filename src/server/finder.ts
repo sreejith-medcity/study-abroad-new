@@ -10,10 +10,31 @@ import { hasOpenScholarship } from "@/server/scholarships";
 const { programs: p, universities: u, countries: c } = schema;
 
 /** Everything the finder carries from step to step. */
-export const FINDER_KEYS = ["student", "country", "level", "season", "field", "budget", "fit", "q", ...QUICK.map((q) => q.key), "ae_ielts", "ae_pte", "ae_toefl", "ae_duolingo", "ae_gre", "ae_gmat", "ae_12", "ae_ug", "ae_backlogs", "ae_gap"] as const;
+export const FINDER_KEYS = [
+  "student", "country", "level", "season", "field", "budget", "fit", "q", "uni", "uniType", "qual", "gapMonths", "tat", "durFrom", "durTo", "intakeMonth", "apply", "sort", "pathway", "tags",
+  ...QUICK.map((q) => q.key),
+  "ae_ielts", "ae_pte", "ae_toefl", "ae_duolingo", "ae_gre", "ae_gmat", "ae_12", "ae_ug", "ae_backlogs", "ae_gap",
+] as const;
 
-/** How many matches are read back and scored. The counts below cover them all. */
-export const CANDIDATES = 120;
+/**
+ * How many matches are read back when the order is the finder's own. Fit is
+ * worked out per program in the application, not in SQL, so the order it gives
+ * can only cover what was read: the best of these, by the filters that decide
+ * most of the score anyway. Every other order is a plain SQL sort over every
+ * match, page by page. The screen says which it is showing.
+ */
+export const CANDIDATES = 400;
+export const PAGE = 25;
+
+/** The orders offered, beside the finder's own. */
+export const SORTS = [
+  ["", "Best fit first"],
+  ["fee", "Lowest tuition first"],
+  ["feeHigh", "Highest tuition first"],
+  ["rank", "Best university ranking first"],
+  ["tat", "Fastest offer first"],
+  ["name", "Course name"],
+] as const;
 
 /**
  * A program a little over the budget is still worth seeing, with the overshoot
@@ -40,18 +61,27 @@ export function finderWhere(f: Record<string, string>, checker: Pick<Eligibility
 
 export type FinderRow = Awaited<ReturnType<typeof finderCandidates>>[number];
 
-/** The matches themselves, best candidates first, ready to be scored in full. */
+/** The matches themselves, ready to be scored in full. */
 export async function finderCandidates(
   where: ReturnType<typeof finderWhere>,
-  opts: { checker: Pick<EligibilityInput, "backlogs" | "tests" | "academics"> | null; months: number[]; budget: number | null; rates: Record<string, number> },
+  opts: { checker: Pick<EligibilityInput, "backlogs" | "tests" | "academics"> | null; months: number[]; budget: number | null; rates: Record<string, number>; sort?: string; limit?: number; offset?: number },
 ) {
-  const order = [
-    opts.checker ? sql`(${notBlockedWhere(opts.checker)}) desc` : undefined,
-    opts.months.length ? sql`(${p.intakeMonths} && array[${sql.join(opts.months.map((m) => sql`${m}`), sql`, `)}]::int[]) desc` : undefined,
-    opts.budget ? sql`(${budgetWhere(opts.budget, opts.rates)}) desc` : undefined,
-    sql`${u.rankSort} asc nulls last`,
-    asc(p.name),
-  ].filter((x) => x !== undefined);
+  const chosen = SORTS.some(([k]) => k === opts.sort && k !== "") ? opts.sort : "";
+  const order = chosen
+    ? {
+        fee: [sql`${p.tuitionPerYear} is null`, asc(p.tuitionPerYear), sql`${p.tuitionTotal} is null`, asc(p.tuitionTotal), asc(p.name)],
+        feeHigh: [sql`${p.tuitionPerYear} desc nulls last`, sql`${p.tuitionTotal} desc nulls last`, asc(p.name)],
+        rank: [sql`${u.rankSort} asc nulls last`, asc(u.name), asc(p.name)],
+        tat: [sql`${p.offerTatDays} asc nulls last`, asc(p.name)],
+        name: [asc(p.name), asc(u.name)],
+      }[chosen as "fee" | "feeHigh" | "rank" | "tat" | "name"]
+    : [
+        opts.checker ? sql`(${notBlockedWhere(opts.checker)}) desc` : undefined,
+        opts.months.length ? sql`(${p.intakeMonths} && array[${sql.join(opts.months.map((m) => sql`${m}`), sql`, `)}]::int[]) desc` : undefined,
+        opts.budget ? sql`(${budgetWhere(opts.budget, opts.rates)}) desc` : undefined,
+        sql`${u.rankSort} asc nulls last`,
+        asc(p.name),
+      ].filter((x) => x !== undefined);
   return db
     .select({
       id: p.id,
@@ -66,6 +96,7 @@ export async function finderCandidates(
       initialDeposit: p.initialDeposit,
       typicalScholarship: p.typicalScholarship,
       feeWaiver: p.feeWaiver,
+      offerTatDays: p.offerTatDays,
       tags: p.tags,
       intakeMonths: p.intakeMonths,
       minIelts: p.minIelts,
@@ -89,7 +120,9 @@ export async function finderCandidates(
       city: sql<string | null>`coalesce(${p.campus}, ${u.city})`,
       isPublic: u.isPublic,
       qsRank: u.qsRank,
+      qsYear: u.qsYear,
       theRank: u.theRank,
+      theYear: u.theYear,
       country: c.name,
       countryCode: c.code,
       currency: c.currency,
@@ -100,7 +133,8 @@ export async function finderCandidates(
     .innerJoin(c, eq(u.countryId, c.id))
     .where(where)
     .orderBy(...order)
-    .limit(CANDIDATES);
+    .limit(opts.limit ?? CANDIDATES)
+    .offset(opts.offset ?? 0);
 }
 
 /** How many match at all, how many the student can meet, how many sit inside the budget. */
@@ -120,6 +154,35 @@ export async function finderCounts(
     .innerJoin(c, eq(u.countryId, c.id))
     .where(where);
   return row;
+}
+
+/**
+ * The universities behind the matches, with how many each holds, for the panel
+ * that narrows a long list. Ordered by size, because that is the order a
+ * counsellor scans, and capped so a 27,000-program search still renders.
+ */
+export async function universityFacets(where: ReturnType<typeof finderWhere>, limit = 60) {
+  return db
+    .select({ id: u.id, name: u.name, country: c.name, n: count() })
+    .from(p)
+    .innerJoin(u, eq(p.universityId, u.id))
+    .innerJoin(c, eq(u.countryId, c.id))
+    .where(where)
+    .groupBy(u.id, u.name, c.name)
+    .orderBy(sql`count(*) desc`, asc(u.name))
+    .limit(limit);
+}
+
+/** The levels behind the matches, with counts, in the order the finder lists them. */
+export async function levelFacets(where: ReturnType<typeof finderWhere>) {
+  const rows = await db
+    .select({ level: p.level, n: count() })
+    .from(p)
+    .innerJoin(u, eq(p.universityId, u.id))
+    .innerJoin(c, eq(u.countryId, c.id))
+    .where(where)
+    .groupBy(p.level);
+  return new Map(rows.map((r) => [r.level as string, r.n]));
 }
 
 /** Destinations with live programs, for the step that asks where. */

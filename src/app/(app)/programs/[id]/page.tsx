@@ -191,6 +191,7 @@ export default async function ProgramPage({
                 { label: "Deposit to confirm a place", value: feeText(program.initialDeposit, cur, { zero: "No deposit" }) },
                 ...(program.balanceDeposit != null ? [{ label: "Balance deposit", value: feeText(program.balanceDeposit, cur, { zero: "No balance deposit" }) }] : []),
                 ...(program.typicalScholarship ? [{ label: "Typical scholarship", value: program.typicalScholarship, tone: "ok" as const }] : []),
+                ...(program.offerTatDays != null ? [{ label: "Offer usually in", value: program.offerTatDays === 1 ? "1 day" : `${program.offerTatDays} days`, tone: "ok" as const }] : []),
                 ...(program.tags.length ? [{ label: "Labels", value: <span className="flex flex-wrap gap-1">{program.tags.map((t) => <Chip key={t} tone="info">{PROGRAM_TAGS[t as keyof typeof PROGRAM_TAGS] ?? t}</Chip>)}</span> }] : []),
                 ...(program.programUrl
                   ? [{ label: "Program page", value: <a href={program.programUrl} target="_blank" rel="noopener noreferrer" className="break-all text-brand-600 hover:underline">{new URL(program.programUrl).hostname} ↗</a> }]

@@ -70,7 +70,7 @@ export async function importProgramsAction(prev: ImportState, formData: FormData
         tuitionPerYear: r.tuitionPerYear, applicationFee: r.applicationFee, initialDeposit: r.initialDeposit, intakeMonths: r.intakeMonths,
         minIelts: r.minIelts, minPte: r.minPte, minOetGrade: r.minOetGrade, minGermanLevel: r.minGermanLevel, maxBacklogs: r.maxBacklogs,
         minToefl: r.minToefl, minDuolingo: r.minDuolingo, minGre: r.minGre, minGmat: r.minGmat, minSat: r.minSat, minAcademicPercent: r.minAcademicPercent, feeWaiver: r.feeWaiver,
-        programUrl: r.programUrl, minIeltsBand: r.minIeltsBand, entryRequirements: r.entryRequirements, balanceDeposit: r.balanceDeposit, typicalScholarship: r.typicalScholarship, tags: r.tags,
+        programUrl: r.programUrl, minIeltsBand: r.minIeltsBand, entryRequirements: r.entryRequirements, balanceDeposit: r.balanceDeposit, typicalScholarship: r.typicalScholarship, tags: r.tags, offerTatDays: r.offerTatDays,
         maxGapYears: r.maxGapYears, moiAccepted: r.moiAccepted, workRights: r.workRights, workRightsNote: r.workRightsNote,
         requiredDocs: r.requiredDocs, status: r.status, updatedAt: new Date(),
       };
@@ -242,6 +242,7 @@ export async function updateProgramAction(_: FormState, fd: FormData): Promise<F
     entryRequirements: String(fd.get("entryRequirements") ?? "").trim() || null,
     balanceDeposit: optionalNumber(fd, "balanceDeposit", errors, { int: true, min: 0 }),
     typicalScholarship: String(fd.get("typicalScholarship") ?? "").trim() || null,
+    offerTatDays: optionalNumber(fd, "offerTatDays", errors, { int: true, min: 0, max: 365 }),
     tags: fd.getAll("tag").map(String).filter((t) => (TAG_KEYS as string[]).includes(t)).sort(),
     workRights,
     workRightsNote,
@@ -311,6 +312,28 @@ export async function syncCricosAction(_: FormState, fd: FormData): Promise<Form
 }
 
 /** Adds or removes one label on every program matching the filters on screen. */
+/**
+ * The offer turnaround for every program a filter matches. The team knows this
+ * per institution rather than per course, so setting it one course at a time
+ * would mean nobody ever sets it. A blank figure clears what was recorded.
+ */
+export async function bulkTurnaroundAction(formData: FormData) {
+  const user = await requireUser([...ADMIN_ROLES]);
+  const raw = String(formData.get("bulkTat") ?? "").trim();
+  const days = raw === "" ? null : Number(raw);
+  if (days != null && (!Number.isInteger(days) || days < 0 || days > 365)) return;
+  const f = readProgramFilters((k) => formData.get(k)?.toString());
+  const { programs: p, universities: u, countries: c } = schema;
+  const scope = db.select({ id: p.id }).from(p).innerJoin(u, eq(p.universityId, u.id)).innerJoin(c, eq(u.countryId, c.id)).where(programFilterWhere(f));
+  const changed = await db
+    .update(p)
+    .set({ offerTatDays: days, updatedAt: new Date() })
+    .where(and(inArray(p.id, scope), days == null ? sql`${p.offerTatDays} is not null` : sql`${p.offerTatDays} is distinct from ${days}::int`))
+    .returning({ id: p.id });
+  await audit(user.id, "programs.bulk_turnaround", "program", "*", { days, count: changed.length, filters: f });
+  revalidatePath("/admin/programs");
+}
+
 export async function bulkTagAction(formData: FormData) {
   const user = await requireUser([...ADMIN_ROLES]);
   const tag = String(formData.get("bulkTag") ?? "");

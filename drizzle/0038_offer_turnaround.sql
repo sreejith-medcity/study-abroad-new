@@ -1,0 +1,1 @@
+ALTER TABLE "programs" ADD COLUMN "offer_tat_days" integer;

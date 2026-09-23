@@ -13,7 +13,7 @@ export const IMPORT_COLUMNS = [
   "required_docs", "status",
   // Optional: leave the column out and a re-import keeps what is already recorded.
   "min_toefl", "min_duolingo", "min_gre", "min_gmat", "min_sat", "min_academic_percent", "fee_waiver", "deadlines",
-  "program_url", "min_ielts_band", "entry_requirements", "balance_deposit", "typical_scholarship", "tags",
+  "program_url", "min_ielts_band", "entry_requirements", "balance_deposit", "typical_scholarship", "tags", "offer_tat_days",
 ] as const;
 
 const PATHWAYS = ["DEGREE", "AUSBILDUNG", "NURSING"] as const;
@@ -66,6 +66,7 @@ export type ImportRow = {
   entryRequirements?: string | null;
   balanceDeposit?: number | null;
   typicalScholarship?: string | null;
+  offerTatDays?: number | null;
   tags?: string[];
   /** Deadlines per intake from the optional `deadlines` column: 2027-09=2027-06-30|2028-01=2027-10-31. */
   deadlines?: { month: number; year: number; deadline: string }[];
@@ -184,6 +185,7 @@ export function parseProgramCsv(text: string, validDocCodes: string[]): { rows: 
       entryRequirements: r.entry_requirements === undefined ? undefined : r.entry_requirements.trim() || null,
       balanceDeposit: optional(r.balance_deposit, "balance_deposit", { int: true }),
       typicalScholarship: r.typical_scholarship === undefined ? undefined : r.typical_scholarship.trim() || null,
+      offerTatDays: optional(r.offer_tat_days, "offer_tat_days", { int: true }),
       tags: r.tags === undefined ? undefined : parseTags(r.tags, e),
       deadlines: r.deadlines === undefined ? undefined : parseDeadlines(r.deadlines, e),
       maxBacklogs: num(r.max_backlogs, "max_backlogs", e, { int: true }),

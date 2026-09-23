@@ -6,7 +6,7 @@ import { requireUser } from "@/lib/auth";
 import { readFilters } from "@/server/queries";
 import { Button, Card, Chip, EmptyState, Input, LinkButton, PageHeader, Select, Table, Td, Th } from "@/components/ui";
 import { BulkStatusButtons } from "./bulk-buttons";
-import { bulkStatusAction, bulkTagAction, setProgramStatusAction } from "./actions";
+import { bulkStatusAction, bulkTagAction, bulkTurnaroundAction, setProgramStatusAction } from "./actions";
 import { PROGRAM_TAGS, TAG_KEYS } from "@/lib/program-tags";
 import { ImportForm } from "./import-form";
 import { PROGRAM_FILTER_KEYS, programFilterWhere } from "@/server/program-filters";
@@ -88,6 +88,14 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
           </Select>
           <Button name="op" value="add" size="sm" variant="secondary">Add label</Button>
           <Button name="op" value="remove" size="sm" variant="quiet">Remove label</Button>
+        </form>
+      )}
+      {total > 0 && (
+        <form action={bulkTurnaroundAction} className="-mt-2 mb-4 flex flex-wrap items-center justify-end gap-2 text-[13px]">
+          {PROGRAM_FILTER_KEYS.map((k) => <input key={k} type="hidden" name={k} value={f[k] ?? ""} />)}
+          <span className="text-muted">Offer turnaround for all {total} matching:</span>
+          <Input name="bulkTat" aria-label="Offer turnaround in days" inputMode="numeric" placeholder="Days, or blank to clear" className="w-56 py-1 text-xs" />
+          <Button size="sm" variant="secondary">Set turnaround</Button>
         </form>
       )}
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">

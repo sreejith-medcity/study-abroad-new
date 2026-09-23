@@ -19,7 +19,7 @@ const EXAMPLES = [
  * in and stay correctable. The rules-based reader runs whatever the AI setup
  * is; the AI only adds to it when the team has switched it on.
  */
-export function BriefBox({ keys }: { keys: readonly string[] }) {
+export function BriefBox({ keys, step = "" }: { keys: readonly string[]; step?: string }) {
   const router = useRouter();
   const sp = useSearchParams();
   const [text, setText] = useState("");
@@ -39,9 +39,9 @@ export function BriefBox({ keys }: { keys: readonly string[] }) {
       const params = new URLSearchParams();
       for (const [k, v] of sp.entries()) if (keys.includes(k) && !(k in result.params)) params.append(k, v);
       for (const [k, v] of Object.entries(result.params)) params.set(k, v);
-      // Stays on this step: the fields below fill in, the reading above stays
+      // Stays on this screen: the fields below fill in, the reading above stays
       // on screen, and the counsellor corrects anything before moving on.
-      params.set("step", "1");
+      if (step) params.set("step", step);
       router.push(`/finder?${params.toString()}`);
     } catch {
       setNotes(["That description could not be read. Fill the fields below instead."]);

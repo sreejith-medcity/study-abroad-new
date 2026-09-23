@@ -39,6 +39,7 @@ export type EditableProgram = {
   entryRequirements: string | null;
   balanceDeposit: number | null;
   typicalScholarship: string | null;
+  offerTatDays: number | null;
   tags: string[];
   workRights: string;
   workRightsNote: string | null;
@@ -86,6 +87,7 @@ export function ProgramEditForm({ program, currency, docs }: { program: Editable
         <TextField label="Deposit" name="initialDeposit" inputMode="numeric" defaultValue={v(program.initialDeposit)} />
         <TextField label="Balance deposit" name="balanceDeposit" inputMode="numeric" defaultValue={v(program.balanceDeposit)} />
         <TextField label="Typical scholarship" name="typicalScholarship" defaultValue={v(program.typicalScholarship)} placeholder="As the institution words it: 'Up to 20% of first-year tuition'" />
+        <TextField label="Offer in, days" name="offerTatDays" inputMode="numeric" defaultValue={v(program.offerTatDays)} placeholder="How long this institution has been taking to answer, from our own files" />
         <TextField label="Application fee waiver" name="feeWaiver" defaultValue={v(program.feeWaiver)} placeholder="Only if confirmed, in its terms: 'Waived for Medcity applicants until 30 June'" />
       </Section>
 

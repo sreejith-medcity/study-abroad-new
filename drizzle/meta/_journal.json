@@ -267,6 +267,13 @@
       "when": 1790074261541,
       "tag": "0037_ai_features",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1790150338610,
+      "tag": "0038_offer_turnaround",
+      "breakpoints": true
     }
   ]
 }
