@@ -36,6 +36,10 @@ export async function branchResolver(user: SessionUser) {
   const branches = orgs.filter((o) => o.type !== "HQ");
   const names = branches.map((o) => o.name).sort();
   const listed = names.slice(0, 8).join(", ") + (names.length > 8 ? `, and ${names.length - 8} more` : "");
+  // A team upload before any branch exists has nowhere to put a student, and
+  // saying "Branches are:" with nothing after it helps nobody.
+  const none = "branch: no branches have been added yet. Add the branch under Partners and people first, then upload again";
+  if (!branches.length) return () => none;
   return (v: string | undefined): Org | string => {
     const t = (v ?? "").trim().toLowerCase();
     if (!t) return `branch: name the branch this row belongs to. Branches are: ${listed}`;

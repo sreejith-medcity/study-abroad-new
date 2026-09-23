@@ -70,6 +70,8 @@ export async function importStudents(user: SessionUser, rows: Row[], commit: boo
   rows.forEach((r, i) => {
     const line = lineOf(i);
     const p: Problems = [];
+    /** Values that could not be used but are not worth stopping the row for. */
+    const ignored: string[] = [];
     const org = resolve(r.branch);
     if (typeof org === "string") p.push(org);
     const first = text(r.first_name, 80);
@@ -109,7 +111,14 @@ export async function importStudents(user: SessionUser, rows: Row[], commit: boo
       backlogs: num(r.backlogs, "backlogs", p, { int: true, min: 0, max: 99 }),
       gapYears: num(r.gap_years, "gap_years", p, { int: true, min: 0, max: 99 }),
       preferredCountry: text(r.preferred_country, 60),
-      preferredPathway: oneOf(r.preferred_pathway, "preferred_pathway", schema.pathway.enumValues, p, { degree: "DEGREE", ausbildung: "AUSBILDUNG", nursing: "NURSING" }),
+      // A preference nobody can act on is not worth losing a student over: an
+      // unrecognised value is left blank and said out loud, not held against the row.
+      preferredPathway: (() => {
+        const soft: Problems = [];
+        const hit = oneOf(r.preferred_pathway, "preferred_pathway", schema.pathway.enumValues, soft, { degree: "DEGREE", ausbildung: "AUSBILDUNG", nursing: "NURSING" });
+        if (soft.length) ignored.push(`preferred_pathway: "${String(r.preferred_pathway).trim()}" is not degree, Ausbildung or nursing, so it was left blank`);
+        return hit;
+      })(),
     };
     const pass = fields.passportNumber as string | null;
     if (pass && !/^[A-Z0-9]{6,12}$/.test(pass)) p.push("passport_number: letters and digits only");
@@ -139,6 +148,7 @@ export async function importStudents(user: SessionUser, rows: Row[], commit: boo
       out.errors.push({ line, message: p.join("; ") });
       return;
     }
+    for (const note of ignored) out.notes.push({ line, message: note });
     const o = org as { id: string; name: string };
     plans.push({
       line,

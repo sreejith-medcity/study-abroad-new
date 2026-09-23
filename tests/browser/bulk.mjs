@@ -130,6 +130,13 @@ text = await upload(ap, "students", "many.csv", manyBad);
 check(/Lines 2, 3, 4 and 9 more: branch: no branch called "Ernakulam"/.test(text), `errors: identical problems are gathered (${(text.match(/Lines [^\n]+/) || [])[0] ?? "none"})`);
 check((text.match(/no branch called "Ernakulam"/g) || []).length === 1, "errors: the message is printed once, not twelve times");
 
+// --- A preference nobody can act on does not cost a student.
+text = await upload(op, "students", "pathway.csv", `first_name,last_name,email,phone,consent,preferred_pathway\nPath,Way,pathway.${tag}@example.com,+91 98470 44444,yes,MSc Supply Chain Management`);
+check(/1 new/.test(text) && !/with problems/.test(text), "pathway: a course name in preferred_pathway does not stop the row");
+check(/is not degree, Ausbildung or nursing, so it was left blank/.test(text), "pathway: the file says what was left out");
+await confirm(op);
+check(sql(`select coalesce(preferred_pathway::text, '-') from students where email = 'pathway.${tag}@example.com'`) === "-", "pathway: nothing was invented in its place");
+
 // --- A student with no email at all: the phone number is who they are.
 const noMail = `+91 97${tag}1`;
 text = await upload(op, "students", "nomail.csv", `first_name,last_name,email,phone,consent
