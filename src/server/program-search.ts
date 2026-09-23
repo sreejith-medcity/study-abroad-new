@@ -10,7 +10,7 @@ import { hasCommissionRule } from "@/server/commission-estimate";
 const { programs: p, universities: u, countries: c } = schema;
 
 /** Keys that may carry several values; they travel comma-separated. */
-const MULTI = ["level", "season", "tags"] as const;
+const MULTI = ["level", "season", "tags", "country"] as const;
 
 /**
  * Search parameters as one string per key. Checkbox groups submit a key more
@@ -132,7 +132,9 @@ export function searchConds(
   const budget = Number(f.budget) > 0 ? Number(f.budget) * 1e5 : null;
   if (budget) conds.push(budgetWhere(budget, rates));
   if (f.q) conds.push(or(ilike(p.name, `%${f.q}%`), ilike(u.name, `%${f.q}%`), ilike(p.studyArea, `%${f.q}%`), ilike(p.campus, `%${f.q}%`)));
-  if (f.country) conds.push(eq(c.code, f.country));
+  const countries = listOf(f.country);
+  if (countries.length === 1) conds.push(eq(c.code, countries[0]));
+  else if (countries.length > 1) conds.push(sql`${c.code} in (${sql.join(countries.map((x) => sql`${x}`), sql`, `)})`);
   if (f.uni) conds.push(eq(u.id, f.uni));
   if (f.field) conds.push(eq(p.studyArea, f.field));
   if (f.pathway) conds.push(eq(p.pathway, f.pathway as schema.Pathway));
@@ -142,7 +144,7 @@ export function searchConds(
   const months = listOf(f.season).flatMap((s) => (s in SEASONS ? [...SEASONS[s as keyof typeof SEASONS]] : []));
   if (months.length) conds.push(sql`${p.intakeMonths} && array[${sql.join(months.map((m) => sql`${m}`), sql`, `)}]::int[]`);
   // Older links carried a figure in the destination's own currency.
-  if (f.maxTuition && f.country) conds.push(or(lte(p.tuitionPerYear, Number(f.maxTuition)), sql`${p.tuitionPerYear} is null`));
+  if (f.maxTuition && countries.length === 1) conds.push(or(lte(p.tuitionPerYear, Number(f.maxTuition)), sql`${p.tuitionPerYear} is null`));
   if (f.minIelts) conds.push(or(lte(p.minIelts, Number(f.minIelts)), sql`${p.minIelts} is null`));
   for (const q of QUICK) if (f[q.key]) conds.push(q.cond());
   const tags = listOf(f.tags).filter((t) => t in PROGRAM_TAGS) as ProgramTag[];

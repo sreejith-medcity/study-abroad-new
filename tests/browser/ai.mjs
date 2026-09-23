@@ -37,6 +37,10 @@ async function go(page, p) { await page.goto(BASE + p); return main(page); }
 const toast = (page, re) => page.locator('[role="status"]').filter({ hasText: re }).first().waitFor({ timeout: 10000 }).then(() => true, () => false);
 
 
+// The destination the stand-in will answer with when the finder asks it to read
+// a description. Set from the catalogue below, so the test does not assume one.
+let aiCountry = "CA";
+
 // A stand-in for Anthropic's Messages API. The app must run with ANTHROPIC_API_BASE=http://localhost:4011.
 const calls = [];
 const text = (t) => ({ content: [{ type: "text", text: t }], stop_reason: "end_turn", usage: { input_tokens: 100, output_tokens: 20 } });
@@ -57,6 +61,10 @@ const mock = http.createServer((req, res) => {
       out = text("Verdict: nearly ready.\n**Strong answers**\n- clear course choice\n**Answers to work on**\n- finances were vague");
     } else if (/"type":"(image|document)"/.test(all) && all.includes("passport")) {
       out = text('{"passportNumber": "Z1234567", "passportIssue": "2022-03-01", "passportExpiry": "2032-02-28", "passportIssueCountry": "India", "dateOfBirth": "2001-05-17", "cityOfBirth": "Kottayam"}');
+    } else if (String(body.system || "").includes("filters for a program catalogue")) {
+      // A destination that does not exist, a field nobody offers and a score:
+      // the portal must drop all three and keep only what it offered itself.
+      out = text(`{"country": "${aiCountry},ZZ", "level": "PG", "field": "Underwater Basket Weaving", "scholarship": "1", "ae_ielts": "9"}`);
     } else if (all.includes("Ask the next question") || all.includes("Begin the interview")) {
       const n = (all.match(/Student:/g) || []).length + 1;
       out = text(`Question number ${n}: why this course?`);
@@ -144,6 +152,24 @@ check(sql(`select coalesce(passport_number, '') from students where id = '${sid}
 await pp.getByRole("button", { name: "Save passport details" }).click();
 await toast(pp, /Passport details saved/);
 check(sql(`select passport_number || '|' || city_of_birth || '|' || to_char(passport_expiry, 'YYYY-MM-DD') from students where id = '${sid}'`) === "Z1234567|Kottayam|2032-02-28", "autofill: saved after checking");
+
+// --- The course finder reads a description, and takes only what it offered itself.
+aiCountry = sql("select c.code from countries c join universities u on u.country_id = c.id join programs p on p.university_id = u.id where p.status = 'LIVE' group by c.code order by count(*) desc limit 1");
+const before = calls.length;
+await go(pp, "/finder");
+await pp.fill('textarea[name="brief"]', "a student who wants a masters abroad, IELTS 6.5");
+await pp.getByRole("button", { name: "Read this" }).click();
+await pp.waitForFunction(() => new URL(location.href).searchParams.has("level"), null, { timeout: 20000 }).catch(() => {});
+{
+  const p = new URL(pp.url()).searchParams;
+  check(p.get("country") === aiCountry, `finder: the AI's destination is kept when the portal offers it (${p.get("country")})`);
+  check(p.get("scholarship") === "1", "finder: what the AI read from the family's ask is kept");
+  check(p.get("field") === null, "finder: a field the portal does not offer is dropped");
+  check(p.get("ae_ielts") === "6.5", "finder: the score comes from the portal's own reader, not the AI");
+  const sent = calls[calls.length - 1];
+  check(/filters for a program catalogue/.test(String(sent.body.system)), "finder: the AI is given the portal's own lists");
+  check(calls.length === before + 1 && !sent.body.tools, "finder: one request, with no tools");
+}
 
 // --- Allowance.
 sql(`update ai_settings set monthly_quota = '{"SILVER":0,"GOLD":0,"ELITE":0,"PLATINUM":0}'::jsonb`);
