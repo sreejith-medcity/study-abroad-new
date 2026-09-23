@@ -1,10 +1,11 @@
 import "server-only";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { EMAIL, PHONE, day, num, oneOf, text, yes, type Problems } from "@/lib/import-values";
-import { branchOwner, branchResolver, emptyResult, lineOf, staffByEmail, type ImportResult } from "./common";
+import { createId } from "@/lib/id";
+import { branchOwner, branchResolver, emptyResult, lineOf, phoneKey, staffByEmail, type ImportResult } from "./common";
 
 export const STUDENT_COLUMNS = [
   "branch", "first_name", "last_name", "email", "phone", "counsellor_email", "consent",
@@ -32,11 +33,19 @@ const TESTS = [["ielts", "IELTS"], ["pte", "PTE"], ["toefl", "TOEFL"], ["duoling
 type Row = Record<string, string>;
 
 /**
- * Students from a sheet. New students need consent confirmed in the file. A
- * student already in the branch (same email) only has blank fields filled in:
+ * Students from a sheet. New students need consent confirmed in the file.
+ *
+ * A row is matched to a student already in the branch by email; where the row
+ * has no email, by the last ten digits of the phone number and the student's
+ * name together, because a family often shares one number and a brother is not
+ * the same person. A student matched this way only has blank fields filled in:
  * nothing someone entered is overwritten, and a locked profile is left alone.
- * Qualifications and scores are added when that level or that score is not
- * on file yet. A CGPA stays a CGPA.
+ * Qualifications and scores are added when that level or that score is not on
+ * file yet. A CGPA stays a CGPA.
+ *
+ * A student with no email is created all the same, on the phone number alone.
+ * The student portal needs an address, so the file says so and the profile
+ * carries it until somebody adds one.
  */
 export async function importStudents(user: SessionUser, rows: Row[], commit: boolean): Promise<ImportResult> {
   const out = emptyResult();
@@ -46,10 +55,12 @@ export async function importStudents(user: SessionUser, rows: Row[], commit: boo
   type Plan = {
     line: number;
     orgId: string;
-    email: string;
+    email: string | null;
     fields: Record<string, unknown>;
     counsellorEmail: string | null;
     consent: boolean;
+    /** The last ten digits of the phone number, which is what identifies a student with no email. */
+    phoneKey: string | null;
     academics: { level: "SCHOOL" | "UG"; institution: string | null; course: string | null; gradingSystem: string; score: number | null; yearCompleted: number | null }[];
     tests: { test: string; overall: string }[];
     label: string;
@@ -63,15 +74,19 @@ export async function importStudents(user: SessionUser, rows: Row[], commit: boo
     if (typeof org === "string") p.push(org);
     const first = text(r.first_name, 80);
     const last = text(r.last_name, 80);
-    const email = (r.email ?? "").trim().toLowerCase();
+    const email = (r.email ?? "").trim().toLowerCase() || null;
     const phone = text(r.phone, 20);
     if (!first) p.push("first_name is required");
     if (!last) p.push("last_name is required");
-    if (!EMAIL.test(email)) p.push("email is missing or not an email");
+    if (email && !EMAIL.test(email)) p.push("email: that is not an email address");
     if (phone && !PHONE.test(phone)) p.push("phone: use a mobile number with country code, like +91 98470 12345");
-    const key = typeof org === "string" ? email : `${org.id}|${email}`;
-    if (email && seen.has(key)) p.push(`${email} is in the file twice`);
-    seen.add(key);
+    if (!email && !phone) p.push("give an email or a phone number, so the student can be told apart from the next one");
+    const digits = phoneKey(phone);
+    // Without an email, the phone and the name together are the student.
+    const id = email ?? (digits ? `${digits}|${(first ?? "").toLowerCase()} ${(last ?? "").toLowerCase()}` : null);
+    const key = typeof org === "string" ? id : `${org.id}|${id}`;
+    if (id && seen.has(key!)) p.push(`${email ?? phone} is in the file twice`);
+    if (key) seen.add(key);
 
     const fields: Record<string, unknown> = {
       firstName: first,
@@ -125,22 +140,48 @@ export async function importStudents(user: SessionUser, rows: Row[], commit: boo
       return;
     }
     const o = org as { id: string; name: string };
-    plans.push({ line, orgId: o.id, email, fields, counsellorEmail: text(r.counsellor_email)?.toLowerCase() ?? null, consent: yes(r.consent), academics, tests, label: `${first} ${last} · ${email} · ${o.name}` });
+    plans.push({
+      line,
+      orgId: o.id,
+      email,
+      phoneKey: digits,
+      fields: { ...fields, ...(email ? { email } : {}) },
+      counsellorEmail: text(r.counsellor_email)?.toLowerCase() ?? null,
+      consent: yes(r.consent),
+      academics,
+      tests,
+      label: `${first} ${last} · ${email ?? phone} · ${o.name}`,
+    });
   });
 
   const orgIds = [...new Set(plans.map((x) => x.orgId))];
   const staff = await staffByEmail(orgIds);
-  const existing = orgIds.length
+  const emails = [...new Set(plans.map((x) => x.email).filter((x): x is string => !!x))];
+  const phones = [...new Set(plans.map((x) => x.phoneKey).filter((x): x is string => !!x))];
+  const digitsSql = sql`right(regexp_replace(${schema.students.phone}, '[^0-9]', '', 'g'), 10)`;
+  const existing = orgIds.length && (emails.length || phones.length)
     ? await db.query.students.findMany({
-        where: and(inArray(schema.students.orgId, orgIds), inArray(schema.students.email, plans.map((x) => x.email))),
+        where: and(
+          inArray(schema.students.orgId, orgIds),
+          or(
+            emails.length ? inArray(schema.students.email, emails) : undefined,
+            phones.length ? sql`${digitsSql} in (${sql.join(phones.map((x) => sql`${x}`), sql`, `)})` : undefined,
+          ),
+        ),
         with: { academics: true, tests: true },
       })
     : [];
-  const byKey = new Map(existing.map((s) => [`${s.orgId}|${s.email.toLowerCase()}`, s]));
+  const byEmail = new Map(existing.filter((s) => s.email).map((s) => [`${s.orgId}|${s.email!.toLowerCase()}`, s]));
+  // Phone and name together, so two people on one family number stay two people.
+  const byPhone = new Map<string, (typeof existing)[number]>();
+  for (const s of existing) {
+    const k = `${s.orgId}|${phoneKey(s.phone)}|${s.firstName.toLowerCase()} ${s.lastName.toLowerCase()}`;
+    if (!byPhone.has(k)) byPhone.set(k, s);
+  }
   const owners = new Map<string, string | null>();
   for (const id of orgIds) owners.set(id, (await branchOwner(id))?.id ?? null);
 
-  const toCreate: { plan: Plan; assignedToId: string | null }[] = [];
+  const toCreate: { plan: Plan; assignedToId: string | null; id: string }[] = [];
   for (const plan of plans) {
     let assignedToId: string | null = null;
     if (plan.counsellorEmail) {
@@ -151,7 +192,9 @@ export async function importStudents(user: SessionUser, rows: Row[], commit: boo
       }
       assignedToId = hit.id;
     }
-    const current = byKey.get(`${plan.orgId}|${plan.email}`);
+    const current =
+      (plan.email ? byEmail.get(`${plan.orgId}|${plan.email}`) : undefined) ??
+      (plan.phoneKey ? byPhone.get(`${plan.orgId}|${plan.phoneKey}|${String(plan.fields.firstName).toLowerCase()} ${String(plan.fields.lastName).toLowerCase()}`) : undefined);
     if (!current) {
       if (!plan.consent) {
         out.errors.push({ line: plan.line, message: "consent: a new student needs \"yes\" to confirm the branch has their consent" });
@@ -161,15 +204,16 @@ export async function importStudents(user: SessionUser, rows: Row[], commit: boo
         out.errors.push({ line: plan.line, message: "phone is required for a new student" });
         continue;
       }
+      if (!plan.email) out.notes.push({ line: plan.line, message: "no email, so the student is kept on their phone number and cannot use the student portal until an address is added" });
       out.created++;
       if (out.sample.length < 8) out.sample.push(`New: ${plan.label}`);
-      if (commit) toCreate.push({ plan, assignedToId: assignedToId ?? (user.role === "COUNSELLOR" ? user.id : owners.get(plan.orgId) ?? null) });
+      if (commit) toCreate.push({ plan, id: createId(), assignedToId: assignedToId ?? (user.role === "COUNSELLOR" ? user.id : owners.get(plan.orgId) ?? null) });
       continue;
     }
 
     if (current.profileLocked) {
       out.skipped++;
-      out.notes.push({ line: plan.line, message: `${plan.email}: profile is locked because an application was submitted, so it was left as it is` });
+      out.notes.push({ line: plan.line, message: `${plan.email ?? plan.fields.phone}: profile is locked because an application was submitted, so it was left as it is` });
       continue;
     }
     // Fill blanks only: a value already on file always wins.
@@ -178,6 +222,10 @@ export async function importStudents(user: SessionUser, rows: Row[], commit: boo
       if (v == null) continue;
       const have = current[k as keyof typeof current];
       if (have == null || have === "") set[k] = ["dateOfBirth", "passportIssue", "passportExpiry"].includes(k) ? new Date(v as string) : v;
+    }
+    if (set.email && byEmail.has(`${plan.orgId}|${plan.email}`) && byEmail.get(`${plan.orgId}|${plan.email}`)!.id !== current.id) {
+      delete set.email;
+      out.notes.push({ line: plan.line, message: `${plan.email} already belongs to somebody else in this branch, so it was left off` });
     }
     if (assignedToId && !current.assignedToId) set.assignedToId = assignedToId;
     const newAcademics = plan.academics.filter((a) => !current.academics.some((x) => x.level === a.level));
@@ -202,11 +250,12 @@ export async function importStudents(user: SessionUser, rows: Row[], commit: boo
     const made = await db
       .insert(schema.students)
       .values(
-        chunk.map(({ plan, assignedToId }) => {
+        chunk.map(({ plan, assignedToId, id }) => {
           const f = plan.fields;
           const values = Object.fromEntries(Object.entries(f).filter(([, v]) => v != null));
           return {
             ...(values as object),
+            id,
             orgId: plan.orgId,
             email: plan.email,
             firstName: f.firstName as string,
@@ -223,10 +272,9 @@ export async function importStudents(user: SessionUser, rows: Row[], commit: boo
           } as typeof schema.students.$inferInsert;
         }),
       )
-      .returning({ id: schema.students.id, orgId: schema.students.orgId, email: schema.students.email });
-    const idOf = new Map(made.map((m) => [`${m.orgId}|${m.email}`, m.id]));
-    const academics = chunk.flatMap(({ plan }) => plan.academics.map((a) => ({ ...a, institution: a.institution!, studentId: idOf.get(`${plan.orgId}|${plan.email}`)! })));
-    const tests = chunk.flatMap(({ plan }) => plan.tests.map((t) => ({ ...t, studentId: idOf.get(`${plan.orgId}|${plan.email}`)! })));
+      .returning({ id: schema.students.id });
+    const academics = chunk.flatMap(({ plan, id }) => plan.academics.map((a) => ({ ...a, institution: a.institution!, studentId: id })));
+    const tests = chunk.flatMap(({ plan, id }) => plan.tests.map((t) => ({ ...t, studentId: id })));
     if (academics.length) await db.insert(schema.academicRecords).values(academics);
     if (tests.length) await db.insert(schema.testScores).values(tests);
     await db.insert(schema.auditLogs).values(made.map((m) => ({ actorId: user.id, action: "student.create", entityType: "student", entityId: m.id, meta: { source: "bulk upload" } })));

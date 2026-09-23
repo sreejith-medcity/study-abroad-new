@@ -21,7 +21,7 @@ export default async function PortalProfile() {
         <DataList
           rows={[
             { label: t("name"), value: `${student.firstName} ${student.lastName}` },
-            { label: t("email"), value: student.email },
+            { label: t("email"), value: student.email ?? t("notGiven") },
             { label: t("phone"), value: student.phone },
             { label: t("dateOfBirth"), value: student.dateOfBirth ? fmtDate(student.dateOfBirth) : t("notGiven") },
             { label: t("city"), value: student.city ?? t("notGiven") },

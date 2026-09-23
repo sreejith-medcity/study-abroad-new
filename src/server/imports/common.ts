@@ -19,6 +19,8 @@ export const emptyResult = (): ImportResult => ({ created: 0, updated: 0, unchan
 /** The first data row is line 2: line 1 holds the column names. */
 export const lineOf = (i: number) => i + 2;
 
+export { phoneKey } from "@/lib/phone";
+
 type Org = { id: string; name: string };
 
 /**
@@ -31,11 +33,19 @@ export async function branchResolver(user: SessionUser) {
     return (): Org | string => own ?? "Your branch could not be loaded";
   }
   const orgs = await db.select({ id: schema.organizations.id, name: schema.organizations.name, slug: schema.organizations.publicSlug, type: schema.organizations.type }).from(schema.organizations);
+  const branches = orgs.filter((o) => o.type !== "HQ");
+  const names = branches.map((o) => o.name).sort();
+  const listed = names.slice(0, 8).join(", ") + (names.length > 8 ? `, and ${names.length - 8} more` : "");
   return (v: string | undefined): Org | string => {
     const t = (v ?? "").trim().toLowerCase();
-    if (!t) return "branch: name the branch this row belongs to";
-    const hit = orgs.find((o) => o.type !== "HQ" && (o.name.toLowerCase() === t || o.slug?.toLowerCase() === t));
-    return hit ? { id: hit.id, name: hit.name } : `branch: no branch called "${v}"`;
+    if (!t) return `branch: name the branch this row belongs to. Branches are: ${listed}`;
+    const exact = branches.find((o) => o.name.toLowerCase() === t || o.slug?.toLowerCase() === t);
+    if (exact) return { id: exact.id, name: exact.name };
+    // "KOCHI" for "Medcity Overseas Kochi": taken only when one branch can mean it.
+    const near = branches.filter((o) => o.name.toLowerCase().includes(t));
+    if (near.length === 1) return { id: near[0].id, name: near[0].name };
+    if (near.length > 1) return `branch: "${v}" could mean ${near.map((o) => o.name).join(" or ")}; write the branch's full name`;
+    return `branch: no branch called "${v}". Branches are: ${listed}`;
   };
 }
 

@@ -3,13 +3,13 @@ export const IMPORT_KINDS = {
   students: {
     label: "Students",
     team: false,
-    intro: "New students, and blanks filled in on students already here (matched by email). Nothing already entered is overwritten, and a locked profile is left as it is.",
+    intro: "New students, and blanks filled in on students already here (matched by email, or by phone number and name where there is no email). Nothing already entered is overwritten, and a locked profile is left as it is.",
     columns: [
       ["branch", "Team uploads only: the branch's name or its public code"],
       ["first_name", "Required"],
       ["last_name", "Required"],
-      ["email", "Required. Matches a student already in the branch"],
-      ["phone", "Required for a new student, with country code: +91 98470 12345"],
+      ["email", "Matches a student already in the branch. Leave it blank for a student who has none: they then cannot use the student portal until one is added"],
+      ["phone", "Required for a new student, with country code: +91 98470 12345. Without an email, this and the name are what identify the student"],
       ["counsellor_email", "Optional: an active counsellor or owner in the branch"],
       ["consent", "yes, for a new student, to confirm the branch has the student's consent"],
       ["date_of_birth", "2003-04-18 or 18/04/2003"],

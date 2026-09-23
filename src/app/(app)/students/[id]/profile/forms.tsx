@@ -28,7 +28,7 @@ export function PersonalForm({ student, passportDisplay, disabled }: { student: 
           <TextField label="Nationality" name="nationality" defaultValue={s(student.nationality)} required />
           <TextField label="Other citizenship" name="otherCitizenship" defaultValue={s(student.otherCitizenship)} hint="Only if a citizen of a second country" />
           <TextField label="Living or studying in another country" name="livingInCountry" defaultValue={s(student.livingInCountry)} hint="Leave blank if living in India" />
-          <TextField label="Email" name="email" type="email" defaultValue={s(student.email)} required />
+          <TextField label="Email" name="email" type="email" defaultValue={s(student.email)} hint="Needed before the student can sign in to the portal" />
           <TextField label="Mobile (WhatsApp)" name="phone" defaultValue={s(student.phone)} required />
           <SelectField label="Language for messages" name="preferredLanguage" defaultValue={s(student.preferredLanguage)}>
             <option value="en">English</option><option value="ml">Malayalam</option>

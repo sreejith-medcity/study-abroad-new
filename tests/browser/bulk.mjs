@@ -113,6 +113,42 @@ check(/1 new/.test(text) && /Line 2: branch/.test(text) && /no branch called "No
 await confirm(ap);
 check(sql(`select o.name from students s join organizations o on o.id = s.org_id where s.email = 'team.kochi.${tag}@example.com'`) === "Medcity Kochi", "team: student lands in the named branch");
 
+// --- The branch column forgives what it safely can, and says what exists.
+text = await upload(ap, "students", "branch.csv", `branch,first_name,last_name,email,phone,consent
+KOCHI,Part,Name,part.${tag}@example.com,+91 98470 22225,yes
+Medcity,Two,Ways,ambiguous.${tag}@example.com,+91 98470 22226,yes
+Ernakulam,Not,Here,missing.${tag}@example.com,+91 98470 22227,yes`);
+check(/1 new/.test(text), "branch: KOCHI is taken as the one branch whose name holds it");
+check(/could mean Medcity Kochi or Medcity Kottayam/.test(text), "branch: a word two branches share is refused, naming both");
+check(/Branches are: Horizon Consultants, Thrissur, Medcity Kochi, Medcity Kottayam/.test(text), "branch: an unknown branch lists the ones that exist");
+await confirm(ap);
+check(sql(`select o.name from students s join organizations o on o.id = s.org_id where s.email = 'part.${tag}@example.com'`) === "Medcity Kochi", "branch: the row landed in Medcity Kochi");
+
+// --- The same problem on many rows reads as one line with a count.
+const manyBad = ["branch,first_name,last_name,email,phone,consent", ...Array.from({ length: 12 }, (_, i) => `Ernakulam,Many,Bad${i},many${i}.${tag}@example.com,+91 98470 3${String(i).padStart(4, "0")},yes`)].join("\n");
+text = await upload(ap, "students", "many.csv", manyBad);
+check(/Lines 2, 3, 4 and 9 more: branch: no branch called "Ernakulam"/.test(text), `errors: identical problems are gathered (${(text.match(/Lines [^\n]+/) || [])[0] ?? "none"})`);
+check((text.match(/no branch called "Ernakulam"/g) || []).length === 1, "errors: the message is printed once, not twelve times");
+
+// --- A student with no email at all: the phone number is who they are.
+const noMail = `+91 97${tag}1`;
+text = await upload(op, "students", "nomail.csv", `first_name,last_name,email,phone,consent
+Rahul,Pillai,,${noMail},yes
+Meera,Pillai,,${noMail},yes`);
+check(/2 new/.test(text), "no email: both rows on one family number are new students");
+check(/cannot use the student portal until an address is added/.test(text), "no email: the file says what they lose");
+await confirm(op);
+check(sql(`select count(*) from students where phone = '${noMail}' and email is null`) === "2", "no email: two students kept apart by their names");
+
+// The same people again, now with an email each: matched on the number and the name.
+text = await upload(op, "students", "nomail2.csv", `first_name,last_name,email,phone,consent
+Rahul,Pillai,rahul.${tag}@example.com,${noMail},yes
+Meera,Pillai,meera.${tag}@example.com,${noMail},yes`);
+check(/2 to update/.test(text) && !/new/.test(text.split("\n")[1] ?? ""), `no email: the second file fills them in rather than making more (${text.split("\n").slice(1, 2)})`);
+await confirm(op);
+check(sql(`select count(*) from students where phone = '${noMail}'`) === "2", "no email: still two students");
+check(sql(`select email from students where phone = '${noMail}' and first_name = 'Rahul'`) === `rahul.${tag}@example.com`, "no email: the address was filled in on the right one");
+
 const ack = sql("select a.ack_no from applications a join students s on s.id = a.student_id where s.email = 'aswin.anil@example.com' limit 1");
 const target = sql(`select label from status_definitions where pathway = 'DEGREE' and not requires_reason and id <> (select status_id from applications where ack_no = '${ack}') order by sort_order limit 1 offset 2`);
 const reasonStatus = sql("select label from status_definitions where pathway = 'DEGREE' and requires_reason limit 1");

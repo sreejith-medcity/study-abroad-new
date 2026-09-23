@@ -3,11 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { randomBytes } from "crypto";
 import { redirect } from "next/navigation";
-import { and, count, eq } from "drizzle-orm";
+import { and, count, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { hashPassword, requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
+import { phoneKey } from "@/lib/phone";
 import { ADMIN_ROLES, isAdmin, isStaff } from "@/lib/permissions";
 import { adminIds, notifyUsers } from "@/server/notify";
 import { getStudentForUser } from "@/server/queries";
@@ -26,7 +27,8 @@ const optionalInt = z.string().optional().transform((v) => (v === undefined || v
 const newStudent = z.object({
   firstName: z.string().trim().min(1, "First name is required").max(80),
   lastName: z.string().trim().min(1, "Last name is required").max(80),
-  email: z.string().trim().toLowerCase().email("Enter a valid email"),
+  // Not everybody has an email. The mobile number is what a branch always has.
+  email: z.string().trim().toLowerCase().max(160).optional().transform((v) => v || null).refine((v) => v === null || z.string().email().safeParse(v).success, "Enter a valid email"),
   phone: z.string().trim().regex(/^\+?[\d\s-]{8,16}$/, "Enter a valid mobile number with country code"),
   preferredCountry: optionalText,
   preferredPathway: z.enum(schema.pathway.enumValues).optional().or(z.literal("")).transform((v) => v || null),
@@ -46,8 +48,24 @@ export async function createStudentAction(_: FormState, formData: FormData): Pro
     if (!assignee || assignee.orgId !== orgId) return { error: "Pick a counsellor from this organisation." };
   }
 
-  const existing = await db.query.students.findFirst({ where: and(eq(schema.students.email, d.email), eq(schema.students.orgId, orgId)) });
-  if (existing) return { error: `A student with ${d.email} already exists.`, fieldErrors: { email: ["Already registered"] } };
+  if (d.email) {
+    const existing = await db.query.students.findFirst({ where: and(eq(schema.students.email, d.email), eq(schema.students.orgId, orgId)) });
+    if (existing) return { error: `A student with ${d.email} already exists.`, fieldErrors: { email: ["Already registered"] } };
+  }
+  // Without an email, the number and the name together are the student, so the
+  // same pair twice in one branch is the same person being registered again.
+  const digits = phoneKey(d.phone);
+  if (!d.email && digits) {
+    const sameNumber = await db.query.students.findFirst({
+      where: and(
+        eq(schema.students.orgId, orgId),
+        sql`right(regexp_replace(${schema.students.phone}, '[^0-9]', '', 'g'), 10) = ${digits}`,
+        sql`lower(${schema.students.firstName}) = ${d.firstName.toLowerCase()}`,
+        sql`lower(${schema.students.lastName}) = ${d.lastName.toLowerCase()}`,
+      ),
+    });
+    if (sameNumber) return { error: `${d.firstName} ${d.lastName} is already registered on that number.`, fieldErrors: { phone: ["Already registered"] } };
+  }
 
   const [student] = await db
     .insert(schema.students)
@@ -132,7 +150,7 @@ async function editableStudent(studentId: string) {
 const personal = z.object({
   firstName: z.string().trim().min(1).max(80),
   lastName: z.string().trim().min(1).max(80),
-  email: z.string().trim().toLowerCase().email(),
+  email: z.string().trim().toLowerCase().max(160).optional().transform((v) => v || null).refine((v) => v === null || z.string().email().safeParse(v).success, "Enter a valid email"),
   phone: z.string().trim().regex(/^\+?[\d\s-]{8,16}$/, "Enter a valid mobile number"),
   dateOfBirth: optionalDate,
   gender: optionalText,

@@ -84,7 +84,7 @@ export async function startFeePaymentAction(applicationId: string): Promise<Chec
     currency,
     description: `Application fee, ${app.program.university.name} (${app.ackNo})`,
     name: `${app.student.firstName} ${app.student.lastName}`,
-    email: app.student.email,
+    email: app.student.email ?? "",
     phone: app.student.phone,
   };
 }

@@ -335,7 +335,10 @@ export const students = pgTable(
 
     firstName: text("first_name").notNull(),
     lastName: text("last_name").notNull(),
-    email: text("email").notNull(),
+    // Not everybody arrives with an email: plenty of families give a mobile
+    // number and nothing else. The phone then identifies the student, and the
+    // student portal stays shut until an address is added.
+    email: text("email"),
     phone: text("phone").notNull(),
     whatsappOptIn: boolean("whatsapp_opt_in").notNull().default(true),
     preferredLanguage: text("preferred_language").notNull().default("en"),

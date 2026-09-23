@@ -5,6 +5,24 @@ import { Alert, Button, Chip } from "@/components/ui";
 import { runImportAction, type ImportState } from "@/server/imports/actions";
 
 /** Choose a file, preview what it would do, then import. */
+/**
+ * The same problem on a thousand rows is one problem, not a thousand lines to
+ * scroll past. Identical messages are gathered under the lines they came from,
+ * the first few by number and the rest as a count.
+ */
+function grouped(lines: { line: number; message: string }[]) {
+  const by = new Map<string, number[]>();
+  for (const l of lines) by.set(l.message, [...(by.get(l.message) ?? []), l.line]);
+  return [...by.entries()].map(([message, all]) => {
+    const shown = all.slice(0, 3).map((n) => n.toLocaleString("en-IN")).join(", ");
+    const rest = all.length - 3;
+    return {
+      message,
+      where: all.length === 1 ? `Line ${shown}` : `Lines ${shown}${rest > 0 ? ` and ${rest.toLocaleString("en-IN")} more` : ""}`,
+    };
+  });
+}
+
 export function ImportPanel({ kind }: { kind: string }) {
   const [state, action, pending] = useActionState<ImportState, FormData>(runImportAction, {});
   const mine = state.kind === kind ? state : {};
@@ -59,14 +77,14 @@ export function ImportPanel({ kind }: { kind: string }) {
           {r.errors.length > 0 && (
             <>
               <p className="text-xs text-muted">Rows with problems are left out. Fix them in the file and upload it again; rows already imported are then up to date.</p>
-              <ul className="mt-1 max-h-60 space-y-0.5 overflow-y-auto text-xs text-red-700">
-                {r.errors.map((e, i) => <li key={i}>Line {e.line}: {e.message}</li>)}
+              <ul className="mt-1 max-h-60 space-y-0.5 overflow-y-auto text-xs text-red-700" data-testid="import-errors">
+                {grouped(r.errors).map((g) => <li key={g.message}>{g.where}: {g.message}</li>)}
               </ul>
             </>
           )}
           {r.notes.length > 0 && (
-            <ul className="mt-2 max-h-40 space-y-0.5 overflow-y-auto text-xs text-amber-800">
-              {r.notes.map((e, i) => <li key={i}>{e.line > 1 ? `Line ${e.line}: ` : ""}{e.message}</li>)}
+            <ul className="mt-2 max-h-40 space-y-0.5 overflow-y-auto text-xs text-amber-800" data-testid="import-notes">
+              {grouped(r.notes).map((g) => <li key={g.message}>{g.where === "Line 1" ? "" : `${g.where}: `}{g.message}</li>)}
             </ul>
           )}
         </div>

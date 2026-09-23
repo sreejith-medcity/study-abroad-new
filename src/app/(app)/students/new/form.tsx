@@ -29,7 +29,7 @@ export function NewStudentForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <TextField label="First name" name="firstName" required autoComplete="off" defaultValue={prefill.firstName} />
         <TextField label="Last name" name="lastName" required autoComplete="off" defaultValue={prefill.lastName} />
-        <TextField label="Email" name="email" type="email" required defaultValue={prefill.email} />
+        <TextField label="Email" name="email" type="email" hint="Needed for the student portal; leave it blank if they have none" defaultValue={prefill.email} />
         <TextField label="Mobile (WhatsApp)" name="phone" required placeholder="+91 98xxxxxxxx" hint="Status updates go to this number on WhatsApp" defaultValue={prefill.phone} />
         <SelectField label="Preferred country" name="preferredCountry" defaultValue={prefill.preferredCountry ?? ""}>
           <option value="">Not decided</option>

@@ -30,6 +30,9 @@ for (const part of raw.split("--> statement-breakpoint").map((s) => s.trim()).fi
     out.push(stmt.replace(/^CREATE TABLE /i, "CREATE TABLE IF NOT EXISTS ") + ";");
   } else if (/^ALTER TABLE .* ADD COLUMN /i.test(stmt)) {
     out.push(stmt.replace(/ ADD COLUMN /i, " ADD COLUMN IF NOT EXISTS ") + ";");
+  } else if (/^ALTER TABLE .* ALTER COLUMN .* (DROP|SET) NOT NULL$/i.test(stmt)) {
+    // Dropping or setting NOT NULL is already safe to run twice.
+    out.push(stmt + ";");
   } else if (/^CREATE (UNIQUE )?INDEX /i.test(stmt)) {
     out.push(stmt.replace(/^CREATE (UNIQUE )?INDEX /i, (m) => `${m}IF NOT EXISTS `) + ";");
   } else {

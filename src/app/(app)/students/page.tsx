@@ -151,7 +151,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                   <Td>{staff ? r.orgName : r.createdByDesk}{r.source !== "partner" && <Chip className="ml-1">{r.source.toUpperCase()}</Chip>}</Td>
                   <Td className="whitespace-nowrap tabular">{fmtDate(r.createdAt)}</Td>
                   <Td><Link href={`/students/${r.id}/profile`} className="font-medium text-ink hover:text-brand-600 hover:underline">{fullName(r)}</Link></Td>
-                  <Td className="max-w-[16rem] truncate text-muted" title={r.email ?? undefined}>{r.email}</Td>
+                  <Td className="max-w-[16rem] truncate text-muted" title={r.email ?? undefined}>{r.email ?? <span className="text-muted">No email</span>}</Td>
                   <Td className="whitespace-nowrap tabular">{r.phone}</Td>
                   {!staff && (
                     <Td>

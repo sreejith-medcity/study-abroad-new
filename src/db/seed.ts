@@ -463,7 +463,7 @@ async function main() {
   if (portalStudent) {
     await db.insert(schema.users).values({
       name: `${portalStudent.firstName} ${portalStudent.lastName}`,
-      email: portalStudent.email,
+      email: portalStudent.email!,
       phone: portalStudent.phone,
       passwordHash: hash,
       role: "STUDENT",
