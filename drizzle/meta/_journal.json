@@ -281,6 +281,13 @@
       "when": 1790158599939,
       "tag": "0039_student_email_optional",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1790754476163,
+      "tag": "0040_vendors_and_routes",
+      "breakpoints": true
     }
   ]
 }

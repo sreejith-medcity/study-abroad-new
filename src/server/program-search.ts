@@ -10,7 +10,7 @@ import { hasCommissionRule } from "@/server/commission-estimate";
 const { programs: p, universities: u, countries: c } = schema;
 
 /** Keys that may carry several values; they travel comma-separated. */
-const MULTI = ["level", "season", "tags", "country", "uni"] as const;
+const MULTI = ["level", "season", "tags", "country", "uni", "vendor"] as const;
 
 /**
  * Search parameters as one string per key. Checkbox groups submit a key more
@@ -61,6 +61,13 @@ export const QUICK: { key: string; label: string; cond: () => SQL }[] = [
 ];
 
 export const tagCond = (tag: string) => sql`${tag} = any(${p.tags})`;
+
+/** Courses one of these vendors carries, as SQL. */
+export const throughVendors = (vendorIds: string[]) =>
+  sql`exists (select 1 from program_routes r where r.program_id = programs.id and r.active and r.vendor_id in (${sql.join(vendorIds.map((x) => sql`${x}`), sql`, `)}))`;
+
+/** Courses with no road recorded at all, which is a gap the team should see rather than a course to hide. */
+export const hasNoRoute = sql`not exists (select 1 from program_routes r where r.program_id = programs.id and r.active)`;
 
 /**
  * Programs whose qualifying study the student has already finished: Std. 12th
@@ -151,6 +158,11 @@ export function searchConds(
   const unis = listOf(f.uni);
   if (unis.length === 1) conds.push(eq(u.id, unis[0]));
   else if (unis.length > 1) conds.push(sql`${u.id} in (${sql.join(unis.map((x) => sql`${x}`), sql`, `)})`);
+  // Which road a course can be applied down. "none" finds the gaps the team
+  // should fill rather than hiding them.
+  const vendorIds = listOf(f.vendor);
+  if (vendorIds.includes("none")) conds.push(hasNoRoute);
+  else if (vendorIds.length) conds.push(throughVendors(vendorIds));
   if (f.uniType === "public") conds.push(eq(u.isPublic, true));
   if (f.uniType === "private") conds.push(eq(u.isPublic, false));
   // The gap the student has been out of study, in months, against the years a

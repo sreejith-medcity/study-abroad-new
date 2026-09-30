@@ -13,6 +13,8 @@ import { nextDeadlines } from "@/server/deadlines";
 import { activeRules, partnerShareJoins } from "@/server/commission-estimate";
 import { AE_KEYS, LEVELS, QUICK, adhocStudent, listOf, readSearch, searchConds, tagCond } from "@/server/program-search";
 import { PROGRAM_TAGS, SEASON_LABEL, TAG_KEYS } from "@/lib/program-tags";
+import { liveVendors, routeChips } from "@/server/vendors";
+import { RouteChips } from "@/components/route-chips";
 import { partnerEstimate, pickRule } from "@/lib/money";
 import { rankLabels } from "@/lib/rankings";
 import { LEVEL_LABEL, SHORTLIST_LIMIT, dayText, daysUntil, inrApprox, intakesText, tuitionText } from "@/lib/catalogue";
@@ -24,7 +26,7 @@ export const metadata = { title: "Search programs" };
 const PAGE = 25;
 const BUDGETS = [5, 10, 15, 20, 25, 30, 40, 50];
 /** Kept across the filter form, which does not show them as fields. */
-const CARRIED = [...QUICK.map((q) => q.key), "tags", "fit", "view", "apply", ...AE_KEYS];
+const CARRIED = [...QUICK.map((q) => q.key), "tags", "fit", "view", "apply", "vendor", ...AE_KEYS];
 
 export default async function SearchPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const user = await requireUser([...APP_ROLES]);
@@ -173,6 +175,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const list = rows.slice(0, PAGE);
   const unis = uniRows.slice(0, PAGE).map((r) => ({ ...r, intakes: Array.from({ length: 12 }, (_, i) => i + 1).filter((m) => (r.intakeMask >> m) & 1) }));
   const next = await nextDeadlines(list.map((r) => r.id));
+  const [vendors, routes] = await Promise.all([liveVendors(), routeChips(list.map((r) => ({ id: r.id, tuitionPerYear: r.tuition, tuitionTotal: r.tuitionTotal, applicationFee: r.applicationFee, offerTatDays: null, currency: r.currency })))]);
   const rules = showCommission ? await activeRules() : [];
 
   const countries = await db.select().from(c).orderBy(asc(c.name));
@@ -284,6 +287,14 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             <option value="">Any field of study</option>
             {fields.map((x) => <option key={x.field} value={x.field!}>{x.field} ({x.n.toLocaleString("en-IN")})</option>)}
           </Select>
+          <CheckDropdown
+            testId="vendor-picker"
+            label="Any route"
+            summary={listOf(f.vendor).length ? `${listOf(f.vendor).length} route${listOf(f.vendor).length === 1 ? "" : "s"}` : null}
+            name="vendor"
+            options={[...vendors.map((v) => [v.id, `${v.code} · ${v.name}`] as const), ["none", "No route recorded"] as const]}
+            selected={listOf(f.vendor)}
+          />
           <Select name="apply" aria-label="Applications open or closed" defaultValue={f.apply ?? ""}>
             <option value="">Open or closed</option>
             <option value="open">Applications open (a deadline ahead)</option>
@@ -533,6 +544,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                           {r.workRightsNote && <span className="ml-1.5 text-xs text-muted">{r.workRightsNote}</span>}
                         </p>
                       )}
+                      <p className="mt-1"><RouteChips routes={routes.get(r.id)} /></p>
                       {r.tags.length > 0 && (
                         <p className="mt-1 flex flex-wrap gap-1">
                           {r.tags.filter((t) => t in PROGRAM_TAGS).map((t) => <Chip key={t} tone="info">{PROGRAM_TAGS[t as keyof typeof PROGRAM_TAGS]}</Chip>)}

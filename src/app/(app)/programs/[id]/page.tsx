@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { commissionVisible } from "@/server/commission-visibility";
+import { routesForProgram } from "@/server/vendors";
+import { PAYABLE_ON, routeApplicationFee, routeOfferTat, routeTerms, termsAge } from "@/lib/vendors";
 import { notFound } from "next/navigation";
 import { and, asc, count, eq, ne, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
@@ -93,7 +95,10 @@ export default async function ProgramPage({
     : [];
   const scholarships = await openScholarships(university.id, program.level);
   const deadlines = await programDeadlines(program.id);
-  const rule = (await commissionVisible(user)) ? pickRule(await activeRules(), program.id, university.id, country.id) : null;
+  const showCommission = await commissionVisible(user);
+  const rule = showCommission ? pickRule(await activeRules(), program.id, university.id, country.id) : null;
+  const routeMoney = { tuitionPerYear: program.tuitionPerYear, tuitionTotal: program.tuitionTotal, applicationFee: program.applicationFee, offerTatDays: program.offerTatDays, currency: country.currency };
+  const routes = (await routesForProgram(program.id, routeMoney)).filter((r) => r.route.active && r.vendor.active);
   const commission = rule ? partnerEstimate(rule, program.tuitionPerYear, cur) : null;
   const rates = fxRates(await getSettings());
   // The rupee figure sits under the real one, smaller, and says it is rough.
@@ -200,6 +205,69 @@ export default async function ProgramPage({
               ]}
             />
           </Card>
+
+          {routes.length > 0 && (
+            <Card>
+              <CardHeader
+                title={routes.length === 1 ? "How this course is applied for" : `${routes.length} ways to apply for this course`}
+                subtitle={routes.length === 1 ? "The road this application takes, and what it means for the student" : "The same course, more than one road. What differs is the turnaround, the fee and what each asks for."}
+              />
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[620px] text-[13px]">
+                  <thead>
+                    <tr className="border-b border-line text-left text-[11px] uppercase tracking-wide text-muted">
+                      <th className="px-4 py-2 font-semibold">Route</th>
+                      <th className="px-4 py-2 font-semibold">Offer in</th>
+                      <th className="px-4 py-2 font-semibold">Application fee</th>
+                      <th className="px-4 py-2 font-semibold">Interview</th>
+                      <th className="px-4 py-2 font-semibold">Asks for</th>
+                      {showCommission && <th className="px-4 py-2 font-semibold">Commission</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {routes.map(({ route, vendor, commission }) => {
+                      const terms = routeTerms(route, vendor);
+                      const fee = routeApplicationFee(route, routeMoney);
+                      const tat = routeOfferTat(route, routeMoney);
+                      const age = termsAge(route.confirmedAt ?? vendor.termsConfirmedAt);
+                      return (
+                        <tr key={route.id} className="border-b border-line/70 align-top">
+                          <td className="px-4 py-2.5">
+                            <span className="flex items-center gap-1.5 font-semibold text-ink">
+                              <span className="size-3 rounded-sm" style={{ background: vendor.colour }} aria-hidden="true" />
+                              {vendor.code} {vendor.name}
+                            </span>
+                            {vendor.isDirect && <span className="text-xs text-muted">Our own agreement with the university</span>}
+                            {age.stale && <p className="text-xs text-amber-700">{age.text}</p>}
+                          </td>
+                          <td className="px-4 py-2.5 tabular">{tat == null ? <span className="text-muted">Not recorded</span> : `${tat} days`}</td>
+                          <td className="px-4 py-2.5 tabular">{fee == null ? <span className="text-muted">Not recorded</span> : fee === 0 ? "None" : fmtMoney(fee, country.currency)}</td>
+                          <td className="px-4 py-2.5">{route.interviewRequired ? "Their own, before the university's" : <span className="text-muted">None of their own</span>}</td>
+                          <td className="px-4 py-2.5">{route.extraDocuments ?? <span className="text-muted">Nothing beyond the university's list</span>}</td>
+                          {showCommission && (
+                            <td className="px-4 py-2.5">
+                              {commission.known ? (
+                                <>
+                                  <b className="tabular">{fmtMoney(commission.amount, commission.currency)}</b>
+                                  <p className="text-xs text-muted">{commission.basis}, once {PAYABLE_ON[terms.payableOn]}, within {terms.daysToPay} days</p>
+                                </>
+                              ) : (
+                                <>
+                                  <span className="text-muted">Not recorded</span>
+                                  <p className="text-xs text-muted">{commission.basis}: {commission.reason.toLowerCase()}</p>
+                                </>
+                              )}
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <p className="px-4 pb-3 pt-2 text-xs text-muted">The route is chosen when the application is created, and it decides who is invoiced at the end. A student never sees it.</p>
+            </Card>
+          )}
 
           {deadlines.length > 0 && (
             <Card>

@@ -9,6 +9,7 @@ import { importApplicationUpdates } from "./applications";
 import { importCommissionPayments } from "./commissions";
 import { importEnquiries } from "./enquiries";
 import { MAX_ROWS, readSheet } from "./sheet";
+import { importRoutes } from "./routes";
 import { importStudents } from "./students";
 
 export type ImportState = { kind?: string; result?: ImportResult; committed?: boolean; rows?: Record<string, string>[]; fileName?: string; error?: string; consentAll?: boolean };
@@ -64,7 +65,7 @@ export async function runImportAction(prev: ImportState, fd: FormData): Promise<
     result =
       kind === "students"
         ? await importStudents(user, rows, commit, { consentAll })
-        : await { enquiries: importEnquiries, applications: importApplicationUpdates, commissions: importCommissionPayments }[kind](user, rows, commit);
+        : await { enquiries: importEnquiries, applications: importApplicationUpdates, commissions: importCommissionPayments, routes: importRoutes }[kind](user, rows, commit);
     if (ignored.length) result.notes.unshift({ line: 1, message: `Columns not used by this upload, ignored: ${ignored.slice(0, 8).join(", ")}` });
   } catch (e) {
     return { kind, rows, fileName, error: `The upload stopped: ${(e as Error).message}. Nothing after that row was saved.` };

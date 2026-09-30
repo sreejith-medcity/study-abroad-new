@@ -10,6 +10,12 @@ import { ProgramEditForm } from "./edit-form";
 import { DeadlineForm } from "./deadlines";
 import { deleteDeadlineAction } from "./deadline-actions";
 import { programDeadlines } from "@/server/deadlines";
+import { liveVendors, routesForProgram } from "@/server/vendors";
+import { setRouteActiveAction } from "@/server/vendor-actions";
+import { PAYABLE_ON, routeApplicationFee, routeOfferTat, routeTerms } from "@/lib/vendors";
+import { AddRoute, EditRoute } from "./routes";
+import { Chip } from "@/components/ui";
+import { fmtMoney } from "@/lib/format";
 import { deadlineText, intakesText } from "@/lib/catalogue";
 import { MONTHS } from "@/lib/format";
 import { Button } from "@/components/ui";
@@ -33,6 +39,8 @@ export default async function EditProgramPage({ params }: { params: Promise<{ id
       .limit(10),
     programDeadlines(id),
   ]);
+  const money = { tuitionPerYear: program.tuitionPerYear, tuitionTotal: program.tuitionTotal, applicationFee: program.applicationFee, offerTatDays: program.offerTatDays, currency: program.university.country.currency };
+  const [vendors, routes] = await Promise.all([liveVendors(), routesForProgram(id, money)]);
 
   return (
     <>
@@ -51,6 +59,45 @@ export default async function EditProgramPage({ params }: { params: Promise<{ id
           <ProgramEditForm program={program} currency={program.university.country.currency} docs={docs} />
         </Card>
         <div className="space-y-5 self-start">
+        <Card>
+          <CardHeader title="Routes" subtitle="Who this course can be applied through, and what each pays." />
+          {routes.length > 0 && (
+            <ul className="divide-y divide-line border-b border-line text-[13px]">
+              {routes.map(({ route, vendor, commission }) => {
+                const terms = routeTerms(route, vendor);
+                return (
+                  <li key={route.id} className="px-4 py-2.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="flex items-center gap-1.5 font-medium">
+                          <span className="size-3 rounded-sm" style={{ background: vendor.colour }} aria-hidden="true" />
+                          {vendor.code} {vendor.name}
+                          {!route.active && <Chip tone="warn">Paused</Chip>}
+                        </p>
+                        <p className="text-xs text-muted">
+                          {commission.known ? `${fmtMoney(commission.amount, commission.currency)} · ${commission.basis}` : `${commission.basis}: ${commission.reason}`}
+                        </p>
+                        <p className="text-xs text-muted">
+                          Paid once {PAYABLE_ON[terms.payableOn]}, within {terms.daysToPay} days
+                          {routeOfferTat(route, money) != null ? ` · offer in ${routeOfferTat(route, money)} days` : ""}
+                          {routeApplicationFee(route, money) != null ? ` · application fee ${routeApplicationFee(route, money) === 0 ? "none" : fmtMoney(routeApplicationFee(route, money)!, money.currency)}` : ""}
+                        </p>
+                        {route.extraDocuments && <p className="text-xs text-muted">Asks for: {route.extraDocuments}</p>}
+                      </div>
+                      <form action={setRouteActiveAction}>
+                        <input type="hidden" name="routeId" value={route.id} />
+                        <input type="hidden" name="active" value={route.active ? "0" : "1"} />
+                        <Button type="submit" variant="quiet" size="sm">{route.active ? "Pause" : "Bring back"}</Button>
+                      </form>
+                    </div>
+                    <EditRoute programId={program.id} vendors={vendors} currency={money.currency} route={{ ...route, payableOn: route.payableOn as string | null }} />
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          <div className="p-4"><AddRoute programId={program.id} vendors={vendors} currency={money.currency} /></div>
+        </Card>
         <Card>
           <CardHeader title="Application deadlines" subtitle={`Intakes: ${intakesText(program.intakeMonths)}. Only dates the institution publishes.`} />
           {deadlines.length > 0 && (

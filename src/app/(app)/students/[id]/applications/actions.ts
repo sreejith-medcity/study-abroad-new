@@ -27,6 +27,8 @@ const createSchema = z.object({
   studentId: z.string().min(1),
   programId: z.string().min(1, "Choose a program"),
   intake: z.string().regex(/^\d{4}-\d{1,2}$/, "Choose an intake"),
+  /** Which road the application goes down, where any are recorded for the course. */
+  routeId: z.string().optional(),
 });
 
 export async function createApplicationAction(_: FormState, formData: FormData): Promise<FormState> {
@@ -58,6 +60,18 @@ export async function createApplicationAction(_: FormState, formData: FormData):
     .limit(1);
   if (!first) return { error: "No starting status is configured for this pathway. Ask an admin." };
 
+  // The route decides the commission, the paperwork and who is invoiced at the
+  // end, so it is chosen with the application rather than after it. A course
+  // with no route recorded yet still applies, carrying none.
+  const routes = await db
+    .select({ id: schema.programRoutes.id, vendorId: schema.programRoutes.vendorId })
+    .from(schema.programRoutes)
+    .innerJoin(schema.vendors, eq(schema.vendors.id, schema.programRoutes.vendorId))
+    .where(and(eq(schema.programRoutes.programId, program.id), eq(schema.programRoutes.active, true), eq(schema.vendors.active, true)));
+  const routeId = String(formData.get("routeId") ?? "") || null;
+  if (routes.length && !routeId) return { fieldErrors: { routeId: ["Choose how this application is sent"] }, error: "Choose the route this application goes through." };
+  if (routeId && !routes.some((r) => r.id === routeId)) return { fieldErrors: { routeId: ["That route is not open for this course"] }, error: "Choose the route this application goes through." };
+
   const ackNo = await nextAckNo();
   const [app] = await db
     .insert(schema.applications)
@@ -70,6 +84,9 @@ export async function createApplicationAction(_: FormState, formData: FormData):
       intakeYear: year,
       statusId: first.id,
       createdById: user.id,
+      routeId,
+      routeChosenById: routeId ? user.id : null,
+      routeChosenAt: routeId ? new Date() : null,
       // An unverified fee is treated as due, so someone confirms it before submission.
       feeStatus: program.applicationFee === 0 ? "NOT_APPLICABLE" : "DUE",
     })
@@ -82,8 +99,20 @@ export async function createApplicationAction(_: FormState, formData: FormData):
   });
   const late = deadline && daysUntil(deadline.deadline) < 0 ? `. The deadline for this intake passed on ${dayText(deadline.deadline)}` : "";
   await notifyUsers(await adminIds(), `New application ${ackNo}`, `${student.firstName} ${student.lastName}: ${program.name}, ${program.university.name}${program.intakeMonths.length ? "" : ". Intake not on record: confirm it with the institution"}${late}`, `/students/${student.id}/applications?app=${app.id}`);
-  await audit(user.id, "application.create", "application", app.id, { programId: program.id, intake: `${month}/${year}` });
+  await audit(user.id, "application.create", "application", app.id, { programId: program.id, intake: `${month}/${year}`, routeId });
   return { redirectTo: `/students/${student.id}/applications?app=${app.id}` };
+}
+
+/** The application's own number in the vendor's portal, once it has one. */
+export async function setVendorReferenceAction(formData: FormData) {
+  const user = await requireUser([...ADMIN_ROLES]);
+  const applicationId = String(formData.get("applicationId") ?? "");
+  const reference = String(formData.get("vendorReference") ?? "").trim().slice(0, 60) || null;
+  const app = await db.query.applications.findFirst({ where: eq(schema.applications.id, applicationId) });
+  if (!app) return;
+  await db.update(schema.applications).set({ vendorReference: reference, updatedAt: new Date() }).where(eq(schema.applications.id, applicationId));
+  await audit(user.id, "application.vendor_reference", "application", applicationId, { reference });
+  revalidatePath(`/students/${app.studentId}/applications`);
 }
 
 export async function changeStatusAction(_: FormState, formData: FormData): Promise<FormState> {

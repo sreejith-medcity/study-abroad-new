@@ -7,6 +7,8 @@ import { BAND_LABEL, scoreMatch, tagLabels, type Match } from "@/lib/finder-scor
 import { rankLabels } from "@/lib/rankings";
 import { nextDeadlines } from "@/server/deadlines";
 import { LEVELS, QUICK, listOf } from "@/server/program-search";
+import { liveVendors, routeChips } from "@/server/vendors";
+import { RouteChips } from "@/components/route-chips";
 import { CANDIDATES, PAGE, SORTS, budgetInr, finderCandidates, finderCounts, finderWhere, levelFacets, universityFacets, wantedMonths, type FinderRow } from "@/server/finder";
 import { fxRates, getSettings } from "@/server/settings";
 import { ShortlistButton } from "@/components/shortlist-button";
@@ -31,7 +33,7 @@ const APTITUDE = [
   ["ae_gmat", "GMAT"],
 ] as const;
 /** Everything the panel on the left owns, so the rest of the answers can be carried as they are. */
-const RAIL_KEYS = ["q", "uni", "level", "budget", "durFrom", "durTo", "tat", "uniType", "apply", "qual", "gapMonths", "ae_backlogs", "fit", "page", ...QUICK.map((x) => x.key), ...ENGLISH.map(([k]) => k), ...APTITUDE.map(([k]) => k)];
+const RAIL_KEYS = ["q", "uni", "level", "budget", "durFrom", "durTo", "tat", "uniType", "apply", "qual", "gapMonths", "ae_backlogs", "fit", "page", "vendor", ...QUICK.map((x) => x.key), ...ENGLISH.map(([k]) => k), ...APTITUDE.map(([k]) => k)];
 
 type Scored = { row: FinderRow; fit: Eligibility | null; match: Match };
 
@@ -57,10 +59,11 @@ export async function FinderResults({
   const sort = SORTS.some(([k]) => k === f.sort && k !== "") ? f.sort : "";
   const page = Math.max(1, Number(f.page ?? 1));
 
-  const [counts, unis, levels] = await Promise.all([
+  const [counts, unis, levels, vendors] = await Promise.all([
     finderCounts(where, { checker, budget, rates }),
     universityFacets(where),
     levelFacets(where),
+    liveVendors(),
   ]);
   // The finder's own order is worked out per program, so it covers the best
   // candidates rather than every match; every other order is SQL, page by page.
@@ -77,6 +80,7 @@ export async function FinderResults({
     offset: byFit ? 0 : (page - 1) * PAGE,
   });
   const deadlines = await nextDeadlines(rows.map((r) => r.id));
+  const routes = await routeChips(rows.map((r) => ({ id: r.id, tuitionPerYear: r.tuitionPerYear, tuitionTotal: r.tuitionTotal, applicationFee: r.applicationFee, offerTatDays: r.offerTatDays, currency: r.currency })));
   const prefs = Object.keys(f).filter((k) => QUICK.some((q) => q.key === k));
 
   const scored: Scored[] = rows.map((row) => {
@@ -148,6 +152,24 @@ export async function FinderResults({
                     <span className="tabular shrink-0 text-xs text-muted">{x.n.toLocaleString("en-IN")}</span>
                   </label>
                 ))}
+              </div>
+            </Field>
+          )}
+
+          {vendors.length > 0 && (
+            <Field label="Applied through">
+              <div className="space-y-1">
+                {vendors.map((x) => (
+                  <label key={x.id} className="flex cursor-pointer items-center gap-2 text-[13px]">
+                    <input type="checkbox" name="vendor" value={x.id} defaultChecked={listOf(f.vendor).includes(x.id)} className="size-3.5 shrink-0" />
+                    <span className="size-2.5 shrink-0 rounded-sm" style={{ background: x.colour }} aria-hidden="true" />
+                    <span className="flex-1 truncate">{x.code} {x.name}</span>
+                  </label>
+                ))}
+                <label className="flex cursor-pointer items-center gap-2 text-[13px]">
+                  <input type="checkbox" name="vendor" value="none" defaultChecked={listOf(f.vendor).includes("none")} className="size-3.5 shrink-0" />
+                  <span className="flex-1 truncate text-muted">No route recorded</span>
+                </label>
               </div>
             </Field>
           )}
@@ -353,6 +375,7 @@ export async function FinderResults({
                     ))}
                   </ul>
                 )}
+                <p className="mt-2"><RouteChips routes={routes.get(row.id)} /></p>
                 {tagLabels(row.tags).length > 0 && (
                   <p className="mt-2 flex flex-wrap gap-1">{tagLabels(row.tags).map((t) => <Chip key={t} tone="info">{t}</Chip>)}</p>
                 )}

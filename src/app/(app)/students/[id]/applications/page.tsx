@@ -10,13 +10,15 @@ import { checkApplication, statusesFor } from "@/server/applications";
 import { getStudentForUser } from "@/server/queries";
 import { Button, Card, CardHeader, Chip, DataList, EmptyState, Input, Select, StatusBadge, cn } from "@/components/ui";
 import { confirmationLabel, dayText, daysUntil, deadlineText, tuitionText } from "@/lib/catalogue";
-import { markFeePaidAction, setDeadlineDoneAction, setDocumentTypeAction, setPriorityAction } from "./actions";
+import { markFeePaidAction, setDeadlineDoneAction, setDocumentTypeAction, setPriorityAction, setVendorReferenceAction } from "./actions";
 import { PRIORITY_LABEL } from "@/lib/priority";
 import { RAZORPAY_CURRENCIES } from "@/lib/razorpay";
 import { razorpayConfig } from "@/server/razorpay";
 import { PayFeeButton } from "@/components/pay-button";
 import { ApplyForm, CommentComposer, DeadlineAddForm, OfferVisaForm, StatusForm, type OfferVisaValues } from "./client";
 import { DEADLINE_LABEL } from "@/lib/deadline-types";
+import { routeChips } from "@/server/vendors";
+import { commissionVisible } from "@/server/commission-visibility";
 
 export const metadata = { title: "Applications" };
 
@@ -99,7 +101,7 @@ async function ApplyPanel({ studentId, pathway, preselectProgramId, q, country }
   const openable = eq(p.status, "LIVE");
   const columns = {
     id: p.id, name: p.name, pathway: p.pathway, intakeMonths: p.intakeMonths, campus: p.campus,
-    tuitionPerYear: p.tuitionPerYear, tuitionTotal: p.tuitionTotal,
+    tuitionPerYear: p.tuitionPerYear, tuitionTotal: p.tuitionTotal, applicationFee: p.applicationFee, offerTatDays: p.offerTatDays,
     minIelts: p.minIelts, minPte: p.minPte, minOetGrade: p.minOetGrade, minGermanLevel: p.minGermanLevel, maxBacklogs: p.maxBacklogs, moiAccepted: p.moiAccepted, minToefl: p.minToefl, minDuolingo: p.minDuolingo, minAcademicPercent: p.minAcademicPercent,
     university: u.name, country: c.name, currency: c.currency,
   };
@@ -121,6 +123,14 @@ async function ApplyPanel({ studentId, pathway, preselectProgramId, q, country }
   const seen = new Set<string>();
   const rows = [...preselected, ...picked, ...matches].filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
   const shortlisted = new Set(picked.map((r) => r.id));
+  const showCommission = await commissionVisible(await requireUser([...APP_ROLES]));
+  // The roads each course can be applied down, so the counsellor picks one with
+  // the application rather than after it.
+  const routesByProgram = await routeChips(rows.map((r) => ({ id: r.id, tuitionPerYear: r.tuitionPerYear, tuitionTotal: r.tuitionTotal, applicationFee: r.applicationFee, offerTatDays: r.offerTatDays, currency: r.currency })));
+  const routeIds = await db
+    .select({ id: schema.programRoutes.id, programId: schema.programRoutes.programId, vendorId: schema.programRoutes.vendorId })
+    .from(schema.programRoutes)
+    .where(rows.length ? inArray(schema.programRoutes.programId, rows.map((r) => r.id)) : sql`false`);
   const deadlineRows = rows.length
     ? await db
         .select({ programId: schema.programDeadlines.programId, month: schema.programDeadlines.intakeMonth, year: schema.programDeadlines.intakeYear, deadline: schema.programDeadlines.deadline })
@@ -136,6 +146,16 @@ async function ApplyPanel({ studentId, pathway, preselectProgramId, q, country }
     intakeMonths: r.intakeMonths,
     shortlisted: shortlisted.has(r.id),
     tuition: tuitionText(r.tuitionPerYear, r.tuitionTotal, r.currency),
+    routes: (routesByProgram.get(r.id) ?? [])
+      .filter((x) => x.active)
+      .map((x) => ({
+        id: routeIds.find((y) => y.programId === r.id && y.vendorId === x.vendorId)?.id ?? "",
+        code: x.code,
+        name: x.name,
+        colour: x.colour,
+        commission: showCommission ? (x.commission.known ? fmtMoney(x.commission.amount, x.commission.currency) : null) : null,
+      }))
+      .filter((x) => x.id),
     deadlines: Object.fromEntries(deadlineRows.filter((d) => d.programId === r.id).map((d) => [`${d.year}-${d.month}`, d.deadline])),
     requirements: [
       r.minIelts && `IELTS ${r.minIelts}`,
@@ -179,6 +199,7 @@ async function ApplicationDetail({ appId, studentId, channel, canProcess, canChe
       status: true,
       program: { with: { university: { with: { country: true } } } },
       officer: { columns: { name: true, phone: true, deskLabel: true } },
+      route: { with: { vendor: true } },
       history: { with: { toStatus: true, changedBy: { columns: { name: true } } }, orderBy: desc(schema.statusHistory.createdAt) },
     },
   });
@@ -233,6 +254,30 @@ async function ApplicationDetail({ appId, studentId, channel, canProcess, canChe
             <Chip tone={app.priority === "HIGH" ? "bad" : undefined}>{PRIORITY_LABEL[app.priority]}</Chip>
           )}
           <span className="ml-auto text-muted">Officer: {app.officer ? `${app.officer.name}${app.officer.phone ? ` · ${app.officer.phone}` : ""}` : "not assigned yet"}</span>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-line pt-3 text-[13px]">
+          <span className="text-muted">Applied through:</span>
+          {app.route ? (
+            <span className="inline-flex items-center gap-1.5 font-semibold text-ink">
+              <span className="size-3 rounded-sm" style={{ background: app.route.vendor.colour }} aria-hidden="true" />
+              {app.route.vendor.code} {app.route.vendor.name}
+              {app.route.vendor.isDirect && <Chip tone="ok">Our own agreement</Chip>}
+            </span>
+          ) : (
+            <Chip tone="warn">No route recorded</Chip>
+          )}
+          {app.route?.vendor.portalUrl && (
+            <a href={app.route.vendor.portalUrl} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:underline">Their portal ↗</a>
+          )}
+          {canProcess ? (
+            <form action={setVendorReferenceAction} className="flex items-center gap-1.5">
+              <input type="hidden" name="applicationId" value={app.id} />
+              <Input name="vendorReference" defaultValue={app.vendorReference ?? ""} placeholder="Their reference" aria-label="Their reference" className="w-44 py-1 text-xs" />
+              <Button variant="quiet" className="py-1 text-xs">Save</Button>
+            </form>
+          ) : (
+            app.vendorReference && <span className="text-muted">Their reference: <span className="text-ink">{app.vendorReference}</span></span>
+          )}
         </div>
       </Card>
 

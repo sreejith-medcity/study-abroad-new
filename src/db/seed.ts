@@ -321,6 +321,39 @@ async function main() {
     trail.push({ actorId: q.owner, action: "enquiry.create", entityType: "enquiry", entityId: row.id, meta: { source: q.source }, createdAt: row.createdAt });
   }
 
+  // The roads Medcity reaches universities by. Medcity's own agreements count
+  // as a route like any other, so every application carries one.
+  const vendorRows = await db
+    .insert(schema.vendors)
+    .values([
+      { name: "Medcity Direct", code: "MD", colour: "#0F766E", isDirect: true, currency: "INR", payableOn: "ENROLMENT_CONFIRMED" as const, daysToPay: 45, notes: "Our own agreements with universities", termsConfirmedAt: new Date() },
+      { name: "KC Overseas", code: "KC", colour: "#4338CA", currency: "INR", payableOn: "VISA_APPROVED" as const, daysToPay: 60, contactName: "Partner desk", contactEmail: "partners@example.com", portalUrl: "https://example.com/kc", termsConfirmedAt: new Date() },
+      { name: "StudentOps360", code: "SO", colour: "#B45309", currency: "INR", payableOn: "ENROLMENT_CONFIRMED" as const, daysToPay: 90, contactName: "Agent support", contactEmail: "support@example.com", portalUrl: "https://example.com/so" },
+    ])
+    .returning();
+  const vendorBy = new Map(vendorRows.map((x) => [x.code, x]));
+  // A handful of live courses reachable more than one way, so the comparison
+  // on a program page has something to compare.
+  const routeTargets = await db
+    .select({ id: schema.programs.id, countryId: schema.universities.countryId })
+    .from(schema.programs)
+    .innerJoin(schema.universities, eq(schema.universities.id, schema.programs.universityId))
+    .where(eq(schema.programs.status, "LIVE"))
+    .limit(40);
+  if (routeTargets.length) {
+    await db.insert(schema.programRoutes).values(
+      routeTargets.flatMap((t, i) => [
+        { programId: t.id, vendorId: vendorBy.get("KC")!.id, basis: "PERCENT_TUITION" as const, percentOfTuition: 9, offerTatDays: 5, vendorCourseCode: `KC-${1000 + i}`, extraDocuments: "Their application form, a counsellor declaration", confirmedAt: new Date() },
+        ...(i % 2 === 0
+          ? [{ programId: t.id, vendorId: vendorBy.get("MD")!.id, basis: "PERCENT_TUITION" as const, percentOfTuition: 12, offerTatDays: 9, confirmedAt: new Date() }]
+          : []),
+        ...(i % 3 === 0
+          ? [{ programId: t.id, vendorId: vendorBy.get("SO")!.id, basis: "FLAT" as const, flatAmount: 120000, currency: "INR", offerTatDays: 1, interviewRequired: true, extraDocuments: "Their profile form", confirmedAt: new Date() }]
+          : []),
+      ]),
+    );
+  }
+
   // Commission rules, then the commission each finished placement earns.
   const ruleRows = await db
     .insert(schema.commissionRules)

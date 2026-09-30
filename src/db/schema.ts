@@ -78,6 +78,8 @@ export const enquirySource = pgEnum("enquiry_source", [
 ]);
 export const enquiryStage = pgEnum("enquiry_stage", ["NEW", "CONTACTED", "QUALIFIED", "COUNSELLING", "CONVERTED", "LOST"]);
 export const commissionBasis = pgEnum("commission_basis", ["PERCENT_TUITION", "FLAT"]);
+/** What has to happen before a route's commission can be invoiced. */
+export const payableOn = pgEnum("payable_on", ["OFFER_ACCEPTED", "FEE_PAID", "VISA_APPROVED", "ENROLMENT_CONFIRMED"]);
 export const commissionStatus = pgEnum("commission_status", [
   "EXPECTED",
   "INVOICED",
@@ -496,6 +498,14 @@ export const applications = pgTable(
       .notNull()
       .references(() => users.id),
     deadline: timestamp("deadline", { mode: "date" }),
+    // Which road this application goes down, chosen before it is submitted.
+    // Null on everything created before routes existed, which reads as "not
+    // recorded" rather than as Medcity's own agreement.
+    routeId: text("route_id").references(() => programRoutes.id),
+    /** The application's own number in the vendor's portal. */
+    vendorReference: text("vendor_reference"),
+    routeChosenById: text("route_chosen_by_id").references(() => users.id),
+    routeChosenAt: timestamp("route_chosen_at", { withTimezone: true }),
     feeStatus: feeStatus("fee_status").notNull().default("NOT_APPLICABLE"),
     priority: applicationPriority("priority").notNull().default("NORMAL"),
     // The offer, as the institution issued it.
@@ -655,6 +665,81 @@ export const commissionRules = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index("commission_rules_scope_idx").on(t.universityId, t.programId)],
+);
+
+/**
+ * Who an application is sent through. Medcity reaches the same university by
+ * more than one road: its own agreements, KC Overseas, StudentOps360 and
+ * whoever comes next. Each road has its own commission, its own turnaround and
+ * its own paperwork, so the road is recorded rather than assumed.
+ */
+export const vendors = pgTable(
+  "vendors",
+  {
+    id: id(),
+    name: text("name").notNull(),
+    /** Two to four letters shown beside the colour, so the screen reads without it. */
+    code: text("code").notNull(),
+    colour: text("colour").notNull().default("#475569"),
+    active: boolean("active").notNull().default(true),
+    /** Medcity's own agreements with universities, which nobody invoices. */
+    isDirect: boolean("is_direct").notNull().default(false),
+    contactName: text("contact_name"),
+    contactEmail: text("contact_email"),
+    contactPhone: text("contact_phone"),
+    portalUrl: text("portal_url"),
+    billingName: text("billing_name"),
+    billingAddress: text("billing_address"),
+    gstin: text("gstin"),
+    /** What they settle in, which is not always what the tuition is in. */
+    currency: text("currency").notNull().default("INR"),
+    payableOn: payableOn("payable_on").notNull().default("ENROLMENT_CONFIRMED"),
+    daysToPay: integer("days_to_pay").notNull().default(60),
+    notes: text("notes"),
+    /** When somebody last checked the terms against the vendor's own sheet. */
+    termsConfirmedAt: timestamp("terms_confirmed_at", { withTimezone: true }),
+    termsConfirmedById: text("terms_confirmed_by_id").references(() => users.id),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("vendors_name_uq").on(t.name), uniqueIndex("vendors_code_uq").on(t.code)],
+);
+
+/**
+ * One road to one course. Anything left null falls back: to the vendor for the
+ * payment terms, to the program for the application fee and the turnaround.
+ */
+export const programRoutes = pgTable(
+  "program_routes",
+  {
+    id: id(),
+    programId: text("program_id")
+      .notNull()
+      .references(() => programs.id, { onDelete: "cascade" }),
+    vendorId: text("vendor_id")
+      .notNull()
+      .references(() => vendors.id, { onDelete: "cascade" }),
+    basis: commissionBasis("basis").notNull().default("PERCENT_TUITION"),
+    percentOfTuition: real("percent_of_tuition"),
+    flatAmount: integer("flat_amount"),
+    /** The currency of a flat fee. A percentage is always of the tuition's own currency. */
+    currency: text("currency"),
+    payableOn: payableOn("payable_on"),
+    daysToPay: integer("days_to_pay"),
+    applicationFee: integer("application_fee"),
+    offerTatDays: integer("offer_tat_days"),
+    /** The course's identifier in the vendor's own portal. */
+    vendorCourseCode: text("vendor_course_code"),
+    interviewRequired: boolean("interview_required").notNull().default(false),
+    /** What this road asks for beyond the university's own list, in words for now. */
+    extraDocuments: text("extra_documents"),
+    active: boolean("active").notNull().default(true),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    confirmedById: text("confirmed_by_id").references(() => users.id),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("program_routes_uq").on(t.programId, t.vendorId), index("program_routes_vendor_idx").on(t.vendorId)],
 );
 
 /** One row per application that reached a paying milestone. */
@@ -1379,6 +1464,7 @@ export const scholarshipsRelations = relations(scholarships, ({ one }) => ({
 }));
 
 export const programsRelations = relations(programs, ({ one, many }) => ({
+  routes: many(programRoutes),
   university: one(universities, { fields: [programs.universityId], references: [universities.id] }),
   applications: many(applications),
   deadlines: many(programDeadlines),
@@ -1508,6 +1594,7 @@ export const applicationsRelations = relations(applications, ({ one, many }) => 
   status: one(statusDefinitions, { fields: [applications.statusId], references: [statusDefinitions.id] }),
   officer: one(users, { fields: [applications.officerId], references: [users.id] }),
   createdBy: one(users, { fields: [applications.createdById], references: [users.id] }),
+  route: one(programRoutes, { fields: [applications.routeId], references: [programRoutes.id] }),
   history: many(statusHistory),
   comments: many(comments),
   documents: many(documents),
@@ -1550,6 +1637,16 @@ export const commissionsRelations = relations(commissions, ({ one }) => ({
   application: one(applications, { fields: [commissions.applicationId], references: [applications.id] }),
   org: one(organizations, { fields: [commissions.orgId], references: [organizations.id] }),
   rule: one(commissionRules, { fields: [commissions.ruleId], references: [commissionRules.id] }),
+}));
+
+export const vendorsRelations = relations(vendors, ({ many }) => ({
+  routes: many(programRoutes),
+}));
+
+export const programRoutesRelations = relations(programRoutes, ({ one, many }) => ({
+  program: one(programs, { fields: [programRoutes.programId], references: [programs.id] }),
+  vendor: one(vendors, { fields: [programRoutes.vendorId], references: [vendors.id] }),
+  applications: many(applications),
 }));
 
 export const commissionRulesRelations = relations(commissionRules, ({ one, many }) => ({

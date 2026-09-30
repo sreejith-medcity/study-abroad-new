@@ -80,6 +80,7 @@ const ADMIN_NAV: NavGroup[] = [
       { href: "/universities", label: "Universities", icon: "universities" },
       { href: "/deadlines", label: "Deadlines", icon: "deadlines" },
       { href: "/admin/programs", label: "Programs", icon: "programs" },
+      { href: "/admin/vendors", label: "Vendors and routes", icon: "partners" },
       { href: "/admin/scholarships", label: "Scholarships", icon: "spark" },
       { href: "/admin/destinations", label: "Destinations and rankings", icon: "universities" },
       { href: "/admin/statuses", label: "Status flows", icon: "flow" },
