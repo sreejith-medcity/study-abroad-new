@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
+import { outstandingForStudent } from "./documentation";
 import { getSession } from "@/lib/auth";
 import { isLocale, type Locale } from "@/lib/i18n";
 
@@ -180,4 +181,44 @@ export async function studentShortlist(studentId: string) {
       durationMonths: r.program.durationMonths,
       workRights: r.program.workRights,
     }));
+}
+
+/**
+ * What the student still owes, in their own language, with the reason against
+ * anything sent back. Only what they owe: paper waiting on the university, the
+ * vendor or Medcity is not the student's problem and is not shown to them.
+ *
+ * The internal notes never cross over. What a student reads is the document's
+ * name, the reason the team picked from its own list, and the day it is wanted.
+ */
+export async function studentChecklist(studentId: string, locale: Locale = "en") {
+  const outstanding = await outstandingForStudent(studentId, locale);
+  const accepted = await db
+    .select({ typeCode: schema.checklistItems.typeCode, label: schema.documentTypes.label, labelMl: schema.documentTypes.labelMl })
+    .from(schema.checklistItems)
+    .innerJoin(schema.documentTypes, eq(schema.documentTypes.code, schema.checklistItems.typeCode))
+    .where(and(eq(schema.checklistItems.studentId, studentId), eq(schema.checklistItems.state, "ACCEPTED")))
+    .orderBy(asc(schema.documentTypes.sortOrder));
+  const waiting = await db
+    .select({ typeCode: schema.checklistItems.typeCode, label: schema.documentTypes.label, labelMl: schema.documentTypes.labelMl })
+    .from(schema.checklistItems)
+    .innerJoin(schema.documentTypes, eq(schema.documentTypes.code, schema.checklistItems.typeCode))
+    .where(and(eq(schema.checklistItems.studentId, studentId), inArray(schema.checklistItems.state, ["UPLOADED", "IN_REVIEW"] as const)))
+    .orderBy(asc(schema.documentTypes.sortOrder));
+  const name = (r: { label: string; labelMl: string | null }) => (locale === "ml" ? (r.labelMl ?? r.label) : r.label);
+  return {
+    /** Everything the student has to do something about. */
+    outstanding: outstanding.map((i) => ({
+      code: i.typeCode,
+      label: i.labelForStudent,
+      reason: i.reasonForStudent,
+      dueOn: i.dueOn,
+      sentBack: i.state === "REJECTED",
+      asked: i.state === "ASKED",
+    })),
+    /** In, and checked. */
+    done: accepted.map(name),
+    /** In, and with the team. */
+    withUs: waiting.map(name),
+  };
 }

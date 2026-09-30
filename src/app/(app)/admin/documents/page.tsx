@@ -129,6 +129,7 @@ async function Requirements({ types }: { types: { code: string; label: string }[
     owedBy: r.req.owedBy,
     validityMonths: r.req.validityMonths,
     guidance: r.req.guidance,
+    guidanceMl: r.req.guidanceMl,
     sortOrder: r.req.sortOrder,
     active: r.req.active,
   }));

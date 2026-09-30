@@ -6,6 +6,7 @@ import { db, schema } from "@/db";
 import { audit } from "@/lib/audit";
 import { isLocale, type Locale } from "@/lib/i18n";
 import { notifyUsers } from "@/server/notify";
+import { attachUploadToChecklist } from "@/server/documentation";
 import { requireStudent, setPortalLocale } from "@/server/portal";
 import { saveUpload, UploadError } from "@/server/storage";
 
@@ -37,11 +38,14 @@ export async function portalUploadAction(_: PortalState, formData: FormData): Pr
       .values({ studentId: student.id, typeCode, fileName: file.name, uploadedById: session.id, ...saved })
       .returning();
     await audit(session.id, "document.upload", "document", doc.id, { typeCode, via: "portal" });
+    // A student cannot mark their own document good: it joins the documentation
+    // team's queue, where somebody checks it against the rule.
+    await attachUploadToChecklist(student.id, typeCode, doc.id, session.id);
     await notifyUsers(
       [student.assignedToId, student.createdById],
       `${student.firstName} uploaded ${type.label}`,
       "Sent from the student portal",
-      `/students/${student.id}/documents`,
+      `/students/${student.id}/documentation`,
     );
   } catch (e) {
     if (e instanceof UploadError) return { error: e.message };

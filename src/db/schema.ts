@@ -112,6 +112,9 @@ export const checklistState = pgEnum("checklist_state", [
   "ACCEPTED",
   "REJECTED",
 ]);
+/** How one ask reached the student, and whether it was the first or a reminder. */
+export const requestChannel = pgEnum("request_channel", ["WHATSAPP", "PORTAL"]);
+export const requestKind = pgEnum("request_kind", ["ASK", "NUDGE"]);
 export const commissionStatus = pgEnum("commission_status", [
   "EXPECTED",
   "INVOICED",
@@ -411,6 +414,8 @@ export const students = pgTable(
     /** Which of the nine stages the file is on, and when it got there. */
     journeyStage: journeyStage("journey_stage").notNull().default("PROFILE"),
     stageEnteredAt: timestamp("stage_entered_at", { withTimezone: true }),
+    /** The last stage whose gate was announced as clear, so it is said once. */
+    gateNoticeStage: journeyStage("gate_notice_stage"),
     archived: boolean("archived").notNull().default(false),
     source: text("source").notNull().default("partner"), // partner | qr | crm
     crmLeadId: text("crm_lead_id"),
@@ -762,6 +767,14 @@ export const checklistItems = pgTable(
     claimedById: text("claimed_by_id").references(() => users.id),
     claimedAt: timestamp("claimed_at", { withTimezone: true }),
 
+    /**
+     * When the counsellor was told this had gone quiet, and when the portal
+     * flagged that it runs out before the course. Both are set once, so a file
+     * is not reported twice for the same thing.
+     */
+    escalatedAt: timestamp("escalated_at", { withTimezone: true }),
+    expiryFlaggedAt: timestamp("expiry_flagged_at", { withTimezone: true }),
+
     /** Why this one was added for this student alone. */
     note: text("note"),
     addedById: text("added_by_id").references(() => users.id),
@@ -800,6 +813,77 @@ export const checklistFiles = pgTable(
     decidedById: text("decided_by_id").references(() => users.id),
   },
   (t) => [uniqueIndex("checklist_files_version_uq").on(t.itemId, t.version)],
+);
+
+/**
+ * One ask, covering everything the student owed at that moment.
+ *
+ * Everything outstanding goes in one message with one link, because five
+ * messages is how a student stops reading them. Each reminder afterwards is the
+ * same list, shorter, and is recorded here too so nobody has to remember whether
+ * it went.
+ */
+export const documentRequests = pgTable(
+  "document_requests",
+  {
+    id: id(),
+    studentId: text("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    kind: requestKind("kind").notNull().default("ASK"),
+    channel: requestChannel("channel").notNull().default("PORTAL"),
+    /** The language it went out in, which is the student's own. */
+    locale: text("locale").notNull().default("en"),
+    /** Exactly what was sent, as the counsellor left it. */
+    body: text("body").notNull(),
+    dueOn: date("due_on"),
+    itemCount: integer("item_count").notNull().default(0),
+    /** Null on a reminder the portal sent by itself. */
+    sentById: text("sent_by_id").references(() => users.id),
+    messageId: text("message_id").references(() => outboundMessages.id),
+    createdAt: createdAt(),
+  },
+  (t) => [index("document_requests_student_idx").on(t.studentId, t.createdAt)],
+);
+
+/** Which documents one ask covered. */
+export const documentRequestItems = pgTable(
+  "document_request_items",
+  {
+    id: id(),
+    requestId: text("request_id")
+      .notNull()
+      .references(() => documentRequests.id, { onDelete: "cascade" }),
+    itemId: text("item_id")
+      .notNull()
+      .references(() => checklistItems.id, { onDelete: "cascade" }),
+  },
+  (t) => [uniqueIndex("document_request_items_uq").on(t.requestId, t.itemId)],
+);
+
+/**
+ * A record that one application's paperwork was gathered and sent on. The files
+ * themselves are not copied: the pack is built from what is accepted at the
+ * moment it is asked for, so it can never be a stale copy of the truth.
+ */
+export const submissionPacks = pgTable(
+  "submission_packs",
+  {
+    id: id(),
+    applicationId: text("application_id")
+      .notNull()
+      .references(() => applications.id, { onDelete: "cascade" }),
+    studentId: text("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    builtById: text("built_by_id").references(() => users.id),
+    itemCount: integer("item_count").notNull().default(0),
+    /** What was still missing when it was built, recorded rather than hidden. */
+    missing: jsonb("missing").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    note: text("note"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("submission_packs_application_idx").on(t.applicationId)],
 );
 
 /** A gate let through with a reason, which is logged and shown on the file. */
@@ -1877,6 +1961,23 @@ export const checklistFilesRelations = relations(checklistFiles, ({ one }) => ({
   decidedBy: one(users, { fields: [checklistFiles.decidedById], references: [users.id], relationName: "checklistFileDecider" }),
 }));
 
+export const documentRequestsRelations = relations(documentRequests, ({ one, many }) => ({
+  student: one(students, { fields: [documentRequests.studentId], references: [students.id] }),
+  sentBy: one(users, { fields: [documentRequests.sentById], references: [users.id] }),
+  items: many(documentRequestItems),
+}));
+
+export const documentRequestItemsRelations = relations(documentRequestItems, ({ one }) => ({
+  request: one(documentRequests, { fields: [documentRequestItems.requestId], references: [documentRequests.id] }),
+  item: one(checklistItems, { fields: [documentRequestItems.itemId], references: [checklistItems.id] }),
+}));
+
+export const submissionPacksRelations = relations(submissionPacks, ({ one }) => ({
+  application: one(applications, { fields: [submissionPacks.applicationId], references: [applications.id] }),
+  student: one(students, { fields: [submissionPacks.studentId], references: [students.id] }),
+  builtBy: one(users, { fields: [submissionPacks.builtById], references: [users.id] }),
+}));
+
 export const gateOverridesRelations = relations(gateOverrides, ({ one }) => ({
   student: one(students, { fields: [gateOverrides.studentId], references: [students.id] }),
   application: one(applications, { fields: [gateOverrides.applicationId], references: [applications.id] }),
@@ -1949,4 +2050,6 @@ export type JourneyStage = (typeof journeyStage.enumValues)[number];
 export type RequirementSource = (typeof requirementSource.enumValues)[number];
 export type OwedBy = (typeof owedBy.enumValues)[number];
 export type ChecklistState = (typeof checklistState.enumValues)[number];
+export type RequestChannel = (typeof requestChannel.enumValues)[number];
+export type RequestKind = (typeof requestKind.enumValues)[number];
 export type AppSettings = typeof appSettings.$inferSelect;

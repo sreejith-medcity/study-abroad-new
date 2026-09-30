@@ -34,6 +34,10 @@ This repository currently contains **Phase 0 basics and Phase 1 (core pipeline)*
 | The documentation spine | Partners, staff, the documentation team | Nine stages from Profile to Arrived, and the paper that gates each one. A student's list is built from five places at once: the stage itself, the destination, the route, the university and anything added for that student by hand, with a document asked for twice asked for once and every row saying where it came from. Each document is not needed, not asked, asked, uploaded, in review, accepted or sent back, and a rejection needs a reason from the team's own list, which is what the student reads. A file sent back keeps its version and its reason; the replacement is the next version. Expiry is read off the document (a TB test six months from its date, a test report two years) and measured against the course start, not against today, so a passport valid for four months against a two-year course counts as missing and says so. |
 | Gates and overrides | Partners, staff | A stage cannot be left while a required document is missing, rejected or out of date, and the refusal names what is missing rather than being a bare error. An ops manager may let it through with a reason, which is logged and shown on the file. The apply screen names the same list before a course is chosen; whether it refuses the application outright is one switch in Platform settings, off to begin with, because a desk part way through a season has to collect the paper first. |
 | Documentation queue | The documentation team, admins | One screen for the people who check paper all day: everything sent in and not yet decided, oldest first or visa stage first, filtered by branch, stage or route. Opening a document claims it for twenty minutes so two people never check the same bank statement, and the rule the team wrote sits beside the document while it is judged. Accepting reads the date off the document and records when it runs out; rejecting picks a reason and sends it to the student word for word. |
+| Asking the student | Partners, staff | One screen with everything outstanding already ticked; untick whatever you will collect yourself. The message is built in English or Malayalam with the reason against each document and one portal link, and it is the counsellor's to edit before it goes: nothing is sent that a person has not read. Sent on WhatsApp where the student agreed and the branch allows it, otherwise into the portal only, with a day it is wanted by that lands on every row it covered. What went out is kept on the file, first asks and reminders together. |
+| What the student sees | Students | "What we still need from you" on a phone, in English or Malayalam: only what they owe, the reason a document was sent back in the words the team picked, the date it is wanted by, and upload. An upload lands in review, never accepted: a student cannot mark their own document good, and the replacement is the next version while the refused one keeps its reason. |
+| Chasing, without anyone remembering | System | A daily pass: three days of silence earns one reminder with the same list, shorter; at a week it stops being the portal's job and lands on the counsellor's desk, once; a rejection is repeated after two days with the reason again; anything that runs out inside sixty days of the course start is flagged, once; and a gate that comes clear is announced to whoever owns the next step. A student chased yesterday is left alone today. Admins can run the same pass by hand from the queue. |
+| The submission pack | Partners, staff | Everything accepted for one application as one download: a front sheet naming the student, the route, what is in the folder with versions and dates, what the vendor asks for beyond the university's list, anything running out too early, and what is still missing. Files are numbered and named so a stranger can read the folder. Nothing is stored, so a pack built next week is the paperwork as it stands then; who built it, when, and what was missing at the time stay on the file. |
 | What the team keeps | Admins, the documentation team | The nine stage lists, what each destination, route and university adds on top, the guidance and samples per document, and the reasons for sending one back, all on **Documents and requirements**. Editing a requirement changes every student's list as their file is opened and never touches a document already sent, accepted or refused. |
 | The route on an application | Partners, staff | The program page compares every route to that course side by side: turnaround, fee, interview, what it asks for, and what it pays where commission is visible. The route is chosen when the application is created, shown with its colour on the application, and the team records the application's own reference in the vendor's portal. A student never sees any of it. |
 | Course finder | All | Two ways in: one screen with every answer on it, or three questions that walk a counsellor through. The description can be typed in their own words and is read into the answers by the portal's own rules, with the AI, where the team has switched it on, only picking from the lists the portal supplies; a CGPA is never turned into a percentage and no figure is ever read out of the AI. The course box offers the catalogue's own course names and study areas as they are typed. Matches come back with the reasons they are there and the cautions against them, marked a strong match, worth a look or a stretch, beside a panel that narrows them with a count against every university and level, and sorts by fit, tuition, ranking, offer turnaround or name. A course up to a quarter over the budget is shown and marked, never dropped in silence. Shortlist, compare, or hand the same filters to search. |
@@ -131,6 +135,7 @@ All seeded users share the password `Password@123`. Every person, university and
 | `npm run db:demo-off` | Switch off every sample `.test` account and scramble its password. Add `--delete-enquiries` to drop the sample enquiries too |
 | `POST /api/razorpay/webhook` | Razorpay's webhook for payment.captured, order.paid and payment.failed, signed with the webhook secret |
 | `POST /api/cron/cricos` | Monthly CRICOS refresh for a scheduler, with `Authorization: Bearer $CRON_SECRET`. New courses land as drafts |
+| `POST /api/cron/documents` | Daily documentation chasing, same header. Reminders at three days of silence, the counsellor's desk at seven, expiry flags and gate notices |
 | `npx tsx scripts/sync-cricos.ts <folder> [--publish]` | Load the CRICOS register from its three downloaded CSVs (the admin screen does the same from data.gov.au) |
 | `npx tsx scripts/supabase-part.ts <migration tag> "<title>"` | Write a migration as SQL that is safe to run twice in the Supabase SQL editor, with the migration recorded |
 | `npx tsx scripts/cricos-reconcile-sql.ts > out.sql` | Write SQL that links hand-researched Australian programs to their CRICOS codes from the catalogue CSVs and removes any untouched draft twin a sync added |
@@ -164,10 +169,14 @@ src/
     auth.ts permissions.ts      session, role checks, org scoping, passport masking
     checks.ts                   pre-submission rules (pure, unit tested)
     journey.ts                  the nine stages, document states, gates, expiry (pure, unit tested)
+    ask.ts                      the message to the student, and the chasing schedule (pure, unit tested)
+    pack.ts                     the submission pack's front sheet and file names (pure, unit tested)
     program-import.ts           CSV parser (pure, unit tested)
   server/
     applications.ts             status changes, check loader
     documentation.ts            the merged list, the gate, the team's queue
+    documentation-reminders.ts  the daily chasing
+    pack.ts                     gathers one application's accepted paperwork into a zip
     queries.ts                  shared filters and scoped loaders
     whatsapp.ts notify.ts storage.ts
 drizzle/                        SQL migrations
@@ -250,8 +259,7 @@ Who may hand out which role: a super admin can set any role. An ops manager can 
 
 ## Next
 
-From the wireframe, in order: asking the student for everything outstanding in one
-message and packing the submission bundle, the Medcity ID with the student and
-parent dashboards, the CRM link that fills a file from a lead, total income per
-student (fee, commission, ticket, SIM, forex card), and vendor invoicing with the
-finance queue after a visa is approved.
+From the wireframe, in order: the Medcity ID with the student and parent
+dashboards, the CRM link that fills a file from a lead, total income per student
+(fee, commission, ticket, SIM, forex card), and vendor invoicing with the finance
+queue after a visa is approved.

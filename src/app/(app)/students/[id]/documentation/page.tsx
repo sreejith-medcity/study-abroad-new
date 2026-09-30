@@ -34,12 +34,13 @@ export default async function DocumentationPage({ params, searchParams }: { para
   const held = await db.$count(schema.checklistItems, eq(schema.checklistItems.studentId, id));
   if (held === 0 && canWrite) await syncChecklist(id);
 
-  const [rows, ctx, reasons, spare, overrides] = await Promise.all([
+  const [rows, ctx, reasons, spare, overrides, apps] = await Promise.all([
     studentChecklist(id),
     studentContext(id),
     activeRejectionReasons(),
     typesNotOnList(id),
     overridesFor(id),
+    db.select({ id: schema.applications.id }).from(schema.applications).where(eq(schema.applications.studentId, id)),
   ]);
   const whole = wholeGate(rows, ctx.courseStart);
   const here = stageGate(rows, student.journeyStage, ctx.courseStart);
@@ -105,6 +106,19 @@ export default async function DocumentationPage({ params, searchParams }: { para
             <p className="text-xs text-muted">{rows.length} documents on the list</p>
           </div>
         </div>
+        {canWrite && (
+          <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-line pt-3">
+            <Link href={`/students/${id}/documentation/ask`} className="rounded-lg bg-brand-600 px-3 py-1.5 text-[13px] font-medium text-white">
+              Ask {student.firstName} for what is missing
+            </Link>
+            {apps.length > 0 && (
+              <Link href={`/students/${id}/documentation/pack`} className="rounded-lg border border-line px-3 py-1.5 text-[13px] font-medium text-ink">
+                Build a submission pack
+              </Link>
+            )}
+            <span className="text-xs text-muted">{whole.withStudent} outstanding with {student.firstName}</span>
+          </div>
+        )}
         {canWrite && (
           <div className="mt-4 border-t border-line pt-3">
             <StageMover studentId={id} stage={student.journeyStage} canOverride={isAdmin(user)} missing={here.missing.map((m) => m.label)} />

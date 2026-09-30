@@ -23,6 +23,7 @@ export type RequirementRow = {
   owedBy: OwedBy;
   validityMonths: number | null;
   guidance: string | null;
+  guidanceMl: string | null;
   sortOrder: number;
   active: boolean;
 };
@@ -133,6 +134,9 @@ export function RequirementForm({
       </div>
       <Field label="The rule, in the team's own words" htmlFor={`guidance-${key}`} hint="Shown beside the document while it is checked, and to the student when it is asked for.">
         <Textarea id={`guidance-${key}`} name="guidance" rows={2} defaultValue={row?.guidance ?? ""} />
+      </Field>
+      <Field label="The same rule in Malayalam" htmlFor={`guidance-ml-${key}`} hint="What a student reading the portal in Malayalam sees. Left empty, they get the English.">
+        <Textarea id={`guidance-ml-${key}`} name="guidanceMl" rows={2} defaultValue={row?.guidanceMl ?? ""} />
       </Field>
       <div className="flex flex-wrap gap-4">
         <Checkbox name="required" defaultChecked={row ? row.required : true} label="Holds the stage until it is in" />

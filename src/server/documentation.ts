@@ -268,3 +268,93 @@ export async function attachUploadToChecklist(studentId: string, typeCode: strin
     .where(eq(ci.id, item.id));
   return item;
 }
+
+// ---------- Asking the student ----------
+
+/** The portal address, which is where every ask points. */
+export const portalLink = () => `${(process.env.PUBLIC_BASE_URL ?? "https://doc.medcityoverseas.com").replace(/\/$/, "")}/portal`;
+
+export type OutstandingItem = {
+  id: string;
+  typeCode: string;
+  label: string;
+  /** The document's name in the student's own language, where there is one. */
+  labelForStudent: string;
+  /** Why it is wanted, in the student's language: the rejection reason, or the rule. */
+  reasonForStudent: string | null;
+  state: ChecklistState;
+  stage: JourneyStage;
+  owedBy: typeof ci.$inferSelect.owedBy;
+  dueOn: string | null;
+  askedAt: Date | null;
+  lastChasedAt: Date | null;
+  required: boolean;
+};
+
+/**
+ * What the student still owes: everything not accepted and not set aside, in
+ * stage order. Paper owed by the university, the vendor or Medcity is left out,
+ * because there is no point asking a student for it.
+ */
+export async function outstandingForStudent(studentId: string, locale: "en" | "ml" = "en"): Promise<OutstandingItem[]> {
+  const rows = await db
+    .select({
+      id: ci.id,
+      typeCode: ci.typeCode,
+      label: dt.label,
+      labelMl: dt.labelMl,
+      state: ci.state,
+      stage: ci.stage,
+      owedBy: ci.owedBy,
+      dueOn: ci.dueOn,
+      askedAt: ci.askedAt,
+      lastChasedAt: ci.lastChasedAt,
+      required: ci.required,
+      reason: ci.reason,
+      reasonLabel: schema.rejectionReasons.label,
+      reasonLabelMl: schema.rejectionReasons.labelMl,
+      guidance: dr.guidance,
+      guidanceMl: dr.guidanceMl,
+      typeGuidance: dt.guidance,
+      sortOrder: dt.sortOrder,
+    })
+    .from(ci)
+    .innerJoin(dt, eq(dt.code, ci.typeCode))
+    .leftJoin(dr, eq(dr.id, ci.requirementId))
+    .leftJoin(schema.rejectionReasons, eq(schema.rejectionReasons.code, ci.reasonCode))
+    .where(and(eq(ci.studentId, studentId), eq(ci.owedBy, "STUDENT"), inArray(ci.state, ["NOT_ASKED", "ASKED", "REJECTED"] as const)))
+    .orderBy(asc(ci.stage), asc(dt.sortOrder), asc(dt.label));
+
+  return rows
+    .map((r) => {
+      const ml = locale === "ml";
+      // A rejection's reason comes first: it is the only thing that tells the
+      // student why the file they already sent was not good enough.
+      const rejection = r.reasonLabel ? [ml ? (r.reasonLabelMl ?? r.reasonLabel) : r.reasonLabel, r.reason].filter(Boolean).join(". ") : null;
+      const rule = ml ? (r.guidanceMl ?? r.guidance ?? r.typeGuidance) : (r.guidance ?? r.typeGuidance);
+      return {
+        id: r.id,
+        typeCode: r.typeCode,
+        label: r.label,
+        labelForStudent: ml ? (r.labelMl ?? r.label) : r.label,
+        reasonForStudent: rejection ?? rule ?? null,
+        state: r.state,
+        stage: r.stage,
+        owedBy: r.owedBy,
+        dueOn: r.dueOn,
+        askedAt: r.askedAt,
+        lastChasedAt: r.lastChasedAt,
+        required: r.required,
+      };
+    })
+    .sort((a, b) => stageRank(a.stage) - stageRank(b.stage));
+}
+
+/** Every ask and reminder on one file, newest first, with who sent it. */
+export const requestsFor = (studentId: string) =>
+  db.query.documentRequests.findMany({
+    where: eq(schema.documentRequests.studentId, studentId),
+    with: { sentBy: { columns: { name: true, deskLabel: true } }, items: { with: { item: { columns: { typeCode: true } } } } },
+    orderBy: desc(schema.documentRequests.createdAt),
+    limit: 20,
+  });

@@ -1,15 +1,17 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { requireUser, type SessionUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { isAdmin, PROCESSING_ROLES } from "@/lib/permissions";
+import { ADMIN_ROLES, isAdmin, PROCESSING_ROLES } from "@/lib/permissions";
 import { claimHeld, CLAIM_MINUTES, stageLabel, validUntil } from "@/lib/journey";
 import { getStudentForUser } from "@/server/queries";
+import { sendWhatsAppRecorded } from "@/server/whatsapp";
 import { stageGate, studentChecklist, studentContext, syncChecklist } from "@/server/documentation";
+import { packContents } from "@/server/pack";
 import type { FormState } from "@/lib/form-state";
 import type { JourneyStage } from "@/db/schema";
 
@@ -329,6 +331,7 @@ const reqSchema = z.object({
   owedBy: z.enum(["STUDENT", "MEDCITY", "UNIVERSITY", "VENDOR"]),
   validityMonths: z.string().optional(),
   guidance: z.string().trim().max(600).optional(),
+  guidanceMl: z.string().trim().max(600).optional(),
   sortOrder: z.string().optional(),
 });
 
@@ -368,6 +371,7 @@ export async function saveRequirementAction(_: FormState, fd: FormData): Promise
     owedBy: d.owedBy,
     validityMonths: months,
     guidance: d.guidance || null,
+    guidanceMl: d.guidanceMl || null,
     sortOrder,
     active: fd.get("active") !== "off",
     updatedAt: new Date(),
@@ -403,4 +407,148 @@ export async function setReasonActiveAction(fd: FormData): Promise<void> {
   await db.update(schema.rejectionReasons).set({ active }).where(eq(schema.rejectionReasons.code, code));
   await audit(user.id, active ? "rejection_reason.activate" : "rejection_reason.retire", "rejection_reason", code, {});
   revalidatePath("/admin/documents");
+}
+
+// ---------- Asking the student ----------
+
+const requestSchema = z.object({
+  studentId: z.string().min(1),
+  channel: z.enum(["WHATSAPP", "PORTAL"]),
+  body: z.string().trim().min(10, "The message cannot be empty").max(4000),
+  dueOn: z.string().optional(),
+  locale: z.string().optional(),
+});
+
+/**
+ * Sends one request for everything the counsellor ticked.
+ *
+ * What goes out is what is in the box: the counsellor has read it and may have
+ * changed any of it. Each item is marked asked for, or chased where it had been
+ * asked for already, and the whole thing is recorded so nobody has to remember
+ * whether it went.
+ */
+export async function sendDocumentRequestAction(_: FormState, fd: FormData): Promise<FormState> {
+  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const parsed = requestSchema.safeParse(Object.fromEntries(fd));
+  if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Check the highlighted fields." };
+  const d = parsed.data;
+  const student = await getStudentForUser(user, d.studentId);
+  const itemIds = fd.getAll("itemIds").map(String).filter(Boolean);
+  if (itemIds.length === 0) return { error: "Tick at least one document to ask for." };
+
+  const items = await db.query.checklistItems.findMany({ where: and(eq(ci.studentId, d.studentId), inArray(ci.id, itemIds)) });
+  if (items.length === 0) return { error: "Those documents are no longer on the list." };
+  const due = asDate(d.dueOn);
+  const locale = d.locale === "ml" ? "ml" : "en";
+
+  let messageId: string | null = null;
+  let delivered = false;
+  if (d.channel === "WHATSAPP") {
+    const branch = await db.query.organizations.findFirst({ where: eq(schema.organizations.id, student.orgId), columns: { studentWhatsappMessages: true } });
+    if (!student.whatsappOptIn) return { error: `${student.firstName} has not agreed to WhatsApp messages. Send it in the portal instead.` };
+    if (branch?.studentWhatsappMessages === false) return { error: "This branch has WhatsApp messages to students switched off. Send it in the portal instead." };
+    const sent = await sendWhatsAppRecorded({ to: student.phone, template: "documents_request", body: d.body });
+    messageId = sent.messageId;
+    delivered = sent.ok;
+  }
+
+  const [request] = await db
+    .insert(schema.documentRequests)
+    .values({
+      studentId: d.studentId,
+      kind: items.some((i) => i.state === "ASKED" || i.state === "REJECTED") ? "NUDGE" : "ASK",
+      channel: d.channel,
+      locale,
+      body: d.body,
+      dueOn: dateOnly(due),
+      itemCount: items.length,
+      sentById: user.id,
+      messageId,
+    })
+    .returning({ id: schema.documentRequests.id });
+  await db.insert(schema.documentRequestItems).values(items.map((i) => ({ requestId: request.id, itemId: i.id }))).onConflictDoNothing();
+
+  const now = new Date();
+  for (const item of items) {
+    const already = item.state === "ASKED" || item.state === "REJECTED";
+    await db
+      .update(ci)
+      .set({
+        // A rejected document stays rejected: it is the state the student has to
+        // act on, and asking again does not make the old file acceptable.
+        state: item.state === "REJECTED" ? "REJECTED" : "ASKED",
+        askedAt: item.askedAt ?? now,
+        askedById: item.askedById ?? user.id,
+        askedChannel: d.channel === "WHATSAPP" ? "WhatsApp" : "Portal",
+        dueOn: dateOnly(due) ?? item.dueOn,
+        lastChasedAt: already ? now : item.lastChasedAt,
+        chaseCount: already ? item.chaseCount + 1 : item.chaseCount,
+        updatedAt: now,
+      })
+      .where(eq(ci.id, item.id));
+  }
+  await audit(user.id, "checklist.request", "student", d.studentId, { channel: d.channel, items: items.map((i) => i.typeCode), delivered });
+  refresh(d.studentId);
+  return {
+    redirectTo: `/students/${d.studentId}/documentation`,
+    ok:
+      d.channel === "WHATSAPP"
+        ? delivered
+          ? `Sent to ${student.firstName} on WhatsApp.`
+          : "Recorded, but WhatsApp would not take it. The list is in the student's portal either way."
+        : `Recorded. ${student.firstName} sees the list when they next open the portal.`,
+  };
+}
+
+// ---------- The submission pack ----------
+
+/**
+ * Records that one application's paperwork was gathered, and hands back the
+ * download. What is missing is recorded with it rather than hidden, so a pack
+ * sent short is a fact on the file rather than an argument later.
+ */
+export async function buildPackAction(_: FormState, fd: FormData): Promise<FormState> {
+  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const applicationId = String(fd.get("applicationId") ?? "");
+  const note = String(fd.get("note") ?? "").trim().slice(0, 400) || null;
+  const app = await db.query.applications.findFirst({ where: eq(schema.applications.id, applicationId) });
+  if (!app) return { error: "That application no longer exists." };
+  await getStudentForUser(user, app.studentId);
+  const contents = await packContents(applicationId);
+  if (!contents) return { error: "That application no longer exists." };
+  if (contents.files.length === 0) return { error: "Nothing has been accepted for this student yet, so there is nothing to pack." };
+  const [pack] = await db
+    .insert(schema.submissionPacks)
+    .values({
+      applicationId,
+      studentId: app.studentId,
+      builtById: user.id,
+      itemCount: contents.files.length,
+      missing: contents.missing.map((m) => m.label),
+      note,
+    })
+    .returning({ id: schema.submissionPacks.id });
+  await audit(user.id, "pack.build", "application", applicationId, { files: contents.files.length, missing: contents.missing.map((m) => m.label) });
+  revalidatePath(`/students/${app.studentId}`, "layout");
+  return { redirectTo: `/api/packs/${pack.id}`, ok: `Packed ${contents.files.length} document${contents.files.length === 1 ? "" : "s"}.` };
+}
+
+/**
+ * Runs the chasing now rather than waiting for the scheduler. The same code the
+ * schedule calls, so what the team sees by hand is what happens overnight.
+ */
+export async function runRemindersAction(_: FormState, fd: FormData): Promise<FormState> {
+  const user = await requireUser([...ADMIN_ROLES]);
+  void fd;
+  const { runDocumentReminders } = await import("@/server/documentation-reminders");
+  const run = await runDocumentReminders();
+  await audit(user.id, "checklist.reminders", "student", "*", { ...run, via: "by hand" });
+  revalidatePath("/documentation");
+  const said = [
+    run.messagesSent ? `${run.messagesSent} reminder${run.messagesSent === 1 ? "" : "s"} sent` : null,
+    run.escalated ? `${run.escalated} put on a counsellor's desk` : null,
+    run.expiryFlagged ? `${run.expiryFlagged} flagged as running out too early` : null,
+    run.gatesAnnounced ? `${run.gatesAnnounced} gate${run.gatesAnnounced === 1 ? "" : "s"} announced as clear` : null,
+  ].filter(Boolean);
+  return { ok: said.length ? said.join(", ") + "." : "Nothing needed chasing." };
 }

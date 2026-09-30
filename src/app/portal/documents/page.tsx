@@ -1,6 +1,6 @@
 import { fmtDate } from "@/lib/format";
 import { translator } from "@/lib/i18n";
-import { requireStudent, studentApplications, studentDocuments } from "@/server/portal";
+import { requireStudent, studentApplications, studentChecklist, studentDocuments } from "@/server/portal";
 import { Alert, Card, CardHeader, Chip } from "@/components/ui";
 import { IconCheck } from "@/components/icons";
 import { PortalUploadForm } from "../forms";
@@ -13,6 +13,10 @@ export default async function PortalDocuments({ searchParams }: { searchParams: 
   const apps = await studentApplications(student.id, locale);
   const required = [...new Set(apps.flatMap((a) => a.requiredDocs ?? []))];
   const docs = await studentDocuments(student.id, required, locale);
+  // The documentation list, where the branch has one. It is the better answer to
+  // "what do you still need from me": it carries the reason and the date.
+  const list = await studentChecklist(student.id, locale);
+  const onList = list.outstanding.length + list.done.length + list.withUs.length > 0;
   const justUploaded = uploadedCode ? (docs.rows.find((r) => r.code === uploadedCode) ?? null) : null;
 
   return (
@@ -28,6 +32,38 @@ export default async function PortalDocuments({ searchParams }: { searchParams: 
         </Alert>
       )}
 
+      {onList && (
+        <Card>
+          <CardHeader title={t("needFromYou")} subtitle={`${list.outstanding.length}`} />
+          {list.outstanding.length === 0 ? (
+            <p className="flex items-center gap-2 px-4 py-6 text-[14px] text-good-700">
+              <IconCheck className="size-4" /> {t("allDocumentsIn")}
+            </p>
+          ) : (
+            <ul className="divide-y divide-line">
+              {list.outstanding.map((r) => (
+                <li key={r.code} className="px-4 py-3.5">
+                  <p className="font-medium">{r.label}</p>
+                  {r.sentBack && <p className="mt-0.5 text-[13px] font-medium text-stop-700">{t("sendAgain")}</p>}
+                  {r.reason && <p className="mt-0.5 text-[13px] leading-relaxed text-muted">{r.reason}</p>}
+                  {r.dueOn && <p className="mt-0.5 text-[13px] text-muted">{t("wantedBy")} {fmtDate(r.dueOn)}</p>}
+                  <div className="mt-2">
+                    <PortalUploadForm typeCode={r.code} label={r.label} chooseLabel={t("chooseFile")} uploadLabel={r.sentBack ? t("uploadAgain") : t("upload")} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          {(list.withUs.length > 0 || list.done.length > 0) && (
+            <div className="space-y-1 border-t border-line px-4 py-3 text-[13px] text-muted">
+              {list.withUs.length > 0 && <p>{t("beingChecked")}: {list.withUs.join(", ")}</p>}
+              {list.done.length > 0 && <p>{t("alreadyDone")}: {list.done.join(", ")}</p>}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {!onList && (
       <Card>
         <CardHeader
           title={t("required")}
@@ -58,6 +94,7 @@ export default async function PortalDocuments({ searchParams }: { searchParams: 
           </ul>
         )}
       </Card>
+      )}
 
       {docs.shared.length > 0 && (
         <Card>

@@ -43,6 +43,29 @@ function provider(): WhatsAppProvider {
 }
 
 /** Queues, sends and records an outbound WhatsApp message. Never throws to the caller. */
+/**
+ * As sendWhatsApp, but hands back the row it recorded so the caller can keep a
+ * reference to what went out. Separate rather than a changed return type,
+ * because an object is always truthy and `if (sent)` is load bearing elsewhere.
+ */
+export async function sendWhatsAppRecorded(msg: WhatsAppMessage): Promise<{ ok: boolean; messageId: string }> {
+  const [row] = await db
+    .insert(schema.outboundMessages)
+    .values({ channel: "whatsapp", to: msg.to, body: msg.body, template: msg.template })
+    .returning();
+  try {
+    const { providerId } = await provider().send(msg);
+    await db.update(schema.outboundMessages).set({ status: "sent", providerId }).where(eq(schema.outboundMessages.id, row.id));
+    return { ok: true, messageId: row.id };
+  } catch (err) {
+    await db
+      .update(schema.outboundMessages)
+      .set({ status: "failed", error: err instanceof Error ? err.message : String(err) })
+      .where(eq(schema.outboundMessages.id, row.id));
+    return { ok: false, messageId: row.id };
+  }
+}
+
 export async function sendWhatsApp(msg: WhatsAppMessage) {
   const [row] = await db
     .insert(schema.outboundMessages)

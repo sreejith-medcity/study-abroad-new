@@ -3,11 +3,12 @@ import { asc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fmtDate } from "@/lib/format";
-import { PROCESSING_ROLES } from "@/lib/permissions";
+import { isAdmin, PROCESSING_ROLES } from "@/lib/permissions";
 import { activeRejectionReasons, documentationQueue, queueCounts } from "@/server/documentation";
 import { claimHeld, CLAIM_MINUTES, STAGES, stageLabel } from "@/lib/journey";
 import { Card, Chip, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
 import { ItemActions } from "../students/[id]/documentation/client";
+import { RunReminders } from "./chase";
 import type { JourneyStage } from "@/db/schema";
 
 export const metadata = { title: "Documentation queue" };
@@ -50,6 +51,7 @@ export default async function DocumentationQueuePage({ searchParams }: { searchP
       <PageHeader
         title="Documentation queue"
         subtitle={`${counts.waiting} waiting · ${counts.mine} claimed by you. Oldest first, and a document is claimed while somebody checks it so two people never check the same one.`}
+        actions={isAdmin(user) ? <RunReminders /> : undefined}
       />
       <Card className="mb-3 p-3">
         <div className="flex flex-wrap items-center gap-2">
