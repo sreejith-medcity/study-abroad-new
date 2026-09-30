@@ -31,12 +31,15 @@ export function ApplyForm({
   programs,
   preselectProgramId,
   limited,
+  gate,
 }: {
   studentId: string;
   programs: ProgramOption[];
   preselectProgramId?: string;
   /** True when more programs matched than were sent; the counsellor should narrow the search. */
   limited: boolean;
+  /** What the profile stage is still short of, and whether this person may apply anyway. */
+  gate?: { missing: string[]; canOverride: boolean; holds: boolean };
 }) {
   const [intake, setIntake] = useState("");
   const [routeId, setRouteId] = useState("");
@@ -110,6 +113,24 @@ export function ApplyForm({
         <p className="text-[13px] text-amber-700">
           No route is recorded for this course yet, so the application will carry none. Ask the Overseas team to record who it is applied through, or add one under Vendors and routes.
         </p>
+      )}
+      {gate && gate.missing.length > 0 && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-[13px]">
+          <p className="font-medium text-amber-900">The profile documents are not complete</p>
+          <p className="mt-0.5 text-amber-900">Still needed: {gate.missing.join(", ")}.</p>
+          {gate.holds && gate.canOverride ? (
+            <Field label="Reason for applying anyway" htmlFor="gateReason" hint="Logged on the file and shown on the documentation tab.">
+              <Input id="gateReason" name="gateReason" />
+              <FieldError name="gateReason" />
+            </Field>
+          ) : (
+            <p className="mt-1 text-amber-900">
+              {gate.holds
+                ? "Collect them on the Documentation tab, or ask the Overseas team to let this one through."
+                : "The application can still be created. Collect them on the Documentation tab before it is submitted."}
+            </p>
+          )}
+        </div>
       )}
       <Field label="Intake" htmlFor="intake" required hint={program && !program.intakeMonths.length ? "No intakes are recorded for this program. Pick the one the student is aiming for; the Overseas team confirms it with the institution." : undefined}>
         <Select id="intake" name="intake" disabled={!program} value={intake} onChange={(e) => setIntake(e.target.value)}>

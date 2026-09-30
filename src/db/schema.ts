@@ -80,6 +80,38 @@ export const enquiryStage = pgEnum("enquiry_stage", ["NEW", "CONTACTED", "QUALIF
 export const commissionBasis = pgEnum("commission_basis", ["PERCENT_TUITION", "FLAT"]);
 /** What has to happen before a route's commission can be invoiced. */
 export const payableOn = pgEnum("payable_on", ["OFFER_ACCEPTED", "FEE_PAID", "VISA_APPROVED", "ENROLMENT_CONFIRMED"]);
+/**
+ * The nine stages a study abroad file passes through. A stage is not left
+ * until its gate is clear, and the gate is a list of documents.
+ */
+export const journeyStage = pgEnum("journey_stage", [
+  "PROFILE",
+  "SHORTLIST",
+  "APPLICATION",
+  "OFFER",
+  "DEPOSIT",
+  "CONFIRMATION",
+  "VISA",
+  "DEPARTURE",
+  "ARRIVED",
+]);
+/** Where a requirement came from, so a counsellor can point at the source. */
+export const requirementSource = pgEnum("requirement_source", ["ALWAYS", "DESTINATION", "ROUTE", "UNIVERSITY", "STUDENT"]);
+/** Who the portal is waiting on for one document. */
+export const owedBy = pgEnum("owed_by", ["STUDENT", "MEDCITY", "UNIVERSITY", "VENDOR"]);
+/**
+ * What a document is at this moment. Expiring and expired are not stored: they
+ * are read from the dates against the course start, every time the list is built.
+ */
+export const checklistState = pgEnum("checklist_state", [
+  "NOT_NEEDED",
+  "NOT_ASKED",
+  "ASKED",
+  "UPLOADED",
+  "IN_REVIEW",
+  "ACCEPTED",
+  "REJECTED",
+]);
 export const commissionStatus = pgEnum("commission_status", [
   "EXPECTED",
   "INVOICED",
@@ -376,6 +408,9 @@ export const students = pgTable(
     consentAt: timestamp("consent_at", { withTimezone: true }),
     consentText: text("consent_text"),
     profileLocked: boolean("profile_locked").notNull().default(false),
+    /** Which of the nine stages the file is on, and when it got there. */
+    journeyStage: journeyStage("journey_stage").notNull().default("PROFILE"),
+    stageEnteredAt: timestamp("stage_entered_at", { withTimezone: true }),
     archived: boolean("archived").notNull().default(false),
     source: text("source").notNull().default("partner"), // partner | qr | crm
     crmLeadId: text("crm_lead_id"),
@@ -609,6 +644,182 @@ export const documents = pgTable("documents", {
   sharedWithStudent: boolean("shared_with_student").notNull().default(false),
   createdAt: createdAt(),
 });
+
+// ---------- The documentation spine ----------
+
+/**
+ * What a stage asks for, kept by the Overseas team. Five kinds of row merge
+ * into one student's list: the stage itself, the destination, the route, the
+ * university and, on the student's own file, anything added by hand.
+ *
+ * Scope is read from whichever key is filled: a destination row carries a
+ * country, a route row a vendor, a university row a university or one course.
+ * Nothing here is student specific.
+ */
+export const documentRequirements = pgTable(
+  "document_requirements",
+  {
+    id: id(),
+    stage: journeyStage("stage").notNull(),
+    typeCode: text("type_code")
+      .notNull()
+      .references(() => documentTypes.code, { onDelete: "cascade" }),
+    source: requirementSource("source").notNull().default("ALWAYS"),
+    countryId: text("country_id").references(() => countries.id, { onDelete: "cascade" }),
+    vendorId: text("vendor_id").references(() => vendors.id, { onDelete: "cascade" }),
+    universityId: text("university_id").references(() => universities.id, { onDelete: "cascade" }),
+    programId: text("program_id").references(() => programs.id, { onDelete: "cascade" }),
+    /** Only a required item gates the stage. The rest are asked for, not enforced. */
+    required: boolean("required").notNull().default(true),
+    owedBy: owedBy("owed_by").notNull().default("STUDENT"),
+    /**
+     * How long one of these stays good for, counted from the date on the
+     * document: a TB test six months, a police clearance three. Null means the
+     * document carries its own expiry, or none at all.
+     */
+    validityMonths: integer("validity_months"),
+    /** The rule in the team's own words, shown beside the document when it is checked. */
+    guidance: text("guidance"),
+    guidanceMl: text("guidance_ml"),
+    active: boolean("active").notNull().default(true),
+    sortOrder: integer("sort_order").notNull().default(100),
+    createdById: text("created_by_id").references(() => users.id),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("document_requirements_stage_idx").on(t.stage),
+    index("document_requirements_country_idx").on(t.countryId),
+    index("document_requirements_vendor_idx").on(t.vendorId),
+    index("document_requirements_university_idx").on(t.universityId),
+    index("document_requirements_program_idx").on(t.programId),
+  ],
+);
+
+/** The reasons the team sends a document back. The list grows; nothing is deleted. */
+export const rejectionReasons = pgTable("rejection_reasons", {
+  code: text("code").primaryKey(),
+  label: text("label").notNull(),
+  labelMl: text("label_ml"),
+  sortOrder: integer("sort_order").notNull().default(100),
+  active: boolean("active").notNull().default(true),
+  createdAt: createdAt(),
+});
+
+/**
+ * One document on one student's list. Built from the requirements and then
+ * lived in: asked for, uploaded, checked, accepted or sent back.
+ *
+ * There is one row per document type per student, because a paper asked for by
+ * two applications is still one paper. Which application drove it is recorded
+ * for the ones that only exist because of it, such as a CAS.
+ */
+export const checklistItems = pgTable(
+  "checklist_items",
+  {
+    id: id(),
+    studentId: text("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    /** The application that asks for it, where only one does. */
+    applicationId: text("application_id").references(() => applications.id, { onDelete: "set null" }),
+    /** Null on anything added by hand for this student alone. */
+    requirementId: text("requirement_id").references(() => documentRequirements.id, { onDelete: "set null" }),
+    stage: journeyStage("stage").notNull(),
+    typeCode: text("type_code")
+      .notNull()
+      .references(() => documentTypes.code, { onDelete: "cascade" }),
+    source: requirementSource("source").notNull().default("ALWAYS"),
+    /** Where the requirement came from, in words: "United Kingdom", "KC Overseas". */
+    sourceLabel: text("source_label"),
+    required: boolean("required").notNull().default(true),
+    owedBy: owedBy("owed_by").notNull().default("STUDENT"),
+    state: checklistState("state").notNull().default("NOT_ASKED"),
+
+    askedAt: timestamp("asked_at", { withTimezone: true }),
+    askedById: text("asked_by_id").references(() => users.id),
+    askedChannel: text("asked_channel"),
+    lastChasedAt: timestamp("last_chased_at", { withTimezone: true }),
+    chaseCount: integer("chase_count").notNull().default(0),
+    dueOn: date("due_on"),
+
+    /** The file the team is going on, and how many have been sent before it. */
+    documentId: text("document_id").references(() => documents.id, { onDelete: "set null" }),
+    version: integer("version").notNull().default(0),
+
+    /** The date printed on the document, and the date it stops being good for. */
+    issuedOn: date("issued_on"),
+    validTo: date("valid_to"),
+    validityMonths: integer("validity_months"),
+
+    /** Why it was sent back, or why it is not needed. The student reads this. */
+    reasonCode: text("reason_code").references(() => rejectionReasons.code),
+    reason: text("reason"),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    decidedById: text("decided_by_id").references(() => users.id),
+
+    /** Opening a document claims it, so two people never check the same one. */
+    claimedById: text("claimed_by_id").references(() => users.id),
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
+
+    /** Why this one was added for this student alone. */
+    note: text("note"),
+    addedById: text("added_by_id").references(() => users.id),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("checklist_items_student_type_uq").on(t.studentId, t.typeCode),
+    index("checklist_items_state_idx").on(t.state),
+    index("checklist_items_stage_idx").on(t.stage),
+    index("checklist_items_claimed_idx").on(t.claimedById),
+  ],
+);
+
+/**
+ * Every file ever sent for one item, with what was decided about it. A rejected
+ * bank statement stays as version one with its reason; the replacement is two.
+ * Nobody loses the history of what was sent when the visa officer asks.
+ */
+export const checklistFiles = pgTable(
+  "checklist_files",
+  {
+    id: id(),
+    itemId: text("item_id")
+      .notNull()
+      .references(() => checklistItems.id, { onDelete: "cascade" }),
+    documentId: text("document_id").references(() => documents.id, { onDelete: "set null" }),
+    version: integer("version").notNull(),
+    /** Accepted or rejected. Null while it is still being checked. */
+    outcome: checklistState("outcome"),
+    reasonCode: text("reason_code").references(() => rejectionReasons.code),
+    reason: text("reason"),
+    uploadedById: text("uploaded_by_id").references(() => users.id),
+    uploadedAt: timestamp("uploaded_at", { withTimezone: true }).notNull().defaultNow(),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    decidedById: text("decided_by_id").references(() => users.id),
+  },
+  (t) => [uniqueIndex("checklist_files_version_uq").on(t.itemId, t.version)],
+);
+
+/** A gate let through with a reason, which is logged and shown on the file. */
+export const gateOverrides = pgTable(
+  "gate_overrides",
+  {
+    id: id(),
+    studentId: text("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    applicationId: text("application_id").references(() => applications.id, { onDelete: "cascade" }),
+    stage: journeyStage("stage").notNull(),
+    reason: text("reason").notNull(),
+    /** What was still missing when it was let through. */
+    missing: jsonb("missing").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    actorId: text("actor_id").references(() => users.id),
+    createdAt: createdAt(),
+  },
+  (t) => [index("gate_overrides_student_idx").on(t.studentId)],
+);
 
 // ---------- Notifications, messaging and audit ----------
 
@@ -848,6 +1059,14 @@ export const appSettings = pgTable("app_settings", {
 
   // Partner tiers: visas in the last twelve months needed for each level
   tierTargets: jsonb("tier_targets").notNull().default(sql`'{"SILVER":10,"GOLD":20,"ELITE":50,"PLATINUM":50}'::jsonb`),
+
+  /**
+   * Whether an application is refused while a required profile document is
+   * missing. Off to begin with: a desk with a thousand files part way through
+   * has to collect the paper before the gate can be shut, and the file says what
+   * is missing either way.
+   */
+  holdApplicationsOnDocuments: boolean("hold_applications_on_documents").notNull().default(false),
 
   // Enquiries
   followUpDays: integer("follow_up_days").notNull().default(1),
@@ -1566,6 +1785,7 @@ export const studentsRelations = relations(students, ({ one, many }) => ({
   documents: many(documents),
   editRequests: many(editRequests),
   shortlist: many(shortlists),
+  checklist: many(checklistItems),
 }));
 
 export const shortlistsRelations = relations(shortlists, ({ one }) => ({
@@ -1626,6 +1846,41 @@ export const documentsRelations = relations(documents, ({ one }) => ({
   comment: one(comments, { fields: [documents.commentId], references: [comments.id] }),
   type: one(documentTypes, { fields: [documents.typeCode], references: [documentTypes.code] }),
   uploadedBy: one(users, { fields: [documents.uploadedById], references: [users.id] }),
+}));
+
+export const documentRequirementsRelations = relations(documentRequirements, ({ one, many }) => ({
+  type: one(documentTypes, { fields: [documentRequirements.typeCode], references: [documentTypes.code] }),
+  country: one(countries, { fields: [documentRequirements.countryId], references: [countries.id] }),
+  vendor: one(vendors, { fields: [documentRequirements.vendorId], references: [vendors.id] }),
+  university: one(universities, { fields: [documentRequirements.universityId], references: [universities.id] }),
+  program: one(programs, { fields: [documentRequirements.programId], references: [programs.id] }),
+  items: many(checklistItems),
+}));
+
+export const checklistItemsRelations = relations(checklistItems, ({ one, many }) => ({
+  student: one(students, { fields: [checklistItems.studentId], references: [students.id] }),
+  application: one(applications, { fields: [checklistItems.applicationId], references: [applications.id] }),
+  requirement: one(documentRequirements, { fields: [checklistItems.requirementId], references: [documentRequirements.id] }),
+  type: one(documentTypes, { fields: [checklistItems.typeCode], references: [documentTypes.code] }),
+  document: one(documents, { fields: [checklistItems.documentId], references: [documents.id] }),
+  reasonPicked: one(rejectionReasons, { fields: [checklistItems.reasonCode], references: [rejectionReasons.code] }),
+  claimedBy: one(users, { fields: [checklistItems.claimedById], references: [users.id] }),
+  decidedBy: one(users, { fields: [checklistItems.decidedById], references: [users.id], relationName: "checklistDecider" }),
+  askedBy: one(users, { fields: [checklistItems.askedById], references: [users.id], relationName: "checklistAsker" }),
+  files: many(checklistFiles),
+}));
+
+export const checklistFilesRelations = relations(checklistFiles, ({ one }) => ({
+  item: one(checklistItems, { fields: [checklistFiles.itemId], references: [checklistItems.id] }),
+  document: one(documents, { fields: [checklistFiles.documentId], references: [documents.id] }),
+  uploadedBy: one(users, { fields: [checklistFiles.uploadedById], references: [users.id] }),
+  decidedBy: one(users, { fields: [checklistFiles.decidedById], references: [users.id], relationName: "checklistFileDecider" }),
+}));
+
+export const gateOverridesRelations = relations(gateOverrides, ({ one }) => ({
+  student: one(students, { fields: [gateOverrides.studentId], references: [students.id] }),
+  application: one(applications, { fields: [gateOverrides.applicationId], references: [applications.id] }),
+  actor: one(users, { fields: [gateOverrides.actorId], references: [users.id] }),
 }));
 
 export const resourcesRelations = relations(resources, ({ one }) => ({
@@ -1690,4 +1945,8 @@ export type CommissionStatus = (typeof commissionStatus.enumValues)[number];
 export type WalletEntryKind = (typeof walletEntryKind.enumValues)[number];
 export type PayoutStatus = (typeof payoutStatus.enumValues)[number];
 export type ResourceKind = (typeof resourceKind.enumValues)[number];
+export type JourneyStage = (typeof journeyStage.enumValues)[number];
+export type RequirementSource = (typeof requirementSource.enumValues)[number];
+export type OwedBy = (typeof owedBy.enumValues)[number];
+export type ChecklistState = (typeof checklistState.enumValues)[number];
 export type AppSettings = typeof appSettings.$inferSelect;

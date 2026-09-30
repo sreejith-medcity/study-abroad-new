@@ -10,6 +10,8 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
 import { DOCUMENT_TYPES, STATUS_SEED } from "./statuses";
+import { DOCUMENTATION_TYPES, REJECTION_REASONS, STAGE_REQUIREMENTS } from "./documentation-seed";
+import { syncChecklist } from "./documentation-sync";
 
 const client = postgres(process.env.DATABASE_URL!, { max: 1 });
 const db = drizzle(client, { schema });
@@ -66,7 +68,8 @@ async function main() {
       .returning();
     for (const r of rows) statusIds[`${pw}.${r.code}`] = r.id;
   }
-  await db.insert(schema.documentTypes).values(DOCUMENT_TYPES);
+  await db.insert(schema.documentTypes).values([...DOCUMENT_TYPES, ...DOCUMENTATION_TYPES]);
+  await db.insert(schema.rejectionReasons).values(REJECTION_REASONS.map((r, i) => ({ ...r, sortOrder: (i + 1) * 10 })));
 
   // Catalogue
   const countryRows = await db
@@ -93,6 +96,21 @@ async function main() {
     ].map((c) => (LIVING_FUNDS[c.code] ? { ...c, visaLivingFunds: LIVING_FUNDS[c.code].amount, visaLivingNote: LIVING_FUNDS[c.code].note, visaLivingSource: LIVING_FUNDS[c.code].source, visaLivingChecked: "2026-09-22" } : c)))
     .returning();
   const c = Object.fromEntries(countryRows.map((r) => [r.code, r.id]));
+
+  // The nine stage lists, and what each destination adds on top of them.
+  await db.insert(schema.documentRequirements).values(
+    STAGE_REQUIREMENTS.map((r, i) => ({
+      stage: r.stage,
+      typeCode: r.typeCode,
+      source: r.country ? ("DESTINATION" as const) : ("ALWAYS" as const),
+      countryId: r.country ? (c[r.country] ?? null) : null,
+      required: r.required !== false,
+      owedBy: r.owedBy ?? ("STUDENT" as const),
+      validityMonths: r.validityMonths ?? null,
+      guidance: r.guidance ?? null,
+      sortOrder: (i + 1) * 10,
+    })),
+  );
 
   // Fictional people; the links are the governments' own pages.
   await db.insert(schema.teamContacts).values([
@@ -505,6 +523,76 @@ async function main() {
       locale: "ml",
     });
     trail.push({ actorId: ukDocs.id, action: "portal.invite", entityType: "student", entityId: portalStudent.id, meta: { email: portalStudent.email }, createdAt: months(2) });
+  }
+
+  // The documentation spine: every student gets the list their stage, destination
+  // and route ask for, and a few are part way through it so the queue, the gate
+  // and the expiry flag can all be seen on a fresh install.
+  const allStudents = await db.query.students.findMany({
+    with: { applications: { with: { status: { columns: { group: true } } } } },
+  });
+  const STAGE_BY_GROUP: Record<string, schema.JourneyStage> = {
+    NEW: "PROFILE",
+    IN_PROGRESS: "APPLICATION",
+    PENDING_PARTNER: "APPLICATION",
+    OFFER: "OFFER",
+    HOLD: "APPLICATION",
+    SUCCESS: "DEPARTURE",
+    CLOSED: "ARRIVED",
+  };
+  for (const student of allStudents) {
+    const groups = student.applications.map((a) => a.status.group);
+    const stage: schema.JourneyStage = groups.includes("SUCCESS")
+      ? "DEPARTURE"
+      : groups.includes("OFFER")
+        ? "OFFER"
+        : groups.length
+          ? (STAGE_BY_GROUP[groups[0]] ?? "APPLICATION")
+          : "PROFILE";
+    await db.update(schema.students).set({ journeyStage: stage, stageEnteredAt: months(12) }).where(eq(schema.students.id, student.id));
+    await syncChecklist(student.id);
+  }
+
+  // A worked example on the first student: paper in hand, paper asked for, one
+  // sent back with a reason, and a test report that runs out before the course.
+  const worked = await db.query.checklistItems.findMany({ where: eq(schema.checklistItems.studentId, firstStudentId) });
+  const item = (code: string) => worked.find((i) => i.typeCode === code);
+  const accept = async (code: string, validTo?: string) => {
+    const row = item(code);
+    if (!row) return;
+    await db
+      .update(schema.checklistItems)
+      .set({ state: "ACCEPTED", validTo: validTo ?? null, decidedAt: months(20), decidedById: docsTeam.id, version: 1 })
+      .where(eq(schema.checklistItems.id, row.id));
+  };
+  await accept("PASSPORT", "2031-03-18");
+  await accept("PHOTOGRAPH");
+  await accept("MARKSHEET_10");
+  await accept("MARKSHEET_12");
+  await accept("CV");
+  // An English test whose two years run out inside the course: accepted, and still
+  // a problem, which is exactly what the gate has to say out loud.
+  await accept("ENGLISH_TEST", new Date(Date.now() + 41 * 86400000).toISOString().slice(0, 10));
+  const asked = item("SOP");
+  if (asked) {
+    await db
+      .update(schema.checklistItems)
+      .set({ state: "ASKED", askedAt: months(4), askedById: ukDocs.id, askedChannel: "WhatsApp", dueOn: new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10) })
+      .where(eq(schema.checklistItems.id, asked.id));
+  }
+  const back = item("LOR");
+  if (back) {
+    await db
+      .update(schema.checklistItems)
+      .set({ state: "REJECTED", reasonCode: "period_short", reason: "Only one letter is in; the university asks for two.", decidedAt: months(2), decidedById: docsTeam.id, version: 1 })
+      .where(eq(schema.checklistItems.id, back.id));
+    await db.insert(schema.checklistFiles).values({ itemId: back.id, version: 1, outcome: "REJECTED", reasonCode: "period_short", reason: "Only one letter is in; the university asks for two.", uploadedById: ukDocs.id, decidedAt: months(2), decidedById: docsTeam.id });
+  }
+  // Two files waiting on the documentation team, so the queue is not empty.
+  const waiting = await db.query.checklistItems.findMany({ where: eq(schema.checklistItems.typeCode, "MARKSHEET_12"), limit: 3 });
+  for (const w of waiting.slice(1)) {
+    await db.update(schema.checklistItems).set({ state: "UPLOADED", version: 1, updatedAt: months(2) }).where(eq(schema.checklistItems.id, w.id));
+    await db.insert(schema.checklistFiles).values({ itemId: w.id, version: 1, uploadedById: ukDocs.id, uploadedAt: months(2) });
   }
 
   await db.insert(schema.auditLogs).values(trail);

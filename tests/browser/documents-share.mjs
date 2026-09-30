@@ -42,7 +42,7 @@ sql(`update documents set shared_with_student = false; update document_types set
 // --- Admin: guidance and a sample for the statement of purpose.
 const admin = await signIn("admin@medcityoverseas.test", "10.98.1.1");
 const ap = admin.page;
-await go(ap, "/admin/documents");
+await go(ap, "/admin/documents?tab=types");
 await ap.waitForLoadState("networkidle");
 const sopCard = ap.locator("form").filter({ has: ap.getByLabel("Guidance for Statement of purpose") });
 await sopCard.getByLabel("Guidance for Statement of purpose").fill("One to two pages, in the student's own words: why this course, why this country, and the plan after.");

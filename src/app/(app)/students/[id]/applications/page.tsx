@@ -6,6 +6,8 @@ import { requireUser } from "@/lib/auth";
 import { summarise } from "@/lib/checks";
 import { fmtDate, fmtDateTime, fmtMoney, intakeLabel } from "@/lib/format";
 import { APP_ROLES, isAdmin, isDocumentationTeam, isStaff } from "@/lib/permissions";
+import { stageGate, studentChecklist, studentContext } from "@/server/documentation";
+import { getSettings } from "@/server/settings";
 import { checkApplication, statusesFor } from "@/server/applications";
 import { getStudentForUser } from "@/server/queries";
 import { Button, Card, CardHeader, Chip, DataList, EmptyState, Input, Select, StatusBadge, cn } from "@/components/ui";
@@ -123,7 +125,13 @@ async function ApplyPanel({ studentId, pathway, preselectProgramId, q, country }
   const seen = new Set<string>();
   const rows = [...preselected, ...picked, ...matches].filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
   const shortlisted = new Set(picked.map((r) => r.id));
-  const showCommission = await commissionVisible(await requireUser([...APP_ROLES]));
+  const user = await requireUser([...APP_ROLES]);
+  const showCommission = await commissionVisible(user);
+  // What the profile stage is still short of, so the counsellor reads it before
+  // they choose a course rather than after they press the button.
+  const checklist = await studentChecklist(studentId);
+  const gate = checklist.length ? stageGate(checklist, "PROFILE", (await studentContext(studentId)).courseStart) : null;
+  const holdOnDocuments = (await getSettings()).holdApplicationsOnDocuments;
   // The roads each course can be applied down, so the counsellor picks one with
   // the application rather than after it.
   const routesByProgram = await routeChips(rows.map((r) => ({ id: r.id, tuitionPerYear: r.tuitionPerYear, tuitionTotal: r.tuitionTotal, applicationFee: r.applicationFee, offerTatDays: r.offerTatDays, currency: r.currency })));
@@ -187,7 +195,13 @@ async function ApplyPanel({ studentId, pathway, preselectProgramId, q, country }
         </Select>
         <Button type="submit" variant="secondary" size="sm">Find</Button>
       </form>
-      <ApplyForm studentId={studentId} programs={programs} preselectProgramId={preselectProgramId} limited={matches.length === 50} />
+      <ApplyForm
+        studentId={studentId}
+        programs={programs}
+        preselectProgramId={preselectProgramId}
+        limited={matches.length === 50}
+        gate={gate && gate.missing.length ? { missing: gate.missing.map((m) => m.label), canOverride: isAdmin(user), holds: holdOnDocuments } : undefined}
+      />
     </>
   );
 }

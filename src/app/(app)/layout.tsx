@@ -65,6 +65,7 @@ const ADMIN_NAV: NavGroup[] = [
     items: [
       { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
       { href: "/admin/queue", label: "Work queue", icon: "queue" },
+      { href: "/documentation", label: "Documentation queue", icon: "applications" },
       { href: "/applications", label: "Applications", icon: "applications" },
       { href: "/students", label: "Students", icon: "students" },
       { href: "/program-options", label: "Program options", icon: "spark" },
@@ -84,7 +85,7 @@ const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/scholarships", label: "Scholarships", icon: "spark" },
       { href: "/admin/destinations", label: "Destinations and rankings", icon: "universities" },
       { href: "/admin/statuses", label: "Status flows", icon: "flow" },
-      { href: "/admin/documents", label: "Document types", icon: "applications" },
+      { href: "/admin/documents", label: "Documents and requirements", icon: "applications" },
     ],
   },
   {

@@ -36,6 +36,7 @@ const FALLBACK: AppSettings = {
   slaOfferDays: 10,
   slaHoldDays: 60,
   tierTargets: { SILVER: 10, GOLD: 20, ELITE: 50, PLATINUM: 50 },
+  holdApplicationsOnDocuments: false,
   followUpDays: 1,
   enquiryStaleDays: 30,
   fxRates: { GBP: 112, EUR: 96, AUD: 58, CAD: 62, USD: 88 },

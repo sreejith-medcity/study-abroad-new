@@ -8,6 +8,7 @@ import { audit } from "@/lib/audit";
 import { getStudentForUser } from "@/server/queries";
 import { deleteUpload, saveUpload, UploadError } from "@/server/storage";
 import { PROCESSING_ROLES, isAdmin } from "@/lib/permissions";
+import { attachUploadToChecklist } from "@/server/documentation";
 
 import type { FormState } from "@/lib/form-state";
 export type { FormState };
@@ -28,6 +29,9 @@ export async function uploadDocumentAction(_: FormState, formData: FormData): Pr
     const saved = await saveUpload(file, `students/${studentId}`);
     const [doc] = await db.insert(schema.documents).values({ studentId, typeCode, fileName: file.name, uploadedById: user.id, ...saved }).returning();
     await audit(user.id, "document.upload", "document", doc.id, { typeCode });
+    // A file that answers something on the documentation list joins the team's
+    // queue. Nobody, least of all the student, marks their own document good.
+    await attachUploadToChecklist(studentId, typeCode, doc.id, user.id);
   } catch (e) {
     if (e instanceof UploadError) return { error: e.message };
     throw e;

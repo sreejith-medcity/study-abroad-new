@@ -12,10 +12,12 @@ import { audit } from "@/lib/audit";
 import { nextAckNo } from "@/lib/ack";
 import { summarise } from "@/lib/checks";
 import { intakeLabel } from "@/lib/format";
-import { ADMIN_ROLES, PROCESSING_ROLES, isStaff } from "@/lib/permissions";
+import { ADMIN_ROLES, PROCESSING_ROLES, isAdmin, isStaff } from "@/lib/permissions";
 import { changeStatus, checkApplication, StatusChangeError } from "@/server/applications";
 import { adminIds, notifyUsers, partnerRecipients } from "@/server/notify";
 import { getApplicationForUser, getStudentForUser } from "@/server/queries";
+import { stageGate, studentChecklist, studentContext, syncChecklist } from "@/server/documentation";
+import { getSettings } from "@/server/settings";
 import { offerVisa, saveOfferVisa } from "@/server/offer-visa";
 import { saveUpload, UploadError } from "@/server/storage";
 import { sendWhatsApp } from "@/server/whatsapp";
@@ -72,6 +74,25 @@ export async function createApplicationAction(_: FormState, formData: FormData):
   if (routes.length && !routeId) return { fieldErrors: { routeId: ["Choose how this application is sent"] }, error: "Choose the route this application goes through." };
   if (routeId && !routes.some((r) => r.id === routeId)) return { fieldErrors: { routeId: ["That route is not open for this course"] }, error: "Choose the route this application goes through." };
 
+  // The profile gate: applying with a required document missing is how a file
+  // reaches a university and comes straight back. The refusal names what is
+  // missing rather than being a bare error, and an admin may let it through with
+  // a reason, which is logged on the file.
+  const settings = await getSettings();
+  const checklist = settings.holdApplicationsOnDocuments ? await studentChecklist(student.id) : [];
+  if (checklist.length) {
+    const ctx = await studentContext(student.id);
+    const profile = stageGate(checklist, "PROFILE", ctx.courseStart);
+    const override = String(formData.get("gateReason") ?? "").trim();
+    if (!profile.clear) {
+      const list = profile.missing.map((m) => `${m.label} (${m.why.toLowerCase()})`).join(", ");
+      if (!isAdmin(user)) return { error: `The profile documents are not complete. Still needed: ${list}.` };
+      if (!override) return { fieldErrors: { gateReason: [`Still needed: ${profile.missing.map((m) => m.label).join(", ")}`] }, error: `The profile documents are not complete. Give a reason to apply anyway, which is logged on the file. Still needed: ${list}.` };
+      await db.insert(schema.gateOverrides).values({ studentId: student.id, stage: "PROFILE", reason: override, missing: profile.missing.map((m) => m.label), actorId: user.id });
+      await audit(user.id, "gate.override", "student", student.id, { stage: "PROFILE", reason: override, missing: profile.missing.map((m) => m.label), at: "application.create" });
+    }
+  }
+
   const ackNo = await nextAckNo();
   const [app] = await db
     .insert(schema.applications)
@@ -99,6 +120,9 @@ export async function createApplicationAction(_: FormState, formData: FormData):
   });
   const late = deadline && daysUntil(deadline.deadline) < 0 ? `. The deadline for this intake passed on ${dayText(deadline.deadline)}` : "";
   await notifyUsers(await adminIds(), `New application ${ackNo}`, `${student.firstName} ${student.lastName}: ${program.name}, ${program.university.name}${program.intakeMonths.length ? "" : ". Intake not on record: confirm it with the institution"}${late}`, `/students/${student.id}/applications?app=${app.id}`);
+  // The destination and the route ask for paper of their own, so the list is
+  // rebuilt the moment the application exists.
+  await syncChecklist(student.id);
   await audit(user.id, "application.create", "application", app.id, { programId: program.id, intake: `${month}/${year}`, routeId });
   return { redirectTo: `/students/${student.id}/applications?app=${app.id}` };
 }

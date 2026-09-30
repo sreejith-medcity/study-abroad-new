@@ -102,6 +102,7 @@ export default async function PlatformSettingsPage() {
             slaInProgressDays: settings.slaInProgressDays,
             slaOfferDays: settings.slaOfferDays,
             slaHoldDays: settings.slaHoldDays,
+            holdApplicationsOnDocuments: settings.holdApplicationsOnDocuments,
             followUpDays: settings.followUpDays,
             enquiryStaleDays: settings.enquiryStaleDays,
             tierTargets: tierTargets(settings),

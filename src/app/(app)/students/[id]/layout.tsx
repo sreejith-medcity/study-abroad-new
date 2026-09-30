@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { count, eq, ilike } from "drizzle-orm";
+import { and, count, eq, ilike, notInArray } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fullName } from "@/lib/format";
@@ -18,6 +18,12 @@ export default async function StudentLayout({ children, params }: { children: Re
   const student = await getStudentForUser(user, id);
   const [{ apps }] = await db.select({ apps: count() }).from(schema.applications).where(eq(schema.applications.studentId, id));
   const [{ docs }] = await db.select({ docs: count() }).from(schema.documents).where(eq(schema.documents.studentId, id));
+  // The documentation tab counts what is still owed, not what is on the list:
+  // "Documentation (3)" is a number somebody can act on this afternoon.
+  const [{ owed }] = await db
+    .select({ owed: count() })
+    .from(schema.checklistItems)
+    .where(and(eq(schema.checklistItems.studentId, id), eq(schema.checklistItems.required, true), notInArray(schema.checklistItems.state, ["ACCEPTED", "NOT_NEEDED"])));
   const [{ picks }] = await db.select({ picks: count() }).from(schema.shortlists).where(eq(schema.shortlists.studentId, id));
   const [{ quals }] = await db.select({ quals: count() }).from(schema.academicRecords).where(eq(schema.academicRecords.studentId, id));
   const profileDone = profileCompleteness({ ...student, academics: Array(quals).fill({ level: "" }), tests: [], documentTypeCodes: [] });
@@ -62,6 +68,7 @@ export default async function StudentLayout({ children, params }: { children: Re
                 { href: `/students/${id}/shortlist`, label: `Shortlist (${picks})`, done: picks > 0 },
                 { href: `/students/${id}/applications`, label: `Applications (${apps})`, done: apps > 0 },
                 { href: `/students/${id}/documents`, label: `Documents (${docs})`, done: docs > 0 },
+                { href: `/students/${id}/documentation`, label: owed > 0 ? `Documentation (${owed})` : "Documentation", done: owed === 0 },
                 { href: `/students/${id}/services`, label: `Services (${services})`, done: services > 0 },
               ]}
             />

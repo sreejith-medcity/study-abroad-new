@@ -11,7 +11,7 @@ This repository currently contains **Phase 0 basics and Phase 1 (core pipeline)*
 | Sign in and roles | All | Seven roles, each with its own powers, plus a free-text job title on every account. Partners only ever see their own organisation's data. |
 | Dashboards | All | One address, five dashboards. Super admin sees the platform (accounts, access, storage, audit activity); Overseas admin sees the processing desk (lane health against SLA, own files, unassigned work, partner activity); Management sees outcomes (funnel, conversion rates, partner performance, twelve month trend); a partner owner sees the branch (KPI tiles, tier progress, team load, deadlines); a counsellor sees their own desk (what is waiting on them, unread student replies, their students). |
 | Students | Partners, staff | List with filters, inline reassignment, archive / delete. Registration requires recorded consent. |
-| Student file | Partners, staff | Three steps: **Profile** (personal, address, passport, academics, work, tests), **Applications**, **Documents**. Profile locks once the team starts working an application; partners send edit requests. Passport numbers are masked for counsellors and every reveal and download is logged. |
+| Student file | Partners, staff | Four steps: **Profile** (personal, address, passport, academics, work, tests), **Applications**, **Documents** and **Documentation**. Profile locks once the team starts working an application; partners send edit requests. Passport numbers are masked for counsellors and every reveal and download is logged. |
 | Bulk upload | Branch owners and the team | Students, enquiries, application updates and commission payments from a CSV or Excel file, checked line by line before anything is saved. Students are matched by email, or by phone number and name where there is no email, and only blanks are filled in; a locked profile is left alone. A student with no email at all is kept on their phone number and cannot sign in to the student portal until an address is added. A whole name in one column is split at the last space; a single name with no surname is refused rather than guessed at. Consent comes either from a `consent` column or from one tick above the file, which stands for every row and is recorded against the person who ticked it, in the audit log and on each student. The team names the branch in a `branch` column, which takes the full name, the public code, or a word only one branch's name holds. Identical problems are gathered into one line with a count. |
 | Applications | Partners, staff | Create against the program catalogue with valid intakes only. Acknowledgement numbers like `144472/26-27`. List with 12 filters, pagination, CSV export (formula-injection safe). |
 | Comments | Partners, staff | Two channels per application: **Team** (hidden from student) and **Student** (mirrored to WhatsApp). Attachments, and "File as" to turn an attachment into a typed document. |
@@ -31,6 +31,10 @@ This repository currently contains **Phase 0 basics and Phase 1 (core pipeline)*
 
 | Program search | All | Search the catalogue by keyword, destination (one or several), level, intake and English requirement, with quick filters. Pick a student and every row shows eligible, on track (including practice scores from Medcity's own test platform) or not yet, with the reason. Apply straight from a result. |
 | Vendors and routes | Admins keep, all read | The roads Medcity reaches a university by: its own agreements, KC Overseas, StudentOps360 and whoever comes next, each with a two-letter code and a colour that travel together on every screen. A route is one road to one course, carrying its own commission (a percentage of the first year or a flat fee), when it is paid and within how many days, its application fee, its offer turnaround, the course's code in the vendor's portal and what it asks for beyond the university's list. Recorded on a course by hand or from a vendor's sheet through the **Routes** bulk upload, which never creates a course. Search and the finder filter by route, or by "no route recorded" to find the gaps. A percentage is never applied to a whole-course fee, and a rate nobody has given reads "Not recorded". |
+| The documentation spine | Partners, staff, the documentation team | Nine stages from Profile to Arrived, and the paper that gates each one. A student's list is built from five places at once: the stage itself, the destination, the route, the university and anything added for that student by hand, with a document asked for twice asked for once and every row saying where it came from. Each document is not needed, not asked, asked, uploaded, in review, accepted or sent back, and a rejection needs a reason from the team's own list, which is what the student reads. A file sent back keeps its version and its reason; the replacement is the next version. Expiry is read off the document (a TB test six months from its date, a test report two years) and measured against the course start, not against today, so a passport valid for four months against a two-year course counts as missing and says so. |
+| Gates and overrides | Partners, staff | A stage cannot be left while a required document is missing, rejected or out of date, and the refusal names what is missing rather than being a bare error. An ops manager may let it through with a reason, which is logged and shown on the file. The apply screen names the same list before a course is chosen; whether it refuses the application outright is one switch in Platform settings, off to begin with, because a desk part way through a season has to collect the paper first. |
+| Documentation queue | The documentation team, admins | One screen for the people who check paper all day: everything sent in and not yet decided, oldest first or visa stage first, filtered by branch, stage or route. Opening a document claims it for twenty minutes so two people never check the same bank statement, and the rule the team wrote sits beside the document while it is judged. Accepting reads the date off the document and records when it runs out; rejecting picks a reason and sends it to the student word for word. |
+| What the team keeps | Admins, the documentation team | The nine stage lists, what each destination, route and university adds on top, the guidance and samples per document, and the reasons for sending one back, all on **Documents and requirements**. Editing a requirement changes every student's list as their file is opened and never touches a document already sent, accepted or refused. |
 | The route on an application | Partners, staff | The program page compares every route to that course side by side: turnaround, fee, interview, what it asks for, and what it pays where commission is visible. The route is chosen when the application is created, shown with its colour on the application, and the team records the application's own reference in the vendor's portal. A student never sees any of it. |
 | Course finder | All | Two ways in: one screen with every answer on it, or three questions that walk a counsellor through. The description can be typed in their own words and is read into the answers by the portal's own rules, with the AI, where the team has switched it on, only picking from the lists the portal supplies; a CGPA is never turned into a percentage and no figure is ever read out of the AI. The course box offers the catalogue's own course names and study areas as they are typed. Matches come back with the reasons they are there and the cautions against them, marked a strong match, worth a look or a stretch, beside a panel that narrows them with a count against every university and level, and sorts by fit, tuition, ranking, offer turnaround or name. A course up to a quarter over the budget is shown and marked, never dropped in silence. Shortlist, compare, or hand the same filters to search. |
 | Offer turnaround | Team records, all read | How long an institution has been taking to answer, in days, from the Overseas team's own files. Set on one program, on every program a filter matches, or in the programs CSV as `offer_tat_days`. Shown on the finder's rows and the program page, filterable ("within 5 days") and sortable, and it counts towards a match. Nothing is recorded means "Not recorded", never a guess. |
@@ -140,7 +144,8 @@ src/
     login/                      sign in / out
     (app)/                      signed-in shell (top bar, side nav)
       dashboard/
-      students/                 list, new, [id]/profile | applications | documents
+      students/                 list, new, [id]/profile | applications | documents | documentation
+      documentation/            the documentation team's queue
       applications/             list
       admin/queue | programs | partners | statuses | applications/[id]/check
       notifications/
@@ -152,13 +157,17 @@ src/
   db/
     schema.ts                   all tables and enums
     statuses.ts                 status dictionary per pathway + document types
+    documentation-seed.ts       the nine stage lists and the reasons, as the team described them
+    documentation-sync.ts       builds one student's list from the requirements
     seed.ts
   lib/
     auth.ts permissions.ts      session, role checks, org scoping, passport masking
     checks.ts                   pre-submission rules (pure, unit tested)
+    journey.ts                  the nine stages, document states, gates, expiry (pure, unit tested)
     program-import.ts           CSV parser (pure, unit tested)
   server/
     applications.ts             status changes, check loader
+    documentation.ts            the merged list, the gate, the team's queue
     queries.ts                  shared filters and scoped loaders
     whatsapp.ts notify.ts storage.ts
 drizzle/                        SQL migrations
@@ -241,4 +250,8 @@ Who may hand out which role: a super admin can set any role. An ops manager can 
 
 ## Next
 
-The public student registration form (QR) and student portal in English and Malayalam, the public student registration form (QR) and student portal in English and Malayalam, Medcity CRM lead sync, and the parent / sponsor view.
+From the wireframe, in order: asking the student for everything outstanding in one
+message and packing the submission bundle, the Medcity ID with the student and
+parent dashboards, the CRM link that fills a file from a lead, total income per
+student (fee, commission, ticket, SIM, forex card), and vendor invoicing with the
+finance queue after a visa is approved.

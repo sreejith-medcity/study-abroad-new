@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ActionForm } from "@/components/action-form";
 import { SelectField, TextField, TextareaField } from "@/components/fields";
-import { Alert, Button, cn } from "@/components/ui";
+import { Alert, Button, Checkbox, cn } from "@/components/ui";
 import { LOCALE_LABEL, LOCALES } from "@/lib/i18n";
 import { MIN_PASSWORD_LENGTH, passwordStrength } from "@/lib/password";
 import {
@@ -168,6 +168,17 @@ export function PlatformForm({ settings }: { settings: PlatformValues }) {
         </div>
       </Section>
 
+      <Section title="Documentation" hint="Whether the paper has to be in before an application is created.">
+        <Checkbox
+          name="holdApplicationsOnDocuments"
+          defaultChecked={settings.holdApplicationsOnDocuments}
+          label="Refuse an application while a required profile document is missing"
+        />
+        <p className="mt-1 text-xs text-muted">
+          Off to begin with, because a desk part way through a season has to collect the paper first. Either way the apply screen names what is missing, and the documentation tab keeps the list.
+        </p>
+      </Section>
+
       <Section title="Enquiries" hint="Defaults for follow-ups and for calling an enquiry stale.">
         <div className="grid gap-3 sm:grid-cols-2">
           <NumberField label="Follow up after (days)" name="followUpDays" defaultValue={settings.followUpDays} />
@@ -222,6 +233,7 @@ export type PlatformValues = {
   slaInProgressDays: number;
   slaOfferDays: number;
   slaHoldDays: number;
+  holdApplicationsOnDocuments: boolean;
   followUpDays: number;
   enquiryStaleDays: number;
   tierTargets: Record<"SILVER" | "GOLD" | "ELITE" | "PLATINUM", number>;

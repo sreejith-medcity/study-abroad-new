@@ -182,6 +182,7 @@ export async function savePlatformAction(_: FormState, formData: FormData): Prom
       slaInProgressDays: d.slaInProgressDays,
       slaOfferDays: d.slaOfferDays,
       slaHoldDays: d.slaHoldDays,
+      holdApplicationsOnDocuments: formData.get("holdApplicationsOnDocuments") === "on",
       tierTargets: { SILVER: d.tierSilver, GOLD: d.tierGold, ELITE: d.tierElite, PLATINUM: d.tierPlatinum },
       followUpDays: d.followUpDays,
       enquiryStaleDays: d.enquiryStaleDays,
