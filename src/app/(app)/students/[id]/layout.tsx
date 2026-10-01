@@ -7,6 +7,7 @@ import { APP_ROLES, isStaff } from "@/lib/permissions";
 import { getStudentForUser } from "@/server/queries";
 import { Card, Chip } from "@/components/ui";
 import { StepTabs } from "@/components/tabs";
+import { LogContact } from "@/components/crm-forms";
 import { profileCompleteness } from "@/lib/checks";
 import { backgroundComplete } from "@/lib/background";
 
@@ -55,6 +56,11 @@ export default async function StudentLayout({ children, params }: { children: Re
           <Link href={`/program-options/new?student=${id}`} data-print="hide" className="ml-3 mt-2 inline-block text-[13px] font-medium text-brand-600 hover:underline">
             Ask the team for options
           </Link>
+          {user.role !== "MANAGEMENT" && (
+            <div className="mt-3 flex flex-wrap gap-2" data-print="hide">
+              <LogContact studentId={id} studentName={student.firstName} />
+            </div>
+          )}
           <p className="mt-2 text-xs text-muted">
             {isStaff(user) ? `${student.org.name} · ` : ""}Assigned to {student.assignedTo ? student.assignedTo.deskLabel ?? student.assignedTo.name : "nobody"}
             {student.consentAt ? " · Consent recorded" : " · No consent on file"}
@@ -69,6 +75,7 @@ export default async function StudentLayout({ children, params }: { children: Re
                 { href: `/students/${id}/applications`, label: `Applications (${apps})`, done: apps > 0 },
                 { href: `/students/${id}/documents`, label: `Documents (${docs})`, done: docs > 0 },
                 { href: `/students/${id}/documentation`, label: owed > 0 ? `Documentation (${owed})` : "Documentation", done: owed === 0 },
+                { href: `/students/${id}/timeline`, label: "Timeline", done: true },
                 { href: `/students/${id}/services`, label: `Services (${services})`, done: services > 0 },
               ]}
             />

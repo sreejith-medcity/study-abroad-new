@@ -549,6 +549,7 @@ export async function runRemindersAction(_: FormState, fd: FormData): Promise<Fo
     run.escalated ? `${run.escalated} put on a counsellor's desk` : null,
     run.expiryFlagged ? `${run.expiryFlagged} flagged as running out too early` : null,
     run.gatesAnnounced ? `${run.gatesAnnounced} gate${run.gatesAnnounced === 1 ? "" : "s"} announced as clear` : null,
+    run.tasksRaised ? `${run.tasksRaised} task${run.tasksRaised === 1 ? "" : "s"} put on a desk` : null,
   ].filter(Boolean);
   return { ok: said.length ? said.join(", ") + "." : "Nothing needed chasing." };
 }

@@ -1,10 +1,13 @@
 import "server-only";
-import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { audit } from "@/lib/audit";
 import { buildAskMessage, reminderFor, type ReminderItem } from "@/lib/ask";
 import { EXPIRY_WARNING_DAYS, stageLabel } from "@/lib/journey";
-import { notifyUsers, partnerRecipients } from "@/server/notify";
+import { autoKeys } from "@/lib/crm";
+import { SETTLES_IT, vendorSilence } from "@/lib/desk";
+import { raiseTask } from "@/server/tasks";
+import { deskIds, notifyUsers, partnerRecipients } from "@/server/notify";
 import { outstandingForStudent, portalLink, rowStanding, stageGate, studentChecklist, studentContext } from "@/server/documentation";
 import { sendWhatsAppRecorded } from "@/server/whatsapp";
 
@@ -16,6 +19,7 @@ export type ReminderRun = {
   escalated: number;
   expiryFlagged: number;
   gatesAnnounced: number;
+  tasksRaised: number;
 };
 
 /**
@@ -30,7 +34,8 @@ export type ReminderRun = {
  * true on the file, to whoever needs to hear it.
  */
 export async function runDocumentReminders(today = new Date()): Promise<ReminderRun> {
-  const run: ReminderRun = { nudged: 0, messagesSent: 0, escalated: 0, expiryFlagged: 0, gatesAnnounced: 0 };
+  const run: ReminderRun = { nudged: 0, messagesSent: 0, escalated: 0, expiryFlagged: 0, gatesAnnounced: 0, tasksRaised: 0 };
+  const day = today.toISOString().slice(0, 10);
 
   // Only files with something actually outstanding are looked at.
   const live = await db
@@ -63,6 +68,22 @@ export async function runDocumentReminders(today = new Date()): Promise<Reminder
         "Asked for a week ago and nothing back. A call usually works better than another message.",
         `/students/${studentId}/documentation?view=student`,
       );
+      // A notice is read once and gone. A task sits on the desk until somebody
+      // deals with it, which is the difference between knowing and doing.
+      for (const e of toEscalate) {
+        const raised = await raiseTask({
+          orgId: student.orgId,
+          assignedToId: student.assignedToId ?? (await partnerRecipients(student.orgId, null)).filter(Boolean)[0] ?? "",
+          studentId,
+          kind: "DOCUMENT",
+          title: `Chase ${student.firstName} ${student.lastName} for a document`,
+          detail: "Asked for a week ago and nothing back. A call usually works better than another message.",
+          dueOn: day,
+          source: "documents",
+          autoKey: autoKeys.documentSilent(e.id),
+        });
+        if (raised) run.tasksRaised += 1;
+      }
       run.escalated += toEscalate.length;
     }
 
@@ -166,7 +187,71 @@ export async function runDocumentReminders(today = new Date()): Promise<Reminder
       "Every required document for this stage is in and accepted. The file can move on.",
       `/students/${s.id}/documentation`,
     );
+    const owner = s.assignedToId;
+    if (owner) {
+      const raised = await raiseTask({
+        orgId: s.orgId,
+        assignedToId: owner,
+        studentId: s.id,
+        kind: "APPLICATION",
+        title: `${s.firstName} ${s.lastName}: take the next step after ${stageLabel(s.stage)}`,
+        detail: "Every required document for this stage is in and accepted.",
+        dueOn: day,
+        source: "documents",
+        autoKey: autoKeys.gateClear(s.id, s.stage),
+      });
+      if (raised) run.tasksRaised += 1;
+    }
     run.gatesAnnounced += 1;
+  }
+
+  // A vendor that has said nothing for a week is the desk's to chase, the same
+  // way a silent student is the counsellor's.
+  const lodged = await db
+    .select({
+      id: schema.applications.id,
+      ackNo: schema.applications.ackNo,
+      orgId: schema.applications.orgId,
+      studentId: schema.applications.studentId,
+      firstName: st.firstName,
+      lastName: st.lastName,
+      submittedAt: schema.applications.submittedToVendorAt,
+      officerId: schema.applications.officerId,
+      vendor: schema.vendors.name,
+      statusGroup: schema.statusDefinitions.group,
+    })
+    .from(schema.applications)
+    .innerJoin(st, eq(st.id, schema.applications.studentId))
+    .innerJoin(schema.statusDefinitions, eq(schema.statusDefinitions.id, schema.applications.statusId))
+    .leftJoin(schema.programRoutes, eq(schema.programRoutes.id, schema.applications.routeId))
+    .leftJoin(schema.vendors, eq(schema.vendors.id, schema.programRoutes.vendorId))
+    .where(and(eq(schema.applications.deskStage, "SUBMITTED"), isNotNull(schema.applications.submittedToVendorAt)));
+  const desk = await deskIds();
+  for (const a of lodged) {
+    if (a.statusGroup === "CLOSED" || a.statusGroup === "SUCCESS") continue;
+    const [latest] = await db
+      .select({ at: schema.vendorUpdates.createdAt, outcome: schema.vendorUpdates.outcome })
+      .from(schema.vendorUpdates)
+      .where(eq(schema.vendorUpdates.applicationId, a.id))
+      .orderBy(desc(schema.vendorUpdates.createdAt))
+      .limit(1);
+    if (latest && SETTLES_IT.includes(latest.outcome)) continue;
+    const silence = vendorSilence({ submittedAt: a.submittedAt, lastUpdateAt: latest?.at ?? null, settled: false }, today);
+    if (!silence.quiet) continue;
+    const since = (latest?.at ?? a.submittedAt ?? today).toISOString().slice(0, 10);
+    const raised = await raiseTask({
+      orgId: a.orgId,
+      assignedToId: a.officerId ?? desk[0] ?? "",
+      studentId: a.studentId,
+      applicationId: a.id,
+      kind: "APPLICATION",
+      title: `Chase ${a.vendor ?? "the vendor"} on ${a.ackNo}`,
+      detail: `${a.firstName} ${a.lastName}. Nothing heard for ${silence.days} days since ${since}.`,
+      dueOn: day,
+      source: "the desk",
+      autoKey: autoKeys.vendorQuiet(a.id, since),
+    });
+    if (raised) run.tasksRaised += 1;
   }
 
   await audit(null, "checklist.reminders", "student", "*", { ...run, via: "scheduled" });

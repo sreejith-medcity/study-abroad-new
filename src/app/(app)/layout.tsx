@@ -20,7 +20,9 @@ const partnerNav = (home: string): NavGroup[] => [
     title: "Work",
     items: [
       { href: "/dashboard", label: home, icon: "dashboard" },
+      { href: "/my-day", label: "My day", icon: "queue" },
       { href: "/students", label: "Students", icon: "students" },
+      { href: "/students/board", label: "Students by stage", icon: "flow" },
       { href: "/applications", label: "Applications", icon: "applications" },
     ],
   },
@@ -64,11 +66,13 @@ const ADMIN_NAV: NavGroup[] = [
     title: "Processing",
     items: [
       { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
+      { href: "/my-day", label: "My day", icon: "queue" },
       { href: "/admin/queue", label: "Work queue", icon: "queue" },
       { href: "/admin/desk", label: "The Overseas desk", icon: "flow" },
       { href: "/documentation", label: "Documentation queue", icon: "applications" },
       { href: "/applications", label: "Applications", icon: "applications" },
       { href: "/students", label: "Students", icon: "students" },
+      { href: "/students/board", label: "Students by stage", icon: "flow" },
       { href: "/program-options", label: "Program options", icon: "spark" },
       { href: "/admin/services", label: "Services", icon: "services" },
       { href: "/support", label: "Help desk", icon: "support" },

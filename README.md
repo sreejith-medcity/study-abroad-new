@@ -34,6 +34,10 @@ This repository currently contains **Phase 0 basics and Phase 1 (core pipeline)*
 | The documentation spine | Partners, staff, the documentation team | Nine stages from Profile to Arrived, and the paper that gates each one. A student's list is built from five places at once: the stage itself, the destination, the route, the university and anything added for that student by hand, with a document asked for twice asked for once and every row saying where it came from. Each document is not needed, not asked, asked, uploaded, in review, accepted or sent back, and a rejection needs a reason from the team's own list, which is what the student reads. A file sent back keeps its version and its reason; the replacement is the next version. Expiry is read off the document (a TB test six months from its date, a test report two years) and measured against the course start, not against today, so a passport valid for four months against a two-year course counts as missing and says so. |
 | Gates and overrides | Partners, staff | A stage cannot be left while a required document is missing, rejected or out of date, and the refusal names what is missing rather than being a bare error. An ops manager may let it through with a reason, which is logged and shown on the file. The apply screen names the same list before a course is chosen; whether it refuses the application outright is one switch in Platform settings, off to begin with, because a desk part way through a season has to collect the paper first. |
 | Documentation queue | The documentation team, admins | One screen for the people who check paper all day: everything sent in and not yet decided, oldest first or visa stage first, filtered by branch, stage or route. Opening a document claims it for twenty minutes so two people never check the same bank statement, and the rule the team wrote sits beside the document while it is judged. Accepting reads the date off the document and records when it runs out; rejecting picks a reason and sends it to the student word for word. |
+| My day | All | What is due, overdue first, then today. A task is on a person for a day, raised by hand or by the portal: a document a week old with no answer, a vendor gone quiet, a gate that has come clear and needs the next step taken. Tick it off, push it to tomorrow or next week, or finish it with a note. Each task says where it came from, so nobody wonders who asked. The portal's own tasks carry a key for the fact they stand for, so the same thing never lands on a desk twice however often the chasing runs. |
+| Log a call in two clicks | Partners, staff | How they were spoken to (call, WhatsApp, visit, email, SMS), whether they called us, what came of it (spoke to them, no answer, they will send it, they want more time, wants to talk it through, not interested, wrong number) and what happens next. The outcome suggests the day to look again, which the counsellor can change. The next action becomes its own task, which is what makes the follow-up list build itself. |
+| One timeline per student | Partners, staff | Every call, message, document, documentation decision, request to the student, status change, vendor reply, hand-over, stage move, task and payment in one feed, newest first, filterable to one kind. Assembled from what is already recorded rather than written twice, so there is no second copy of the truth to go wrong. Open tasks sit at the top rather than buried in it. |
+| Students by stage | Partners, staff | The nine stages as columns, every student a card with who owns them, how long since anybody spoke to them, overdue tasks and how many applications they have. One click shows only the files nobody has touched in a fortnight. Filterable by branch and by counsellor. A student moves along on their own file, where the gate and its reasons are, rather than by dragging a card past the rules. |
 | The hand-over | Counsellors, the Overseas desk | A counsellor builds the file and collects the paper; they are never asked which vendor it goes through. Once the documents for the application stage are in they hand it over, and what is missing is named rather than hidden behind a refusal. The desk picks the road, lodges it in that vendor's own portal, and records whatever comes back. A file can be sent back to the branch with a reason the counsellor reads, fixed, and handed over again. Where it sits reads in plain words on the application: with the branch, waiting for the desk, route chosen, lodged with the vendor, sent back. |
 | What the vendor said | The Overseas desk | None of these portals tell us anything, so the desk types it in: an outcome from a list (acknowledged, more documents asked for, interview set, offer issued, conditions met, rejected, deferred, withdrawn), the day the vendor acted in their dates rather than ours, and their words. The outcome suggests the status to move to and the branch is told the moment it is recorded. The documentation team may move a status this way, because they are the ones reading the offer, but still not freely from the status screen. |
 | The desk's queue | The Overseas desk | Everything the branches have handed over, oldest first, by step, branch, vendor or pathway, with the files whose vendor has gone quiet for a week findable in one click. Beside it, what each vendor actually takes: the median and the slowest from the day it was lodged to the day they answered, in their own dates, against the turnaround they quote. Only applications that have been answered count, so none of it is a guess. |
@@ -173,12 +177,15 @@ src/
     checks.ts                   pre-submission rules (pure, unit tested)
     journey.ts                  the nine stages, document states, gates, expiry (pure, unit tested)
     desk.ts                     the hand-over, vendor outcomes and real turnaround (pure, unit tested)
+    crm.ts                      task headings, follow-up suggestions, the timeline's shape (pure, unit tested)
     ask.ts                      the message to the student, and the chasing schedule (pure, unit tested)
     pack.ts                     the submission pack's front sheet and file names (pure, unit tested)
     program-import.ts           CSV parser (pure, unit tested)
   server/
     applications.ts             status changes, check loader
     desk.ts                     the desk's queue and what each vendor actually takes
+    tasks.ts                    one person's desk, and the tasks the portal raises
+    timeline.ts                 one student's story, assembled from what is recorded
     documentation.ts            the merged list, the gate, the team's queue
     documentation-reminders.ts  the daily chasing
     pack.ts                     gathers one application's accepted paperwork into a zip
@@ -264,8 +271,9 @@ Who may hand out which role: a super admin can set any role. An ops manager can 
 
 ## Next
 
-The CRM layer: tasks and follow-ups with a My day screen, one timeline per
-student, a call log that raises its own follow-up, and a board of students by
-stage. Then, from the wireframe: the Medcity ID with the student and parent
-dashboards, the CRM link to Medcity's own CRM, income per student, and vendor
-invoicing with the finance queue.
+From the wireframe: income per student (fee, commission, ticket, SIM, forex card
+and the rest), then vendor invoicing with the finance queue. The screens are
+built so the Overseas team fills in the rate cards and service margins
+themselves, and anything not recorded reads "Not recorded" rather than nought.
+After that, the Medcity ID with the student and parent dashboards, and the link
+to Medcity's own CRM.

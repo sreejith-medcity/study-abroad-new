@@ -680,6 +680,62 @@ async function main() {
     await db.insert(schema.checklistFiles).values({ itemId: w.id, version: 1, uploadedById: ukDocs.id, uploadedAt: months(2) });
   }
 
+  // A few conversations and tasks, so My day, the timeline and the board are not
+  // empty on a fresh install.
+  const boardStudents = await db
+    .select({ id: schema.students.id, orgId: schema.students.orgId, assignedToId: schema.students.assignedToId, firstName: schema.students.firstName })
+    .from(schema.students)
+    .orderBy(asc(schema.students.createdAt));
+  const contactSeeds = [
+    { outcome: "REACHED" as const, channel: "CALL" as const, note: "Talked through the two Dundee options. Wants to decide with her father this weekend.", nextDays: 4, next: "Call back after they have talked" },
+    { outcome: "NO_ANSWER" as const, channel: "CALL" as const, note: null, nextDays: 1, next: "Try again in the evening" },
+    { outcome: "WILL_SEND" as const, channel: "WHATSAPP" as const, note: "Says the bank statement will come by Friday.", nextDays: 3, next: "Chase the bank statement" },
+    { outcome: "WANTS_TIME" as const, channel: "VISIT" as const, note: "Came in with both parents. Worried about the funds requirement.", nextDays: 10, next: "Follow up on the loan" },
+    { outcome: "NEEDS_COUNSELLING" as const, channel: "CALL" as const, note: "Wants to compare Ireland against the UK before applying.", nextDays: 2, next: "Sit down on destinations" },
+  ];
+  for (const [i, student] of boardStudents.entries()) {
+    const seedRow = contactSeeds[i % contactSeeds.length];
+    const by = student.assignedToId ?? ukDocs.id;
+    const happenedAt = months(2 + (i % 9));
+    const nextOn = new Date(Date.now() + (seedRow.nextDays - (i % 3)) * 86400000).toISOString().slice(0, 10);
+    const [logged] = await db
+      .insert(schema.contactLog)
+      .values({
+        orgId: student.orgId,
+        studentId: student.id,
+        channel: seedRow.channel,
+        inbound: i % 4 === 0,
+        outcome: seedRow.outcome,
+        note: seedRow.note,
+        byId: by,
+        happenedAt,
+        nextActionOn: nextOn,
+        nextActionNote: seedRow.next,
+      })
+      .returning({ id: schema.contactLog.id });
+    const [task] = await db
+      .insert(schema.tasks)
+      .values({
+        orgId: student.orgId,
+        studentId: student.id,
+        kind: "CALL",
+        title: seedRow.next,
+        detail: seedRow.note,
+        dueOn: nextOn,
+        assignedToId: by,
+        createdById: by,
+        source: `${seedRow.channel === "WHATSAPP" ? "WhatsApp" : seedRow.channel === "VISIT" ? "Visit" : "Call"} on ${happenedAt.toISOString().slice(0, 10)}`,
+        autoKey: `call-follow-up:${logged.id}`,
+        createdAt: happenedAt,
+      })
+      .returning({ id: schema.tasks.id });
+    await db.update(schema.contactLog).set({ taskId: task.id }).where(eq(schema.contactLog.id, logged.id));
+  }
+  // One overdue and one finished, so the day reads like a real one.
+  const firstTwo = await db.select({ id: schema.tasks.id }).from(schema.tasks).orderBy(asc(schema.tasks.createdAt)).limit(2);
+  if (firstTwo[0]) await db.update(schema.tasks).set({ dueOn: new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10) }).where(eq(schema.tasks.id, firstTwo[0].id));
+  if (firstTwo[1]) await db.update(schema.tasks).set({ doneAt: months(1), doneById: ukDocs.id, doneNote: "Sent the clinic list on WhatsApp." }).where(eq(schema.tasks.id, firstTwo[1].id));
+
   await db.insert(schema.auditLogs).values(trail);
 
   await db.insert(schema.notifications).values([

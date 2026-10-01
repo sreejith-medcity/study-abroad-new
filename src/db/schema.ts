@@ -112,6 +112,22 @@ export const checklistState = pgEnum("checklist_state", [
   "ACCEPTED",
   "REJECTED",
 ]);
+/** What a task is about, so a desk can be read at a glance. */
+export const taskKind = pgEnum("task_kind", ["FOLLOW_UP", "DOCUMENT", "APPLICATION", "CALL", "VISIT", "PAYMENT", "OTHER"]);
+
+/** How somebody spoke to a student, and what came of it. */
+export const contactChannel = pgEnum("contact_channel", ["CALL", "WHATSAPP", "VISIT", "EMAIL", "SMS"]);
+export const contactOutcome = pgEnum("contact_outcome", [
+  "REACHED",
+  "NO_ANSWER",
+  "WILL_SEND",
+  "WANTS_TIME",
+  "NEEDS_COUNSELLING",
+  "NOT_INTERESTED",
+  "WRONG_NUMBER",
+  "OTHER",
+]);
+
 /**
  * Where an application sits between the branch and the Overseas desk.
  *
@@ -951,6 +967,82 @@ export const vendorUpdates = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index("vendor_updates_application_idx").on(t.applicationId, t.happenedOn)],
+);
+
+/**
+ * One thing somebody has to do, on a day.
+ *
+ * Raised by hand, or by the portal when a document has gone a week without an
+ * answer, a vendor has gone quiet, or a gate has come clear and somebody owns
+ * the next step. A task the portal raised carries a key, so the same fact never
+ * lands on a desk twice.
+ */
+export const tasks = pgTable(
+  "tasks",
+  {
+    id: id(),
+    orgId: text("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    studentId: text("student_id").references(() => students.id, { onDelete: "cascade" }),
+    applicationId: text("application_id").references(() => applications.id, { onDelete: "cascade" }),
+    kind: taskKind("kind").notNull().default("FOLLOW_UP"),
+    title: text("title").notNull(),
+    detail: text("detail"),
+    dueOn: date("due_on").notNull(),
+    assignedToId: text("assigned_to_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** Null on anything the portal raised by itself. */
+    createdById: text("created_by_id").references(() => users.id),
+    /** Where it came from, in words: by hand, documents, the desk, a call. */
+    source: text("source").notNull().default("by hand"),
+    /** The fact this task stands for, so the portal never raises it twice. */
+    autoKey: text("auto_key"),
+    doneAt: timestamp("done_at", { withTimezone: true }),
+    doneById: text("done_by_id").references(() => users.id),
+    doneNote: text("done_note"),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("tasks_assigned_idx").on(t.assignedToId, t.doneAt, t.dueOn),
+    index("tasks_student_idx").on(t.studentId),
+    uniqueIndex("tasks_auto_key_uq").on(t.autoKey),
+  ],
+);
+
+/**
+ * Every conversation with a student, logged in two clicks.
+ *
+ * A counsellor on the phone all day will not fill in a form, so this asks for
+ * the least that is still worth having: how they spoke, what came of it, and
+ * what happens next. The next action raises its own task, which is what makes
+ * the follow-up list build itself.
+ */
+export const contactLog = pgTable(
+  "contact_log",
+  {
+    id: id(),
+    orgId: text("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    studentId: text("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    channel: contactChannel("channel").notNull().default("CALL"),
+    /** True where the student called us rather than the other way round. */
+    inbound: boolean("inbound").notNull().default(false),
+    outcome: contactOutcome("outcome").notNull(),
+    note: text("note"),
+    happenedAt: timestamp("happened_at", { withTimezone: true }).notNull().defaultNow(),
+    byId: text("by_id").references(() => users.id),
+    nextActionOn: date("next_action_on"),
+    nextActionNote: text("next_action_note"),
+    taskId: text("task_id").references(() => tasks.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("contact_log_student_idx").on(t.studentId, t.happenedAt)],
 );
 
 /** A gate let through with a reason, which is logged and shown on the file. */
@@ -1937,6 +2029,8 @@ export const studentsRelations = relations(students, ({ one, many }) => ({
   editRequests: many(editRequests),
   shortlist: many(shortlists),
   checklist: many(checklistItems),
+  tasks: many(tasks),
+  contacts: many(contactLog),
 }));
 
 export const shortlistsRelations = relations(shortlists, ({ one }) => ({
@@ -1966,6 +2060,9 @@ export const applicationsRelations = relations(applications, ({ one, many }) => 
   officer: one(users, { fields: [applications.officerId], references: [users.id] }),
   createdBy: one(users, { fields: [applications.createdById], references: [users.id] }),
   route: one(programRoutes, { fields: [applications.routeId], references: [programRoutes.id] }),
+  handedOverBy: one(users, { fields: [applications.handedOverById], references: [users.id], relationName: "handedOver" }),
+  returnedBy: one(users, { fields: [applications.returnedById], references: [users.id], relationName: "returnedBy" }),
+  submittedBy: one(users, { fields: [applications.submittedById], references: [users.id], relationName: "submittedToVendorBy" }),
   history: many(statusHistory),
   comments: many(comments),
   documents: many(documents),
@@ -2027,6 +2124,21 @@ export const checklistFilesRelations = relations(checklistFiles, ({ one }) => ({
   document: one(documents, { fields: [checklistFiles.documentId], references: [documents.id] }),
   uploadedBy: one(users, { fields: [checklistFiles.uploadedById], references: [users.id] }),
   decidedBy: one(users, { fields: [checklistFiles.decidedById], references: [users.id], relationName: "checklistFileDecider" }),
+}));
+
+export const tasksRelations = relations(tasks, ({ one }) => ({
+  org: one(organizations, { fields: [tasks.orgId], references: [organizations.id] }),
+  student: one(students, { fields: [tasks.studentId], references: [students.id] }),
+  application: one(applications, { fields: [tasks.applicationId], references: [applications.id] }),
+  assignedTo: one(users, { fields: [tasks.assignedToId], references: [users.id] }),
+  createdBy: one(users, { fields: [tasks.createdById], references: [users.id], relationName: "taskCreator" }),
+  doneBy: one(users, { fields: [tasks.doneById], references: [users.id], relationName: "taskFinisher" }),
+}));
+
+export const contactLogRelations = relations(contactLog, ({ one }) => ({
+  student: one(students, { fields: [contactLog.studentId], references: [students.id] }),
+  by: one(users, { fields: [contactLog.byId], references: [users.id] }),
+  task: one(tasks, { fields: [contactLog.taskId], references: [tasks.id] }),
 }));
 
 export const vendorUpdatesRelations = relations(vendorUpdates, ({ one }) => ({
@@ -2128,4 +2240,7 @@ export type RequestChannel = (typeof requestChannel.enumValues)[number];
 export type RequestKind = (typeof requestKind.enumValues)[number];
 export type DeskStage = (typeof deskStage.enumValues)[number];
 export type VendorOutcome = (typeof vendorOutcome.enumValues)[number];
+export type TaskKind = (typeof taskKind.enumValues)[number];
+export type ContactChannel = (typeof contactChannel.enumValues)[number];
+export type ContactOutcome = (typeof contactOutcome.enumValues)[number];
 export type AppSettings = typeof appSettings.$inferSelect;
