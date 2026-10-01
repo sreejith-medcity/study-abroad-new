@@ -5,7 +5,7 @@ import { LIVING_FUNDS } from "./living-funds";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import bcrypt from "bcryptjs";
-import { eq, sql } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
@@ -372,6 +372,92 @@ async function main() {
     );
   }
 
+  // The hand-over, as it actually runs: the branch builds the file, the desk
+  // picks the road and lodges it, and whatever the vendor says is typed in by
+  // hand. Seeded across the sample applications so every step is visible.
+  const deskApps = await db
+    .select({ id: schema.applications.id, programId: schema.applications.programId, group: schema.statusDefinitions.group, createdAt: schema.applications.createdAt })
+    .from(schema.applications)
+    .innerJoin(schema.statusDefinitions, eq(schema.statusDefinitions.id, schema.applications.statusId))
+    .orderBy(asc(schema.applications.createdAt));
+  const routesByProgram = new Map<string, string[]>();
+  for (const r of await db.select({ id: schema.programRoutes.id, programId: schema.programRoutes.programId }).from(schema.programRoutes)) {
+    routesByProgram.set(r.programId, [...(routesByProgram.get(r.programId) ?? []), r.id]);
+  }
+  let lodgedCount = 0;
+  for (const [i, a] of deskApps.entries()) {
+    const routeId = (routesByProgram.get(a.programId) ?? [])[0] ?? null;
+    if (a.group === "NEW") continue;
+    if (a.group === "PENDING_PARTNER") {
+      await db
+        .update(schema.applications)
+        .set({ deskStage: "READY", handedOverAt: months(3), handedOverById: ukDocs.id, handoverNote: i % 2 === 0 ? "Student wants September if there is still room." : null })
+        .where(eq(schema.applications.id, a.id));
+      continue;
+    }
+    if (!routeId) {
+      await db.update(schema.applications).set({ deskStage: "READY", handedOverAt: months(6), handedOverById: ukDocs.id }).where(eq(schema.applications.id, a.id));
+      continue;
+    }
+    // One left at each of the two middle steps, so the desk screen is not all
+    // one thing: one chosen but not lodged, one sent back to the branch.
+    if (lodgedCount === 1) {
+      await db
+        .update(schema.applications)
+        .set({ deskStage: "CHOSEN", routeId, routeChosenById: docsTeam.id, routeChosenAt: months(2), handedOverAt: months(4), handedOverById: ukDocs.id })
+        .where(eq(schema.applications.id, a.id));
+      lodgedCount += 1;
+      continue;
+    }
+    if (lodgedCount === 2) {
+      await db
+        .update(schema.applications)
+        .set({ deskStage: "RETURNED", handedOverAt: months(9), handedOverById: ukDocs.id, returnedAt: months(5), returnedById: docsTeam.id, returnReason: "The bank statement covers five months. KC wants six ending within 28 days." })
+        .where(eq(schema.applications.id, a.id));
+      lodgedCount += 1;
+      continue;
+    }
+    const lodgedOn = months(22);
+    await db
+      .update(schema.applications)
+      .set({
+        deskStage: "SUBMITTED",
+        routeId,
+        routeChosenById: docsTeam.id,
+        routeChosenAt: months(24),
+        handedOverAt: months(26),
+        handedOverById: ukDocs.id,
+        submittedToVendorAt: lodgedOn,
+        submittedById: docsTeam.id,
+        vendorReference: `KC/2026/${4100 + i}`,
+      })
+      .where(eq(schema.applications.id, a.id));
+    const updates: (typeof schema.vendorUpdates.$inferInsert)[] = [
+      { applicationId: a.id, outcome: "ACKNOWLEDGED", happenedOn: months(21).toISOString().slice(0, 10), note: "Received in their portal, assessment started.", recordedById: docsTeam.id, createdAt: months(21) },
+    ];
+    if (a.group === "OFFER" || a.group === "SUCCESS") {
+      updates.push({
+        applicationId: a.id,
+        outcome: "OFFER_ISSUED",
+        happenedOn: months(16).toISOString().slice(0, 10),
+        note: "Conditional offer issued, English and the final transcript outstanding.",
+        recordedById: docsTeam.id,
+        createdAt: months(15),
+      });
+    } else if (lodgedCount === 0) {
+      updates.push({
+        applicationId: a.id,
+        outcome: "DOCUMENTS_ASKED",
+        happenedOn: months(18).toISOString().slice(0, 10),
+        note: "They want the degree certificate attested.",
+        recordedById: docsTeam.id,
+        createdAt: months(18),
+      });
+    }
+    await db.insert(schema.vendorUpdates).values(updates);
+    lodgedCount += 1;
+  }
+
   // Commission rules, then the commission each finished placement earns.
   const ruleRows = await db
     .insert(schema.commissionRules)
@@ -529,7 +615,7 @@ async function main() {
   // and route ask for, and a few are part way through it so the queue, the gate
   // and the expiry flag can all be seen on a fresh install.
   const allStudents = await db.query.students.findMany({
-    with: { applications: { with: { status: { columns: { group: true } } } } },
+    with: { applications: { with: { status: { columns: { group: true } } }, orderBy: asc(schema.applications.createdAt) } },
   });
   const STAGE_BY_GROUP: Record<string, schema.JourneyStage> = {
     NEW: "PROFILE",
@@ -542,13 +628,12 @@ async function main() {
   };
   for (const student of allStudents) {
     const groups = student.applications.map((a) => a.status.group);
-    const stage: schema.JourneyStage = groups.includes("SUCCESS")
-      ? "DEPARTURE"
-      : groups.includes("OFFER")
-        ? "OFFER"
-        : groups.length
-          ? (STAGE_BY_GROUP[groups[0]] ?? "APPLICATION")
-          : "PROFILE";
+    // The furthest any of their applications has reached, not whichever row the
+    // database happened to hand back first.
+    const order: schema.JourneyStage[] = ["PROFILE", "SHORTLIST", "APPLICATION", "OFFER", "DEPOSIT", "CONFIRMATION", "VISA", "DEPARTURE", "ARRIVED"];
+    const open = groups.filter((g) => g !== "CLOSED");
+    const reached = (open.length ? open : groups).map((g) => STAGE_BY_GROUP[g] ?? "APPLICATION");
+    const stage: schema.JourneyStage = reached.length ? reached.reduce((far, s) => (order.indexOf(s) > order.indexOf(far) ? s : far)) : "PROFILE";
     await db.update(schema.students).set({ journeyStage: stage, stageEnteredAt: months(12) }).where(eq(schema.students.id, student.id));
     await syncChecklist(student.id);
   }

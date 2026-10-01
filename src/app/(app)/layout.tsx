@@ -65,6 +65,7 @@ const ADMIN_NAV: NavGroup[] = [
     items: [
       { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
       { href: "/admin/queue", label: "Work queue", icon: "queue" },
+      { href: "/admin/desk", label: "The Overseas desk", icon: "flow" },
       { href: "/documentation", label: "Documentation queue", icon: "applications" },
       { href: "/applications", label: "Applications", icon: "applications" },
       { href: "/students", label: "Students", icon: "students" },

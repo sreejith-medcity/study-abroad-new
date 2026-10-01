@@ -25,3 +25,16 @@ export async function partnerRecipients(orgId: string, assignedToId?: string | n
     .where(and(eq(schema.users.orgId, orgId), inArray(schema.users.role, ["PARTNER"])));
   return [...owners.map((o) => o.id), assignedToId ?? null];
 }
+
+/**
+ * The Overseas desk: the admins and the documentation team together. Everything
+ * about an application between the branch handing it over and the vendor
+ * answering is theirs, so they are told about it together.
+ */
+export async function deskIds() {
+  const rows = await db
+    .select({ id: schema.users.id })
+    .from(schema.users)
+    .where(and(inArray(schema.users.role, ["ADMIN", "SUPER_ADMIN", "OPS_MANAGER", "DOCUMENTATION"]), eq(schema.users.active, true)));
+  return rows.map((r) => r.id);
+}

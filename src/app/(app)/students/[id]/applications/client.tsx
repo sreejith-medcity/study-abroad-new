@@ -42,7 +42,6 @@ export function ApplyForm({
   gate?: { missing: string[]; canOverride: boolean; holds: boolean };
 }) {
   const [intake, setIntake] = useState("");
-  const [routeId, setRouteId] = useState("");
   const [programId, setProgramId] = useState(programs.some((p) => p.id === preselectProgramId) ? preselectProgramId! : "");
   const program = programs.find((p) => p.id === programId);
   const picked = programs.filter((p) => p.shortlisted);
@@ -69,7 +68,7 @@ export function ApplyForm({
     <ActionForm action={createApplicationAction} submitLabel="Create application" pendingLabel="Creating…">
       <input type="hidden" name="studentId" value={studentId} />
       <Field label="Program" htmlFor="programId" required hint={limited ? "Showing the first 50 matches. Search above to narrow the list." : programs.length ? undefined : "Nothing open for applications matches. Change the search above."}>
-        <Select id="programId" name="programId" value={programId} onChange={(e) => { setProgramId(e.target.value); setIntake(""); setRouteId(""); }}>
+        <Select id="programId" name="programId" value={programId} onChange={(e) => { setProgramId(e.target.value); setIntake(""); }}>
           <option value="">Choose a program</option>
           {picked.length > 0 && (
             <optgroup label="Shortlisted">
@@ -91,29 +90,9 @@ export function ApplyForm({
           {program.requirements && <p className="mt-1 text-muted">Requirements: {program.requirements}</p>}
         </div>
       )}
-      {program && program.routes.length > 0 && (
-        <Field
-          label="Apply through"
-          htmlFor="routeId"
-          required
-          hint={program.routes.length === 1 ? "The only road recorded for this course." : "The same course, more than one road. What differs is the turnaround, the fee and what each asks for."}
-        >
-          <Select id="routeId" name="routeId" value={routeId} onChange={(e) => setRouteId(e.target.value)}>
-            <option value="">Choose a route</option>
-            {program.routes.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.code} · {r.name}{r.commission ? ` · ${r.commission}` : ""}
-              </option>
-            ))}
-          </Select>
-          <FieldError name="routeId" />
-        </Field>
-      )}
-      {program && program.routes.length === 0 && (
-        <p className="text-[13px] text-amber-700">
-          No route is recorded for this course yet, so the application will carry none. Ask the Overseas team to record who it is applied through, or add one under Vendors and routes.
-        </p>
-      )}
+      <p className="text-[13px] text-muted">
+        Which vendor this goes through is the Overseas desk&rsquo;s decision, made once the documents are in. Build the file, collect the paper, then hand it over.
+      </p>
       {gate && gate.missing.length > 0 && (
         <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-[13px]">
           <p className="font-medium text-amber-900">The profile documents are not complete</p>
@@ -127,7 +106,7 @@ export function ApplyForm({
             <p className="mt-1 text-amber-900">
               {gate.holds
                 ? "Collect them on the Documentation tab, or ask the Overseas team to let this one through."
-                : "The application can still be created. Collect them on the Documentation tab before it is submitted."}
+                : "The application can still be created. Collect them on the Documentation tab before it is handed to the desk."}
             </p>
           )}
         </div>

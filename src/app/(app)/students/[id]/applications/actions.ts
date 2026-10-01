@@ -62,17 +62,10 @@ export async function createApplicationAction(_: FormState, formData: FormData):
     .limit(1);
   if (!first) return { error: "No starting status is configured for this pathway. Ask an admin." };
 
-  // The route decides the commission, the paperwork and who is invoiced at the
-  // end, so it is chosen with the application rather than after it. A course
-  // with no route recorded yet still applies, carrying none.
-  const routes = await db
-    .select({ id: schema.programRoutes.id, vendorId: schema.programRoutes.vendorId })
-    .from(schema.programRoutes)
-    .innerJoin(schema.vendors, eq(schema.vendors.id, schema.programRoutes.vendorId))
-    .where(and(eq(schema.programRoutes.programId, program.id), eq(schema.programRoutes.active, true), eq(schema.vendors.active, true)));
-  const routeId = String(formData.get("routeId") ?? "") || null;
-  if (routes.length && !routeId) return { fieldErrors: { routeId: ["Choose how this application is sent"] }, error: "Choose the route this application goes through." };
-  if (routeId && !routes.some((r) => r.id === routeId)) return { fieldErrors: { routeId: ["That route is not open for this course"] }, error: "Choose the route this application goes through." };
+  // The route is not the counsellor's to choose. They build the file and collect
+  // the paper; the Overseas desk picks the road once the documents are in,
+  // because it is the desk that knows each vendor's appetite this month and it is
+  // the desk that lodges the application in their portal.
 
   // The profile gate: applying with a required document missing is how a file
   // reaches a university and comes straight back. The refusal names what is
@@ -105,9 +98,6 @@ export async function createApplicationAction(_: FormState, formData: FormData):
       intakeYear: year,
       statusId: first.id,
       createdById: user.id,
-      routeId,
-      routeChosenById: routeId ? user.id : null,
-      routeChosenAt: routeId ? new Date() : null,
       // An unverified fee is treated as due, so someone confirms it before submission.
       feeStatus: program.applicationFee === 0 ? "NOT_APPLICABLE" : "DUE",
     })
@@ -123,7 +113,7 @@ export async function createApplicationAction(_: FormState, formData: FormData):
   // The destination and the route ask for paper of their own, so the list is
   // rebuilt the moment the application exists.
   await syncChecklist(student.id);
-  await audit(user.id, "application.create", "application", app.id, { programId: program.id, intake: `${month}/${year}`, routeId });
+  await audit(user.id, "application.create", "application", app.id, { programId: program.id, intake: `${month}/${year}` });
   return { redirectTo: `/students/${student.id}/applications?app=${app.id}` };
 }
 

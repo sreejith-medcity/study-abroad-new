@@ -7,6 +7,9 @@ import { summarise } from "@/lib/checks";
 import { fmtDate, fmtDateTime, fmtMoney, intakeLabel } from "@/lib/format";
 import { APP_ROLES, isAdmin, isDocumentationTeam, isStaff } from "@/lib/permissions";
 import { stageGate, studentChecklist, studentContext } from "@/server/documentation";
+import { canHandOver, OUTCOME_LABEL, SETTLES_IT, turnaroundText, vendorTurnaround } from "@/lib/desk";
+import { routeChoicesFor, updatesFor } from "@/server/desk";
+import { ChooseRoute, DeskStageChip, HandOver, RecordSubmission, RecordUpdate, ReturnToBranch } from "./desk";
 import { getSettings } from "@/server/settings";
 import { checkApplication, statusesFor } from "@/server/applications";
 import { getStudentForUser } from "@/server/queries";
@@ -77,7 +80,7 @@ export default async function StudentApplicationsPage({ params, searchParams }: 
               </li>
             ))}
           </ul>
-          <ApplicationDetail appId={selected.id} studentId={id} channel={channel} canProcess={isAdmin(user)} canCheck={isAdmin(user) || isDocumentationTeam(user)} staff={isStaff(user)} canWrite={canWrite} whatsapp={student.whatsappOptIn && student.org.studentWhatsappMessages} />
+          <ApplicationDetail appId={selected.id} studentId={id} channel={channel} onDesk={isAdmin(user) || isDocumentationTeam(user)} canProcess={isAdmin(user)} canCheck={isAdmin(user) || isDocumentationTeam(user)} staff={isStaff(user)} canWrite={canWrite} whatsapp={student.whatsappOptIn && student.org.studentWhatsappMessages} />
         </div>
       ) : null}
     </Card>
@@ -206,7 +209,7 @@ async function ApplyPanel({ studentId, pathway, preselectProgramId, q, country }
   );
 }
 
-async function ApplicationDetail({ appId, studentId, channel, canProcess, canCheck, staff, canWrite, whatsapp }: { appId: string; studentId: string; channel: "TEAM" | "STUDENT"; canProcess: boolean; canCheck: boolean; staff: boolean; canWrite: boolean; whatsapp: boolean }) {
+async function ApplicationDetail({ appId, studentId, channel, canProcess, canCheck, staff, canWrite, whatsapp, onDesk }: { appId: string; studentId: string; channel: "TEAM" | "STUDENT"; canProcess: boolean; canCheck: boolean; staff: boolean; canWrite: boolean; whatsapp: boolean; onDesk: boolean }) {
   const app = await db.query.applications.findFirst({
     where: eq(schema.applications.id, appId),
     with: {
@@ -228,6 +231,23 @@ async function ApplicationDetail({ appId, studentId, channel, canProcess, canChe
   const checks = await checkApplication(appId);
   const { blockers, warnings } = summarise(checks);
   const statuses = canProcess ? await statusesFor(app.status.pathway) : [];
+  // The hand-over: what the branch may do, what the desk may do, and what the
+  // vendor has said so far. The gate is the documents, named rather than hidden.
+  const checklist = await studentChecklist(studentId);
+  const ctx = checklist.length ? await studentContext(studentId) : null;
+  const applicationGate = checklist.length ? stageGate(checklist, "APPLICATION", ctx?.courseStart ?? null) : null;
+  const handover = canHandOver({
+    deskStage: app.deskStage,
+    gateClear: applicationGate ? applicationGate.clear : true,
+    missing: applicationGate ? applicationGate.missing.map((m) => m.label) : [],
+    closed: app.status.group === "CLOSED",
+  });
+  const updates = await updatesFor(appId);
+  const settled = updates.find((u) => SETTLES_IT.includes(u.outcome));
+  const took = settled ? vendorTurnaround(app.submittedToVendorAt, settled.happenedOn) : null;
+  const deskStatuses = onDesk ? await statusesFor(app.status.pathway) : [];
+  const routeChoices = onDesk ? await routeChoicesFor(app.programId) : [];
+  const submittedStatus = deskStatuses.find((x) => /submitted|board application|employer matching/i.test(x.label))?.id ?? null;
   const currency = app.program.university.country.currency;
   const payOnline = (await razorpayConfig())?.enabled ?? false;
 
@@ -270,6 +290,25 @@ async function ApplicationDetail({ appId, studentId, channel, canProcess, canChe
           <span className="ml-auto text-muted">Officer: {app.officer ? `${app.officer.name}${app.officer.phone ? ` · ${app.officer.phone}` : ""}` : "not assigned yet"}</span>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-line pt-3 text-[13px]">
+          <span className="text-muted">Where it is:</span>
+          <DeskStageChip stage={app.deskStage} assumed={app.deskStageAssumed} />
+          {app.handedOverAt && <span className="text-muted">Handed over {fmtDate(app.handedOverAt)}</span>}
+          {app.submittedToVendorAt && <span className="text-muted">Lodged {fmtDate(app.submittedToVendorAt)}</span>}
+          {took != null && <Chip tone="ok">{turnaroundText(took, app.route?.offerTatDays ?? app.program.offerTatDays)}</Chip>}
+          {canWrite && (app.deskStage === "PREPARING" || app.deskStage === "RETURNED") && (
+            <span className="ml-auto"><HandOver applicationId={app.id} ready={handover.ready} why={handover.why} /></span>
+          )}
+        </div>
+        {app.deskStage === "RETURNED" && app.returnReason && (
+          <div className="mt-3 rounded-md border border-red-300 bg-red-50 p-3 text-[13px] text-red-900">
+            <p className="font-medium">The Overseas desk sent this back</p>
+            <p className="mt-0.5">{app.returnReason}</p>
+          </div>
+        )}
+        {app.handoverNote && app.deskStage !== "PREPARING" && (
+          <p className="mt-2 text-[13px] text-muted">From the branch: {app.handoverNote}</p>
+        )}
+        <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-line pt-3 text-[13px]">
           <span className="text-muted">Applied through:</span>
           {app.route ? (
             <span className="inline-flex items-center gap-1.5 font-semibold text-ink">
@@ -278,12 +317,12 @@ async function ApplicationDetail({ appId, studentId, channel, canProcess, canChe
               {app.route.vendor.isDirect && <Chip tone="ok">Our own agreement</Chip>}
             </span>
           ) : (
-            <Chip tone="warn">No route recorded</Chip>
+            <Chip tone="warn">{app.deskStage === "PREPARING" || app.deskStage === "RETURNED" ? "The desk chooses this" : "Not chosen yet"}</Chip>
           )}
           {app.route?.vendor.portalUrl && (
             <a href={app.route.vendor.portalUrl} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:underline">Their portal ↗</a>
           )}
-          {canProcess ? (
+          {canProcess && app.deskStage === "SUBMITTED" ? (
             <form action={setVendorReferenceAction} className="flex items-center gap-1.5">
               <input type="hidden" name="applicationId" value={app.id} />
               <Input name="vendorReference" defaultValue={app.vendorReference ?? ""} placeholder="Their reference" aria-label="Their reference" className="w-44 py-1 text-xs" />
@@ -294,6 +333,61 @@ async function ApplicationDetail({ appId, studentId, channel, canProcess, canChe
           )}
         </div>
       </Card>
+
+      {onDesk && app.deskStage !== "PREPARING" && (
+        <Card className="p-4">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <h3 className="font-semibold text-brand-700">The Overseas desk</h3>
+            <DeskStageChip stage={app.deskStage} assumed={app.deskStageAssumed} />
+            <span className="ml-auto"><ReturnToBranch applicationId={app.id} /></span>
+          </div>
+          <div className="space-y-4">
+            {(app.deskStage === "READY" || app.deskStage === "CHOSEN" || app.deskStage === "RETURNED") && (
+              <section>
+                <h4 className="mb-2 text-[13px] font-semibold">Which road it goes down</h4>
+                <ChooseRoute applicationId={app.id} routes={routeChoices} current={app.routeId} />
+              </section>
+            )}
+            {app.deskStage === "CHOSEN" && (
+              <section className="border-t border-line pt-3">
+                <h4 className="mb-2 text-[13px] font-semibold">Lodged in their portal</h4>
+                <RecordSubmission applicationId={app.id} reference={app.vendorReference} statuses={deskStatuses} defaultStatusId={submittedStatus} />
+              </section>
+            )}
+            {app.deskStage === "SUBMITTED" && (
+              <section className="border-t border-line pt-3">
+                <h4 className="mb-2 text-[13px] font-semibold">What they came back with</h4>
+                <RecordUpdate applicationId={app.id} statuses={deskStatuses} />
+              </section>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {updates.length > 0 && (
+        <Card>
+          <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
+            <h3 className="font-semibold">What the vendor has told us</h3>
+            <Chip>{updates.length}</Chip>
+            <span className="text-xs text-muted">Typed in by the desk. The date is the day they acted, not the day it was recorded.</span>
+          </div>
+          <ul className="divide-y divide-line">
+            {updates.map((u) => (
+              <li key={u.id} className="px-4 py-3 text-[13px]">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Chip tone={u.outcome === "REJECTED" ? "bad" : u.outcome === "OFFER_ISSUED" ? "ok" : u.outcome === "DOCUMENTS_ASKED" ? "warn" : "info"}>{OUTCOME_LABEL[u.outcome]}</Chip>
+                  <span className="tabular text-muted">{fmtDate(u.happenedOn)}</span>
+                  {u.toStatus && <span className="text-muted">moved to {u.toStatus.label}</span>}
+                  <span className="ml-auto text-xs text-muted">
+                    recorded {fmtDate(u.createdAt)} by {u.recordedBy ? (u.recordedBy.deskLabel ?? u.recordedBy.name) : "the desk"}
+                  </span>
+                </div>
+                {u.note && <p className="mt-1 whitespace-pre-wrap">{u.note}</p>}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       <div className="grid gap-4 xl:grid-cols-2">
         <Card className="p-4">

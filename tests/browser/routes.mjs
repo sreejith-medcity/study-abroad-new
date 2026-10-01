@@ -106,37 +106,42 @@ text = await go(counsellor.page, `/programs/${pid}`);
 check(/KC Overseas/.test(text), "counsellor: sees which routes exist");
 check(!/commission/i.test(text), "counsellor: no commission on the comparison when the branch hides it");
 
-// --- Applying picks the route, and it sticks.
+// --- Applying no longer picks the route: the desk does, after the paper is in.
 const partner = await signIn("kottayam@medcity.test", "10.120.1.2");
 const pp = partner.page;
 const studentId = sql("select id from students where first_name = 'Arathi'");
 await go(pp, `/students/${studentId}/applications?tab=apply&program=${pid}`);
 await pp.waitForLoadState("networkidle");
-check((await pp.locator('select[name="routeId"]').count()) === 1, "apply: the route is asked for");
-const options = await pp.locator('select[name="routeId"] option').allInnerTexts();
-check(options.length > 2, `apply: every live route is offered (${options.length - 1})`);
-await pp.locator('select[name="intake"]').selectOption({ index: 1 });
-await pp.getByRole("button", { name: "Create application" }).click();
-check(await waitText(pp, /Choose how this application is sent|Choose the route/), "apply: an application cannot be created without choosing one");
-const routeValue = await pp.locator('select[name="routeId"] option').nth(1).getAttribute("value");
-await pp.locator('select[name="routeId"]').selectOption(routeValue);
+check((await pp.locator('select[name="routeId"]').count()) === 0, "apply: the counsellor is not asked for a route at all");
+check(/Overseas desk/.test(await main(pp)), "apply: the form says the desk chooses it once the documents are in");
 await pp.locator('select[name="intake"]').selectOption({ index: 1 });
 await pp.getByRole("button", { name: "Create application" }).click();
 await pp.waitForURL(/app=/, { timeout: 20000 }).catch(() => {});
 text = await main(pp);
-check(/Applied through/.test(text), "application: the route is on the card");
-const savedVendor = sql(`select v.code from applications a join program_routes r on r.id = a.route_id join vendors v on v.id = r.vendor_id where a.student_id = '${studentId}' order by a.created_at desc limit 1`);
-check(savedVendor.length >= 2, `application: the route was saved (${savedVendor})`);
+check(/Where it is/.test(text) && /With the branch/.test(text), "application: a new application sits with the branch");
+const carriesNoRoute = sql(`select route_id is null from applications where student_id = '${studentId}' order by created_at desc limit 1`);
+check(carriesNoRoute === "t", "application: it carries no route until the desk picks one");
 
-// The team records the vendor's own reference.
-const ackNo = sql(`select ack_no from applications where student_id = '${studentId}' order by created_at desc limit 1`);
-await go(ap, `/students/${studentId}/applications`);
+// The desk picks the road and records their reference.
+const newApp = sql(`select id from applications where student_id = '${studentId}' order by created_at desc limit 1`);
+const ackNo = sql(`select ack_no from applications where id = '${newApp}'`);
+sql(`update applications set desk_stage = 'READY', handed_over_at = now() where id = '${newApp}'`);
+await go(ap, `/students/${studentId}/applications?app=${newApp}`);
 await ap.waitForLoadState("networkidle");
-await ap.locator('input[name="vendorReference"]').first().fill(`REF-${tag}`);
-await ap.locator('input[name="vendorReference"]').first().press("Enter");
+check(/Which road it goes down/.test(await main(ap)), "desk: the admin is offered the roads for that course");
+await ap.locator('input[name="routeId"]').first().check();
+await ap.getByRole("button", { name: "Choose this route" }).click();
+let savedVendor = "";
+for (let i = 0; i < 20 && savedVendor.length < 2; i++) { savedVendor = sql(`select coalesce(v.code, '') from applications a left join program_routes r on r.id = a.route_id left join vendors v on v.id = r.vendor_id where a.id = '${newApp}'`); if (savedVendor.length < 2) await ap.waitForTimeout(500); }
+check(savedVendor.length >= 2, `desk: the route is saved (${savedVendor})`);
+text = await go(ap, `/students/${studentId}/applications?app=${newApp}`);
+check(/Applied through/.test(text), "application: the route is on the card once it is chosen");
+const lodgeForm = ap.locator("form").filter({ has: ap.getByRole("button", { name: "It is lodged" }) }).first();
+await lodgeForm.locator('input[name="vendorReference"]').fill(`REF-${tag}`);
+await lodgeForm.getByRole("button", { name: "It is lodged" }).click();
 let ref = "";
 for (let i = 0; i < 20 && ref !== `REF-${tag}`; i++) { ref = sql(`select coalesce(vendor_reference, '') from applications where ack_no = '${ackNo}'`); if (ref !== `REF-${tag}`) await ap.waitForTimeout(500); }
-check(ref === `REF-${tag}`, `application: their reference is recorded (${ref})`);
+check(ref === `REF-${tag}`, `application: their reference is recorded when it is lodged (${ref})`);
 
 // --- A vendor's sheet, as a file.
 const uni = sql(`select u.name from programs p join universities u on u.id = p.university_id where p.id = '${pid}'`);

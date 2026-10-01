@@ -112,6 +112,28 @@ export const checklistState = pgEnum("checklist_state", [
   "ACCEPTED",
   "REJECTED",
 ]);
+/**
+ * Where an application sits between the branch and the Overseas desk.
+ *
+ * A counsellor builds the file and collects the paper; they do not choose the
+ * road it goes down. Once the documents are in they hand it over, the desk picks
+ * the vendor, lodges it in that vendor's own portal, and records what comes back.
+ */
+export const deskStage = pgEnum("desk_stage", ["PREPARING", "READY", "CHOSEN", "SUBMITTED", "RETURNED"]);
+
+/** What a vendor came back with, in the words the desk can pick from. */
+export const vendorOutcome = pgEnum("vendor_outcome", [
+  "ACKNOWLEDGED",
+  "DOCUMENTS_ASKED",
+  "INTERVIEW_SET",
+  "OFFER_ISSUED",
+  "CONDITIONS_MET",
+  "REJECTED",
+  "DEFERRED",
+  "WITHDRAWN",
+  "OTHER",
+]);
+
 /** How one ask reached the student, and whether it was the first or a reminder. */
 export const requestChannel = pgEnum("request_channel", ["WHATSAPP", "PORTAL"]);
 export const requestKind = pgEnum("request_kind", ["ASK", "NUDGE"]);
@@ -546,6 +568,24 @@ export const applications = pgTable(
     vendorReference: text("vendor_reference"),
     routeChosenById: text("route_chosen_by_id").references(() => users.id),
     routeChosenAt: timestamp("route_chosen_at", { withTimezone: true }),
+
+    /**
+     * The hand-over between the branch and the desk. Everything that existed
+     * before this was derived from the status and the route, so it is marked as
+     * assumed and no report claims a precision the data does not have.
+     */
+    deskStage: deskStage("desk_stage").notNull().default("PREPARING"),
+    deskStageAssumed: boolean("desk_stage_assumed").notNull().default(false),
+    handedOverAt: timestamp("handed_over_at", { withTimezone: true }),
+    handedOverById: text("handed_over_by_id").references(() => users.id),
+    handoverNote: text("handover_note"),
+    /** Sent back to the branch, with the reason the counsellor reads. */
+    returnedAt: timestamp("returned_at", { withTimezone: true }),
+    returnedById: text("returned_by_id").references(() => users.id),
+    returnReason: text("return_reason"),
+    /** When the desk lodged it in the vendor's or the university's own portal. */
+    submittedToVendorAt: timestamp("submitted_to_vendor_at", { withTimezone: true }),
+    submittedById: text("submitted_by_id").references(() => users.id),
     feeStatus: feeStatus("fee_status").notNull().default("NOT_APPLICABLE"),
     priority: applicationPriority("priority").notNull().default("NORMAL"),
     // The offer, as the institution issued it.
@@ -884,6 +924,33 @@ export const submissionPacks = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index("submission_packs_application_idx").on(t.applicationId)],
+);
+
+/**
+ * What a vendor or a university came back with, as the desk heard it.
+ *
+ * Typed in by hand, because none of these portals tell us anything: the desk
+ * reads their screen or their email and records it here. Each update carries the
+ * date the vendor acted rather than the date we typed it, so turnaround is
+ * measured from what happened rather than from when somebody got round to it.
+ */
+export const vendorUpdates = pgTable(
+  "vendor_updates",
+  {
+    id: id(),
+    applicationId: text("application_id")
+      .notNull()
+      .references(() => applications.id, { onDelete: "cascade" }),
+    outcome: vendorOutcome("outcome").notNull(),
+    /** The day the vendor acted, in their words, not the day this was recorded. */
+    happenedOn: date("happened_on").notNull(),
+    note: text("note"),
+    /** The status this update moved the application to, where it moved one. */
+    toStatusId: text("to_status_id").references(() => statusDefinitions.id),
+    recordedById: text("recorded_by_id").references(() => users.id),
+    createdAt: createdAt(),
+  },
+  (t) => [index("vendor_updates_application_idx").on(t.applicationId, t.happenedOn)],
 );
 
 /** A gate let through with a reason, which is logged and shown on the file. */
@@ -1903,6 +1970,7 @@ export const applicationsRelations = relations(applications, ({ one, many }) => 
   comments: many(comments),
   documents: many(documents),
   deadlines: many(applicationDeadlines),
+  vendorUpdates: many(vendorUpdates),
 }));
 
 export const statusHistoryRelations = relations(statusHistory, ({ one }) => ({
@@ -1959,6 +2027,12 @@ export const checklistFilesRelations = relations(checklistFiles, ({ one }) => ({
   document: one(documents, { fields: [checklistFiles.documentId], references: [documents.id] }),
   uploadedBy: one(users, { fields: [checklistFiles.uploadedById], references: [users.id] }),
   decidedBy: one(users, { fields: [checklistFiles.decidedById], references: [users.id], relationName: "checklistFileDecider" }),
+}));
+
+export const vendorUpdatesRelations = relations(vendorUpdates, ({ one }) => ({
+  application: one(applications, { fields: [vendorUpdates.applicationId], references: [applications.id] }),
+  toStatus: one(statusDefinitions, { fields: [vendorUpdates.toStatusId], references: [statusDefinitions.id] }),
+  recordedBy: one(users, { fields: [vendorUpdates.recordedById], references: [users.id] }),
 }));
 
 export const documentRequestsRelations = relations(documentRequests, ({ one, many }) => ({
@@ -2052,4 +2126,6 @@ export type OwedBy = (typeof owedBy.enumValues)[number];
 export type ChecklistState = (typeof checklistState.enumValues)[number];
 export type RequestChannel = (typeof requestChannel.enumValues)[number];
 export type RequestKind = (typeof requestKind.enumValues)[number];
+export type DeskStage = (typeof deskStage.enumValues)[number];
+export type VendorOutcome = (typeof vendorOutcome.enumValues)[number];
 export type AppSettings = typeof appSettings.$inferSelect;

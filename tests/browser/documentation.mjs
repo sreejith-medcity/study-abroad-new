@@ -80,7 +80,7 @@ check(twice === "0", "merge: no document is on one student's list twice");
 
 // --- The gate refuses to move the stage, and names what is missing.
 const STAGE_ORDER = ["PROFILE", "SHORTLIST", "APPLICATION", "OFFER", "DEPOSIT", "CONFIRMATION", "VISA", "DEPARTURE", "ARRIVED"];
-const firstStudent = sql("select id from students order by created_at limit 1");
+const firstStudent = sql("select id from students where journey_stage <> 'ARRIVED' order by created_at limit 1");
 const stageNow = sql(`select journey_stage from students where id = '${firstStudent}'`);
 const stageNext = STAGE_ORDER[Math.min(STAGE_ORDER.indexOf(stageNow) + 1, STAGE_ORDER.length - 1)];
 text = await go(ap, `/students/${firstStudent}/documentation`);

@@ -302,6 +302,13 @@
       "when": 1790772421807,
       "tag": "0042_asking_and_packing",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1790858672104,
+      "tag": "0043_desk_handover",
+      "breakpoints": true
     }
   ]
 }

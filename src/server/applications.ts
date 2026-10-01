@@ -7,7 +7,7 @@ import { fullName, intakeLabel } from "@/lib/format";
 import { audit } from "@/lib/audit";
 import { notifyUsers, partnerRecipients } from "./notify";
 import { sendWhatsApp } from "./whatsapp";
-import { isAdmin } from "@/lib/permissions";
+import { isAdmin, isDocumentationTeam } from "@/lib/permissions";
 import { EARNING_CODES, accrueCommission } from "./commission";
 
 export async function statusesFor(pathway: (typeof schema.pathway.enumValues)[number]) {
@@ -21,8 +21,23 @@ export async function statusesFor(pathway: (typeof schema.pathway.enumValues)[nu
 export class StatusChangeError extends Error {}
 
 /** Moves an application to a new status, recording history and informing the partner and student. */
-export async function changeStatus(user: SessionUser, applicationId: string, toStatusId: string, reason?: string) {
-  if (!isAdmin(user)) throw new StatusChangeError("Only the Medcity Overseas team can change status.");
+/**
+ * Moves one application's status.
+ *
+ * Normally an admin's job. The documentation team may move it too, but only as
+ * part of recording what a vendor came back with: they are the desk, so an offer
+ * they have just read should not wait for somebody else to type it in. They
+ * still cannot move a status freely from the status screen.
+ */
+export async function changeStatus(
+  user: SessionUser,
+  applicationId: string,
+  toStatusId: string,
+  reason?: string,
+  opts: { viaVendorUpdate?: boolean } = {},
+) {
+  const allowed = isAdmin(user) || (isDocumentationTeam(user) && opts.viaVendorUpdate === true);
+  if (!allowed) throw new StatusChangeError("Only the Medcity Overseas team can change status.");
 
   const app = await db.query.applications.findFirst({
     where: eq(schema.applications.id, applicationId),
