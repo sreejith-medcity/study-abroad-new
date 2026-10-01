@@ -6,6 +6,8 @@ import { z } from "zod";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
+import { expectedFromRate, INCOME_FOR_SERVICE } from "@/lib/income";
+import { ratesForOrg } from "@/server/income";
 import type { FormState } from "@/lib/form-state";
 import { PROCESSING_ROLES } from "@/lib/permissions";
 import { SERVICE_LABEL, SERVICE_STATUSES, SERVICE_TYPES, STATUS_LABEL } from "@/lib/services";
@@ -61,7 +63,43 @@ export async function updateServiceAction(_: FormState, fd: FormData): Promise<F
       `/students/${current.studentId}/services`,
     );
   }
+  // A booked service earns Medcity something, so it writes its own income line
+  // rather than waiting for somebody to remember. The amount comes from the
+  // branch's rate card, and where there is no rate the line says so instead of
+  // carrying a figure nobody agreed.
+  let priced: string | null = null;
+  if (values.status === "DONE" && !current.incomeLineId) {
+    const kind = INCOME_FOR_SERVICE[current.type];
+    const rates = await ratesForOrg(current.orgId);
+    const rate = rates.get(kind) ?? null;
+    const { amount } = expectedFromRate(rate, null);
+    const [line] = await db
+      .insert(schema.incomeLines)
+      .values({
+        orgId: current.orgId,
+        studentId: current.studentId,
+        kind,
+        payer: rate?.payer ?? "PROVIDER",
+        providerName: values.provider,
+        serviceRequestId: id,
+        currency: rate?.currency ?? "INR",
+        expectedAmount: amount,
+        branchSharePercent: rate?.branchSharePercent ?? null,
+        rateCardId: (rate as unknown as { id?: string } | null)?.id ?? null,
+        note: values.provider ? `Booked through ${values.provider}` : null,
+        createdById: user.id,
+      })
+      .onConflictDoNothing({ target: schema.incomeLines.serviceRequestId })
+      .returning({ id: schema.incomeLines.id });
+    if (line) {
+      await db.update(schema.serviceRequests).set({ incomeLineId: line.id }).where(eq(schema.serviceRequests.id, id));
+      await audit(user.id, "income.from_service", "income_line", line.id, { kind, serviceId: id, priced: amount != null });
+      priced = amount != null ? `Its income line is on ${current.student.firstName}'s sheet.` : `An income line is on ${current.student.firstName}'s sheet with no amount: nothing is recorded for what Medcity keeps on this.`;
+    }
+  }
+
   revalidatePath("/admin/services");
   revalidatePath(`/students/${current.studentId}/services`);
-  return { ok: "Saved." };
+  revalidatePath(`/students/${current.studentId}`, "layout");
+  return { ok: priced ? `Saved. ${priced}` : "Saved." };
 }

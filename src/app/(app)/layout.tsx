@@ -42,6 +42,7 @@ const partnerNav = (home: string): NavGroup[] => [
     items: [
       { href: "/wallet", label: "Wallet", icon: "wallet" },
       { href: "/commission", label: "Commission", icon: "commission" },
+      { href: "/admin/income", label: "Income", icon: "insights" },
       { href: "/promotions", label: "Schemes", icon: "spark" },
     ],
   },
@@ -111,6 +112,7 @@ const ADMIN_NAV: NavGroup[] = [
     title: "Money",
     items: [
       { href: "/admin/commission", label: "Commission", icon: "commission" },
+      { href: "/admin/income", label: "Income and rate cards", icon: "insights" },
       { href: "/admin/payments", label: "Online payments", icon: "wallet" },
     ],
   },

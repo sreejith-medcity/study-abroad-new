@@ -736,6 +736,91 @@ async function main() {
   if (firstTwo[0]) await db.update(schema.tasks).set({ dueOn: new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10) }).where(eq(schema.tasks.id, firstTwo[0].id));
   if (firstTwo[1]) await db.update(schema.tasks).set({ doneAt: months(1), doneById: ukDocs.id, doneNote: "Sent the clinic list on WhatsApp." }).where(eq(schema.tasks.id, firstTwo[1].id));
 
+  // Rate cards and a few income lines, so the sheet, the departure board and the
+  // leakage report all read like a real branch rather than an empty one. The
+  // figures are made up for the sample data, which is what the "Not recorded"
+  // lines beside them are there to make obvious.
+  const rateRows = await db
+    .insert(schema.rateCards)
+    .values([
+      { kind: "SERVICE_FEE" as const, amount: 35000, payer: "STUDENT" as const, branchSharePercent: 60, activeFrom: "2026-04-01", note: "Standard handling fee", setById: admin.id },
+      { kind: "TICKET" as const, amount: 3000, payer: "PROVIDER" as const, branchSharePercent: 50, activeFrom: "2026-04-01", note: "What the agent passes back per ticket", setById: admin.id },
+      { kind: "SIM" as const, amount: 800, payer: "PROVIDER" as const, branchSharePercent: 100, activeFrom: "2026-04-01", setById: admin.id },
+      { kind: "FOREX" as const, percentOfSale: 0.5, payer: "PROVIDER" as const, branchSharePercent: 50, activeFrom: "2026-04-01", note: "Half a percent of the amount transferred", setById: admin.id },
+      { kind: "INSURANCE" as const, amount: 1500, payer: "PROVIDER" as const, branchSharePercent: 50, activeFrom: "2026-04-01", setById: admin.id },
+      { kind: "LOAN_REFERRAL" as const, percentOfSale: 0.75, payer: "PROVIDER" as const, branchSharePercent: 40, activeFrom: "2026-04-01", setById: admin.id },
+    ])
+    .returning();
+  const rateBy = new Map(rateRows.map((r) => [r.kind, r]));
+
+  // Every student gets a service fee; those who are leaving get a few of the
+  // departure lines, and deliberately not all of them, so the leakage report has
+  // something to report.
+  for (const [i, student] of boardStudents.entries()) {
+    const fee = rateBy.get("SERVICE_FEE")!;
+    await db.insert(schema.incomeLines).values({
+      orgId: student.orgId,
+      studentId: student.id,
+      kind: "SERVICE_FEE",
+      payer: "STUDENT",
+      currency: "INR",
+      expectedAmount: fee.amount,
+      receivedAmount: i % 3 === 0 ? fee.amount : null,
+      receivedOn: i % 3 === 0 ? months(30).toISOString().slice(0, 10) : null,
+      state: i % 3 === 0 ? "RECEIVED" : "EXPECTED",
+      branchSharePercent: fee.branchSharePercent,
+      rateCardId: fee.id,
+      createdById: admin.id,
+    });
+    if (i % 2 === 0) {
+      const ticket = rateBy.get("TICKET")!;
+      await db.insert(schema.incomeLines).values({
+        orgId: student.orgId,
+        studentId: student.id,
+        kind: "TICKET",
+        payer: "PROVIDER",
+        providerName: "Sample Travel",
+        currency: "INR",
+        expectedAmount: ticket.amount,
+        state: "EXPECTED",
+        branchSharePercent: ticket.branchSharePercent,
+        rateCardId: ticket.id,
+        createdById: admin.id,
+      });
+    }
+    if (i % 4 === 0) {
+      // One with no amount at all, which is what "Not recorded" is for.
+      await db.insert(schema.incomeLines).values({
+        orgId: student.orgId,
+        studentId: student.id,
+        kind: "FOREX",
+        payer: "PROVIDER",
+        currency: "INR",
+        state: "EXPECTED",
+        note: "Amount transferred not known yet",
+        createdById: admin.id,
+      });
+    }
+  }
+  // Each placement's commission gets a line that reads the commission row.
+  const placements = await db
+    .select({ id: schema.commissions.id, orgId: schema.commissions.orgId, applicationId: schema.commissions.applicationId, studentId: schema.applications.studentId })
+    .from(schema.commissions)
+    .innerJoin(schema.applications, eq(schema.applications.id, schema.commissions.applicationId));
+  if (placements.length) {
+    await db.insert(schema.incomeLines).values(
+      placements.map((p) => ({
+        orgId: p.orgId,
+        studentId: p.studentId,
+        applicationId: p.applicationId,
+        kind: "COMMISSION" as const,
+        payer: "VENDOR" as const,
+        commissionId: p.id,
+        createdById: admin.id,
+      })),
+    );
+  }
+
   await db.insert(schema.auditLogs).values(trail);
 
   await db.insert(schema.notifications).values([

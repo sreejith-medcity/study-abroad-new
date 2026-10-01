@@ -34,6 +34,10 @@ This repository currently contains **Phase 0 basics and Phase 1 (core pipeline)*
 | The documentation spine | Partners, staff, the documentation team | Nine stages from Profile to Arrived, and the paper that gates each one. A student's list is built from five places at once: the stage itself, the destination, the route, the university and anything added for that student by hand, with a document asked for twice asked for once and every row saying where it came from. Each document is not needed, not asked, asked, uploaded, in review, accepted or sent back, and a rejection needs a reason from the team's own list, which is what the student reads. A file sent back keeps its version and its reason; the replacement is the next version. Expiry is read off the document (a TB test six months from its date, a test report two years) and measured against the course start, not against today, so a passport valid for four months against a two-year course counts as missing and says so. |
 | Gates and overrides | Partners, staff | A stage cannot be left while a required document is missing, rejected or out of date, and the refusal names what is missing rather than being a bare error. An ops manager may let it through with a reason, which is logged and shown on the file. The apply screen names the same list before a course is chosen; whether it refuses the application outright is one switch in Platform settings, off to begin with, because a desk part way through a season has to collect the paper first. |
 | Documentation queue | The documentation team, admins | One screen for the people who check paper all day: everything sent in and not yet decided, oldest first or visa stage first, filtered by branch, stage or route. Opening a document claims it for twenty minutes so two people never check the same bank statement, and the rule the team wrote sits beside the document while it is judged. Accepting reads the date off the document and records when it runs out; rejecting picks a reason and sends it to the student word for word. |
+| Income per student | Admins and branch owners | Every kind of money one student brings in: service fee, commission, ticket, SIM, forex, insurance, accommodation, pickup, loan referral, coaching fee. Each line says who pays, what is expected, what has been invoiced, what has come in and the branch's share. Part payment is normal, so a line stays open until the whole of it is in. Totals are kept per currency rather than converted, so every figure matches the bank it came from. A line with no amount reads "Not recorded", is counted in no total, and the sheet says how many there are. Commission is read from the placement rather than copied, so the sheet and the commission screen cannot disagree. Follows the owner's switch that hides money from counsellors. |
+| Rate cards | Admins set, branches read | What a branch charges or keeps per kind, as a flat amount or a percentage of the sale, with who pays and the branch's share, from a day. Empty to begin with, because nobody outside the Overseas team knows what Medcity keeps on a SIM and an invented figure is worse than none. Rates are added rather than edited, so a student priced last season can still be read against the rate that applied then. "Lay out the usual lines" prices a student's sheet from them, and still adds the kinds with no rate so the gaps are visible. |
+| Money that stops being owed | Super admin only | Writing a line off needs a reason, stays on the sheet saying so, and is in the audit log. Nobody else can do it, because money that quietly disappears is how a branch's numbers stop meaning anything. |
+| Leaving soon, and what was left on the table | Admins and branch owners | Students with a granted visa, soonest first, with what they have not bought beside them: one call each before they buy it somewhere else. Beside it, what was not sold at all, by kind and by branch. Only students who are actually going are counted, because a shortlist is not a missed sale. A booked service writes its own income line when the team marks it done, priced from the rate card, or with no amount where no rate exists. |
 | My day | All | What is due, overdue first, then today. A task is on a person for a day, raised by hand or by the portal: a document a week old with no answer, a vendor gone quiet, a gate that has come clear and needs the next step taken. Tick it off, push it to tomorrow or next week, or finish it with a note. Each task says where it came from, so nobody wonders who asked. The portal's own tasks carry a key for the fact they stand for, so the same thing never lands on a desk twice however often the chasing runs. |
 | Log a call in two clicks | Partners, staff | How they were spoken to (call, WhatsApp, visit, email, SMS), whether they called us, what came of it (spoke to them, no answer, they will send it, they want more time, wants to talk it through, not interested, wrong number) and what happens next. The outcome suggests the day to look again, which the counsellor can change. The next action becomes its own task, which is what makes the follow-up list build itself. |
 | One timeline per student | Partners, staff | Every call, message, document, documentation decision, request to the student, status change, vendor reply, hand-over, stage move, task and payment in one feed, newest first, filterable to one kind. Assembled from what is already recorded rather than written twice, so there is no second copy of the truth to go wrong. Open tasks sit at the top rather than buried in it. |
@@ -178,12 +182,14 @@ src/
     journey.ts                  the nine stages, document states, gates, expiry (pure, unit tested)
     desk.ts                     the hand-over, vendor outcomes and real turnaround (pure, unit tested)
     crm.ts                      task headings, follow-up suggestions, the timeline's shape (pure, unit tested)
+    income.ts                   the money arithmetic, rate cards and leakage (pure, unit tested)
     ask.ts                      the message to the student, and the chasing schedule (pure, unit tested)
     pack.ts                     the submission pack's front sheet and file names (pure, unit tested)
     program-import.ts           CSV parser (pure, unit tested)
   server/
     applications.ts             status changes, check loader
     desk.ts                     the desk's queue and what each vendor actually takes
+    income.ts                   the sheet, the departure board and what was left on the table
     tasks.ts                    one person's desk, and the tasks the portal raises
     timeline.ts                 one student's story, assembled from what is recorded
     documentation.ts            the merged list, the gate, the team's queue
@@ -271,9 +277,8 @@ Who may hand out which role: a super admin can set any role. An ops manager can 
 
 ## Next
 
-From the wireframe: income per student (fee, commission, ticket, SIM, forex card
-and the rest), then vendor invoicing with the finance queue. The screens are
-built so the Overseas team fills in the rate cards and service margins
-themselves, and anything not recorded reads "Not recorded" rather than nought.
-After that, the Medcity ID with the student and parent dashboards, and the link
-to Medcity's own CRM.
+Phase 7, invoicing and finance: the trigger on visa or enrolment, the invoice
+queue, grouped invoices per vendor, the invoice document against the billing
+company with LUT handling, payments and part payments, disputes and ageing, and
+the wallet credit. Then the Medcity ID with the student and parent dashboards,
+and the link to Medcity's own CRM.

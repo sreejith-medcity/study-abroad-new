@@ -112,6 +112,30 @@ export const checklistState = pgEnum("checklist_state", [
   "ACCEPTED",
   "REJECTED",
 ]);
+/**
+ * Every kind of money a student brings in. The ones Medcity earns from the
+ * student, and the ones a vendor or a provider pays Medcity for sending them.
+ */
+export const incomeKind = pgEnum("income_kind", [
+  "SERVICE_FEE",
+  "COMMISSION",
+  "TICKET",
+  "SIM",
+  "FOREX",
+  "INSURANCE",
+  "ACCOMMODATION",
+  "PICKUP",
+  "LOAN_REFERRAL",
+  "COACHING_FEE",
+  "OTHER",
+]);
+
+/** Where one line has got to. Written off is a super admin's doing, with a reason. */
+export const incomeState = pgEnum("income_state", ["EXPECTED", "INVOICED", "RECEIVED", "WRITTEN_OFF", "NOT_APPLICABLE"]);
+
+/** Who hands the money over. */
+export const incomePayer = pgEnum("income_payer", ["STUDENT", "VENDOR", "PROVIDER", "UNIVERSITY"]);
+
 /** What a task is about, so a desk can be read at a glance. */
 export const taskKind = pgEnum("task_kind", ["FOLLOW_UP", "DOCUMENT", "APPLICATION", "CALL", "VISIT", "PAYMENT", "OTHER"]);
 
@@ -1045,6 +1069,97 @@ export const contactLog = pgTable(
   (t) => [index("contact_log_student_idx").on(t.studentId, t.happenedAt)],
 );
 
+/**
+ * What a branch charges, or keeps, for one kind of line.
+ *
+ * Empty to begin with: nobody outside the Overseas team knows what Medcity keeps
+ * on a SIM, and a figure invented here would be worse than none. A line with no
+ * rate card behind it reads "Not recorded" and is counted nowhere.
+ *
+ * A row with no branch is the platform's own default, which a branch may
+ * override. Rates are kept rather than edited, so an older student's line can
+ * still be read against the rate that applied when it was agreed.
+ */
+export const rateCards = pgTable(
+  "rate_cards",
+  {
+    id: id(),
+    /** Null means every branch, unless that branch has its own row. */
+    orgId: text("org_id").references(() => organizations.id, { onDelete: "cascade" }),
+    kind: incomeKind("kind").notNull(),
+    /** What Medcity keeps, in whole rupees unless a currency says otherwise. */
+    amount: integer("amount"),
+    currency: text("currency").notNull().default("INR"),
+    /** A percentage, where this kind is a cut of the sale rather than a flat fee. */
+    percentOfSale: real("percent_of_sale"),
+    payer: incomePayer("payer").notNull().default("STUDENT"),
+    /** The branch's own share of this line, where it differs from commission's. */
+    branchSharePercent: real("branch_share_percent"),
+    activeFrom: date("active_from").notNull(),
+    note: text("note"),
+    setById: text("set_by_id").references(() => users.id),
+    createdAt: createdAt(),
+  },
+  (t) => [index("rate_cards_kind_idx").on(t.kind, t.activeFrom), index("rate_cards_org_idx").on(t.orgId)],
+);
+
+/**
+ * One line of money against one student.
+ *
+ * A line is expected, then invoiced, then received. Nothing here is worked out
+ * from a figure nobody recorded: a line whose amount is unknown says so and is
+ * left out of every total rather than counted as nought.
+ *
+ * Commission is not copied here. The line points at the commission row the
+ * placement earned, so there is one figure and not two that can disagree.
+ */
+export const incomeLines = pgTable(
+  "income_lines",
+  {
+    id: id(),
+    orgId: text("org_id")
+      .notNull()
+      .references(() => organizations.id),
+    studentId: text("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    applicationId: text("application_id").references(() => applications.id, { onDelete: "set null" }),
+    kind: incomeKind("kind").notNull(),
+    payer: incomePayer("payer").notNull().default("STUDENT"),
+    /** Who owes it, where a vendor or a provider does. */
+    vendorId: text("vendor_id").references(() => vendors.id, { onDelete: "set null" }),
+    providerName: text("provider_name"),
+    /** The commission this line stands for, so the figure is read, never copied. */
+    commissionId: text("commission_id").references(() => commissions.id, { onDelete: "set null" }),
+    /** The service booking that created it, where one did. */
+    serviceRequestId: text("service_request_id").references(() => serviceRequests.id, { onDelete: "set null" }),
+    currency: text("currency").notNull().default("INR"),
+    /** Null until somebody records it. Never nought standing in for unknown. */
+    expectedAmount: integer("expected_amount"),
+    invoicedAmount: integer("invoiced_amount"),
+    receivedAmount: integer("received_amount"),
+    state: incomeState("state").notNull().default("EXPECTED"),
+    /** The branch's cut of this line, where it has one. */
+    branchSharePercent: real("branch_share_percent"),
+    /** The rate card this line was worked out from, so it can be read back. */
+    rateCardId: text("rate_card_id").references(() => rateCards.id, { onDelete: "set null" }),
+    dueOn: date("due_on"),
+    receivedOn: date("received_on"),
+    note: text("note"),
+    writtenOffReason: text("written_off_reason"),
+    writtenOffById: text("written_off_by_id").references(() => users.id),
+    createdById: text("created_by_id").references(() => users.id),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("income_lines_student_idx").on(t.studentId),
+    index("income_lines_org_idx").on(t.orgId, t.state),
+    index("income_lines_vendor_idx").on(t.vendorId),
+    uniqueIndex("income_lines_service_uq").on(t.serviceRequestId),
+  ],
+);
+
 /** A gate let through with a reason, which is logged and shown on the file. */
 export const gateOverrides = pgTable(
   "gate_overrides",
@@ -1448,6 +1563,8 @@ export const serviceRequests = pgTable(
     teamNote: text("team_note"),
     requestedById: text("requested_by_id").references(() => users.id, { onDelete: "set null" }),
     ownerId: text("owner_id").references(() => users.id, { onDelete: "set null" }),
+    /** What Medcity keeps on this booking, once somebody records it. */
+    incomeLineId: text("income_line_id"),
     createdAt: createdAt(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -2031,6 +2148,7 @@ export const studentsRelations = relations(students, ({ one, many }) => ({
   checklist: many(checklistItems),
   tasks: many(tasks),
   contacts: many(contactLog),
+  income: many(incomeLines),
 }));
 
 export const shortlistsRelations = relations(shortlists, ({ one }) => ({
@@ -2124,6 +2242,24 @@ export const checklistFilesRelations = relations(checklistFiles, ({ one }) => ({
   document: one(documents, { fields: [checklistFiles.documentId], references: [documents.id] }),
   uploadedBy: one(users, { fields: [checklistFiles.uploadedById], references: [users.id] }),
   decidedBy: one(users, { fields: [checklistFiles.decidedById], references: [users.id], relationName: "checklistFileDecider" }),
+}));
+
+export const rateCardsRelations = relations(rateCards, ({ one, many }) => ({
+  org: one(organizations, { fields: [rateCards.orgId], references: [organizations.id] }),
+  setBy: one(users, { fields: [rateCards.setById], references: [users.id] }),
+  lines: many(incomeLines),
+}));
+
+export const incomeLinesRelations = relations(incomeLines, ({ one }) => ({
+  org: one(organizations, { fields: [incomeLines.orgId], references: [organizations.id] }),
+  student: one(students, { fields: [incomeLines.studentId], references: [students.id] }),
+  application: one(applications, { fields: [incomeLines.applicationId], references: [applications.id] }),
+  vendor: one(vendors, { fields: [incomeLines.vendorId], references: [vendors.id] }),
+  commission: one(commissions, { fields: [incomeLines.commissionId], references: [commissions.id] }),
+  serviceRequest: one(serviceRequests, { fields: [incomeLines.serviceRequestId], references: [serviceRequests.id] }),
+  rateCard: one(rateCards, { fields: [incomeLines.rateCardId], references: [rateCards.id] }),
+  createdBy: one(users, { fields: [incomeLines.createdById], references: [users.id] }),
+  writtenOffBy: one(users, { fields: [incomeLines.writtenOffById], references: [users.id], relationName: "incomeWriteOff" }),
 }));
 
 export const tasksRelations = relations(tasks, ({ one }) => ({
@@ -2243,4 +2379,7 @@ export type VendorOutcome = (typeof vendorOutcome.enumValues)[number];
 export type TaskKind = (typeof taskKind.enumValues)[number];
 export type ContactChannel = (typeof contactChannel.enumValues)[number];
 export type ContactOutcome = (typeof contactOutcome.enumValues)[number];
+export type IncomeKind = (typeof incomeKind.enumValues)[number];
+export type IncomeState = (typeof incomeState.enumValues)[number];
+export type IncomePayer = (typeof incomePayer.enumValues)[number];
 export type AppSettings = typeof appSettings.$inferSelect;

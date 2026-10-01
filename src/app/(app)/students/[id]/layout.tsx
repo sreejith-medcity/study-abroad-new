@@ -10,6 +10,7 @@ import { StepTabs } from "@/components/tabs";
 import { LogContact } from "@/components/crm-forms";
 import { profileCompleteness } from "@/lib/checks";
 import { backgroundComplete } from "@/lib/background";
+import { commissionVisible } from "@/server/commission-visibility";
 
 const PATHWAY_LABEL = { DEGREE: "Degree", AUSBILDUNG: "Ausbildung", NURSING: "Nurse registration" } as const;
 
@@ -30,6 +31,9 @@ export default async function StudentLayout({ children, params }: { children: Re
   const profileDone = profileCompleteness({ ...student, academics: Array(quals).fill({ level: "" }), tests: [], documentTypeCodes: [] });
   const profileReady = profileDone.personal && profileDone.academics && backgroundComplete(student.background);
   const [{ services }] = await db.select({ services: count() }).from(schema.serviceRequests).where(eq(schema.serviceRequests.studentId, id));
+  // Money is off a counsellor's screens where the branch owner chose that, and
+  // the tab follows the same switch rather than adding a second one to forget.
+  const money = await commissionVisible(user);
   // The student's preferred destination is stored by name; search filters by code.
   const preferred = student.preferredCountry
     ? await db.query.countries.findFirst({ where: ilike(schema.countries.name, student.preferredCountry.trim()) })
@@ -76,6 +80,7 @@ export default async function StudentLayout({ children, params }: { children: Re
                 { href: `/students/${id}/documents`, label: `Documents (${docs})`, done: docs > 0 },
                 { href: `/students/${id}/documentation`, label: owed > 0 ? `Documentation (${owed})` : "Documentation", done: owed === 0 },
                 { href: `/students/${id}/timeline`, label: "Timeline", done: true },
+                ...(money ? [{ href: `/students/${id}/income`, label: "Income", done: true }] : []),
                 { href: `/students/${id}/services`, label: `Services (${services})`, done: services > 0 },
               ]}
             />
