@@ -246,6 +246,48 @@ tests/                          node:test unit tests
 - AI features (assistant, practice interviews, reading documents) use Anthropic's Messages API with `ANTHROPIC_API_KEY`, or a key sealed in Settings, Platform. They are off without a key and the owner's switch, count against a monthly allowance per branch tier, and never save anything a person has not checked. The assistant sees only the catalogue; interviews send the course, university, country and intake, never the student's name.
 - A portal student opens only their own documents: what they uploaded and what the branch shared with them.
 
+## The three scheduled jobs
+
+Three endpoints need calling on a schedule, all with `Authorization: Bearer $CRON_SECRET`:
+
+| Endpoint | How often | What happens without it |
+| --- | --- | --- |
+| `POST /api/cron/crm` | Every ten minutes | The outbound queue to Medcity's CRM only moves when somebody presses the button on The CRM link |
+| `POST /api/cron/documents` | Daily, early morning IST | Nobody is chased for a document, no expiry is flagged and no gate notice goes out |
+| `POST /api/cron/cricos` | Monthly | Australia's course register goes stale |
+
+Pick one of these three places to call them from. The portal does not care which.
+
+**From GitHub.** `.github/workflows/schedules.yml` in this repository does all three.
+Add two repository secrets under Settings, then Secrets and variables, then Actions:
+`PORTAL_URL` (`https://doc.medcityoverseas.com`) and `CRON_SECRET` (the same value as
+in the portal's own environment). Nothing to install, and it survives a hosting move.
+Two caveats: a scheduled run can be a few minutes late when GitHub's runners are
+busy, and GitHub switches scheduled workflows off in a repository that has had no
+pushes for sixty days. Both are fine for these three. Run one by hand from the
+Actions tab to check the secret is right.
+
+**From the host.** In hPanel, open the site's dashboard and find Cron Jobs, then add
+a Custom command per job. Shared plans limit how often a cron may run, so check what
+the panel offers before relying on ten minutes:
+
+```
+curl -fsS -X POST https://doc.medcityoverseas.com/api/cron/crm -H "Authorization: Bearer YOUR_CRON_SECRET"
+```
+
+**From the VPS,** once the portal moves there. Either a scheduled task on the
+application in Coolify, or plain `crontab -e`:
+
+```
+*/10 * * * * curl -fsS -X POST https://doc.medcityoverseas.com/api/cron/crm -H "Authorization: Bearer YOUR_CRON_SECRET" >/dev/null
+30 3 * * * curl -fsS -X POST https://doc.medcityoverseas.com/api/cron/documents -H "Authorization: Bearer YOUR_CRON_SECRET" >/dev/null
+0 4 1 * * curl -fsS -X POST https://doc.medcityoverseas.com/api/cron/cricos -H "Authorization: Bearer YOUR_CRON_SECRET" >/dev/null
+```
+
+Whichever is chosen, `CRON_SECRET` must be at least 24 characters. Shorter than that,
+or unset, and all three endpoints answer 401 to everybody, which is deliberate: an
+unset secret means the endpoint is off, not open to the world.
+
 ## Before going live
 
 - Run `npm run db:demo-off` so the seeded `.test` accounts (which all share one password) can no longer sign in.

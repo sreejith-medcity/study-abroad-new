@@ -1,0 +1,84 @@
+# The portal's three scheduled jobs, run from GitHub rather than from the host,
+# so they keep working through a hosting move.
+#
+# Before this does anything, add two repository secrets under
+# Settings > Secrets and variables > Actions:
+#
+#   PORTAL_URL    https://doc.medcityoverseas.com
+#   CRON_SECRET   the same value as CRON_SECRET in the portal's environment
+#
+# Without them every job says so and stops, rather than failing in a way that
+# looks like the portal is broken.
+#
+# Two things to know about GitHub's scheduler. A scheduled run can be a few
+# minutes late when the runners are busy, which is fine for all three of these
+# and would not be fine for anything a person is waiting on. And GitHub disables
+# scheduled workflows in a repository with no pushes for sixty days, so if the
+# portal ever goes a couple of months without a deploy, check this is still on.
+
+name: Scheduled jobs
+
+on:
+  schedule:
+    # The CRM queue: often, because an event sitting in it is a stage change the
+    # CRM has not heard about yet.
+    - cron: "*/10 * * * *"
+    # Documentation chasing: once a day at 03:30 in Kerala, so a student's phone
+    # does not buzz at midnight.
+    - cron: "0 22 * * *"
+    # The CRICOS register: monthly, a little after the documents run so the two
+    # are not competing for the same database.
+    - cron: "30 22 1 * *"
+  workflow_dispatch:
+    inputs:
+      which:
+        description: Which job to run now
+        required: true
+        default: crm
+        type: choice
+        options: [crm, documents, cricos]
+
+concurrency:
+  # One at a time per job. A slow run must not have a second one started on top
+  # of it, which for the CRM queue would send some events twice.
+  group: scheduled-${{ github.workflow }}-${{ github.event.schedule || github.event.inputs.which }}
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Work out which endpoint this run is for
+        id: pick
+        run: |
+          case "${{ github.event.schedule }}" in
+            "*/10 * * * *") echo "path=/api/cron/crm" >> "$GITHUB_OUTPUT" ;;
+            "0 22 * * *") echo "path=/api/cron/documents" >> "$GITHUB_OUTPUT" ;;
+            "30 22 1 * *") echo "path=/api/cron/cricos" >> "$GITHUB_OUTPUT" ;;
+            *)
+              case "${{ github.event.inputs.which }}" in
+                documents) echo "path=/api/cron/documents" >> "$GITHUB_OUTPUT" ;;
+                cricos) echo "path=/api/cron/cricos" >> "$GITHUB_OUTPUT" ;;
+                *) echo "path=/api/cron/crm" >> "$GITHUB_OUTPUT" ;;
+              esac
+              ;;
+          esac
+
+      - name: Call it
+        env:
+          PORTAL_URL: ${{ secrets.PORTAL_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          PATH_TO_CALL: ${{ steps.pick.outputs.path }}
+        run: |
+          if [ -z "$PORTAL_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "PORTAL_URL or CRON_SECRET is not set in this repository's Actions secrets."
+            echo "Nothing was called. Add both and this will start working on the next run."
+            exit 1
+          fi
+          echo "POST ${PORTAL_URL}${PATH_TO_CALL}"
+          # -f so a 401 or a 500 fails the run and GitHub emails about it: a
+          # scheduler that quietly stops working is worse than no scheduler.
+          curl -fsS --max-time 300 \
+            -X POST "${PORTAL_URL}${PATH_TO_CALL}" \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -w '\nHTTP %{http_code} in %{time_total}s\n'
