@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { getSession } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { isStaff } from "@/lib/permissions";
+import { isFamilyRole, isStaff } from "@/lib/permissions";
 import { buildPackZip, packContents, packName } from "@/server/pack";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +17,7 @@ export const maxDuration = 120;
  */
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getSession();
-  if (!user || user.role === "STUDENT") return new Response("Not found", { status: 404 });
+  if (!user || isFamilyRole(user.role)) return new Response("Not found", { status: 404 });
   const { id } = await params;
   const pack = await db.query.submissionPacks.findFirst({
     where: eq(schema.submissionPacks.id, id),

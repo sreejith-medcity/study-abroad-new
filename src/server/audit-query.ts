@@ -110,6 +110,11 @@ const ACTION_LABEL: Record<string, string> = {
   "programs.import": "Programs imported",
   "status.update": "Status flow edited",
   "student.create": "Student created",
+  "student.id.mint": "Medcity ID given",
+  "guardian.add": "Family access given",
+  "guardian.revoke": "Family access removed",
+  "guardian.money": "Family fee visibility changed",
+  "guardian.password": "Family password reset",
   "student.reassign": "Student reassigned",
   "student.archive": "Student archived",
   "student.unarchive": "Student restored",
@@ -135,8 +140,8 @@ export function actionLabel(action: string) {
 
 /** Sensitive-looking actions get a louder tone in the table. */
 export function actionTone(action: string): "bad" | "warn" | "info" | "neutral" {
-  if (/(delete|deactivate|reveal)/.test(action)) return "bad";
-  if (/(role_change|password|lock|export|invite|create)/.test(action)) return "warn";
+  if (/(delete|deactivate|reveal|revoke)/.test(action)) return "bad";
+  if (/(role_change|password|lock|export|invite|create|guardian)/.test(action)) return "warn";
   if (/(status|import|update|classify)/.test(action)) return "info";
   return "neutral";
 }

@@ -76,6 +76,9 @@ This repository currently contains **Phase 0 basics and Phase 1 (core pipeline)*
 | Public enquiry form | Anyone with the link | A branch-specific form at `/apply/<slug>`, with no sign in: name, number, what they want and consent. Submissions arrive as enquiries owned by that branch with a follow-up due the next day. Opened per branch from Partners and people, which also prints the QR code for the counter. Protected by a honeypot field, per-caller and per-number rate limits, and a same-day duplicate check. |
 | Enquiries | Partners, staff | Every walk-in, call, website form and referral before a student file exists. Owner, stage (new, contacted, qualified, in counselling, converted, lost), follow-up date with overdue highlighting, a history line per contact, and one click to register the person as a student, which closes the enquiry as converted. Partners see their own branch; the Overseas team sees every branch. |
 | Password safety | All | Temporary passwords force a change on first sign in; sign in is rate limited per account and per caller. |
+| Medcity ID | All | One number per student, minted at registration and never changed: `MC-KOT-26-0041` is the forty-first student Kottayam registered in 2026. The serial restarts each January, per branch, from a counter in the database, so two counsellors registering at the same second cannot be handed the same number. On the student's header, under their name in the list, in their own portal, and findable in the search box however it is written down ("mc ktm 26 41"). The branch's letters are derived from its name and can be changed until the first student carries them. |
+| The student's journey | Students, parents | The portal opens on the nine stages: which step of nine the file is on, what is happening now in English or Malayalam, what is still wanted with the day it is wanted by, and the dates to keep (documents due, offer accept-by, course start, a visa decision awaited), nearest first, with what has gone past kept rather than hidden. |
+| Family access | Partners and the team give, parents read | A parent, guardian or sponsor gets a sign-in of their own at **Family view**: the same nine stages, what is still wanted from the student, the dates, and the branch to ring. They change nothing, send no messages and cannot open the files; fees are off unless switched on per person, and never show what Medcity earns from a university or a vendor. Four at a time per student. Removing access strands the session on the next click and leaves the row with a date on it. The student is told on WhatsApp in their own language whenever somebody is added, and their own **My details** page lists who can read their file. |
 | Document storage | All | Supabase Storage in production, local disk in development. |
 
 All four phases are built. Every nav item leads somewhere.
@@ -277,11 +280,19 @@ Set from **Partners and people**, along with a free-text job title ("UK desk", "
 | Branch head | Own organisation | Register students, apply, upload documents, answer requests, run the branch team, wallet and payouts |
 | Counsellor | Own organisation | Same as a branch head, without full passport numbers, the team view or the wallet |
 | Student | Their own file | The student portal only |
+| Parent or guardian | One student's file | The family view only: read the journey, what is outstanding and the dates. Changes nothing, and never opens a file |
 
-Who may hand out which role: a super admin can set any role. An ops manager can set every role except super admin. An Overseas admin can add partner staff but not Medcity Overseas accounts.
+Who may hand out which role: a super admin can set any role. An ops manager can set every role except super admin. An Overseas admin can add partner staff but not Medcity Overseas accounts. A student's and a parent's sign-in are not roles anybody is promoted into: both are created from that student's own file, against one student, and nowhere else.
 
 ## Next
 
-All seven phases of the rework are built. What remains from the wireframe is the
-family side: the Medcity ID with the student and parent dashboards, and the link
-to Medcity's own CRM so a student is registered once.
+The family side is built: the Medcity ID, the student's dashboard around the
+journey, and the parent's read-only sign-in. What remains from the wireframe is
+the link to Medcity's own CRM, so a student registered in one place is
+registered in both: integration keys and signatures, the registration endpoint,
+the student lookup, webhooks out with retries, a field map that fills blanks
+only, and the queue of rows that need a person.
+
+The new Malayalam lines (the nine stages, the dates card, the family view and
+the notice a student gets when a parent is added) want a native speaker's eye
+before they are read by families.

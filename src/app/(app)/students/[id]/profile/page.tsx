@@ -10,6 +10,8 @@ import { deleteProfileRowAction, revealPassportAction, toggleLockAction, toggleP
 import { AcademicForm, BackgroundForm, ContactForm, PersonalForm, PortalInviteForm, RequestEditForm, TestForm, WorkForm } from "./forms";
 import { BACKGROUND_QUESTIONS, backgroundComplete } from "@/lib/background";
 import { aiFeatureOn } from "@/server/ai";
+import { guardiansFor, GUARDIAN_LIMIT } from "@/server/family";
+import { AddGuardianForm, GuardianRowActions, ResetGuardianForm } from "@/components/family-forms";
 import { AutofillPanel } from "./autofill";
 
 export const metadata = { title: "Student profile" };
@@ -21,14 +23,16 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
   const { reveal } = await searchParams;
   const user = await requireUser([...APP_ROLES]);
   const student = await getStudentForUser(user, id);
-  const [academics, tests, work, openRequests, portalAccount, contacts] = await Promise.all([
+  const [academics, tests, work, openRequests, portalAccount, contacts, guardians] = await Promise.all([
     db.select().from(schema.academicRecords).where(eq(schema.academicRecords.studentId, id)).orderBy(asc(schema.academicRecords.yearCompleted)),
     db.select().from(schema.testScores).where(eq(schema.testScores.studentId, id)),
     db.select().from(schema.workExperience).where(eq(schema.workExperience.studentId, id)).orderBy(asc(schema.workExperience.startDate)),
     db.select().from(schema.editRequests).where(and(eq(schema.editRequests.studentId, id), eq(schema.editRequests.status, "OPEN"))),
-    db.query.users.findFirst({ where: eq(schema.users.studentId, id) }),
+    db.query.users.findFirst({ where: and(eq(schema.users.studentId, id), eq(schema.users.role, "STUDENT")) }),
     db.select().from(schema.studentContacts).where(eq(schema.studentContacts.studentId, id)).orderBy(asc(schema.studentContacts.createdAt)),
+    guardiansFor(id),
   ]);
+  const liveGuardians = guardians.filter((g) => !g.revokedAt);
 
   const autofill = await aiFeatureOn("autofill");
   const readable = autofill
@@ -41,6 +45,9 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
     : [];
   const done = profileCompleteness({ ...student, academics, tests, documentTypeCodes: [] });
   const readOnly = user.role === "MANAGEMENT" || (student.profileLocked && !isAdmin(user));
+  // A locked profile stops the details being edited. Who may read the file is a
+  // separate question, so family access follows the role and not the lock.
+  const canManageFamily = user.role !== "MANAGEMENT";
   const showFull = canSeeFullPassport(user) || reveal === "1";
   const passportDisplay = showFull ? student.passportNumber ?? "" : maskPassport(student.passportNumber);
 
@@ -130,6 +137,60 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
         <div className="mt-3">
           <PortalInviteForm studentId={id} invited={!!portalAccount} />
         </div>
+      </Card>
+
+      <Card className="p-4" id="family">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="flex items-center gap-1.5 font-semibold">
+              Family access
+              {liveGuardians.length > 0 ? <Chip tone="ok">{liveGuardians.length} can read this file</Chip> : <Chip>Nobody added</Chip>}
+            </h2>
+            <p className="mt-1 max-w-xl text-[13px] leading-relaxed text-muted">
+              A parent or sponsor signs in to a view of their own: which step {student.firstName} is on, what is still wanted, and the dates that matter. They cannot
+              change anything, send messages or open the files. {student.firstName} is told on WhatsApp whenever somebody is added, because it is their file.
+            </p>
+          </div>
+        </div>
+
+        {guardians.length > 0 && (
+          <ul className="mt-3 divide-y divide-line">
+            {guardians.map((g) => (
+              <li key={g.id} className="flex flex-wrap items-start gap-x-3 gap-y-2 py-2.5">
+                <div className="min-w-48">
+                  <p className={g.revokedAt || !g.active ? "text-muted line-through" : "font-medium"}>{g.name}</p>
+                  <p className="text-xs text-muted">{g.relation} · {g.email}</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {g.revokedAt ? (
+                    <Chip tone="bad">Removed {fmtDate(g.revokedAt)}</Chip>
+                  ) : (
+                    <>
+                      {g.seesMoney && <Chip tone="warn">Sees the fees</Chip>}
+                      <Chip>{g.lastSignInAt ? `Last read ${fmtDate(g.lastSignInAt)}` : "Has not signed in"}</Chip>
+                      {!g.studentToldAt && <Chip tone="warn">{student.firstName} not told</Chip>}
+                    </>
+                  )}
+                </div>
+                {!g.revokedAt && canManageFamily && (
+                  <div className="ml-auto flex flex-wrap items-center gap-1.5">
+                    <GuardianRowActions guardianId={g.id} seesMoney={g.seesMoney} />
+                    <ResetGuardianForm guardianId={g.id} />
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {canManageFamily && liveGuardians.length < GUARDIAN_LIMIT && (
+          <div className="mt-4 border-t border-line pt-4">
+            <AddGuardianForm studentId={id} />
+          </div>
+        )}
+        {liveGuardians.length >= GUARDIAN_LIMIT && (
+          <p className="mt-3 text-[13px] text-muted">{GUARDIAN_LIMIT} family sign-ins is the limit. Remove one to add another.</p>
+        )}
       </Card>
 
       {autofill && !readOnly && readable.length > 0 && (

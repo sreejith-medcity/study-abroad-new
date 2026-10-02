@@ -1,6 +1,7 @@
 /* Sample data for local development. Every person, university and figure here is fictional. */
 import "dotenv/config";
 import { BACKGROUND_QUESTIONS } from "../lib/background";
+import { branchCodeFrom, formatStudentId } from "../lib/medcity-id";
 import { LIVING_FUNDS } from "./living-funds";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
@@ -29,10 +30,10 @@ async function main() {
   const hash = await bcrypt.hash(PASSWORD, 10);
 
   // Organisations
-  const [hq] = await db.insert(schema.organizations).values({ name: "Medcity International Overseas Corporation", type: "HQ", tier: "PLATINUM", city: "Kochi", counsellorSeats: 50 }).returning();
-  const [kottayam] = await db.insert(schema.organizations).values({ name: "Medcity Kottayam", type: "BRANCH", tier: "ELITE", city: "Kottayam", counsellorSeats: 8 }).returning();
-  const [kochi] = await db.insert(schema.organizations).values({ name: "Medcity Kochi", type: "BRANCH", tier: "GOLD", city: "Kochi", counsellorSeats: 5 }).returning();
-  const [thrissur] = await db.insert(schema.organizations).values({ name: "Horizon Consultants, Thrissur", type: "SUB_AGENT", tier: "SILVER", city: "Thrissur", counsellorSeats: 3 }).returning();
+  const [hq] = await db.insert(schema.organizations).values({ idCode: "INT", name: "Medcity International Overseas Corporation", type: "HQ", tier: "PLATINUM", city: "Kochi", counsellorSeats: 50 }).returning();
+  const [kottayam] = await db.insert(schema.organizations).values({ idCode: "KOT", name: "Medcity Kottayam", type: "BRANCH", tier: "ELITE", city: "Kottayam", counsellorSeats: 8 }).returning();
+  const [kochi] = await db.insert(schema.organizations).values({ idCode: "KOC", name: "Medcity Kochi", type: "BRANCH", tier: "GOLD", city: "Kochi", counsellorSeats: 5 }).returning();
+  const [thrissur] = await db.insert(schema.organizations).values({ idCode: "HOR", name: "Horizon Consultants, Thrissur", type: "SUB_AGENT", tier: "SILVER", city: "Thrissur", counsellorSeats: 3 }).returning();
 
   // Users
   const u = async (name: string, email: string, role: schema.Role, orgId: string, deskLabel?: string, phone?: string) =>
@@ -189,6 +190,17 @@ async function main() {
   const months = (d: number) => new Date(Date.now() - d * 86400000);
   let dayOffset = 30;
 
+  // The seed mints its own Medcity IDs rather than calling the server minter,
+  // which is server-only and cannot be imported here. Same shape, same counter
+  // rows, so a seeded database and a real one number students identically.
+  const serials = new Map<string, number>();
+  const seededId = (org: { id: string; idCode: string | null }, when: Date) => {
+    const key = `${org.id}:${when.getFullYear()}`;
+    const next = (serials.get(key) ?? 0) + 1;
+    serials.set(key, next);
+    return formatStudentId(org.idCode ?? branchCodeFrom("Medcity"), when.getFullYear(), next);
+  };
+
   // Sample trail so the audit log is not empty on a fresh install.
   const trail: (typeof schema.auditLogs.$inferInsert)[] = [];
   let firstStudentId = "";
@@ -213,6 +225,7 @@ async function main() {
         background: Object.fromEntries(BACKGROUND_QUESTIONS.map((q) => [q.key, { answer: false, details: null }])),
         consentAt: months(dayOffset), consentText: "I agree to Medcity Overseas processing my data to apply to institutions and employers on my behalf.",
         profileLocked: s.apps.some((a) => a.status !== "ASSESSMENT"),
+        medcityId: seededId(s.org, months(dayOffset)),
         createdAt: months(dayOffset),
       })
       .returning();
@@ -282,6 +295,13 @@ async function main() {
         ]);
       }
     }
+  }
+
+  // The counters are left where the seeded IDs ended, so the next student
+  // registered on a seeded database carries on from the last seeded number.
+  for (const [key, used] of serials) {
+    const [scope, year] = key.split(":");
+    await db.insert(schema.idCounters).values({ scope, year: Number(year), used });
   }
 
   trail.push(
@@ -609,6 +629,31 @@ async function main() {
       locale: "ml",
     });
     trail.push({ actorId: ukDocs.id, action: "portal.invite", entityType: "student", entityId: portalStudent.id, meta: { email: portalStudent.email }, createdAt: months(2) });
+
+    // And one parent reading the same file, so the family view can be seen too.
+    const [parentAccount] = await db
+      .insert(schema.users)
+      .values({
+        name: `${portalStudent.lastName} (father)`,
+        email: `father.${portalStudent.firstName}`.toLowerCase() + "@example.com",
+        phone: "+91 94470 00000",
+        passwordHash: hash,
+        role: "PARENT",
+        orgId: portalStudent.orgId,
+        studentId: portalStudent.id,
+        locale: "ml",
+      })
+      .returning();
+    await db.insert(schema.studentGuardians).values({
+      studentId: portalStudent.id,
+      userId: parentAccount.id,
+      relation: "Father",
+      seesMoney: true,
+      addedById: ukDocs.id,
+      studentToldAt: months(2),
+      createdAt: months(2),
+    });
+    trail.push({ actorId: ukDocs.id, action: "guardian.add", entityType: "student", entityId: portalStudent.id, meta: { email: parentAccount.email, relation: "Father" }, createdAt: months(2) });
   }
 
   // The documentation spine: every student gets the list their stage, destination

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { and, asc, eq, ilike, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { getSession } from "@/lib/auth";
-import { isStaff, orgScope } from "@/lib/permissions";
+import { isFamilyRole, isStaff, orgScope } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +16,7 @@ export type PaletteHit = { kind: "student" | "application" | "partner" | "univer
  */
 export async function GET(request: Request) {
   const user = await getSession();
-  if (!user || user.role === "STUDENT") return NextResponse.json({ hits: [] }, { status: 401 });
+  if (!user || isFamilyRole(user.role)) return NextResponse.json({ hits: [] }, { status: 401 });
 
   const q = (new URL(request.url).searchParams.get("q") ?? "").trim();
   if (q.length < 2) return NextResponse.json({ hits: [] });

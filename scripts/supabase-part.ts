@@ -25,7 +25,14 @@ const out: string[] = [`-- ${title}`, "-- Run in the Supabase SQL editor BEFORE 
 for (const part of raw.split("--> statement-breakpoint").map((s) => s.trim()).filter(Boolean)) {
   const stmt = part.replace(/"public"\./g, "").replace(/;$/, "");
   if (/^CREATE TYPE/i.test(stmt) || /^ALTER TABLE .* ADD CONSTRAINT/i.test(stmt)) {
-    out.push(`DO $$ BEGIN\n  ${stmt};\nEXCEPTION WHEN duplicate_object THEN NULL; END $$;`);
+    // A foreign key that already exists raises duplicate_object; a UNIQUE
+    // constraint raises duplicate_table, because its index is the thing that
+    // clashes. Both mean the same here: it is already done.
+    out.push(`DO $$ BEGIN\n  ${stmt};\nEXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL; END $$;`);
+  } else if (/^ALTER TYPE .* ADD VALUE /i.test(stmt)) {
+    // Postgres has its own guard for this one, and it must not be wrapped in a
+    // DO block: adding an enum value inside a subtransaction is refused.
+    out.push(stmt.replace(/ ADD VALUE /i, " ADD VALUE IF NOT EXISTS ") + ";");
   } else if (/^CREATE TABLE /i.test(stmt)) {
     out.push(stmt.replace(/^CREATE TABLE /i, "CREATE TABLE IF NOT EXISTS ") + ";");
   } else if (/^ALTER TABLE .* ADD COLUMN /i.test(stmt)) {

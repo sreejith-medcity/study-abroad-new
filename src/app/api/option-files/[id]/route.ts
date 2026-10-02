@@ -3,10 +3,11 @@ import { db, schema } from "@/db";
 import { getSession } from "@/lib/auth";
 import { optionRequestForUser } from "@/server/option-access";
 import { readUpload } from "@/server/storage";
+import { isFamilyRole } from "@/lib/permissions";
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getSession();
-  if (!user || user.role === "STUDENT") return new Response("Sign in required", { status: 401 });
+  if (!user || isFamilyRole(user.role)) return new Response("Sign in required", { status: 401 });
   const { id } = await params;
   const f = await db.query.optionRequestFiles.findFirst({ where: eq(schema.optionRequestFiles.id, id) });
   if (!f || !(await optionRequestForUser(user, f.requestId))) return new Response("Not found", { status: 404 });

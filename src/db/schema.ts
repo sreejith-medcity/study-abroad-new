@@ -21,7 +21,7 @@ const createdAt = () => timestamp("created_at", { withTimezone: true }).notNull(
 
 export const orgType = pgEnum("org_type", ["HQ", "BRANCH", "SUB_AGENT"]);
 export const tier = pgEnum("tier", ["SILVER", "GOLD", "ELITE", "PLATINUM"]);
-export const role = pgEnum("role", ["ADMIN", "MANAGEMENT", "PARTNER", "COUNSELLOR", "STUDENT", "SUPER_ADMIN", "OPS_MANAGER", "DOCUMENTATION"]);
+export const role = pgEnum("role", ["ADMIN", "MANAGEMENT", "PARTNER", "COUNSELLOR", "STUDENT", "SUPER_ADMIN", "OPS_MANAGER", "DOCUMENTATION", "PARENT"]);
 export const pathway = pgEnum("pathway", ["DEGREE", "AUSBILDUNG", "NURSING"]);
 export const studyLevel = pgEnum("study_level", [
   "SCHOOL",
@@ -208,6 +208,12 @@ export const organizations = pgTable("organizations", {
   tier: tier("tier").notNull().default("SILVER"),
   city: text("city"),
   counsellorSeats: integer("counsellor_seats").notNull().default(3),
+  /**
+   * The branch's letters in every Medcity ID it mints: KTM in MC-KTM-26-0041.
+   * Derived from the name the first time a student is registered, and left
+   * alone after that, because the IDs already printed cannot be recalled.
+   */
+  idCode: text("id_code").unique(),
   /** Short code in the public enquiry link, printed on the branch QR code. */
   publicSlug: text("public_slug").unique(),
   publicFormEnabled: boolean("public_form_enabled").notNull().default(false),
@@ -429,6 +435,25 @@ export const statusDefinitions = pgTable(
 
 // ---------- Students ----------
 
+/**
+ * The serial behind every Medcity ID: one row per branch per year, holding the
+ * highest serial handed out. A new number is taken by bumping the row in a
+ * single statement, so two counsellors registering at the same moment cannot
+ * be given the same ID.
+ */
+export const idCounters = pgTable(
+  "id_counters",
+  {
+    id: id(),
+    /** The branch the serial belongs to. */
+    scope: text("scope").notNull(),
+    year: integer("year").notNull(),
+    used: integer("used").notNull().default(0),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("id_counters_scope_year_uq").on(t.scope, t.year)],
+);
+
 export const students = pgTable(
   "students",
   {
@@ -440,6 +465,11 @@ export const students = pgTable(
     assignedToId: text("assigned_to_id").references(() => users.id),
     userId: text("user_id").references(() => users.id),
     portalToken: text("portal_token").notNull().unique().$defaultFn(createId),
+    /**
+     * The number the family reads out on the phone: MC-KTM-26-0041. Minted once
+     * at registration and never changed. Null only on rows that predate it.
+     */
+    medcityId: text("medcity_id").unique(),
 
     firstName: text("first_name").notNull(),
     lastName: text("last_name").notNull(),
@@ -545,6 +575,40 @@ export const studentContacts = pgTable("student_contacts", {
   emergency: boolean("emergency").notNull().default(false),
   createdAt: createdAt(),
 }, (t) => [index("student_contacts_student_idx").on(t.studentId)]);
+
+/**
+ * A parent or guardian with a sign-in of their own.
+ *
+ * They read the file and change nothing: the journey, what is still wanted from
+ * the student, and the dates that matter. Money is off by default, because the
+ * person paying is not always the person who should see what Medcity earns.
+ * Access is revoked rather than deleted, so a family can be told who could see
+ * the file and until when.
+ */
+export const studentGuardians = pgTable(
+  "student_guardians",
+  {
+    id: id(),
+    studentId: text("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    /** The PARENT login this row belongs to. One account reads one student. */
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    relation: text("relation").notNull(),
+    /** Whether they see the fees and what has been paid. Off unless switched on. */
+    seesMoney: boolean("sees_money").notNull().default(false),
+    addedById: text("added_by_id").references(() => users.id),
+    /** Set when access is taken away; the row stays for the record. */
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    revokedById: text("revoked_by_id").references(() => users.id),
+    /** When the student was told, and how. Null means nobody has told them. */
+    studentToldAt: timestamp("student_told_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("student_guardians_user_uq").on(t.userId), index("student_guardians_student_idx").on(t.studentId)],
+);
 
 export const editRequests = pgTable("edit_requests", {
   id: id(),
@@ -2250,6 +2314,13 @@ export const studentsRelations = relations(students, ({ one, many }) => ({
   tasks: many(tasks),
   contacts: many(contactLog),
   income: many(incomeLines),
+  guardians: many(studentGuardians),
+}));
+
+export const studentGuardiansRelations = relations(studentGuardians, ({ one }) => ({
+  student: one(students, { fields: [studentGuardians.studentId], references: [students.id] }),
+  user: one(users, { fields: [studentGuardians.userId], references: [users.id] }),
+  addedBy: one(users, { fields: [studentGuardians.addedById], references: [users.id] }),
 }));
 
 export const shortlistsRelations = relations(shortlists, ({ one }) => ({

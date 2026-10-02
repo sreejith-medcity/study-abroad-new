@@ -32,6 +32,7 @@ export const ROLE_LABEL: Record<string, string> = {
   PARTNER: "Branch head",
   COUNSELLOR: "Counsellor",
   STUDENT: "Student",
+  PARENT: "Parent or guardian",
 };
 
 /** One line each, shown wherever a role is chosen, so the choice is informed. */
@@ -44,10 +45,27 @@ export const ROLE_BLURB: Record<string, string> = {
   PARTNER: "Runs a branch or sub-agent: their own students, applications, team and wallet",
   COUNSELLOR: "Works their own students inside one branch",
   STUDENT: "Sees only their own application, in the student portal",
+  PARENT: "Reads one student's journey and what is outstanding, and changes nothing",
 };
 
 /** Roles that belong to Medcity Overseas itself rather than to a partner. */
 export const HQ_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "MANAGEMENT"] as const;
+
+/**
+ * The family: a student and the parents who read that student's file. Neither
+ * belongs anywhere in the staff app, and the two are gated together wherever
+ * the question is "is this one of our people or one of theirs".
+ */
+export const FAMILY_ROLES = ["STUDENT", "PARENT"] as const;
+
+export const isFamilyRole = (role: string) => (FAMILY_ROLES as readonly string[]).includes(role);
+
+/** Where a role lands when it signs in, or when it reaches for a page it may not have. */
+export function homeFor(role: string) {
+  if (role === "STUDENT") return "/portal";
+  if (role === "PARENT") return "/family";
+  return "/dashboard";
+}
 
 export function isStaff(user: SessionUser) {
   return (HQ_ROLES as readonly string[]).includes(user.role);

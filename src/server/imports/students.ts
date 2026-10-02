@@ -5,6 +5,7 @@ import type { SessionUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { EMAIL, PHONE, day, num, oneOf, splitName, text, yes, type Problems } from "@/lib/import-values";
 import { createId } from "@/lib/id";
+import { reserveStudentIds } from "@/server/medcity-id";
 import { branchOwner, branchResolver, emptyResult, lineOf, phoneKey, staffByEmail, type ImportResult } from "./common";
 
 export const STUDENT_COLUMNS = [
@@ -260,6 +261,25 @@ export async function importStudents(user: SessionUser, rows: Row[], commit: boo
 
   // New students go in batches, so a sheet of thousands stays within the host's request time.
   const asDate = (v: unknown) => (v ? new Date(v as string) : null);
+
+  // Medcity IDs are taken a branch at a time, in one statement each, so a sheet
+  // of two thousand students costs two thousand numbers and not two thousand
+  // round trips. The block is consumed in sheet order, so the numbering follows
+  // the rows the branch uploaded.
+  const perOrg = new Map<string, number>();
+  for (const { plan } of toCreate) perOrg.set(plan.orgId, (perOrg.get(plan.orgId) ?? 0) + 1);
+  const minted = new Map<string, string[]>();
+  for (const [orgId, wanted] of perOrg) {
+    try {
+      minted.set(orgId, await reserveStudentIds(orgId, wanted));
+    } catch {
+      // A branch whose code could not be settled gets no numbers. The students
+      // are still created, and pick one up when their file is next opened.
+      minted.set(orgId, []);
+    }
+  }
+  const takeId = (orgId: string) => minted.get(orgId)?.shift() ?? null;
+
   for (let i = 0; i < toCreate.length; i += 250) {
     const chunk = toCreate.slice(i, i + 250);
     const made = await db
@@ -283,6 +303,7 @@ export async function importStudents(user: SessionUser, rows: Row[], commit: boo
             assignedToId,
             consentAt: new Date(),
             consentText: opts.consentAll && !plan.consent ? CONSENT_ALL(`${user.name} (${user.email})`) : CONSENT,
+            medcityId: takeId(plan.orgId),
             source: "import",
           } as typeof schema.students.$inferInsert;
         }),

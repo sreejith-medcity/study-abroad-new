@@ -14,7 +14,7 @@ const contents = (over: Partial<PackContents> = {}): PackContents => ({
     status: "Application in progress",
     vendor: { name: "KC Overseas", code: "KC", extraDocuments: "KC application form, counsellor declaration", interviewRequired: true },
   },
-  student: { id: "s1", name: "Arathi Krishnan", branch: "Medcity Kottayam", passportNumber: "Z1234567", dateOfBirth: new Date("2002-04-18") },
+  student: { id: "s1", medcityId: "MC-KOT-26-0041", name: "Arathi Krishnan", branch: "Medcity Kottayam", passportNumber: "Z1234567", dateOfBirth: new Date("2002-04-18") },
   files: [
     { itemId: "i1", documentId: "d1", label: "Passport (front and back)", stage: "1. Profile", version: 2, validTo: "2031-03-18", acceptedOn: new Date("2026-09-01"), fileName: "passport.PDF", storageKey: "k1", mimeType: "application/pdf" },
     { itemId: "i2", documentId: "d2", label: "IELTS test report", stage: "1. Profile", version: 1, validTo: "2026-11-10", acceptedOn: new Date("2026-09-02"), fileName: "ielts.jpg", storageKey: "k2", mimeType: "image/jpeg" },
@@ -86,4 +86,10 @@ test("a document in the folder that is out of date is one problem, not two", () 
   const sheet = coverSheet(c, "Ops");
   assert.match(sheet, /In the folder, but running out too early/);
   assert.doesNotMatch(sheet, /Not in this folder, and still required/);
+});
+
+test("the front sheet carries the Medcity ID, and says so when there is none", () => {
+  assert.match(coverSheet(contents(), "Priya"), /Medcity ID {5}MC-KOT-26-0041/);
+  const noId = contents({ student: { ...contents().student, medcityId: null } });
+  assert.match(coverSheet(noId, "Priya"), /Medcity ID {5}Not recorded/);
 });

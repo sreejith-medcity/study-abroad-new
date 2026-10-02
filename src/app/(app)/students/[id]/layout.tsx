@@ -5,12 +5,13 @@ import { requireUser } from "@/lib/auth";
 import { fullName } from "@/lib/format";
 import { APP_ROLES, isStaff } from "@/lib/permissions";
 import { getStudentForUser } from "@/server/queries";
-import { Card, Chip } from "@/components/ui";
+import { Button, Card, Chip } from "@/components/ui";
 import { StepTabs } from "@/components/tabs";
 import { LogContact } from "@/components/crm-forms";
 import { profileCompleteness } from "@/lib/checks";
 import { backgroundComplete } from "@/lib/background";
 import { commissionVisible } from "@/server/commission-visibility";
+import { assignStudentIdAction } from "@/server/id-actions";
 
 const PATHWAY_LABEL = { DEGREE: "Degree", AUSBILDUNG: "Ausbildung", NURSING: "Nurse registration" } as const;
 
@@ -52,6 +53,17 @@ export default async function StudentLayout({ children, params }: { children: Re
             {student.preferredPathway && <Chip tone="info">{PATHWAY_LABEL[student.preferredPathway]}</Chip>}
             {student.profileLocked && <Chip tone="warn">Profile locked</Chip>}
           </div>
+          {student.medcityId ? (
+            <p className="mt-1 font-mono text-[13px] font-medium tracking-tight text-brand-700">{student.medcityId}</p>
+          ) : user.role === "MANAGEMENT" ? (
+            <p className="mt-1 text-[13px] text-muted">No Medcity ID yet</p>
+          ) : (
+            <form action={assignStudentIdAction} className="mt-1 flex items-center gap-2" data-print="hide">
+              <input type="hidden" name="studentId" value={id} />
+              <span className="text-[13px] text-muted">No Medcity ID yet</span>
+              <Button variant="quiet" className="py-0.5 text-xs">Give one</Button>
+            </form>
+          )}
           <p className="mt-1 break-all text-muted">{student.email ?? "No email on file"}</p>
           <p className="text-muted tabular">{student.phone}{student.whatsappOptIn && <span className="ml-2 text-xs text-emerald-700">WhatsApp on</span>}</p>
           <Link href={findHref} data-print="hide" className="mt-2 inline-block text-[13px] font-medium text-brand-600 hover:underline">

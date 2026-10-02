@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { fmtDate, intakeLabel } from "@/lib/format";
 import { applicationsBase, applicationWhere, readFilters } from "@/server/queries";
+import { isFamilyRole } from "@/lib/permissions";
 
 function csvCell(v: unknown) {
   const s = v == null ? "" : String(v);
@@ -14,7 +15,7 @@ function csvCell(v: unknown) {
 
 export async function GET(req: Request) {
   const user = await getSession();
-  if (!user || user.role === "STUDENT") return new Response("Sign in required", { status: 401 });
+  if (!user || isFamilyRole(user.role)) return new Response("Sign in required", { status: 401 });
   const params = Object.fromEntries(new URL(req.url).searchParams);
   const f = readFilters(params);
   const rows = await applicationsBase().where(applicationWhere(user, f)).orderBy(desc(schema.applications.createdAt)).limit(10000);

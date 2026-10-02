@@ -4,6 +4,7 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { APP_ROLES, isAdmin, isStaff } from "@/lib/permissions";
 import { fmtDate, fullName } from "@/lib/format";
+import { idSearchKey, looksLikeStudentId } from "@/lib/medcity-id";
 import { orgUsers, readFilters } from "@/server/queries";
 import { Button, Card, Chip, EmptyState, DateInput, Input, LinkButton, PageHeader, Select, Table, Td, Th, Toolbar } from "@/components/ui";
 import { IconPlus, IconStudents } from "@/components/icons";
@@ -26,8 +27,16 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
     f.to ? lte(s.createdAt, new Date(`${f.to}T23:59:59`)) : undefined,
     f.country ? eq(s.preferredCountry, f.country) : undefined,
     f.pathway ? eq(s.preferredPathway, f.pathway as schema.Pathway) : undefined,
+    // The search box also answers a Medcity ID, however it was written down:
+    // the punctuation is stripped off both sides before they are compared, so
+    // "mc ktm 26 41" finds MC-KTM-26-0041.
     f.q
-      ? or(ilike(sql`${s.firstName} || ' ' || ${s.lastName}`, `%${f.q}%`), ilike(s.email, `%${f.q}%`), ilike(s.phone, `%${f.q}%`))
+      ? or(
+          ilike(sql`${s.firstName} || ' ' || ${s.lastName}`, `%${f.q}%`),
+          ilike(s.email, `%${f.q}%`),
+          ilike(s.phone, `%${f.q}%`),
+          ...(looksLikeStudentId(f.q) ? [sql`regexp_replace(upper(coalesce(${s.medcityId}, '')), '[^A-Z0-9]', '', 'g') like ${`%${idSearchKey(f.q)}%`}`] : []),
+        )
       : undefined,
   ];
 
@@ -39,6 +48,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
       email: s.email,
       phone: s.phone,
       createdAt: s.createdAt,
+      medcityId: s.medcityId,
       orgId: s.orgId,
       orgName: schema.organizations.name,
       assignedToId: s.assignedToId,
@@ -102,7 +112,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
             <option value="NURSING">Nurse registration</option>
           </Select>
           <div className="flex gap-2">
-            <Input name="q" placeholder="Name, email or phone" aria-label="Search" defaultValue={f.q} />
+            <Input name="q" placeholder="Name, Medcity ID, email or phone" aria-label="Search" defaultValue={f.q} />
             <Button type="submit">Search</Button>
           </div>
         </form>
@@ -150,7 +160,10 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                 <tr key={r.id} className="hover:bg-ground/40">
                   <Td>{staff ? r.orgName : r.createdByDesk}{r.source !== "partner" && <Chip className="ml-1">{r.source.toUpperCase()}</Chip>}</Td>
                   <Td className="whitespace-nowrap tabular">{fmtDate(r.createdAt)}</Td>
-                  <Td><Link href={`/students/${r.id}/profile`} className="font-medium text-ink hover:text-brand-600 hover:underline">{fullName(r)}</Link></Td>
+                  <Td>
+                    <Link href={`/students/${r.id}/profile`} className="font-medium text-ink hover:text-brand-600 hover:underline">{fullName(r)}</Link>
+                    {r.medcityId && <span className="block font-mono text-[11px] text-muted">{r.medcityId}</span>}
+                  </Td>
                   <Td className="max-w-[16rem] truncate text-muted" title={r.email ?? undefined}>{r.email ?? <span className="text-muted">No email</span>}</Td>
                   <Td className="whitespace-nowrap tabular">{r.phone}</Td>
                   {!staff && (

@@ -20,7 +20,7 @@ export type PackContents = {
     status: string;
     vendor: { name: string; code: string; extraDocuments: string | null; interviewRequired: boolean } | null;
   };
-  student: { id: string; name: string; branch: string; passportNumber: string | null; dateOfBirth: Date | null };
+  student: { id: string; medcityId: string | null; name: string; branch: string; passportNumber: string | null; dateOfBirth: Date | null };
   /** Accepted documents, in the order they belong in a folder somebody reads. */
   files: { itemId: string; documentId: string | null; label: string; stage: string; version: number; validTo: string | null; acceptedOn: Date | null; fileName: string | null; storageKey: string | null; mimeType: string | null }[];
   /** Required paper that is not in hand, named rather than hidden. */
@@ -45,6 +45,7 @@ export function coverSheet(contents: PackContents, builtBy: string, today = new 
     `Application ${a.ackNo}, ${a.intake} intake`,
     "",
     `Student        ${contents.student.name}`,
+    `Medcity ID     ${contents.student.medcityId ?? "Not recorded"}`,
     `Branch         ${contents.student.branch}`,
     `Date of birth  ${contents.student.dateOfBirth ? fmtDate(contents.student.dateOfBirth) : "Not recorded"}`,
     `Passport       ${contents.student.passportNumber ?? "Not recorded"}`,

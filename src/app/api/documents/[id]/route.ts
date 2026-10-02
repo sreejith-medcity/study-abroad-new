@@ -14,6 +14,10 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   // A student sees only their own file: what they uploaded and what the branch shared.
   if (user.role === "STUDENT") {
     if (doc.studentId !== user.studentId || !(doc.sharedWithStudent || doc.uploadedById === user.id)) return new Response("Not found", { status: 404 });
+  } else if (user.role === "PARENT") {
+    // A parent reads the journey and the list of what is outstanding. The files
+    // themselves are the student's, and are not opened from a parent's sign-in.
+    return new Response("Not found", { status: 404 });
   } else if (!isStaff(user) && doc.student.orgId !== user.orgId) return new Response("Not found", { status: 404 });
 
   let bytes: Buffer;

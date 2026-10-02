@@ -8,6 +8,7 @@ import { cache } from "react";
 import { db, schema } from "@/db";
 import type { Role } from "@/db/schema";
 import { rateLimit } from "@/server/rate-limit";
+import { homeFor, isFamilyRole } from "./permissions";
 
 const COOKIE = "sa_session";
 const MAX_AGE = 60 * 60 * 12; // 12 hours
@@ -157,8 +158,8 @@ export async function requireUser(roles?: Role[]): Promise<SessionUser> {
   if (!user) redirect("/login");
   if (user.mustChangePassword) redirect("/change-password");
   if (roles && !roles.includes(user.role)) {
-    // A student who lands on a staff page belongs in their own portal.
-    redirect(user.role === "STUDENT" ? "/portal" : "/forbidden");
+    // A student or a parent who lands on a staff page belongs in their own view.
+    redirect(isFamilyRole(user.role) ? homeFor(user.role) : "/forbidden");
   }
   return user;
 }

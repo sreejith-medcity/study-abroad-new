@@ -20,7 +20,7 @@ export async function packContents(applicationId: string): Promise<PackContents 
     where: eq(schema.applications.id, applicationId),
     with: {
       status: { columns: { label: true } },
-      student: { columns: { id: true, firstName: true, lastName: true, passportNumber: true, dateOfBirth: true }, with: { org: { columns: { name: true } } } },
+      student: { columns: { id: true, medcityId: true, firstName: true, lastName: true, passportNumber: true, dateOfBirth: true }, with: { org: { columns: { name: true } } } },
       program: { columns: { name: true, campus: true }, with: { university: { columns: { name: true }, with: { country: { columns: { name: true } } } } } },
       route: { columns: { extraDocuments: true, interviewRequired: true }, with: { vendor: { columns: { name: true, code: true } } } },
     },
@@ -64,6 +64,7 @@ export async function packContents(applicationId: string): Promise<PackContents 
     },
     student: {
       id: app.student.id,
+      medcityId: app.student.medcityId,
       name: `${app.student.firstName} ${app.student.lastName}`,
       branch: app.student.org.name,
       passportNumber: app.student.passportNumber,

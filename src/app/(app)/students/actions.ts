@@ -12,6 +12,7 @@ import { phoneKey } from "@/lib/phone";
 import { ADMIN_ROLES, isAdmin, isStaff } from "@/lib/permissions";
 import { adminIds, notifyUsers } from "@/server/notify";
 import { getStudentForUser } from "@/server/queries";
+import { tryMintStudentId } from "@/server/medcity-id";
 import { BACKGROUND_QUESTIONS, CONTACT_RELATIONS } from "@/lib/background";
 
 import type { FormState } from "@/lib/form-state";
@@ -81,6 +82,7 @@ export async function createStudentAction(_: FormState, formData: FormData): Pro
       preferredPathway: d.preferredPathway,
       consentAt: new Date(),
       consentText: CONSENT_TEXT,
+      medcityId: await tryMintStudentId(orgId),
     })
     .returning();
   await audit(user.id, "student.create", "student", student.id, { consent: true });
@@ -371,7 +373,9 @@ export async function invitePortalAction(_: FormState, formData: FormData): Prom
   const student = await getStudentForUser(user, studentId);
   if (!student.email) return { error: "Add an email address to the student's profile first." };
 
-  const existing = await db.query.users.findFirst({ where: eq(schema.users.studentId, studentId) });
+  // A parent's sign-in carries the same student id, so the role has to be in
+  // the test: without it a family account is mistaken for the student's own.
+  const existing = await db.query.users.findFirst({ where: and(eq(schema.users.studentId, studentId), eq(schema.users.role, "STUDENT")) });
   const password = portalPassword();
   const passwordHash = await hashPassword(password);
 
@@ -408,7 +412,7 @@ export async function togglePortalAccessAction(formData: FormData) {
   const user = await requireUser(["PARTNER", "COUNSELLOR", ...ADMIN_ROLES]);
   const studentId = String(formData.get("studentId"));
   await getStudentForUser(user, studentId);
-  const account = await db.query.users.findFirst({ where: eq(schema.users.studentId, studentId) });
+  const account = await db.query.users.findFirst({ where: and(eq(schema.users.studentId, studentId), eq(schema.users.role, "STUDENT")) });
   if (!account) return;
   await db.update(schema.users).set({ active: !account.active }).where(eq(schema.users.id, account.id));
   await audit(user.id, account.active ? "portal.disable" : "portal.enable", "student", studentId, {});

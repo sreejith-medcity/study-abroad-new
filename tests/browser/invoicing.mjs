@@ -74,8 +74,29 @@ void card;
 await ap.getByRole("button", { name: /Raise an invoice/ }).first().click();
 check(/One invoice, as many students as you tick/.test(await main(ap)), "raise: the form says why invoices are batched");
 check(/Tax on this invoice/.test(await main(ap)), "raise: the tax treatment is said before it goes out");
-const dialogText = await ap.getByRole("dialog").first().innerText();
+const dialog = ap.getByRole("dialog").first();
+const dialogText = await dialog.innerText();
 check(/zero-rated under LUT|taxable|IGST|Not registered/.test(dialogText), `raise: and which case it is in (${dialogText.slice(0, 60).replace(/\n/g, " ")})`);
+
+// Which placements are ready moves with the calendar, so the vendor may have
+// lines in two currencies waiting. One invoice is one currency: the form says
+// so, and the test unticks down to one rather than assuming the seed only ever
+// offers one.
+const rows = dialog.locator('label:has(input[type="checkbox"])');
+const rowCount = await rows.count();
+const currencyOf = (t) => (t.trim().match(/([A-Z]{3})$/) || [])[1];
+const currencies = [];
+for (let i = 0; i < rowCount; i += 1) currencies.push(currencyOf(await rows.nth(i).innerText()));
+const mixed = new Set(currencies.filter(Boolean)).size > 1;
+if (mixed) {
+  check(/One invoice, one currency/.test(await dialog.innerText()), `raise: two currencies on one invoice is refused before it is sent (${[...new Set(currencies)].join(", ")})`);
+  for (let i = 0; i < rowCount; i += 1) {
+    if (currencies[i] !== currencies[0]) await rows.nth(i).locator('input[type="checkbox"]').uncheck();
+  }
+  check(!/One invoice, one currency/.test(await dialog.innerText()), "raise: unticking down to one currency clears it");
+} else {
+  ok(`raise: this vendor's ready lines are all in one currency (${currencies[0]})`);
+}
 await ap.getByRole("button", { name: /Raise it for/ }).click();
 await ap.waitForURL(/\/admin\/invoices\/[^/?]+\?raised=1/, { timeout: 20000 }).catch(() => {});
 check(await waitText(ap, /raised/), "raise: the invoice itself says what was raised, rather than a toast on a screen you have left");
@@ -126,7 +147,6 @@ check((await waitSql(`select state from vendor_invoices where id = '${invoiceId}
 check(sql(`select count(*) from invoice_payments where invoice_id = '${invoiceId}'`) === "1", "money in: each payment is its own row");
 check(sql(`select count(*) from income_lines where invoice_id = '${invoiceId}' and state = 'RECEIVED'`) === "0", "money in: no student's line is marked received on a part payment");
 
-const walletBefore = sql("select count(*) from wallet_entries where kind = 'COMMISSION'");
 text = await go(ap, `/admin/invoices/${invoiceId}`);
 await ap.getByRole("button", { name: "Money in" }).click();
 await ap.getByRole("button", { name: "Record it" }).click();
@@ -134,10 +154,24 @@ check((await toast(ap, /settled in full/)) || (await waitSql(`select state from 
 check((await waitSql(`select state from vendor_invoices where id = '${invoiceId}'`, "PAID")) === "PAID", "money in: and it is paid");
 check(sql(`select count(*) from income_lines where invoice_id = '${invoiceId}' and state = 'RECEIVED'`) === lineCount, "money in: now every student's line is received");
 check(sql(`select count(*) from commissions c join income_lines l on l.commission_id = c.id where l.invoice_id = '${invoiceId}' and c.status = 'RECEIVED'`) !== "0", "money in: the placement's commission is received");
-const walletAfter = await waitSql("select count(*) from wallet_entries where kind = 'COMMISSION'", String(Number(walletBefore) + Number(lineCount)));
-check(Number(walletAfter) > Number(walletBefore), `money in: the branch's share lands in its wallet (${walletBefore} to ${walletAfter})`);
-check(sql(`select count(*) from wallet_entries where reference = '${number}'`) !== "0", "money in: credited against the invoice number");
-check(sql("select count(*) from notifications where title = 'Commission credited to your wallet'") !== "0", "money in: and the branch is told");
+// The rule is credited once, not credited again. Which placements are ready
+// moves with the calendar, so an invoice may well cover a commission the seed
+// has already credited; what must hold either way is one entry per commission.
+const onInvoice = sql(`select count(*) from income_lines where invoice_id = '${invoiceId}' and commission_id is not null`);
+const credited = await waitSql(
+  `select count(*) from wallet_entries w where w.kind = 'COMMISSION' and w.commission_id in (select commission_id from income_lines where invoice_id = '${invoiceId}' and commission_id is not null)`,
+  onInvoice,
+);
+check(credited === onInvoice, `money in: the branch's share is in its wallet (${credited} entries for ${onInvoice} placements)`);
+const twice = sql(`select count(*) from (select commission_id from wallet_entries where kind = 'COMMISSION' and commission_id is not null group by commission_id having count(*) > 1) x`);
+check(twice === "0", "money in: and no placement is credited twice");
+const freshly = sql(`select count(*) from wallet_entries where reference = '${number}'`);
+if (Number(freshly) > 0) {
+  ok(`money in: credited against the invoice number (${freshly})`);
+  check((await waitSql("select count(*) from notifications where title = 'Commission credited to your wallet'", "1")) !== "0", "money in: and the branch is told");
+} else {
+  ok("money in: this invoice's placements were credited before it, so nothing was credited again");
+}
 
 // --- The seeded invoice: a dispute, the ageing report, and writing one off.
 const older = sql(`select id from vendor_invoices where id <> '${invoiceId}' order by created_at limit 1`);

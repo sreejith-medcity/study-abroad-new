@@ -2,12 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { randomBytes } from "crypto";
-import { and, count, eq, inArray } from "drizzle-orm";
+import { and, count, eq, inArray, isNotNull } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { hashPassword, requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { ADMIN_ROLES, HQ_ROLES, canManageSuperAdmins, canManageUsers, canResetPasswords, ROLE_LABEL } from "@/lib/permissions";
+import { ADMIN_ROLES, HQ_ROLES, canManageSuperAdmins, canManageUsers, canResetPasswords, isFamilyRole, ROLE_LABEL } from "@/lib/permissions";
 import { makeSlug } from "@/server/public-form";
 
 import type { FormState } from "@/lib/form-state";
@@ -94,8 +94,31 @@ export async function updateOrgAction(formData: FormData) {
   const seats = Number(formData.get("counsellorSeats"));
   const rm = String(formData.get("relationshipManagerId") || "") || null;
   if (!schema.tier.enumValues.includes(tier) || !Number.isInteger(seats) || seats < 1 || seats > 500) return;
-  await db.update(schema.organizations).set({ tier, counsellorSeats: seats, relationshipManagerId: rm }).where(eq(schema.organizations.id, orgId));
-  await audit(user.id, "organization.update", "organization", orgId, { tier, seats, rm });
+
+  // The branch's letters can be set until the first student carries them. After
+  // that the code is on IDs the family already has written down, so it stays.
+  const typed = String(formData.get("idCode") || "").trim().toUpperCase();
+  const code = /^[A-Z]{2}[A-Z0-9]{0,2}$/.test(typed) ? typed : null;
+  let idCode: string | null | undefined;
+  if (code) {
+    const [{ issued }] = await db
+      .select({ issued: count() })
+      .from(schema.students)
+      .where(and(eq(schema.students.orgId, orgId), isNotNull(schema.students.medcityId)));
+    const org = await db.query.organizations.findFirst({ where: eq(schema.organizations.id, orgId) });
+    if (issued === 0 && org?.idCode !== code) idCode = code;
+  }
+
+  try {
+    await db
+      .update(schema.organizations)
+      .set({ tier, counsellorSeats: seats, relationshipManagerId: rm, ...(idCode ? { idCode } : {}) })
+      .where(eq(schema.organizations.id, orgId));
+  } catch {
+    // Another branch already holds those letters. Everything else is still saved.
+    await db.update(schema.organizations).set({ tier, counsellorSeats: seats, relationshipManagerId: rm }).where(eq(schema.organizations.id, orgId));
+  }
+  await audit(user.id, "organization.update", "organization", orgId, { tier, seats, rm, ...(idCode ? { idCode } : {}) });
   revalidatePath("/admin/partners");
 }
 
@@ -118,7 +141,9 @@ export async function changeRoleAction(_: FormState, formData: FormData): Promis
   if (!canManageUsers(actor)) return { error: "Only a super admin can change roles." };
   const userId = String(formData.get("userId"));
   const role = String(formData.get("role")) as (typeof schema.role.enumValues)[number];
-  if (!schema.role.enumValues.includes(role) || role === "STUDENT") return { error: "Pick a valid role." };
+  // A family sign-in is not a role somebody is promoted into: both are created
+  // from the student's own file, against one student, and nowhere else.
+  if (!schema.role.enumValues.includes(role) || isFamilyRole(role)) return { error: "Pick a valid role." };
 
   const target = await db.query.users.findFirst({ where: eq(schema.users.id, userId), with: { org: true } });
   if (!target) return { error: "User not found." };

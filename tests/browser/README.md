@@ -103,3 +103,25 @@ to trip the per-account limit (eight attempts in ten minutes) and every check in
 that suite fails at once with the login page. That is the limiter working, not a
 regression: restart the server, which clears the in-memory buckets, and run
 again.
+
+## family.mjs
+
+The family side, on the plain seed: that every seeded student carries a Medcity
+ID of the right shape and no serial repeats inside a branch and a year, that the
+ID shows on the file header, under the name in the list and answers the search
+box when it is typed the way a family says it out loud, and that registering a
+student moves that branch's counter on by one. Then the student's dashboard:
+step N of nine, the rail marking what is done and what is now, the dates card,
+their own ID on the screen, and the same page in Malayalam. Then a parent given
+access from the student's file, the one-time password, a second attempt on the
+same email refused, what the parent can read, and the six staff paths and the
+document API that are shut to them. Finally the fees switched back off, access
+removed, and the parent reading at that moment turned away on their next click.
+
+Two things to copy from it when writing a new suite:
+
+- A one-time password is a `keep` alert inside the form, not a toast, because it
+  has to stay on the screen long enough to be read out. Assert against the
+  card's own text, not `[role="status"]`.
+- The student profile page carries several forms with the same field names
+  (`name`, `email`, `relation`). Scope every family action to `#family`.

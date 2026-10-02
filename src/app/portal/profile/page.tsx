@@ -3,11 +3,15 @@ import { fmtDate } from "@/lib/format";
 import { translator } from "@/lib/i18n";
 import { maskPassport } from "@/lib/permissions";
 import { requireStudent } from "@/server/portal";
+import { liveGuardiansFor } from "@/server/family";
 import { Card, CardHeader, DataList } from "@/components/ui";
 
 export default async function PortalProfile() {
   const { session, student, locale } = await requireStudent();
   const t = translator(locale);
+  // Who else can read this file, said plainly on the student's own screen. A
+  // student whose branch has WhatsApp switched off finds out here.
+  const guardians = await liveGuardiansFor(student.id);
 
   return (
     <div className="space-y-5">
@@ -31,6 +35,30 @@ export default async function PortalProfile() {
             { label: t("passportExpiry"), value: student.passportExpiry ? fmtDate(student.passportExpiry) : t("notGiven") },
           ]}
         />
+      </Card>
+
+      <Card className="p-4">
+        <h2 className="font-semibold text-ink">{t("whoCanSee")}</h2>
+        {guardians.length === 0 ? (
+          <p className="mt-2 text-[13px] text-muted">{t("nobodyElse")}</p>
+        ) : (
+          <>
+            <ul className="mt-2.5 divide-y divide-line">
+              {guardians.map((g) => (
+                <li key={g.id} className="py-2 text-[13px]">
+                  <p className="font-medium text-ink">
+                    {g.name} <span className="font-normal text-muted">· {g.relation}</span>
+                  </p>
+                  <p className="text-[12px] text-muted">
+                    {t("addedOn")} {fmtDate(g.createdAt)} · {t("readsOnly")}
+                    {g.seesMoney ? ` · ${t("alsoSeesFees")}` : ""}
+                  </p>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2.5 text-[12.5px] leading-relaxed text-muted">{t("askToRemove")}</p>
+          </>
+        )}
       </Card>
 
       <Card className="p-4">

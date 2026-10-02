@@ -101,6 +101,10 @@ export default async function PartnersPage() {
                           <Input name="counsellorSeats" type="number" min={1} defaultValue={o.counsellorSeats} className="mt-1 w-20 py-1.5 text-[13px]" />
                         </label>
                         <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                          ID code
+                          <Input name="idCode" defaultValue={o.idCode ?? ""} maxLength={4} placeholder="KTM" className="mt-1 w-20 py-1.5 font-mono text-[13px] uppercase" />
+                        </label>
+                        <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
                           Relationship manager
                           <Select name="relationshipManagerId" defaultValue={o.relationshipManagerId ?? ""} className="mt-1 w-40 py-1.5 text-[13px]">
                             <option value="">None</option>
@@ -110,6 +114,9 @@ export default async function PartnersPage() {
                           </Select>
                         </label>
                         <Button variant="secondary" size="sm">Save</Button>
+                        <p className="w-full text-[11px] text-muted">
+                          The ID code is the branch's letters in every Medcity ID it mints. It can be changed until the first student carries it.
+                        </p>
                       </form>
                     ) : undefined
                   }

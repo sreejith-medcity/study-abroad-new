@@ -3,7 +3,9 @@ import { fmtDate, fmtMoney, intakeLabel } from "@/lib/format";
 import { translator } from "@/lib/i18n";
 import { inrApprox } from "@/lib/catalogue";
 import { fxRates, getSettings } from "@/server/settings";
-import { requireStudent, studentApplications, studentDocuments, studentShortlist, studentTimeline } from "@/server/portal";
+import { requireStudent, studentApplications, studentChecklist, studentDocuments, studentShortlist, studentTimeline } from "@/server/portal";
+import { datesAhead } from "@/lib/family";
+import { DatesAhead, JourneyRail } from "@/components/journey-rail";
 import { Card, CardHeader, Chip, EmptyState, StatusBadge } from "@/components/ui";
 import { IconApplications, IconCheck, IconClock, IconDoc } from "@/components/icons";
 
@@ -12,11 +14,22 @@ export default async function PortalHome() {
   const t = translator(locale);
 
   const apps = await studentApplications(student.id, locale);
-  const [timeline, docs, shortlist] = await Promise.all([
+  const [timeline, docs, shortlist, checklist] = await Promise.all([
     studentTimeline(apps.map((a) => a.id), locale),
     studentDocuments(student.id, [...new Set(apps.flatMap((a) => a.requiredDocs ?? []))], locale),
     studentShortlist(student.id),
+    studentChecklist(student.id, locale),
   ]);
+  // Once a student has a documentation list, that is the list: the older
+  // per-program required documents are only shown while there is no list yet.
+  const onChecklist = checklist.outstanding.length + checklist.done.length + checklist.withUs.length > 0;
+  const dates = datesAhead(
+    {
+      documents: checklist.outstanding.map((o) => ({ label: o.label, dueOn: o.dueOn })),
+      applications: apps,
+    },
+    new Date(),
+  );
   const rates = fxRates(await getSettings());
   const inr = (x: { tuitionPerYear: number | null; tuitionTotal: number | null; currency: string }) => {
     const v = inrApprox(x.tuitionPerYear ?? x.tuitionTotal, x.currency, rates);
@@ -29,14 +42,50 @@ export default async function PortalHome() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-600">{t("portal")}</p>
-        <h1 className="mt-1 font-display text-[26px] font-semibold text-ink">
-          {t("greeting")}, {student.firstName}
-        </h1>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-600">{t("portal")}</p>
+          <h1 className="mt-1 font-display text-[26px] font-semibold text-ink">
+            {t("greeting")}, {student.firstName}
+          </h1>
+        </div>
+        {student.medcityId && (
+          <div className="text-right">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">{t("medcityId")}</p>
+            <p className="font-mono text-[15px] font-semibold text-brand-700">{student.medcityId}</p>
+            <p className="text-[11px] text-muted">{t("quoteIdNote")}</p>
+          </div>
+        )}
       </div>
 
-      {docs.missing.length > 0 && (
+      <JourneyRail current={student.journeyStage} locale={locale} />
+
+      {checklist.outstanding.length > 0 && (
+        <Card className="border-warn-500/30 bg-warn-50/60">
+          <CardHeader
+            title={t("needFromYou")}
+            subtitle={`${checklist.outstanding.length}`}
+            action={
+              <Link href="/portal/documents" className="text-[13px] font-medium text-brand-600 hover:underline">
+                {t("uploadHere")}
+              </Link>
+            }
+          />
+          <ul className="divide-y divide-line/60">
+            {checklist.outstanding.map((o) => (
+              <li key={o.code} className="flex flex-wrap items-baseline gap-x-2 px-4 py-2 text-[13px]">
+                <span className="font-medium text-ink">{o.label}</span>
+                {o.sentBack && <Chip tone="bad">{t("sendAgain")}</Chip>}
+                {o.dueOn && <span className="ml-auto tabular text-[12px] text-muted">{t("dueBy")} {fmtDate(o.dueOn)}</span>}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
+      <DatesAhead dates={dates} locale={locale} />
+
+      {!onChecklist && docs.missing.length > 0 && (
         <Card className="border-warn-500/30 bg-warn-50/60">
           <CardHeader
             title={t("needFromYou")}
