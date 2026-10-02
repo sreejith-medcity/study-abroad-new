@@ -82,6 +82,36 @@ export function isDocumentationTeam(user: SessionUser) {
 }
 
 /** Can open a student file and work its documents, checks and messages. */
+/**
+ * Who may accept a document or send it back.
+ *
+ * The desk always may. A branch's own staff may only where Medcity has turned
+ * the first pass on for that branch, and only, as everywhere else, for their own
+ * students: the scope check is the same one every other action uses.
+ */
+export function mayDecideDocuments(user: SessionUser, branchChecksOwn: boolean) {
+  if ((PROCESSING_ROLES as readonly string[]).includes(user.role)) return true;
+  return branchChecksOwn && (PARTNER_ROLES as readonly string[]).includes(user.role);
+}
+
+/** What the branch is told when it is not their job. */
+export const DECIDE_REFUSAL = "The Overseas desk checks documents for this branch.";
+
+/**
+ * Nobody marks their own document good.
+ *
+ * A branch doing its own first pass still needs two pairs of eyes: the person
+ * who uploaded a file is not the person who says it is good enough to send. The
+ * desk is outside the branch, so it is not bound by this.
+ */
+export function mayAcceptUpload(user: SessionUser, branchChecksOwn: boolean, uploadedById: string | null) {
+  if ((PROCESSING_ROLES as readonly string[]).includes(user.role)) return true;
+  if (!mayDecideDocuments(user, branchChecksOwn)) return false;
+  return uploadedById !== user.id;
+}
+
+export const OWN_UPLOAD_REFUSAL = "Somebody else has to check a document you uploaded yourself.";
+
 export function canWorkFiles(user: SessionUser) {
   return isAdmin(user) || isDocumentationTeam(user) || isPartner(user);
 }

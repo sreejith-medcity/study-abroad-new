@@ -3,7 +3,7 @@ import { db, schema } from "@/db";
 import { eq } from "drizzle-orm";
 import { requireUser } from "@/lib/auth";
 import { fmtDate } from "@/lib/format";
-import { APP_ROLES, isAdmin, PROCESSING_ROLES } from "@/lib/permissions";
+import { APP_ROLES, isAdmin, PROCESSING_ROLES, mayDecideDocuments } from "@/lib/permissions";
 import { getStudentForUser } from "@/server/queries";
 import { activeRejectionReasons, overridesFor, rowStanding, stageGate, studentChecklist, studentContext, syncChecklist, typesNotOnList, wholeGate } from "@/server/documentation";
 import { OWED_BY_LABEL, SOURCE_LABEL, STAGES, STATE_LABEL, stageLabel, standingText, lockedMissing } from "@/lib/journey";
@@ -27,7 +27,13 @@ export default async function DocumentationPage({ params, searchParams }: { para
   const user = await requireUser([...APP_ROLES]);
   const student = await getStudentForUser(user, id);
   const canWrite = user.role !== "MANAGEMENT";
-  const canProcess = (PROCESSING_ROLES as readonly string[]).includes(user.role);
+  // The desk always checks documents. A branch's own staff do too, where Medcity
+  // has turned the first pass on for that branch.
+  const branch = await db.query.organizations.findFirst({
+    where: eq(schema.organizations.id, student.orgId),
+    columns: { checksOwnDocuments: true },
+  });
+  const canProcess = canWrite && mayDecideDocuments(user, branch?.checksOwnDocuments === true);
 
   // A file opened for the first time has nothing on its list yet: build it now,
   // so nobody has to press a button to see what the student owes.

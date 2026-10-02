@@ -17,6 +17,8 @@ import {
   isStaff,
   isSuperAdmin,
   maskPassport,
+  mayAcceptUpload,
+  mayDecideDocuments,
   orgScope,
   REPORTING_ROLES,
   ROLE_BLURB,
@@ -125,4 +127,40 @@ test("counsellors never see a full passport number", () => {
   assert.equal(maskPassport("Z1234567"), "Z•••••67");
   assert.equal(maskPassport(null), "");
   assert.equal(maskPassport("AB"), "•••");
+});
+
+test("who may accept a document or send it back", () => {
+  const at = (role: string, orgId = "branch-1") => ({ id: "u1", name: "Somebody", email: "s@x.test", role, orgId, orgName: "A branch" }) as never;
+
+  // The desk always may, whatever the branch is set to.
+  for (const role of ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION"]) {
+    assert.equal(mayDecideDocuments(at(role), false), true, `${role} checks documents wherever the student is`);
+    assert.equal(mayDecideDocuments(at(role), true), true);
+  }
+
+  // A branch's own staff only where Medcity has turned the first pass on.
+  for (const role of ["PARTNER", "COUNSELLOR"]) {
+    assert.equal(mayDecideDocuments(at(role), false), false, `${role} does not check documents by default`);
+    assert.equal(mayDecideDocuments(at(role), true), true, `${role} does once the branch is set to`);
+  }
+
+  // Nobody else, switch or no switch.
+  for (const role of ["MANAGEMENT", "STUDENT", "PARENT"]) {
+    assert.equal(mayDecideDocuments(at(role), true), false, `${role} never decides a document`);
+  }
+});
+
+test("nobody at a branch marks their own upload good", () => {
+  const at = (role: string, id = "u1") => ({ id, name: "Somebody", email: "s@x.test", role, orgId: "branch-1", orgName: "A branch" }) as never;
+
+  // The desk is outside the branch, so it is not bound by this.
+  assert.equal(mayAcceptUpload(at("DOCUMENTATION", "desk"), true, "desk"), true);
+
+  // A branch doing its own first pass needs a second pair of eyes.
+  assert.equal(mayAcceptUpload(at("COUNSELLOR", "me"), true, "me"), false, "the person who sent it in does not pass it");
+  assert.equal(mayAcceptUpload(at("COUNSELLOR", "me"), true, "colleague"), true, "a colleague at the same branch does");
+  assert.equal(mayAcceptUpload(at("COUNSELLOR", "me"), true, null), true, "a row with no file behind it is a decision, not a self-check");
+
+  // And none of it applies where the branch does not check its own documents.
+  assert.equal(mayAcceptUpload(at("COUNSELLOR", "me"), false, "colleague"), false);
 });

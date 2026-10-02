@@ -156,6 +156,54 @@ check(/Let through with a reason/.test(text) && /attestation/.test(text), "gate:
   }
 }
 
+// --- A branch that checks its own documents.
+{
+  const branchOf = sql(`select org_id from students where id = '${studentId}'`);
+  // Put one document in front of a checker, the way a student sending it in would.
+  sql(
+    `update checklist_items set state = 'UPLOADED' where id = (
+       select id from checklist_items where student_id = '${studentId}' and required and state = 'NOT_ASKED' order by stage limit 1)`,
+  );
+  const waiting = sql(
+    `select ci.id from checklist_items ci where ci.student_id = '${studentId}' and ci.state in ('UPLOADED','IN_REVIEW') limit 1`,
+  );
+  const counsellorEmail = sql(`select email from users where org_id = '${branchOf}' and role in ('PARTNER','COUNSELLOR') limit 1`);
+  if (waiting && counsellorEmail) {
+    // Off, which is how every branch starts: the branch is not offered the decision.
+    sql(`update organizations set checks_own_documents = false where id = '${branchOf}'`);
+    const br = await signIn(counsellorEmail, "10.70.1.9");
+    await go(br.page, `/students/${studentId}/documentation`);
+    check(
+      (await br.page.getByRole("button", { name: "Check", exact: true }).count()) === 0,
+      "first pass: off, the branch is not offered the decision",
+    );
+
+    // On: the same person may accept, and it sticks.
+    sql(`update organizations set checks_own_documents = true where id = '${branchOf}'`);
+    await go(br.page, `/students/${studentId}/documentation`);
+    const check1 = br.page.getByRole("button", { name: "Check", exact: true }).first();
+    const offered = (await check1.count()) > 0;
+    check(offered, "first pass: on, the branch is offered the decision");
+    if (offered) await check1.click();
+    await br.page.waitForTimeout(500);
+    const acceptable = await br.page.getByRole("button", { name: "Accept" }).count();
+    if (acceptable > 0) {
+      await br.page.getByRole("button", { name: "Accept" }).first().click();
+      check((await waitSql(`select state from checklist_items where id = '${waiting}'`, "ACCEPTED")) === "ACCEPTED",
+        "first pass: and the branch's decision is recorded");
+      // The desk sees what the branch decided, in its own view rather than the working queue.
+      text = await go(ap, "/documentation?view=branch");
+      check(/What the branches decided themselves/.test(text), "first pass: the desk has a view of what branches decided");
+      check(new RegExp(sql(`select name from organizations where id = '${branchOf}'`)).test(text),
+        "first pass: with the branch named on the row");
+    }
+    await br.ctx.close();
+    sql(`update organizations set checks_own_documents = false where id = '${branchOf}'`);
+  } else {
+    bad("first pass: no waiting document or branch user to test with");
+  }
+}
+
 // --- Asking, chasing, and the state each one leaves behind.
 const asked = sql(`select ci.id from checklist_items ci where ci.student_id = '${studentId}' and ci.state = 'NOT_ASKED' and ci.required order by ci.stage limit 1`);
 const askedLabel = sql(`select dt.label from checklist_items ci join document_types dt on dt.code = ci.type_code where ci.id = '${asked}'`);

@@ -116,6 +116,12 @@ export default async function BranchSettingsPage({ searchParams }: { searchParam
               { label: "Type", value: TYPE_LABEL[org.type] ?? org.type },
               { label: "Tier", value: org.tier },
               {
+                label: "Who checks your documents",
+                value: org.checksOwnDocuments
+                  ? "This branch does the first pass; the desk reviews it"
+                  : "The Overseas desk",
+              },
+              {
                 label: "Public enquiry form",
                 value: org.publicFormEnabled && org.publicSlug ? `On, at /apply/${org.publicSlug}` : "Off",
                 tone: org.publicFormEnabled ? undefined : "warn",

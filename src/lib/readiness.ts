@@ -50,6 +50,9 @@ export type ReadinessFacts = {
   requirementsWithoutMalayalam: number;
   /** Requirements marked as a gate nobody may waive. */
   requirementsNeverWaived: number;
+  /** Branches set to do their own first pass on documents. */
+  branchesCheckingOwn: number;
+  activeBranches: number;
   rejectionReasons: number;
   documentTypesWithoutGuidance: number;
 
@@ -203,6 +206,22 @@ export function readinessChecks(f: ReadinessFacts): Check[] {
         ? ""
         : "Every gate can be let through by an admin who gives a reason, which is logged. That is a reasonable answer and is what happens by default. If some paper should never be waived, a passport or a qualification certificate, mark those requirements and the override stops being offered to anybody.",
     href: "/admin/documents",
+  });
+  add({
+    key: "first-pass",
+    area: "Documentation",
+    severity: "DECIDE",
+    what: "Who does the first pass on documents is decided",
+    ready: f.branchesCheckingOwn > 0,
+    found:
+      f.branchesCheckingOwn === 0
+        ? `The desk checks every document, for all ${f.activeBranches} branches`
+        : `${plural(f.branchesCheckingOwn, "branch", "branches")} of ${f.activeBranches} do their own first pass`,
+    fix:
+      f.branchesCheckingOwn > 0
+        ? ""
+        : "The desk checking everything is a valid answer and is what happens today. A branch with its own documentation person can be set to do the first pass instead, on the Partners screen, and the desk then reviews what it decided rather than checking all of it again.",
+    href: "/admin/partners",
   });
   add({
     key: "rejection-reasons",

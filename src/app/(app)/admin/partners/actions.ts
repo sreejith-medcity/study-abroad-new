@@ -93,6 +93,9 @@ export async function updateOrgAction(formData: FormData) {
   const tier = String(formData.get("tier")) as (typeof schema.tier.enumValues)[number];
   const seats = Number(formData.get("counsellorSeats"));
   const rm = String(formData.get("relationshipManagerId") || "") || null;
+  // Whether this branch does its own first pass on documents. Medcity's call,
+  // not the branch's, so it is set here rather than on the branch's own screen.
+  const checksOwn = String(formData.get("checksOwnDocuments") || "") === "1";
   if (!schema.tier.enumValues.includes(tier) || !Number.isInteger(seats) || seats < 1 || seats > 500) return;
 
   // The branch's letters can be set until the first student carries them. After
@@ -112,11 +115,14 @@ export async function updateOrgAction(formData: FormData) {
   try {
     await db
       .update(schema.organizations)
-      .set({ tier, counsellorSeats: seats, relationshipManagerId: rm, ...(idCode ? { idCode } : {}) })
+      .set({ tier, counsellorSeats: seats, relationshipManagerId: rm, checksOwnDocuments: checksOwn, ...(idCode ? { idCode } : {}) })
       .where(eq(schema.organizations.id, orgId));
   } catch {
     // Another branch already holds those letters. Everything else is still saved.
-    await db.update(schema.organizations).set({ tier, counsellorSeats: seats, relationshipManagerId: rm }).where(eq(schema.organizations.id, orgId));
+    await db
+      .update(schema.organizations)
+      .set({ tier, counsellorSeats: seats, relationshipManagerId: rm, checksOwnDocuments: checksOwn })
+      .where(eq(schema.organizations.id, orgId));
   }
   await audit(user.id, "organization.update", "organization", orgId, { tier, seats, rm, ...(idCode ? { idCode } : {}) });
   revalidatePath("/admin/partners");

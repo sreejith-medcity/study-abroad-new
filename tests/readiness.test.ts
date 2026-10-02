@@ -24,6 +24,8 @@ const ready = (over: Partial<ReadinessFacts> = {}): ReadinessFacts => ({
   requirements: 51,
   requirementsWithoutMalayalam: 0,
   requirementsNeverWaived: 2,
+  branchesCheckingOwn: 1,
+  activeBranches: 18,
   rejectionReasons: 6,
   documentTypesWithoutGuidance: 0,
 

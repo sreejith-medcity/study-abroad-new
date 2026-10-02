@@ -4,9 +4,9 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fmtDate } from "@/lib/format";
 import { isAdmin, PROCESSING_ROLES } from "@/lib/permissions";
-import { activeRejectionReasons, documentationQueue, queueCounts } from "@/server/documentation";
+import { activeRejectionReasons, branchChecked, documentationQueue, queueCounts } from "@/server/documentation";
 import { claimHeld, CLAIM_MINUTES, STAGES, stageLabel } from "@/lib/journey";
-import { Card, Chip, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
+import { Card, CardHeader, Chip, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
 import { ItemActions } from "../students/[id]/documentation/client";
 import { RunReminders } from "./chase";
 import type { JourneyStage } from "@/db/schema";
@@ -25,21 +25,27 @@ function waited(since: Date | null) {
   return `${days} day${days === 1 ? "" : "s"}`;
 }
 
-export default async function DocumentationQueuePage({ searchParams }: { searchParams: Promise<{ branch?: string; stage?: string; vendor?: string; sort?: string; mine?: string }> }) {
+export default async function DocumentationQueuePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ branch?: string; stage?: string; vendor?: string; sort?: string; mine?: string; view?: string }>;
+}) {
   const user = await requireUser([...PROCESSING_ROLES]);
   const sp = await searchParams;
   const sort = sp.sort === "VISA_FIRST" ? "VISA_FIRST" : "OLDEST";
-  const [rows, counts, reasons, branches, vendors] = await Promise.all([
+  const branchView = sp.view === "branch";
+  const [rows, counts, reasons, branches, vendors, checkedByBranches] = await Promise.all([
     documentationQueue({ branch: sp.branch, stage: sp.stage as JourneyStage | undefined, vendor: sp.vendor, sort, mine: sp.mine }, user.id),
     queueCounts(user.id),
     activeRejectionReasons(),
     db.select({ id: schema.organizations.id, name: schema.organizations.name }).from(schema.organizations).orderBy(asc(schema.organizations.name)),
     db.select({ id: schema.vendors.id, name: schema.vendors.name, code: schema.vendors.code, colour: schema.vendors.colour }).from(schema.vendors).where(eq(schema.vendors.active, true)).orderBy(asc(schema.vendors.name)),
+    branchChecked(),
   ]);
 
   const href = (next: Record<string, string | undefined>) => {
     const params = new URLSearchParams();
-    const merged = { branch: sp.branch, stage: sp.stage, vendor: sp.vendor, sort: sp.sort, mine: sp.mine, ...next };
+    const merged = { branch: sp.branch, stage: sp.stage, vendor: sp.vendor, sort: sp.sort, mine: sp.mine, view: sp.view, ...next };
     for (const [k, v] of Object.entries(merged)) if (v) params.set(k, v);
     const q = params.toString();
     return `/documentation${q ? `?${q}` : ""}`;
@@ -55,8 +61,13 @@ export default async function DocumentationQueuePage({ searchParams }: { searchP
       />
       <Card className="mb-3 p-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Link href={href({ mine: undefined })} className={pill(!sp.mine)}>Everything</Link>
-          <Link href={href({ mine: "1" })} className={pill(sp.mine === "1")}>Mine</Link>
+          <Link href={href({ mine: undefined, view: undefined })} className={pill(!sp.mine && !branchView)}>Everything</Link>
+          <Link href={href({ mine: "1", view: undefined })} className={pill(sp.mine === "1" && !branchView)}>Mine</Link>
+          {checkedByBranches.length > 0 && (
+            <Link href={href({ view: "branch", mine: undefined })} className={pill(branchView)}>
+              Checked by a branch ({checkedByBranches.length})
+            </Link>
+          )}
           <span className="mx-1 w-px self-stretch bg-line" aria-hidden="true" />
           <Link href={href({ sort: undefined })} className={pill(sort === "OLDEST")}>Oldest first</Link>
           <Link href={href({ sort: "VISA_FIRST" })} className={pill(sort === "VISA_FIRST")}>Visa stage first</Link>
@@ -83,7 +94,46 @@ export default async function DocumentationQueuePage({ searchParams }: { searchP
         )}
       </Card>
 
-      {rows.length === 0 ? (
+      {branchView ? (
+        <Card>
+          <CardHeader
+            title="What the branches decided themselves"
+            subtitle="Branches set to do their own first pass. These are not waiting on the desk: they are here so somebody can look over what was accepted rather than check all of it again. Any of them can still be sent back from the student's file."
+          />
+          <Table>
+            <thead>
+              <tr>
+                <Th>Decided</Th>
+                <Th>Student and branch</Th>
+                <Th>Document</Th>
+                <Th>Stage</Th>
+                <Th>Outcome</Th>
+                <Th>By</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {checkedByBranches.map((r) => (
+                <tr key={r.id}>
+                  <Td className="whitespace-nowrap text-xs">{fmtDate(r.decidedAt)}</Td>
+                  <Td>
+                    <Link href={`/students/${r.studentId}/documentation`} className="font-medium text-brand-600 hover:underline">
+                      {r.studentName}
+                    </Link>
+                    <span className="block text-xs text-muted">{r.branch}</span>
+                  </Td>
+                  <Td>{r.label}</Td>
+                  <Td className="whitespace-nowrap text-xs">{stageLabel(r.stage)}</Td>
+                  <Td>
+                    <Chip tone={r.state === "ACCEPTED" ? "ok" : "warn"}>{r.state === "ACCEPTED" ? "Accepted" : "Sent back"}</Chip>
+                    {r.reason && <span className="block text-xs text-muted">{r.reason}</span>}
+                  </Td>
+                  <Td className="text-xs text-muted">{r.decidedByName ?? "Somebody at the branch"}</Td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </Card>
+      ) : rows.length === 0 ? (
         <EmptyState title="Nothing to check">Every document that has been sent in has been decided. New uploads land here.</EmptyState>
       ) : (
         <Card>

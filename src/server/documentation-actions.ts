@@ -6,7 +6,7 @@ import { z } from "zod";
 import { db, schema } from "@/db";
 import { requireUser, type SessionUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { ADMIN_ROLES, isAdmin, PROCESSING_ROLES } from "@/lib/permissions";
+import { ADMIN_ROLES, DECIDE_REFUSAL, isAdmin, mayAcceptUpload, mayDecideDocuments, OWN_UPLOAD_REFUSAL, PROCESSING_ROLES } from "@/lib/permissions";
 import { claimHeld, CLAIM_MINUTES, stageLabel, validUntil, waiveRefusal } from "@/lib/journey";
 import { getStudentForUser } from "@/server/queries";
 import { sendWhatsAppRecorded } from "@/server/whatsapp";
@@ -27,6 +27,25 @@ const asDate = (v: unknown) => {
 const dateOnly = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
 
 /** Everyone who may open a file may see the list. Only these may move an item. */
+/**
+ * Whether this person may decide this student's documents.
+ *
+ * The desk always may. A branch's own staff may where Medcity has turned the
+ * first pass on for that branch, which is read here rather than assumed, so the
+ * switch is the only thing that has to change when the answer changes.
+ */
+async function branchChecksOwn(studentId: string) {
+  const student = await db.query.students.findFirst({ where: eq(schema.students.id, studentId), columns: { orgId: true } });
+  if (!student) return false;
+  const org = await db.query.organizations.findFirst({ where: eq(schema.organizations.id, student.orgId), columns: { checksOwnDocuments: true } });
+  return org?.checksOwnDocuments === true;
+}
+
+async function mayDecide(user: SessionUser, studentId: string) {
+  if ((PROCESSING_ROLES as readonly string[]).includes(user.role)) return true;
+  return mayDecideDocuments(user, await branchChecksOwn(studentId));
+}
+
 async function itemForUser(user: SessionUser, itemId: string) {
   const item = await db.query.checklistItems.findFirst({ where: eq(ci.id, itemId), with: { type: { columns: { label: true } } } });
   if (!item) return null;
@@ -94,9 +113,9 @@ const dueOn = (given: Date | null, held: string | null) => (given ? dateOnly(giv
 
 /** Opening a document claims it for twenty minutes, so two people never check it twice. */
 export async function claimItemAction(fd: FormData): Promise<void> {
-  const user = await requireUser([...PROCESSING_ROLES]);
+  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
   const item = await itemForUser(user, String(fd.get("itemId") ?? ""));
-  if (!item) return;
+  if (!item || !(await mayDecide(user, item.studentId))) return;
   if (item.claimedById && item.claimedById !== user.id && claimHeld(item.claimedAt)) return;
   await db.update(ci).set({ state: item.state === "UPLOADED" ? "IN_REVIEW" : item.state, claimedById: user.id, claimedAt: new Date(), updatedAt: new Date() }).where(eq(ci.id, item.id));
   await audit(user.id, "checklist.claim", "student", item.studentId, { typeCode: item.typeCode, minutes: CLAIM_MINUTES });
@@ -105,7 +124,7 @@ export async function claimItemAction(fd: FormData): Promise<void> {
 
 /** Lets go of a claim without deciding anything. */
 export async function releaseItemAction(fd: FormData): Promise<void> {
-  const user = await requireUser([...PROCESSING_ROLES]);
+  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
   const item = await itemForUser(user, String(fd.get("itemId") ?? ""));
   if (!item || item.claimedById !== user.id) return;
   await db.update(ci).set({ state: item.state === "IN_REVIEW" ? "UPLOADED" : item.state, claimedById: null, claimedAt: null, updatedAt: new Date() }).where(eq(ci.id, item.id));
@@ -125,11 +144,21 @@ const acceptSchema = z.object({
  * neither is on record the portal records no expiry rather than inventing one.
  */
 export async function acceptItemAction(_: FormState, fd: FormData): Promise<FormState> {
-  const user = await requireUser([...PROCESSING_ROLES]);
+  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
   const parsed = acceptSchema.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { error: "Something was missing from that decision." };
   const item = await itemForUser(user, parsed.data.itemId);
   if (!item) return { error: "That item is no longer on the list." };
+  if (!(await mayDecide(user, item.studentId))) return { error: DECIDE_REFUSAL };
+  // Two pairs of eyes at a branch doing its own first pass: whoever sent the file
+  // in is not the person who says it is good enough to go.
+  if (!(PROCESSING_ROLES as readonly string[]).includes(user.role) && item.version > 0) {
+    const file = await db.query.checklistFiles.findFirst({
+      where: and(eq(cf.itemId, item.id), eq(cf.version, item.version)),
+      columns: { uploadedById: true },
+    });
+    if (!mayAcceptUpload(user, await branchChecksOwn(item.studentId), file?.uploadedById ?? null)) return { error: OWN_UPLOAD_REFUSAL };
+  }
   const issuedOn = asDate(parsed.data.issuedOn);
   const months = parsed.data.validityMonths?.trim() ? Number(parsed.data.validityMonths) : item.validityMonths;
   if (months != null && (!Number.isInteger(months) || months < 0 || months > 600)) return { fieldErrors: { validityMonths: ["A whole number of months"] }, error: "Check the highlighted fields." };
@@ -179,11 +208,12 @@ const rejectSchema = z.object({
  * on is how a file stalls for a fortnight, and the reason is what they read.
  */
 export async function rejectItemAction(_: FormState, fd: FormData): Promise<FormState> {
-  const user = await requireUser([...PROCESSING_ROLES]);
+  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
   const parsed = rejectSchema.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Pick a reason the student can act on." };
   const item = await itemForUser(user, parsed.data.itemId);
   if (!item) return { error: "That item is no longer on the list." };
+  if (!(await mayDecide(user, item.studentId))) return { error: DECIDE_REFUSAL };
   const reason = await db.query.rejectionReasons.findFirst({ where: eq(schema.rejectionReasons.code, parsed.data.reasonCode) });
   if (!reason) return { fieldErrors: { reasonCode: ["Pick a reason from the list"] }, error: "Pick a reason the student can act on." };
   const now = new Date();

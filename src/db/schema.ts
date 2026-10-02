@@ -260,6 +260,18 @@ export const organizations = pgTable("organizations", {
   relationshipManagerId: text("relationship_manager_id"),
   /** The owner decides whether counsellors see commission figures and the wallet. */
   counsellorsSeeCommission: boolean("counsellors_see_commission").notNull().default(true),
+  /**
+   * Whether this branch checks its own students' documents before the desk sees
+   * them.
+   *
+   * Off, which is how every branch starts, the Overseas desk accepts and sends
+   * back every document in the portal. On, the branch's own staff do the first
+   * pass on their students and the desk reviews what the branch decided rather
+   * than doing all of it. A big branch with its own documentation person is a
+   * different thing from a two-desk branch, and which branches are which is
+   * Medcity's to say, so it is set per branch rather than written into the code.
+   */
+  checksOwnDocuments: boolean("checks_own_documents").notNull().default(false),
   /** How the branch's students see the portal and the branch form. */
   portalName: text("portal_name"),
   portalColor: text("portal_color"),

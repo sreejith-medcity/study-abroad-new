@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { gate, standing, stageRank, validUntil, type Gate, type GateItem } from "@/lib/journey";
 import { courseStartFor, intakeStart, requirementsFor, studentContext, syncChecklist, type Requirement, type StudentContext } from "@/db/documentation-sync";
@@ -358,3 +358,50 @@ export const requestsFor = (studentId: string) =>
     orderBy: desc(schema.documentRequests.createdAt),
     limit: 20,
   });
+
+export type BranchChecked = {
+  id: string;
+  studentId: string;
+  studentName: string;
+  branch: string;
+  label: string;
+  stage: JourneyStage;
+  state: ChecklistState;
+  decidedAt: Date | null;
+  decidedByName: string | null;
+  reason: string | null;
+};
+
+/**
+ * What the branches decided themselves, for the desk to look over.
+ *
+ * A branch doing its own first pass takes work off the desk only if the desk
+ * stops doing it again, so these do not sit in the working queue. They are here
+ * instead, newest first, so somebody can spot-check what a branch accepted
+ * rather than re-check all of it. The desk can still send any of them back from
+ * the student's file.
+ */
+export async function branchChecked(limit = 60): Promise<BranchChecked[]> {
+  const decider = schema.users;
+  return db
+    .select({
+      id: ci.id,
+      studentId: ci.studentId,
+      studentName: sql<string>`${st.firstName} || ' ' || ${st.lastName}`,
+      branch: og.name,
+      label: dt.label,
+      stage: ci.stage,
+      state: ci.state,
+      decidedAt: ci.decidedAt,
+      decidedByName: decider.name,
+      reason: ci.reason,
+    })
+    .from(ci)
+    .innerJoin(st, eq(st.id, ci.studentId))
+    .innerJoin(og, eq(og.id, st.orgId))
+    .innerJoin(dt, eq(dt.code, ci.typeCode))
+    .innerJoin(decider, eq(decider.id, ci.decidedById))
+    .where(and(inArray(decider.role, ["PARTNER", "COUNSELLOR"]), isNotNull(ci.decidedAt)))
+    .orderBy(desc(ci.decidedAt))
+    .limit(limit);
+}

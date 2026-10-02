@@ -113,9 +113,21 @@ export default async function PartnersPage() {
                             ))}
                           </Select>
                         </label>
+                        <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">
+                          <input
+                            type="checkbox"
+                            name="checksOwnDocuments"
+                            value="1"
+                            defaultChecked={o.checksOwnDocuments}
+                            className="size-4 rounded border-line-strong accent-brand-600"
+                          />
+                          Checks its own documents
+                        </label>
                         <Button variant="secondary" size="sm">Save</Button>
                         <p className="w-full text-[11px] text-muted">
-                          The ID code is the branch's letters in every Medcity ID it mints. It can be changed until the first student carries it.
+                          The ID code is the branch&rsquo;s letters in every Medcity ID it mints. It can be changed until the first student carries it. A branch
+                          that checks its own documents does the first pass on its students; the desk reviews what it decided under &ldquo;Checked by a
+                          branch&rdquo; rather than checking all of it again.
                         </p>
                       </form>
                     ) : undefined
