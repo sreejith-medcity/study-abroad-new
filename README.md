@@ -288,6 +288,24 @@ Whichever is chosen, `CRON_SECRET` must be at least 24 characters. Shorter than 
 or unset, and all three endpoints answer 401 to everybody, which is deliberate: an
 unset secret means the endpoint is off, not open to the world.
 
+Every successful run writes a line to the audit log, so **Go live**, under *What is
+still unset*, says when each job last ran and whether a scheduler is actually calling
+it. A job that has not run within three times its own interval is called late there,
+which is the only way to notice a scheduler that quietly stopped.
+
+## What is still unset
+
+Super admin, **Go live**, first tab. It counts what is actually in the portal every
+time it is opened and lists what has not been set: rate cards and the billing company,
+the document rules, Medcity IDs, the sub-agent agreement and referral rate, the three
+schedulers, the CRM link, and what has to be true before real students arrive.
+
+Three severities, and the difference is the point. *Needed* would mislead somebody or
+lose work if real students arrived today. *Yours to decide* is a real question with no
+wrong answer that only Medcity can settle. *Can wait* breaks nothing by being left.
+Everything is listed, settled as well as outstanding, because a list of only the
+problems leaves nobody sure the rest was looked at.
+
 ## Before going live
 
 - Run `npm run db:demo-off` so the seeded `.test` accounts (which all share one password) can no longer sign in.

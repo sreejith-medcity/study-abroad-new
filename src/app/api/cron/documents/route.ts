@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { runDocumentReminders } from "@/server/documentation-reminders";
 import { audit } from "@/lib/audit";
+import { noteCronRun } from "@/server/cron-runs";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -22,7 +23,9 @@ export async function POST(request: Request) {
     return Response.json({ ok: false }, { status: 401 });
   }
   try {
-    return Response.json({ ok: true, ...(await runDocumentReminders()) });
+    const result = await runDocumentReminders();
+    await noteCronRun("documents", result);
+    return Response.json({ ok: true, ...result });
   } catch (e) {
     await audit(null, "checklist.reminders_failed", "student", "*", { error: (e as Error).message });
     return Response.json({ ok: false, error: (e as Error).message }, { status: 500 });

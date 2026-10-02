@@ -1,14 +1,22 @@
+import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { canManageSettings, ROLE_LABEL } from "@/lib/permissions";
 import { demoInventory } from "@/server/go-live";
-import { Alert, Card, CardHeader, Chip, DataList, PageHeader, Table, Td, Th } from "@/components/ui";
+import { Alert, Card, CardHeader, Chip, DataList, PageHeader, Table, Td, Th, cn } from "@/components/ui";
 import { IconShield } from "@/components/icons";
 import { fmtDateTime } from "@/lib/format";
 import { ClearForm } from "./form";
+import { ReadinessPanel } from "./readiness-panel";
 
 export const metadata = { title: "Go live" };
+export const dynamic = "force-dynamic";
+
+const TABS = [
+  { key: "readiness", label: "What is still unset" },
+  { key: "sample-data", label: "Sample data" },
+] as const;
 
 const LABEL: Record<string, string> = {
   organisations: "Partner organisations",
@@ -31,10 +39,46 @@ const KEEPING: Record<string, string> = {
   commission_rules: "Commission rules",
 };
 
-export default async function GoLivePage() {
+export default async function GoLivePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const user = await requireUser();
   if (!canManageSettings(user)) return <Alert tone="bad">Only a super admin can open this page.</Alert>;
+  const sp = await searchParams;
+  const tab = TABS.some((t) => t.key === sp.tab) ? (sp.tab as string) : "readiness";
 
+  return (
+    <>
+      <PageHeader
+        eyebrow={
+          <span className="inline-flex items-center gap-1.5">
+            <IconShield className="size-4" /> Super admin
+          </span>
+        }
+        title="Go live"
+        subtitle="What is still unset before the portal carries real students, and the sample data it was built against."
+      />
+
+      <div className="mb-4 flex gap-6 overflow-x-auto border-b border-line">
+        {TABS.map((t) => (
+          <Link
+            key={t.key}
+            href={`/admin/go-live?tab=${t.key}`}
+            className={cn(
+              "-mb-px whitespace-nowrap border-b-2 py-2 font-medium",
+              t.key === tab ? "border-brand-600 text-brand-600" : "border-transparent text-muted hover:text-ink",
+            )}
+          >
+            {t.label}
+          </Link>
+        ))}
+      </div>
+
+      {tab === "readiness" ? <ReadinessPanel /> : <SampleData />}
+    </>
+  );
+}
+
+/** Clearing out what the portal was built against. */
+async function SampleData() {
   const [inventory, lastRun] = await Promise.all([
     demoInventory(),
     // A durable record of the run, so the page can still account for it later.
@@ -54,23 +98,13 @@ export default async function GoLivePage() {
 
   return (
     <>
-      <PageHeader
-        eyebrow={
-          <span className="inline-flex items-center gap-1.5">
-            <IconShield className="size-4" /> Super admin
-          </span>
-        }
-        title="Go live"
-        subtitle="Remove the sample data the portal was built against, so it holds only real records."
-      />
-
       {lastRun && (
         <Alert tone="ok" title="Already run">
           {lastRun.actor ?? "Somebody"} cleared the sample data on {fmtDateTime(lastRun.createdAt)}.
         </Alert>
       )}
 
-      <div className="mt-4 grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-4">
           <Card>
             <CardHeader

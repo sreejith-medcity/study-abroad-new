@@ -43,7 +43,26 @@ const settle = (page) => page.locator('[aria-busy="true"]').first().waitFor({ st
 
 {
   const { ctx, page, errors } = await signIn("sreejith@miak.in", "10.50.1.11");
+
+  // What is still unset is the tab the page opens on.
   await page.goto(`${BASE}/admin/go-live`);
+  await settle(page);
+  let r = await page.locator("main").innerText();
+  /what is still unset/i.test(r) ? ok("the readiness tab is the one it opens on") : bad("the readiness tab is not the default");
+  /needed/i.test(r) && /can wait/i.test(r) ? ok("the three severities are on the screen") : bad("no severities shown");
+  // A seeded portal has demo accounts and no real billing company, so the screen
+  // must be saying so rather than claiming everything is done.
+  /sample accounts can no longer sign in/i.test(r) ? ok("the sample accounts are raised") : bad("the sample accounts are not raised");
+  /billing company/i.test(r) ? ok("the sample billing company is raised") : bad("the billing company is not raised");
+  /has never run|last ran/i.test(r) ? ok("the schedulers report whether they have run") : bad("the schedulers are not reported");
+  /\d+ of \d+/.test(r) ? ok("it counts what is done against the whole list") : bad("no count of what is done");
+  await page.screenshot({ path: `${OUT}/00-readiness.png`, fullPage: true });
+
+  // Each outstanding row offers a way to the screen that settles it.
+  const open = page.getByRole("link", { name: /^Open$/ });
+  (await open.count()) > 0 ? ok("outstanding rows link to where they are fixed") : bad("nothing links anywhere");
+
+  await page.goto(`${BASE}/admin/go-live?tab=sample-data`);
   await settle(page);
   let t = await page.locator("main").innerText();
   /what would be removed/i.test(t) ? ok("the review screen lists what would go") : bad("no inventory on the screen");
@@ -96,11 +115,18 @@ const settle = (page) => page.locator('[aria-busy="true"]').first().waitFor({ st
   (await page.locator("main tbody tr, main li").count()) > 0 ? ok("the learning library survived") : bad("the library was removed");
 
   // Running it again must be a clean no-op.
-  await page.goto(`${BASE}/admin/go-live`);
+  await page.goto(`${BASE}/admin/go-live?tab=sample-data`);
   await settle(page);
   const after = await page.locator("main").innerText();
   after.toLowerCase().includes("nothing found") ? ok("a second run has nothing left to do") : bad("it still thinks there is sample data");
   /already run/i.test(after) ? ok("the page still accounts for the run afterwards") : bad("no record of the run on the page");
+
+  // And the readiness tab has to agree that the sample accounts are gone.
+  await page.goto(`${BASE}/admin/go-live`);
+  await settle(page);
+  /none left/i.test(await page.locator("main").innerText())
+    ? ok("readiness notices the sample accounts have gone")
+    : bad("readiness still counts sample accounts after the cleanup");
 
   errors.length ? bad(`page errors: ${errors.join(" | ")}`) : ok("no page errors");
   await ctx.close();

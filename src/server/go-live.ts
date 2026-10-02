@@ -38,6 +38,80 @@ async function scope(tx: Tx) {
   for (const statement of SCOPE) await tx.execute(statement);
 }
 
+type Pointer = { tbl: string; col: string; nullable: boolean };
+
+/**
+ * Every column pointing at a table, read from the database rather than listed
+ * here.
+ *
+ * The steps above say what the cleanup means; this says what the database
+ * requires. A table added next month with a column pointing at an account or an
+ * organisation is covered the day it is added, instead of breaking this screen
+ * and being found by whoever runs it. Columns the database already deals with
+ * itself, by cascading or emptying, are left to it.
+ */
+async function pointersTo(tx: Tx, target: string): Promise<Pointer[]> {
+  return tx.execute<Pointer>(sql`
+    select c.conrelid::regclass::text as tbl, quote_ident(a.attname) as col, not a.attnotnull as nullable
+    from pg_constraint c
+    join unnest(c.conkey) k on true
+    join pg_attribute a on a.attrelid = c.conrelid and a.attnum = k
+    where c.contype = 'f'
+      and c.confrelid = ${sql.raw(`'${target}'`)}::regclass
+      and c.confdeltype in ('a', 'r')
+    order by 1, 2
+  `);
+}
+
+/**
+ * Empties or removes whatever still points at the rows in `scopeTable`.
+ *
+ * A column that may be empty keeps its row and loses only the pointer, which is
+ * the rule the screen states. A column that may not be empty takes its row with
+ * it, because that row cannot exist without what it points at.
+ *
+ * Removals are attempted in passes: one table's rows can be held by another's,
+ * and rather than working out the order here, a refusal is kept and tried again
+ * on the next pass. Each attempt gets its own savepoint, so a refusal costs the
+ * attempt and not the transaction.
+ */
+async function clearPointers(tx: Tx, target: string, scopeTable: string): Promise<Record<string, number>> {
+  const touched: Record<string, number> = {};
+  const count = (rows: { n: number }[]) => Number(rows[0]?.n ?? 0);
+  const scope = sql.raw(`in (select id from ${scopeTable})`);
+
+  let waiting = await pointersTo(tx, target);
+  for (let pass = 0; pass < 5 && waiting.length > 0; pass++) {
+    const refused: Pointer[] = [];
+    for (const p of waiting) {
+      const where = sql`${sql.raw(p.col)} ${scope}`;
+      try {
+        const n = await tx.transaction(async (inner) =>
+          p.nullable
+            ? count(
+                await inner.execute<{ n: number }>(
+                  sql`with done as (update ${sql.raw(p.tbl)} set ${sql.raw(p.col)} = null where ${where} returning 1) select count(*)::int as n from done`,
+                ),
+              )
+            : count(
+                await inner.execute<{ n: number }>(
+                  sql`with done as (delete from ${sql.raw(p.tbl)} where ${where} returning 1) select count(*)::int as n from done`,
+                ),
+              ),
+        );
+        if (n > 0) touched[`${p.tbl}.${p.col}`] = (touched[`${p.tbl}.${p.col}`] ?? 0) + n;
+      } catch {
+        refused.push(p);
+      }
+    }
+    // No progress means the next pass would refuse the same rows for the same
+    // reason, so let the delete that follows raise it properly.
+    if (refused.length === waiting.length) break;
+    waiting = refused;
+  }
+  return touched;
+}
+
 export type DemoInventory = {
   organisations: { id: string; name: string; city: string | null }[];
   accounts: { id: string; name: string; email: string; role: string }[];
@@ -122,11 +196,17 @@ export async function clearDemoData(actorId: string): Promise<Record<string, num
 
       sql`delete from notifications`,
       sql`delete from audit_logs where actor_id in (select id from _users)`,
-      sql`delete from users where id in (select id from _users)`,
-      sql`delete from billing_companies where org_id in (select id from _orgs)`,
-      sql`delete from organizations where id in (select id from _orgs)`,
     ];
     for (const step of steps) await tx.execute(step);
+
+    // Then whatever else in the schema still points at them.
+    const swept = {
+      ...(await clearPointers(tx, "users", "_users")),
+      ...(await clearPointers(tx, "organizations", "_orgs")),
+    };
+    await tx.execute(sql`delete from users where id in (select id from _users)`);
+    await tx.execute(sql`delete from billing_companies where org_id in (select id from _orgs)`);
+    await tx.execute(sql`delete from organizations where id in (select id from _orgs)`);
 
     const [after] = await tx.execute<Record<string, number>>(sql`
       select
@@ -135,6 +215,6 @@ export async function clearDemoData(actorId: string): Promise<Record<string, num
         (select count(*)::int from students) as students,
         (select count(*)::int from applications) as applications
     `);
-    return { ...after, removedAccounts: Number(before[0]?.n ?? 0) };
+    return { ...after, removedAccounts: Number(before[0]?.n ?? 0), swept: Object.values(swept).reduce((a, b) => a + b, 0) };
   });
 }

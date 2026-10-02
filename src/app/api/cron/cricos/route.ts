@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { audit } from "@/lib/audit";
+import { noteCronRun } from "@/server/cron-runs";
 import { fetchCricosFiles, syncCricos } from "@/server/cricos-sync";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +24,7 @@ export async function POST(request: Request) {
   try {
     const result = await syncCricos(await fetchCricosFiles(), { publish: false });
     await audit(null, "programs.cricos_sync", "program", "*", { ...result, publish: false, via: "scheduled" });
+    await noteCronRun("cricos", { created: result.created, updated: result.updated, archived: result.archived });
     return Response.json({ ok: true, ...result });
   } catch (e) {
     await audit(null, "programs.cricos_sync_failed", "program", "*", { error: (e as Error).message });
