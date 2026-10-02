@@ -10,9 +10,10 @@ import { hashPassword, requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { phoneKey } from "@/lib/phone";
 import { ADMIN_ROLES, isAdmin, isStaff } from "@/lib/permissions";
-import { adminIds, notifyUsers } from "@/server/notify";
+import { adminIds, notifyUsers, partnerRecipients } from "@/server/notify";
 import { getStudentForUser } from "@/server/queries";
 import { tryMintStudentId } from "@/server/medcity-id";
+import { openEarningForStudent } from "@/server/agent-actions";
 import { BACKGROUND_QUESTIONS, CONTACT_RELATIONS } from "@/lib/background";
 
 import type { FormState } from "@/lib/form-state";
@@ -103,6 +104,20 @@ export async function createStudentAction(_: FormState, formData: FormData): Pro
         stageAfter: "CONVERTED",
       });
       await audit(user.id, "enquiry.convert", "enquiry", enquiry.id, { studentId: student.id });
+
+      // A lead a sub-agent referred keeps its referrer on the student file, and
+      // the earning is opened the same day so the sub-agent can see it coming.
+      // The branch owns the student; the sub-agent is who gets paid for them.
+      if (enquiry.submittedByOrgId) {
+        await db.update(schema.students).set({ referredByOrgId: enquiry.submittedByOrgId }).where(eq(schema.students.id, student.id));
+        await openEarningForStudent(student.id, enquiry.submittedByOrgId);
+        await notifyUsers(
+          await partnerRecipients(enquiry.submittedByOrgId),
+          "Your referral has been registered",
+          `${d.firstName} ${d.lastName} is now a Medcity student.`,
+          "/referrals",
+        );
+      }
     }
   }
   redirect(`/students/${student.id}/profile`);

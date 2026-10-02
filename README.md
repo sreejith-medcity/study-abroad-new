@@ -79,6 +79,10 @@ This repository currently contains **Phase 0 basics and Phase 1 (core pipeline)*
 | Medcity ID | All | One number per student, minted at registration and never changed: `MC-KOT-26-0041` is the forty-first student Kottayam registered in 2026. The serial restarts each January, per branch, from a counter in the database, so two counsellors registering at the same second cannot be handed the same number. On the student's header, under their name in the list, in their own portal, and findable in the search box however it is written down ("mc ktm 26 41"). The branch's letters are derived from its name and can be changed until the first student carries them. |
 | The student's journey | Students, parents | The portal opens on the nine stages: which step of nine the file is on, what is happening now in English or Malayalam, what is still wanted with the day it is wanted by, and the dates to keep (documents due, offer accept-by, course start, a visa decision awaited), nearest first, with what has gone past kept rather than hidden. |
 | Family access | Partners and the team give, parents read | A parent, guardian or sponsor gets a sign-in of their own at **Family view**: the same nine stages, what is still wanted from the student, the dates, and the branch to ring. They change nothing, send no messages and cannot open the files; fees are off unless switched on per person, and never show what Medcity earns from a university or a vendor. Four at a time per student. Removing access strands the session on the next click and leaves the row with a date on it. The student is told on WhatsApp in their own language whenever somebody is added, and their own **My details** page lists who can read their file. |
+| Sub-agents | Anyone applies, the desk approves | A public form at `/join` where somebody asks to work with Medcity: a name, a number and a few lines about what they do, with the same guards as the public enquiry form (a honeypot, a limit per caller and per number, and the same number twice treated as the same application). The desk picks an application up so two people do not both ring them, then approves it, which creates the organisation, its first login and a one-time password shown once to read out, under whichever branch recruited them. The form can be shut from the Agreement tab when the desk cannot keep up. |
+| The agreement | Super admin writes, the sub-agent accepts | A memorandum kept as versions rather than one editable page: a sub-agent accepted particular words on a particular day, and a new version is published beside the old one rather than over it. Accepting it asks for a typed name and a tick, and keeps who pressed it, the name, the day and where from. The page says plainly that this is a record of acceptance and not a signature in law. Publishing a new version asks every sub-agent again, and the desk sees who has not. |
+| Referrals | Sub-agents send, the desk routes | A sub-agent sends a lead with a name, a number and whatever else they know, having confirmed the person agreed to it. It lands with the head office as an enquiry, and the desk gives it to a branch; ownership moves, the referrer does not, because the referrer is who gets paid. The sub-agent's own page shows the stage in words a family would understand and who is holding it, and nothing else: no documents, no notes, no fees, nobody else's leads. When the branch registers the lead, the student file carries the referrer and the earning is opened the same day. |
+| Referral fees and withdrawal | Admins set, sub-agents withdraw | A rate per sub-agent or one platform default, added rather than edited so an old figure can be read back, as a share of the commission Medcity received or a fixed amount per enrolment. Both figures start unset, so a referral reads "Not recorded" rather than nought, and the desk has a list of earnings nobody has priced. An earning becomes payable, and the wallet credited, only when Medcity's own money is in: a commission marked received or a vendor invoice paid, guarded so neither path credits twice. A withdrawal is asked for from the same wallet a branch uses, against four conditions shown in full rather than one refusal at a time: the agreement accepted, bank details and PAN on file, any minimum met, and nothing already waiting with the desk. |
 | Document storage | All | Supabase Storage in production, local disk in development. |
 
 All four phases are built. Every nav item leads somewhere.
@@ -282,16 +286,23 @@ Set from **Partners and people**, along with a free-text job title ("UK desk", "
 | Student | Their own file | The student portal only |
 | Parent or guardian | One student's file | The family view only: read the journey, what is outstanding and the dates. Changes nothing, and never opens a file |
 
+A sub-agent is not a role. It is an organisation type: its people hold the same PARTNER and COUNSELLOR roles a branch does, and what makes them a sub-agent is that they refer leads to the desk and are paid per student, rather than working the students themselves. They get two screens a branch does not have, Referrals and Agreement, and a branch gets neither.
+
 Who may hand out which role: a super admin can set any role. An ops manager can set every role except super admin. An Overseas admin can add partner staff but not Medcity Overseas accounts. A student's and a parent's sign-in are not roles anybody is promoted into: both are created from that student's own file, against one student, and nowhere else.
 
 ## Next
 
-The family side is built: the Medcity ID, the student's dashboard around the
-journey, and the parent's read-only sign-in. What remains from the wireframe is
-the link to Medcity's own CRM, so a student registered in one place is
-registered in both: integration keys and signatures, the registration endpoint,
-the student lookup, webhooks out with retries, a field map that fills blanks
-only, and the queue of rows that need a person.
+The family side and the sub-agent module are built. What remains from the
+wireframe is the link to Medcity's own CRM, so a student registered in one place
+is registered in both: integration keys and signatures, the registration
+endpoint, the student lookup, webhooks out with retries, a field map that fills
+blanks only, and the queue of rows that need a person.
+
+Before sub-agents are let in: set the referral rate (Sub-agents, Sub-agents tab),
+read the seeded agreement and replace it with the one your lawyer approves, and
+decide the smallest withdrawal. The seeded memorandum is a plain-English draft
+written for this build, not legal advice, and nobody should be asked to accept it
+as it stands.
 
 The new Malayalam lines (the nine stages, the dates card, the family view and
 the notice a student gets when a parent is added) want a native speaker's eye

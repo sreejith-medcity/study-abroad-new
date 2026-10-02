@@ -13,6 +13,7 @@ import { invoiceQueue, loadInvoice, nextInvoiceNumber } from "@/server/invoicing
 import { getSettings } from "@/server/settings";
 import { notifyUsers, partnerRecipients } from "@/server/notify";
 import type { FormState } from "@/lib/form-state";
+import { settleReferralsForCommissions } from "@/server/referral-earnings";
 
 const { incomeLines: il, vendorInvoices: vi, vendorInvoiceLines: vil, invoicePayments: ip } = schema;
 
@@ -195,6 +196,9 @@ export async function recordInvoicePaymentAction(_: FormState, fd: FormData): Pr
       .filter((x): x is string => !!x);
     if (commissionIds.length) {
       await db.update(schema.commissions).set({ status: "RECEIVED", receivedAt: new Date() }).where(inArray(schema.commissions.id, commissionIds));
+      // A sub-agent who referred one of these students is owed as soon as the
+      // vendor's money is in, on the same rule as the branch's own share.
+      await settleReferralsForCommissions(commissionIds, user.id);
       // The branch's own share becomes a wallet credit the moment the money is
       // ours, which is what a branch owner is actually waiting for.
       const earned = await db

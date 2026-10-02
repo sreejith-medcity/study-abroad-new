@@ -125,3 +125,31 @@ Two things to copy from it when writing a new suite:
   card's own text, not `[role="status"]`.
 - The student profile page carries several forms with the same field names
   (`name`, `email`, `relation`). Scope every family action to `#family`.
+
+## agents.mjs
+
+The sub-agent module, on the plain seed: the public form at `/join` (that it says
+how somebody is paid and that applying commits them to nothing, that the same
+number twice is the same application), the desk picking one up and approving it
+(one organisation, a PARTNER login, the one-time password shown once, the parent
+branch recorded), the agreement (the whole text, the typed name, the IP, and the
+line saying this is not a signature in law), referring a lead (it lands with the
+head office, the referrer is recorded, the permission is written down, the same
+number twice is refused, nobody else's leads are visible), the desk passing it to
+a branch (ownership moves, the referrer does not), the branch registering it as a
+student (`students.referred_by_org_id`, the earning opened PENDING with no
+figure), a commission marked received (the earning becomes PAYABLE, priced at the
+platform rate, the wallet credited once and not twice), and the four withdrawal
+conditions each doing its job in turn.
+
+Three things to copy from it when writing a new suite:
+
+- The one-time password on approval is a `keep` alert inside the modal, and the
+  action deliberately does **not** revalidate, because refreshing the list
+  underneath would swap the row and take the password with it. Assert against the
+  dialog's own text.
+- A commission can only be marked received from INVOICED, so the fixture is set
+  up in the database and only the move that fires the hook goes through the
+  screen.
+- Nav group titles are CSS-uppercased. Match an item label (`My referrals`), or
+  use a case-insensitive regex.

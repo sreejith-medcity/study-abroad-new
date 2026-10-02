@@ -2,6 +2,7 @@ import { relations, sql } from "drizzle-orm";
 import {
   boolean,
   date,
+  type AnyPgColumn,
   index,
   integer,
   jsonb,
@@ -193,9 +194,26 @@ export const commissionStatus = pgEnum("commission_status", [
   "SETTLED",
   "WRITTEN_OFF",
 ]);
-export const walletEntryKind = pgEnum("wallet_entry_kind", ["COMMISSION", "PAYOUT", "BONUS", "ADJUSTMENT"]);
+export const walletEntryKind = pgEnum("wallet_entry_kind", ["COMMISSION", "PAYOUT", "BONUS", "ADJUSTMENT", "REFERRAL"]);
 export const payoutStatus = pgEnum("payout_status", ["REQUESTED", "APPROVED", "PAID", "REJECTED"]);
 export const resourceKind = pgEnum("resource_kind", ["GUIDE", "TEMPLATE", "POLICY", "TRAINING", "MARKETING", "FAQ"]);
+
+// ---------- Sub-agents ----------
+
+/** Where a sub-agent's application to join has got to. */
+export const agentApplicationStatus = pgEnum("agent_application_status", ["NEW", "REVIEWING", "APPROVED", "REJECTED"]);
+
+/**
+ * How a sub-agent is paid for a student they referred: a share of what Medcity
+ * earns on that student, or an agreed amount per enrolment.
+ */
+export const agentFeeKind = pgEnum("agent_fee_kind", ["SHARE_OF_COMMISSION", "FLAT_PER_ENROLMENT"]);
+
+/**
+ * A referral fee's life. It is PAYABLE only once Medcity's own money is in, so
+ * nothing a sub-agent can withdraw is money the company has not been paid.
+ */
+export const referralEarningState = pgEnum("referral_earning_state", ["PENDING", "PAYABLE", "PAID", "CANCELLED"]);
 
 // ---------- Organisation and users ----------
 
@@ -205,6 +223,13 @@ export const organizations = pgTable("organizations", {
   id: id(),
   name: text("name").notNull(),
   type: orgType("type").notNull(),
+  /**
+   * The branch that recruited this sub-agent, where one did. Null on a branch
+   * and on the head office. It decides nothing about who may read what: it
+   * records who brought them in, and who the desk hands their referrals to by
+   * default.
+   */
+  parentOrgId: text("parent_org_id").references((): AnyPgColumn => organizations.id),
   tier: tier("tier").notNull().default("SILVER"),
   city: text("city"),
   counsellorSeats: integer("counsellor_seats").notNull().default(3),
@@ -517,6 +542,11 @@ export const students = pgTable(
     stageEnteredAt: timestamp("stage_entered_at", { withTimezone: true }),
     /** The last stage whose gate was announced as clear, so it is said once. */
     gateNoticeStage: journeyStage("gate_notice_stage"),
+    /**
+     * The sub-agent who referred this student, carried from the enquiry when it
+     * was converted. Null for a student a branch found itself.
+     */
+    referredByOrgId: text("referred_by_org_id").references(() => organizations.id),
     archived: boolean("archived").notNull().default(false),
     source: text("source").notNull().default("partner"), // partner | qr | crm
     crmLeadId: text("crm_lead_id"),
@@ -1547,6 +1577,171 @@ export const payoutRequests = pgTable(
   (t) => [index("payout_requests_org_idx").on(t.orgId, t.status)],
 );
 
+// ---------- Sub-agents ----------
+
+/**
+ * Somebody asking to become a sub-agent, before there is an organisation.
+ *
+ * Kept apart from organizations on purpose: most applications are never
+ * approved, and a rejected one must not leave a half-made partner behind that
+ * somebody later mistakes for a live branch. On approval the row keeps the id
+ * of the organisation it became, so the application is the record of where that
+ * sub-agent came from.
+ */
+export const agentApplications = pgTable(
+  "agent_applications",
+  {
+    id: id(),
+    /** The person applying, and the firm they trade as, where that differs. */
+    contactName: text("contact_name").notNull(),
+    firmName: text("firm_name"),
+    email: text("email").notNull(),
+    phone: text("phone").notNull(),
+    city: text("city"),
+    state: text("state"),
+    /** In their own words: who they already send abroad, and where. */
+    aboutThem: text("about_them"),
+    /** The branch that pointed them at the form, where they say one did. */
+    referredByOrgId: text("referred_by_org_id").references(() => organizations.id),
+    status: agentApplicationStatus("status").notNull().default("NEW"),
+    reviewedById: text("reviewed_by_id").references(() => users.id),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    /** Why it was turned down, in words that can be sent to the applicant. */
+    decisionNote: text("decision_note"),
+    /** The organisation this application became, once it was approved. */
+    orgId: text("org_id").references(() => organizations.id),
+    consentAt: timestamp("consent_at", { withTimezone: true }),
+    consentText: text("consent_text"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("agent_applications_status_idx").on(t.status, t.createdAt), index("agent_applications_phone_idx").on(t.phone)],
+);
+
+/**
+ * The agreement, kept as versions rather than as one editable page.
+ *
+ * A sub-agent accepted particular words on a particular day, and changing those
+ * words later must not quietly change what they agreed to. So the text is
+ * frozen per version, a new version is published beside the old one, and an
+ * acceptance points at the version it was given.
+ */
+export const mouVersions = pgTable(
+  "mou_versions",
+  {
+    id: id(),
+    /** What the desk calls it: "2026.1", "April 2026". Unique so it can be cited. */
+    version: text("version").notNull(),
+    title: text("title").notNull(),
+    /** The agreement itself, as written. Stored, never generated. */
+    body: text("body").notNull(),
+    effectiveFrom: date("effective_from"),
+    /** Exactly one version is the one being asked for at a time. */
+    active: boolean("active").notNull().default(false),
+    createdById: text("created_by_id").references(() => users.id),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("mou_versions_version_uq").on(t.version)],
+);
+
+/**
+ * One organisation accepting one version, once.
+ *
+ * What is kept is what would be needed if the agreement were ever questioned:
+ * who pressed it, the name they typed, the day, and where from. Nothing here is
+ * a signature in law, and the screen says so rather than implying otherwise.
+ */
+export const mouAcceptances = pgTable(
+  "mou_acceptances",
+  {
+    id: id(),
+    orgId: text("org_id")
+      .notNull()
+      .references(() => organizations.id),
+    mouVersionId: text("mou_version_id")
+      .notNull()
+      .references(() => mouVersions.id),
+    acceptedById: text("accepted_by_id")
+      .notNull()
+      .references(() => users.id),
+    /** The name they typed into the box, which may not be their account name. */
+    acceptedName: text("accepted_name").notNull(),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("mou_acceptances_org_version_uq").on(t.orgId, t.mouVersionId)],
+);
+
+/**
+ * What a sub-agent is paid per referred student.
+ *
+ * Added rather than edited, the way the rate cards are: a rate that was in force
+ * when an earning was worked out can still be read back. A row with no orgId is
+ * the platform default; a row with one is that sub-agent's own, and beats it.
+ * Both figures start null, so a rate nobody has set reads as "Not recorded"
+ * instead of as nought.
+ */
+export const agentRates = pgTable(
+  "agent_rates",
+  {
+    id: id(),
+    /** Null means every sub-agent, unless one has a rate of its own. */
+    orgId: text("org_id").references(() => organizations.id),
+    kind: agentFeeKind("kind").notNull(),
+    /** A share of what Medcity earns, where the kind is a share. */
+    percent: real("percent"),
+    /** An agreed amount per enrolment, where the kind is a flat fee. */
+    flatAmountInr: integer("flat_amount_inr"),
+    activeFrom: date("active_from").notNull(),
+    note: text("note"),
+    createdById: text("created_by_id").references(() => users.id),
+    createdAt: createdAt(),
+  },
+  (t) => [index("agent_rates_scope_idx").on(t.orgId, t.activeFrom)],
+);
+
+/**
+ * What one referral has earned the sub-agent who sent it.
+ *
+ * One row per student referred, created when the student is registered so the
+ * sub-agent can see it coming. The amount stays null until there is a rate to
+ * work it out from, and the state only reaches PAYABLE once Medcity has
+ * actually been paid, which is the rule the withdrawal screen leans on.
+ */
+export const referralEarnings = pgTable(
+  "referral_earnings",
+  {
+    id: id(),
+    /** The sub-agent being paid. */
+    orgId: text("org_id")
+      .notNull()
+      .references(() => organizations.id),
+    studentId: text("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    /** The application that earned it, once there is one. */
+    applicationId: text("application_id").references(() => applications.id, { onDelete: "set null" }),
+    /** The commission this was worked out from, where the rate is a share. */
+    commissionId: text("commission_id").references(() => commissions.id, { onDelete: "set null" }),
+    kind: agentFeeKind("kind"),
+    /** The rate it was priced from, so the figure can be read back. */
+    rateId: text("rate_id").references(() => agentRates.id, { onDelete: "set null" }),
+    amountInr: integer("amount_inr"),
+    state: referralEarningState("state").notNull().default("PENDING"),
+    /** The wallet credit this became, so it is never credited twice. */
+    walletEntryId: text("wallet_entry_id").references(() => walletEntries.id, { onDelete: "set null" }),
+    payableAt: timestamp("payable_at", { withTimezone: true }),
+    cancelledReason: text("cancelled_reason"),
+    note: text("note"),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("referral_earnings_student_uq").on(t.studentId),
+    index("referral_earnings_org_idx").on(t.orgId, t.state),
+  ],
+);
+
 // ---------- Settings ----------
 
 /**
@@ -1597,6 +1792,27 @@ export const appSettings = pgTable("app_settings", {
 
   // Money: indicative rates, overwritten by the real figure at settlement
   fxRates: jsonb("fx_rates").notNull().default(sql`'{"GBP":112,"EUR":96,"AUD":58,"CAD":62,"USD":88}'::jsonb`),
+
+  // Sub-agents
+  /**
+   * Whether the sub-agent application form answers at all. Shut it when the
+   * desk cannot keep up with reviewing, rather than leaving applications to go
+   * stale with nobody looking at them.
+   */
+  agentSignupOpen: boolean("agent_signup_open").notNull().default(true),
+  /**
+   * The floor on one withdrawal request. Null means no floor: a figure nobody
+   * has set must not quietly become nought, which would read as "no minimum"
+   * and happens to be right, or as "₹0 minimum", which is nonsense.
+   */
+  minWithdrawalInr: integer("min_withdrawal_inr"),
+  /**
+   * Whether a sub-agent must accept the MOU before the portal is usable at all.
+   * Off to begin with: the agreement is always asked for before money leaves,
+   * and a desk part way through onboarding should not find its existing
+   * partners locked out the day a new version is published.
+   */
+  requireMouBeforePortal: boolean("require_mou_before_portal").notNull().default(false),
 
   // Who a partner or student should contact
   supportEmail: text("support_email"),
@@ -2141,10 +2357,20 @@ export const enquiries = pgTable(
     /** Answers to the branch's own questions, with each question as it was asked. */
     answers: jsonb("answers").$type<{ question: string; answer: string }[]>().notNull().default(sql`'[]'::jsonb`),
     studentId: text("student_id").references(() => students.id),
+    /**
+     * The sub-agent who referred this lead, where one did. The owning org moves
+     * as the desk passes the lead to a branch; this does not, because it is who
+     * gets paid if it turns into a student.
+     */
+    submittedByOrgId: text("submitted_by_org_id").references(() => organizations.id),
     createdAt: createdAt(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("enquiries_org_idx").on(t.orgId, t.stage), index("enquiries_follow_up_idx").on(t.nextFollowUpAt)],
+  (t) => [
+    index("enquiries_org_idx").on(t.orgId, t.stage),
+    index("enquiries_follow_up_idx").on(t.nextFollowUpAt),
+    index("enquiries_referrer_idx").on(t.submittedByOrgId),
+  ],
 );
 
 /** One row per contact attempt, so the follow-up history is never overwritten. */
@@ -2525,6 +2751,36 @@ export const commissionRulesRelations = relations(commissionRules, ({ one, many 
   commissions: many(commissions),
 }));
 
+export const agentApplicationsRelations = relations(agentApplications, ({ one }) => ({
+  referredByOrg: one(organizations, { fields: [agentApplications.referredByOrgId], references: [organizations.id] }),
+  org: one(organizations, { fields: [agentApplications.orgId], references: [organizations.id] }),
+  reviewedBy: one(users, { fields: [agentApplications.reviewedById], references: [users.id] }),
+}));
+
+export const mouVersionsRelations = relations(mouVersions, ({ one, many }) => ({
+  createdBy: one(users, { fields: [mouVersions.createdById], references: [users.id] }),
+  acceptances: many(mouAcceptances),
+}));
+
+export const mouAcceptancesRelations = relations(mouAcceptances, ({ one }) => ({
+  org: one(organizations, { fields: [mouAcceptances.orgId], references: [organizations.id] }),
+  version: one(mouVersions, { fields: [mouAcceptances.mouVersionId], references: [mouVersions.id] }),
+  acceptedBy: one(users, { fields: [mouAcceptances.acceptedById], references: [users.id] }),
+}));
+
+export const agentRatesRelations = relations(agentRates, ({ one }) => ({
+  org: one(organizations, { fields: [agentRates.orgId], references: [organizations.id] }),
+  createdBy: one(users, { fields: [agentRates.createdById], references: [users.id] }),
+}));
+
+export const referralEarningsRelations = relations(referralEarnings, ({ one }) => ({
+  org: one(organizations, { fields: [referralEarnings.orgId], references: [organizations.id] }),
+  student: one(students, { fields: [referralEarnings.studentId], references: [students.id] }),
+  application: one(applications, { fields: [referralEarnings.applicationId], references: [applications.id] }),
+  commission: one(commissions, { fields: [referralEarnings.commissionId], references: [commissions.id] }),
+  rate: one(agentRates, { fields: [referralEarnings.rateId], references: [agentRates.id] }),
+}));
+
 export const walletEntriesRelations = relations(walletEntries, ({ one }) => ({
   org: one(organizations, { fields: [walletEntries.orgId], references: [organizations.id] }),
   commission: one(commissions, { fields: [walletEntries.commissionId], references: [commissions.id] }),
@@ -2574,4 +2830,7 @@ export type IncomeKind = (typeof incomeKind.enumValues)[number];
 export type IncomeState = (typeof incomeState.enumValues)[number];
 export type IncomePayer = (typeof incomePayer.enumValues)[number];
 export type InvoiceState = (typeof invoiceState.enumValues)[number];
+export type AgentApplicationStatus = (typeof agentApplicationStatus.enumValues)[number];
+export type AgentFeeKind = (typeof agentFeeKind.enumValues)[number];
+export type ReferralEarningState = (typeof referralEarningState.enumValues)[number];
 export type AppSettings = typeof appSettings.$inferSelect;

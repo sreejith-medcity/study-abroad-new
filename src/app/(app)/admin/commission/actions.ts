@@ -12,6 +12,7 @@ import { notifyUsers, partnerRecipients } from "@/server/notify";
 import { accrueMissing, inr } from "@/server/commission";
 
 import type { FormState } from "@/lib/form-state";
+import { markEarningsPaid } from "@/server/referral-earnings";
 export type { FormState };
 
 const optionalText = z.string().trim().max(200).optional().transform((v) => v || null);
@@ -191,6 +192,9 @@ export async function decidePayoutAction(_: FormState, formData: FormData): Prom
         createdById: user.id,
       });
     }
+    // The wallet is the balance; this is bookkeeping on top of it, so a
+    // sub-agent looking at one referral can see the money for it has gone out.
+    await markEarningsPaid(payout.orgId, Math.abs(payout.amountInr));
   }
 
   await audit(user.id, "payout.decide", "payout", payout.id, { decision: d.decision, amount: payout.amountInr });

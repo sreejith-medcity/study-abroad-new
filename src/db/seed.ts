@@ -2,6 +2,7 @@
 import "dotenv/config";
 import { BACKGROUND_QUESTIONS } from "../lib/background";
 import { branchCodeFrom, formatStudentId } from "../lib/medcity-id";
+import { AGENT_CONSENT } from "../lib/agents";
 import { LIVING_FUNDS } from "./living-funds";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
@@ -34,6 +35,8 @@ async function main() {
   const [kottayam] = await db.insert(schema.organizations).values({ idCode: "KOT", name: "Medcity Kottayam", type: "BRANCH", tier: "ELITE", city: "Kottayam", counsellorSeats: 8 }).returning();
   const [kochi] = await db.insert(schema.organizations).values({ idCode: "KOC", name: "Medcity Kochi", type: "BRANCH", tier: "GOLD", city: "Kochi", counsellorSeats: 5 }).returning();
   const [thrissur] = await db.insert(schema.organizations).values({ idCode: "HOR", name: "Horizon Consultants, Thrissur", type: "SUB_AGENT", tier: "SILVER", city: "Thrissur", counsellorSeats: 3 }).returning();
+  // The sub-agent sits under Kottayam, which is who recruited them.
+  await db.update(schema.organizations).set({ parentOrgId: kottayam.id }).where(eq(schema.organizations.id, thrissur.id));
 
   // Users
   const u = async (name: string, email: string, role: schema.Role, orgId: string, deskLabel?: string, phone?: string) =>
@@ -944,6 +947,113 @@ async function main() {
       recordedById: admin.id,
     });
   }
+
+  // ---------- The sub-agent module ----------
+  // An agreement to accept, a rate to be paid under, two applications waiting to
+  // be looked at, and one referral the desk has not passed on yet, so the whole
+  // module can be seen on a fresh install without setting it up by hand.
+  const [mou] = await db
+    .insert(schema.mouVersions)
+    .values({
+      version: "2026.1",
+      title: "Memorandum of Understanding",
+      effectiveFrom: "2026-04-01",
+      active: true,
+      createdById: admin.id,
+      body: [
+        "1. What this is",
+        "This memorandum sets out how Medcity International Overseas Corporation (\"Medcity\") and the sub-agent named in the portal work together. It is a working agreement, not a partnership, an employment contract or an agency in law.",
+        "2. What the sub-agent does",
+        "The sub-agent introduces students who want to study, train or register as nurses abroad. Before passing on anybody's details the sub-agent tells that person their details are going to Medcity and obtains their agreement. The sub-agent does not counsel, apply, collect documents or take money from a student on Medcity's behalf.",
+        "3. What Medcity does",
+        "Medcity counsels the student, chooses and applies to institutions, handles the documents and the visa file, and keeps the sub-agent told of the stage each referral has reached.",
+        "4. Money",
+        "Medcity pays the sub-agent at the rate shown on the sub-agent's own screen in the portal, per student who goes. A referral fee is earned only once Medcity has itself been paid for that student, and is credited to the sub-agent's wallet at that point. Withdrawals are made to the bank account on file, after any minimum shown in the portal, and are subject to tax deducted at source where the law requires it.",
+        "5. What is not paid for",
+        "A student who does not go, withdraws, is refused a visa, or is refunded earns nothing. Where Medcity is not paid, the sub-agent is not paid.",
+        "6. Honesty",
+        "Neither side promises a visa, an offer or a place to any student. The sub-agent does not describe themselves as Medcity, use its name on their own documents without being asked to, or quote fees or timelines Medcity has not given them in writing.",
+        "7. The student's data",
+        "Both sides hold a student's personal details only for the purpose of their application, keep them to themselves, and hand them back or delete them when asked and when the law allows.",
+        "8. Ending it",
+        "Either side may end this arrangement by telling the other, in writing, at any time. Referrals already made are seen through, and anything already earned is still paid.",
+        "9. Changes",
+        "Medcity may publish a new version. A new version is shown in the portal and asked for before the next withdrawal; it does not change what was agreed under an earlier one.",
+      ].join("\n\n"),
+    })
+    .returning();
+  await db.insert(schema.mouAcceptances).values({
+    orgId: thrissur.id,
+    mouVersionId: mou.id,
+    acceptedById: partnerTsr.id,
+    acceptedName: "Horizon Owner",
+    ipAddress: "203.0.113.7",
+    userAgent: "Seeded",
+    createdAt: months(17),
+  });
+  await db.insert(schema.agentRates).values({
+    orgId: null,
+    kind: "SHARE_OF_COMMISSION",
+    percent: 10,
+    activeFrom: "2026-04-01",
+    note: "The platform default, as a share of the commission Medcity received",
+    createdById: admin.id,
+  });
+  await db.insert(schema.agentApplications).values([
+    {
+      contactName: "Shyam Varghese",
+      firmName: "Varghese Career Guidance",
+      email: "shyam@example.com",
+      phone: "+91 94470 11111",
+      city: "Pathanamthitta",
+      state: "Kerala",
+      aboutThem: "I run a small guidance centre. Around twenty nursing students a year ask me about Germany and the UK and I have nobody to send them to.",
+      referredByOrgId: kottayam.id,
+      consentAt: months(4),
+      consentText: AGENT_CONSENT,
+      createdAt: months(4),
+    },
+    {
+      contactName: "Reena Thomas",
+      email: "reena@example.com",
+      phone: "+91 94470 22222",
+      city: "Kannur",
+      state: "Kerala",
+      aboutThem: "Former IELTS trainer. Students keep asking me about Ausbildung and I would rather hand them to somebody who does it properly.",
+      status: "REVIEWING",
+      reviewedById: admin.id,
+      consentAt: months(2),
+      consentText: AGENT_CONSENT,
+      createdAt: months(2),
+    },
+  ]);
+  // One referral still with the head office, waiting for a branch.
+  const [referral] = await db
+    .insert(schema.enquiries)
+    .values({
+      orgId: hq.id,
+      createdById: partnerTsr.id,
+      submittedByOrgId: thrissur.id,
+      name: "Devika Nair",
+      phone: "+91 94470 33333",
+      email: "devika.nair@example.com",
+      city: "Thrissur",
+      source: "REFERRAL",
+      stage: "NEW",
+      interestCountry: "Germany",
+      interestPathway: "AUSBILDUNG",
+      notes: "Std. 12 science, wants Ausbildung. No German yet.",
+      nextFollowUpAt: new Date(Date.now() + 86400000),
+      createdAt: months(1),
+    })
+    .returning();
+  await db.insert(schema.enquiryNotes).values({
+    enquiryId: referral.id,
+    authorId: partnerTsr.id,
+    body: "Referred by Horizon Consultants, Thrissur. The sub-agent confirmed the person agreed to being referred.",
+    stageAfter: "NEW",
+    createdAt: months(1),
+  });
 
   await db.insert(schema.auditLogs).values(trail);
 

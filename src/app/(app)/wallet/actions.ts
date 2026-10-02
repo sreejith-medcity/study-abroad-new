@@ -1,13 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { adminIds, notifyUsers } from "@/server/notify";
-import { inr, walletBalance } from "@/server/commission";
+import { inr } from "@/server/commission";
+import { withdrawalFacts } from "@/server/agents";
+import { conditionsFor } from "@/lib/agents";
 
 import type { FormState } from "@/lib/form-state";
 export type { FormState };
@@ -31,12 +33,13 @@ export async function requestPayoutAction(_: FormState, formData: FormData): Pro
   const billingCompanyId = String(formData.get("billingCompanyId") ?? "");
   if (companies.length && !companies.some((c) => c.id === billingCompanyId)) return { fieldErrors: { billingCompanyId: ["Choose the company to pay"] }, error: "Choose the company to pay." };
 
-  const { balance } = await walletBalance(user.orgId);
-  const pending = await db.query.payoutRequests.findFirst({
-    where: and(eq(schema.payoutRequests.orgId, user.orgId), eq(schema.payoutRequests.status, "REQUESTED")),
-  });
-  if (pending) return { error: `A request for ${inr(pending.amountInr)} is already with the Overseas team.` };
-  if (amountInr > balance) return { error: `Your balance is ${inr(balance)}.`, fieldErrors: { amountInr: ["More than the balance"] } };
+  // The conditions are one list, checked here and shown on the screen, so a
+  // partner is never refused for a reason the page did not already tell them.
+  // A branch is held only to the one that was always there; a sub-agent to all.
+  const facts = await withdrawalFacts(user.orgId);
+  const blocking = conditionsFor(facts, user.orgType).filter((c) => !c.met);
+  if (blocking.length) return { error: blocking.map((c) => c.fix || c.what).join(" ") };
+  if (amountInr > facts.balanceInr) return { error: `Your balance is ${inr(facts.balanceInr)}.`, fieldErrors: { amountInr: ["More than the balance"] } };
 
   const [row] = await db
     .insert(schema.payoutRequests)

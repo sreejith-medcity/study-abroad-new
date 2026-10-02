@@ -99,6 +99,7 @@ const ADMIN_NAV: NavGroup[] = [
     items: [
       { href: "/enquiries", label: "Enquiries", icon: "enquiry" },
       { href: "/admin/partners", label: "Partners", icon: "partners" },
+      { href: "/admin/agents", label: "Sub-agents", icon: "partners" },
       { href: "/admin/updates", label: "Updates", icon: "spark" },
       { href: "/admin/promotions", label: "Schemes", icon: "commission" },
       { href: "/admin/contacts", label: "Contacts and links", icon: "partners" },
@@ -197,8 +198,23 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const withImports = withAi.map((g, i) =>
     i === 0 && (user.role === "PARTNER" || isAdmin(user)) ? { ...g, items: [...g.items, { href: "/imports", label: "Bulk upload", icon: "applications" as const }] } : g,
   );
+  // A sub-agent refers rather than only registering, and is held to an
+  // agreement. Both screens are theirs alone: a branch has no referrals of its
+  // own and nothing to accept.
+  const subAgent = user.orgType === "SUB_AGENT" && (user.role === "PARTNER" || user.role === "COUNSELLOR");
   const navGroups: NavGroup[] = [
     ...withImports,
+    ...(subAgent
+      ? [
+          {
+            title: "Referrals",
+            items: [
+              { href: "/referrals", label: "My referrals", icon: "enquiry" as const },
+              { href: "/agreement", label: "Agreement", icon: "shield" as const },
+            ],
+          },
+        ]
+      : []),
     { title: "Account", items: [{ href: "/settings", label: "Settings", icon: "settings" }] },
   ];
 

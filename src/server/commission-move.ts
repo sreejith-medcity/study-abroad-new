@@ -5,6 +5,7 @@ import type { SessionUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { inr } from "@/lib/money";
 import { notifyUsers, partnerRecipients } from "@/server/notify";
+import { settleReferralForCommission } from "@/server/referral-earnings";
 
 export type CommissionMove = { status: (typeof schema.commissionStatus.enumValues)[number]; invoiceRef: string | null; partnerAmountInr: number | null; note: string | null };
 
@@ -58,6 +59,13 @@ export async function moveCommission(user: SessionUser, commission: typeof schem
         "/wallet",
       );
     }
+  }
+
+  // Money in is the moment a referral becomes payable, whether the commission
+  // was marked received from the institution or settled with the partner. The
+  // call is guarded, so passing through both does not pay a sub-agent twice.
+  if (d.status === "RECEIVED" || d.status === "SETTLED") {
+    await settleReferralForCommission(commission.id, user.id);
   }
 
   await audit(user.id, "commission.status", "commission", commission.id, { from: commission.status, to: d.status });

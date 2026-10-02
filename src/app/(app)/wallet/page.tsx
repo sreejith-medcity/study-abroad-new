@@ -5,7 +5,9 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fmtDate, fmtDateTime } from "@/lib/format";
 import { commissionTotals, inr, payoutList, walletBalance, walletLedger } from "@/server/commission";
-import { Alert, Card, CardHeader, Chip, DataList, EmptyState, PageHeader, Stat, Table, Td, Th } from "@/components/ui";
+import { Alert, Card, CardHeader, Chip, DataList, EmptyState, PageHeader, Stat, Table, Td, Th, cn } from "@/components/ui";
+import { withdrawalFacts } from "@/server/agents";
+import { conditionsFor, heldToEveryCondition, withdrawalSummary } from "@/lib/agents";
 import { IconWallet, IconCheck, IconClock } from "@/components/icons";
 import { PayoutForm, CancelPayoutButton } from "./forms";
 import { paymentList } from "@/server/payment-queries";
@@ -18,6 +20,7 @@ const KIND_LABEL: Record<string, string> = {
   PAYOUT: "Payout",
   BONUS: "Bonus",
   ADJUSTMENT: "Adjustment",
+  REFERRAL: "Referral fee",
 };
 
 const PAYOUT_TONE: Record<string, "neutral" | "info" | "ok" | "bad"> = {
@@ -42,6 +45,11 @@ export default async function WalletPage() {
   ]);
 
   const pending = payouts.find((p) => p.status === "REQUESTED");
+  // The conditions on withdrawing are read here and shown in full, so a partner
+  // who cannot withdraw sees the whole list rather than one refusal at a time.
+  const facts = await withdrawalFacts(user.orgId);
+  const conditions = conditionsFor(facts, user.orgType);
+  const blocking = conditions.filter((c) => !c.met);
   const owner = user.role === "PARTNER";
   const paidOnline = await paymentList(user.orgId, 25);
   const companies = owner
@@ -117,7 +125,41 @@ export default async function WalletPage() {
                 </div>
               ) : owner ? (
                 <>
-                  <PayoutForm balance={wallet.balance} companies={companies.map((c) => ({ id: c.id, isDefault: c.isDefault, label: `${c.legalName}${c.gstin ? ` (GSTIN ${c.gstin})` : ""}` }))} />
+                  {/* A sub-agent is held to the whole list and sees it in full, met or
+                      not, rather than one refusal at a time. A branch is held only to
+                      the condition that was always there, so the list is not shown. */}
+                  {heldToEveryCondition(user.orgType) && (
+                    <ul className="mb-4 space-y-1.5">
+                      {conditions.map((c) => (
+                        <li key={c.key} className="flex items-start gap-2 text-[13px]">
+                          <span
+                            aria-hidden="true"
+                            className={cn("mt-0.5 grid size-4 shrink-0 place-items-center rounded-full text-[10px] font-bold text-white", c.met ? "bg-good-600" : "bg-warn-500")}
+                          >
+                            {c.met ? "✓" : "!"}
+                          </span>
+                          <span className="min-w-0">
+                            <span className={c.met ? "text-muted" : "font-medium text-ink"}>{c.what}</span>
+                            {!c.met && c.fix && <span className="block text-[12px] text-muted">{c.fix}</span>}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {blocking.length > 0 && (
+                    <Alert tone="warn" title="Not yet">
+                      {withdrawalSummary(facts, user.orgType)}
+                      {blocking.some((c) => c.key === "MOU") && (
+                        <>
+                          {" "}
+                          <Link href="/agreement" className="font-medium text-brand-600 hover:underline">
+                            Read the agreement
+                          </Link>
+                        </>
+                      )}
+                    </Alert>
+                  )}
+                  <PayoutForm balance={blocking.length ? 0 : wallet.balance} companies={companies.map((c) => ({ id: c.id, isDefault: c.isDefault, label: `${c.legalName}${c.gstin ? ` (GSTIN ${c.gstin})` : ""}` }))} />
                   {companies.length === 0 && (
                     <p className="mt-3 text-xs text-muted">
                       Add your billing company in <Link href="/settings/branch#billing" className="font-medium text-brand-600 hover:underline">Settings, Branch</Link> so the team knows where to pay and whether to add GST.
