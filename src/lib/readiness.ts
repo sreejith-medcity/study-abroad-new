@@ -48,6 +48,8 @@ export type ReadinessFacts = {
   // Documentation
   requirements: number;
   requirementsWithoutMalayalam: number;
+  /** Requirements marked as a gate nobody may waive. */
+  requirementsNeverWaived: number;
   rejectionReasons: number;
   documentTypesWithoutGuidance: number;
 
@@ -187,6 +189,19 @@ export function readinessChecks(f: ReadinessFacts): Check[] {
     ready: f.requirementsWithoutMalayalam === 0,
     found: f.requirementsWithoutMalayalam === 0 ? "All of them are" : `${plural(f.requirementsWithoutMalayalam, "requirement")} with English only`,
     fix: f.requirementsWithoutMalayalam === 0 ? "" : "A Malayalam-reading student is shown the English rule for these. The portal does not translate it, on purpose.",
+    href: "/admin/documents",
+  });
+  add({
+    key: "never-waived",
+    area: "Documentation",
+    severity: "DECIDE",
+    what: "Which gates may never be let through is decided",
+    ready: f.requirementsNeverWaived > 0,
+    found: f.requirementsNeverWaived === 0 ? "Every gate can be overridden with a reason" : `${plural(f.requirementsNeverWaived, "requirement")} that nobody may waive`,
+    fix:
+      f.requirementsNeverWaived > 0
+        ? ""
+        : "Every gate can be let through by an admin who gives a reason, which is logged. That is a reasonable answer and is what happens by default. If some paper should never be waived, a passport or a qualification certificate, mark those requirements and the override stops being offered to anybody.",
     href: "/admin/documents",
   });
   add({

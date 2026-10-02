@@ -7,7 +7,7 @@ import { db, schema } from "@/db";
 import { requireUser, type SessionUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { ADMIN_ROLES, isAdmin, PROCESSING_ROLES } from "@/lib/permissions";
-import { claimHeld, CLAIM_MINUTES, stageLabel, validUntil } from "@/lib/journey";
+import { claimHeld, CLAIM_MINUTES, stageLabel, validUntil, waiveRefusal } from "@/lib/journey";
 import { getStudentForUser } from "@/server/queries";
 import { sendWhatsAppRecorded } from "@/server/whatsapp";
 import { stageGate, studentChecklist, studentContext, syncChecklist } from "@/server/documentation";
@@ -48,6 +48,17 @@ export async function syncChecklistAction(fd: FormData): Promise<void> {
   await audit(user.id, "checklist.sync", "student", studentId, { added });
   refresh(studentId);
 }
+
+/**
+ * A checkbox the browser leaves out when it is not ticked.
+ *
+ * Reading it as "anything other than off" meant an unticked box could never be
+ * saved as unticked, because an unticked box posts nothing at all.
+ */
+const ticked = (fd: FormData, name: string) => {
+  const v = fd.get(name);
+  return v != null && v !== "off";
+};
 
 const askSchema = z.object({ itemId: z.string().min(1), dueOn: z.string().optional(), channel: z.string().optional() });
 
@@ -250,7 +261,7 @@ export async function addChecklistItemAction(_: FormState, fd: FormData): Promis
     typeCode: d.typeCode,
     source: "STUDENT",
     sourceLabel: "Added for this student",
-    required: fd.get("required") !== "off",
+    required: ticked(fd, "required"),
     owedBy: d.owedBy,
     note: d.note,
     dueOn: dateOnly(asDate(d.dueOn)),
@@ -292,6 +303,10 @@ export async function setStageAction(_: FormState, fd: FormData): Promise<FormSt
   const leaving = stageGate(rows, student.journeyStage, ctx.courseStart);
   const forward = rows.length > 0 && stageRankOf(stage) > stageRankOf(student.journeyStage);
   if (forward && !leaving.clear) {
+    // Refused to everybody, admin included: an override is for what the list
+    // does not know, not for what Medcity has said may never be let through.
+    const refusal = waiveRefusal(leaving);
+    if (refusal) return { error: refusal };
     if (!isAdmin(user)) {
       return { error: `${stageLabel(student.journeyStage)} is not clear yet. Still needed: ${leaving.missing.map((m) => m.label).join(", ")}.` };
     }
@@ -391,13 +406,15 @@ export async function saveRequirementAction(_: FormState, fd: FormData): Promise
     vendorId,
     universityId,
     programId,
-    required: fd.get("required") !== "off",
+    required: ticked(fd, "required"),
+    // Only a gate that holds the stage can be one that is never let through.
+    neverWaive: ticked(fd, "required") && ticked(fd, "neverWaive"),
     owedBy: d.owedBy,
     validityMonths: months,
     guidance: d.guidance || null,
     guidanceMl: d.guidanceMl || null,
     sortOrder,
-    active: fd.get("active") !== "off",
+    active: ticked(fd, "active"),
     updatedAt: new Date(),
   };
   if (d.requirementId) {

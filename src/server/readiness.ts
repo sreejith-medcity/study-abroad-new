@@ -48,6 +48,7 @@ export async function readinessFacts(): Promise<ReadinessFacts> {
 
       (select count(*)::int from document_requirements where active) as requirements,
       (select count(*)::int from document_requirements where active and (guidance_ml is null or guidance_ml = '')) as requirements_without_malayalam,
+      (select count(*)::int from document_requirements where active and never_waive) as requirements_never_waived,
       (select count(*)::int from rejection_reasons where active) as rejection_reasons,
       (select count(*)::int from document_types where guidance is null or guidance = '') as document_types_without_guidance,
 
@@ -87,6 +88,7 @@ export async function readinessFacts(): Promise<ReadinessFacts> {
 
     requirements: n("requirements"),
     requirementsWithoutMalayalam: n("requirements_without_malayalam"),
+    requirementsNeverWaived: n("requirements_never_waived"),
     rejectionReasons: n("rejection_reasons"),
     documentTypesWithoutGuidance: n("document_types_without_guidance"),
 

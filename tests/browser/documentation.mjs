@@ -114,6 +114,48 @@ check((await waitSql(`select count(*) from gate_overrides where student_id = '${
 text = await go(ap, `/students/${firstStudent}/documentation`);
 check(/Let through with a reason/.test(text) && /attestation/.test(text), "gate: the override is shown on the file");
 
+// --- A gate Medcity has said may never be let through.
+{
+  // Mark whatever is still outstanding at this student's stage as never waived,
+  // the way the Overseas team would on the requirements screen.
+  const stageNow2 = sql(`select journey_stage from students where id = '${firstStudent}'`);
+  const locked = sql(
+    `select dt.label from checklist_items ci join document_types dt on dt.code = ci.type_code
+     where ci.student_id = '${firstStudent}' and ci.required and ci.state <> 'ACCEPTED' and ci.stage = '${stageNow2}' limit 1`,
+  );
+  if (locked) {
+    sql(
+      `update checklist_items set never_waive = true where student_id = '${firstStudent}' and required and state <> 'ACCEPTED' and stage = '${stageNow2}'`,
+    );
+    const next = sql(`select journey_stage from students where id = '${firstStudent}'`);
+    text = await go(ap, `/students/${firstStudent}/documentation`);
+    check(/cannot be waived by anybody/.test(text), "never waived: the file says so where the override used to be");
+    check(
+      (await ap.locator('input[name="reason"]').count()) === 0,
+      "never waived: and the reason box is not offered, rather than offered and then refused",
+    );
+    // Even posting the move must be refused, not just hidden on the screen.
+    const before = sql(`select count(*) from gate_overrides where student_id = '${firstStudent}'`);
+    const stages = await ap.locator('select[name="stage"] option').count();
+    if (stages > 1) {
+      const target = await ap.locator('select[name="stage"] option').nth(Math.min(stages - 1, 5)).getAttribute("value");
+      if (target && target !== next) {
+        await ap.locator('select[name="stage"]').first().selectOption(target);
+        await ap.getByRole("button", { name: "Move the stage" }).click();
+        check(await waitText(ap, /cannot be waived by anybody/), "never waived: an admin posting it anyway is refused");
+        check(
+          sql(`select count(*) from gate_overrides where student_id = '${firstStudent}'`) === before,
+          "never waived: and nothing was logged as an override",
+        );
+        check(sql(`select journey_stage from students where id = '${firstStudent}'`) === next, "never waived: the stage did not move");
+      }
+    }
+    sql(`update checklist_items set never_waive = false where student_id = '${firstStudent}'`);
+  } else {
+    bad("never waived: no outstanding required item to mark");
+  }
+}
+
 // --- Asking, chasing, and the state each one leaves behind.
 const asked = sql(`select ci.id from checklist_items ci where ci.student_id = '${studentId}' and ci.state = 'NOT_ASKED' and ci.required order by ci.stage limit 1`);
 const askedLabel = sql(`select dt.label from checklist_items ci join document_types dt on dt.code = ci.type_code where ci.id = '${asked}'`);

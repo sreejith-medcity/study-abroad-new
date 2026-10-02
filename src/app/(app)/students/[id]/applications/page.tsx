@@ -1,3 +1,4 @@
+import { canWaive, lockedMissing } from "@/lib/journey";
 import Link from "next/link";
 import { RichText } from "@/components/rich-text";
 import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
@@ -203,7 +204,18 @@ async function ApplyPanel({ studentId, pathway, preselectProgramId, q, country }
         programs={programs}
         preselectProgramId={preselectProgramId}
         limited={matches.length === 50}
-        gate={gate && gate.missing.length ? { missing: gate.missing.map((m) => m.label), canOverride: isAdmin(user), holds: holdOnDocuments } : undefined}
+        gate={
+          gate && gate.missing.length
+            ? {
+                missing: gate.missing.map((m) => m.label),
+                // A gate marked as never waived is refused to everybody, so the
+                // reason box is not offered rather than offered and then refused.
+                canOverride: isAdmin(user) && canWaive(gate),
+                holds: holdOnDocuments,
+                locked: lockedMissing(gate).map((m) => m.label),
+              }
+            : undefined
+        }
       />
     </>
   );

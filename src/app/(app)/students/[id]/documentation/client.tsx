@@ -180,7 +180,20 @@ export function ItemActions({ item, reasons, canProcess, userId }: { item: Item;
 }
 
 /** Moves the file on, and says what is in the way when it will not move. */
-export function StageMover({ studentId, stage, canOverride, missing }: { studentId: string; stage: JourneyStage; canOverride: boolean; missing: string[] }) {
+export function StageMover({
+  studentId,
+  stage,
+  canOverride,
+  missing,
+  locked = [],
+}: {
+  studentId: string;
+  stage: JourneyStage;
+  canOverride: boolean;
+  missing: string[];
+  /** Missing items nobody may waive, so the reason box is not offered at all. */
+  locked?: string[];
+}) {
   return (
     <ActionForm action={setStageAction} submitLabel="Move the stage" className="space-y-2">
       <input type="hidden" name="studentId" value={studentId} />
@@ -192,14 +205,18 @@ export function StageMover({ studentId, stage, canOverride, missing }: { student
             ))}
           </Select>
         </Field>
-        {canOverride && missing.length > 0 && (
+        {canOverride && missing.length > 0 && locked.length === 0 && (
           <Field label="Reason for letting it through" htmlFor={`why-${studentId}`} hint={`Logged on the file. Missing: ${missing.join(", ")}`}>
             <Input id={`why-${studentId}`} name="reason" className="min-w-[18rem]" />
             <FieldError name="reason" />
           </Field>
         )}
       </div>
-      <p className="text-xs text-muted">The stage is only held back by required documents. {stageLabel(stage)} is where the file sits now.</p>
+      <p className="text-xs text-muted">
+        The stage is only held back by required documents. {stageLabel(stage)} is where the file sits now.
+        {locked.length > 0 &&
+          ` ${locked.join(", ")} cannot be waived by anybody, so this stage stays until ${locked.length === 1 ? "it is" : "they are"} in.`}
+      </p>
     </ActionForm>
   );
 }

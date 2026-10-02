@@ -144,6 +144,7 @@ export async function syncChecklist(studentId: string) {
       source: w.req.source,
       sourceLabel: w.sourceLabel,
       required: w.req.required,
+      neverWaive: w.req.neverWaive,
       owedBy: w.req.owedBy,
       validityMonths: w.req.validityMonths,
     }));
@@ -160,6 +161,7 @@ export async function syncChecklist(studentId: string) {
       held.source === w.req.source &&
       held.sourceLabel === w.sourceLabel &&
       held.required === w.req.required &&
+      held.neverWaive === w.req.neverWaive &&
       held.validityMonths === w.req.validityMonths;
     if (same) continue;
     await db
@@ -170,6 +172,7 @@ export async function syncChecklist(studentId: string) {
         source: w.req.source,
         sourceLabel: w.sourceLabel,
         required: w.req.required,
+        neverWaive: w.req.neverWaive,
         validityMonths: w.req.validityMonths,
         updatedAt: new Date(),
       })

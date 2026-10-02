@@ -39,7 +39,7 @@ export function ApplyForm({
   /** True when more programs matched than were sent; the counsellor should narrow the search. */
   limited: boolean;
   /** What the profile stage is still short of, and whether this person may apply anyway. */
-  gate?: { missing: string[]; canOverride: boolean; holds: boolean };
+  gate?: { missing: string[]; canOverride: boolean; holds: boolean; locked?: string[] };
 }) {
   const [intake, setIntake] = useState("");
   const [programId, setProgramId] = useState(programs.some((p) => p.id === preselectProgramId) ? preselectProgramId! : "");
@@ -104,9 +104,11 @@ export function ApplyForm({
             </Field>
           ) : (
             <p className="mt-1 text-amber-900">
-              {gate.holds
-                ? "Collect them on the Documentation tab, or ask the Overseas team to let this one through."
-                : "The application can still be created. Collect them on the Documentation tab before it is handed to the desk."}
+              {gate.locked && gate.locked.length > 0
+                ? `${gate.locked.join(", ")} cannot be waived by anybody, so this has to wait until ${gate.locked.length === 1 ? "it is" : "they are"} in.`
+                : gate.holds
+                  ? "Collect them on the Documentation tab, or ask the Overseas team to let this one through."
+                  : "The application can still be created. Collect them on the Documentation tab before it is handed to the desk."}
             </p>
           )}
         </div>

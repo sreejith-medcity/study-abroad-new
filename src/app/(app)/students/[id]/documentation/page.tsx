@@ -6,7 +6,7 @@ import { fmtDate } from "@/lib/format";
 import { APP_ROLES, isAdmin, PROCESSING_ROLES } from "@/lib/permissions";
 import { getStudentForUser } from "@/server/queries";
 import { activeRejectionReasons, overridesFor, rowStanding, stageGate, studentChecklist, studentContext, syncChecklist, typesNotOnList, wholeGate } from "@/server/documentation";
-import { OWED_BY_LABEL, SOURCE_LABEL, STAGES, STATE_LABEL, stageLabel, standingText } from "@/lib/journey";
+import { OWED_BY_LABEL, SOURCE_LABEL, STAGES, STATE_LABEL, stageLabel, standingText, lockedMissing } from "@/lib/journey";
 import { Alert, Card, CardHeader, Chip, Table, Td, Th } from "@/components/ui";
 import { AddItem, ItemActions, StageMover } from "./client";
 
@@ -121,7 +121,13 @@ export default async function DocumentationPage({ params, searchParams }: { para
         )}
         {canWrite && (
           <div className="mt-4 border-t border-line pt-3">
-            <StageMover studentId={id} stage={student.journeyStage} canOverride={isAdmin(user)} missing={here.missing.map((m) => m.label)} />
+            <StageMover
+              studentId={id}
+              stage={student.journeyStage}
+              canOverride={isAdmin(user)}
+              missing={here.missing.map((m) => m.label)}
+              locked={lockedMissing(here).map((m) => m.label)}
+            />
           </div>
         )}
       </Card>

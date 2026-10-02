@@ -8,6 +8,7 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
+import { waiveRefusal } from "@/lib/journey";
 import { audit } from "@/lib/audit";
 import { nextAckNo } from "@/lib/ack";
 import { summarise } from "@/lib/checks";
@@ -79,6 +80,10 @@ export async function createApplicationAction(_: FormState, formData: FormData):
     const override = String(formData.get("gateReason") ?? "").trim();
     if (!profile.clear) {
       const list = profile.missing.map((m) => `${m.label} (${m.why.toLowerCase()})`).join(", ");
+      // A gate marked as never waived is refused to everybody, so an override
+      // cannot quietly become the way this stage is always left.
+      const refusal = waiveRefusal(profile);
+      if (refusal) return { error: refusal };
       if (!isAdmin(user)) return { error: `The profile documents are not complete. Still needed: ${list}.` };
       if (!override) return { fieldErrors: { gateReason: [`Still needed: ${profile.missing.map((m) => m.label).join(", ")}`] }, error: `The profile documents are not complete. Give a reason to apply anyway, which is logged on the file. Still needed: ${list}.` };
       await db.insert(schema.gateOverrides).values({ studentId: student.id, stage: "PROFILE", reason: override, missing: profile.missing.map((m) => m.label), actorId: user.id });

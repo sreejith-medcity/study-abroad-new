@@ -1,0 +1,2 @@
+ALTER TABLE "checklist_items" ADD COLUMN "never_waive" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "document_requirements" ADD COLUMN "never_waive" boolean DEFAULT false NOT NULL;

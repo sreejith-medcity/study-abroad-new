@@ -20,6 +20,7 @@ export type RequirementRow = {
   universityId: string | null;
   programId: string | null;
   required: boolean;
+  neverWaive: boolean;
   owedBy: OwedBy;
   validityMonths: number | null;
   guidance: string | null;
@@ -140,6 +141,11 @@ export function RequirementForm({
       </Field>
       <div className="flex flex-wrap gap-4">
         <Checkbox name="required" defaultChecked={row ? row.required : true} label="Holds the stage until it is in" />
+        <Checkbox
+          name="neverWaive"
+          defaultChecked={row ? row.neverWaive : false}
+          label="Never let through, whoever asks"
+        />
         <Checkbox name="active" defaultChecked={row ? row.active : true} label="In use" />
       </div>
       {onDone && (

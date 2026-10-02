@@ -67,14 +67,14 @@ export async function studentChecklist(studentId: string): Promise<ChecklistRow[
 export function stageGate(rows: ChecklistRow[], stage: JourneyStage, courseStart: Date | null, today = new Date()): Gate {
   const items: GateItem[] = rows
     .filter((r) => stageRank(r.stage) <= stageRank(stage))
-    .map((r) => ({ typeCode: r.typeCode, label: r.label, required: r.required, owedBy: r.owedBy, state: r.state, validTo: r.validTo }));
+    .map((r) => ({ typeCode: r.typeCode, label: r.label, required: r.required, neverWaive: r.neverWaive, owedBy: r.owedBy, state: r.state, validTo: r.validTo }));
   return gate(items, courseStart, today);
 }
 
 /** Everything outstanding on one file, whatever the stage. Used for the gate count. */
 export function wholeGate(rows: ChecklistRow[], courseStart: Date | null, today = new Date()): Gate {
   return gate(
-    rows.map((r) => ({ typeCode: r.typeCode, label: r.label, required: r.required, owedBy: r.owedBy, state: r.state, validTo: r.validTo })),
+    rows.map((r) => ({ typeCode: r.typeCode, label: r.label, required: r.required, neverWaive: r.neverWaive, owedBy: r.owedBy, state: r.state, validTo: r.validTo })),
     courseStart,
     today,
   );

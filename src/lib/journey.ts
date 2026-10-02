@@ -122,13 +122,15 @@ export type GateItem = ItemDates & {
   typeCode: string;
   label: string;
   required: boolean;
+  /** Set on the requirement: this one is never let through, whoever is asking. */
+  neverWaive?: boolean;
   owedBy: OwedBy;
 };
 
 export type Gate = {
   clear: boolean;
   /** Required items that are missing, rejected or out of date. */
-  missing: { typeCode: string; label: string; owedBy: OwedBy; why: string }[];
+  missing: { typeCode: string; label: string; owedBy: OwedBy; why: string; neverWaive: boolean }[];
   done: number;
   total: number;
   withStudent: number;
@@ -172,9 +174,30 @@ export function gate(items: GateItem[], courseStart: Date | string | null, today
             : item.state === "ASKED"
               ? "Asked for, nothing back"
               : "Not asked for yet";
-    missing.push({ typeCode: item.typeCode, label: item.label, owedBy: item.owedBy, why });
+    missing.push({ typeCode: item.typeCode, label: item.label, owedBy: item.owedBy, why, neverWaive: item.neverWaive === true });
   }
   return { clear: missing.length === 0, missing, done, total, withStudent, withUs, expiring, rejected };
+}
+
+/**
+ * The missing items nobody may let a student past.
+ *
+ * An override exists because a branch sometimes knows something the list does
+ * not. It is not a way around a passport that is not on file, so these are
+ * refused with the same words to everybody, admin or not, and no reason is
+ * asked for: there is no reason that would change the answer.
+ */
+export const lockedMissing = (g: Gate) => g.missing.filter((m) => m.neverWaive);
+
+/** Whether this gate can be let through at all, with a reason. */
+export const canWaive = (g: Gate) => g.clear || lockedMissing(g).length === 0;
+
+/** What to say when it cannot. */
+export function waiveRefusal(g: Gate): string {
+  const locked = lockedMissing(g);
+  if (locked.length === 0) return "";
+  const list = locked.map((m) => m.label).join(", ");
+  return `${list} cannot be waived by anybody. ${locked.length === 1 ? "It has" : "They have"} been marked as a gate that is never let through, so this has to wait until ${locked.length === 1 ? "it is" : "they are"} in.`;
 }
 
 /** The states the team may move an item to by hand, and what each is called on a button. */

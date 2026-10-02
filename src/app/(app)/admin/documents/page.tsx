@@ -126,6 +126,7 @@ async function Requirements({ types }: { types: { code: string; label: string }[
     universityId: r.req.universityId,
     programId: r.req.programId,
     required: r.req.required,
+    neverWaive: r.req.neverWaive,
     owedBy: r.req.owedBy,
     validityMonths: r.req.validityMonths,
     guidance: r.req.guidance,
@@ -178,7 +179,10 @@ async function Requirements({ types }: { types: { code: string; label: string }[
                       <Td className="text-xs">{r.scope ?? SOURCE_LABEL[r.source]}</Td>
                       <Td className="text-xs">{OWED_BY_LABEL[r.owedBy]}</Td>
                       <Td className="text-xs">{r.validityMonths ? `${r.validityMonths} months from its date` : "Its own expiry"}</Td>
-                      <Td className="text-xs">{r.required ? "Yes" : "No"}</Td>
+                      <Td className="text-xs">
+                        {r.required ? "Yes" : "No"}
+                        {r.neverWaive && <Chip tone="bad" className="ml-1">Never waived</Chip>}
+                      </Td>
                       <Td>
                         <RequirementRowActions row={r} types={types} countries={countries} vendors={vendors} universities={universities} />
                       </Td>

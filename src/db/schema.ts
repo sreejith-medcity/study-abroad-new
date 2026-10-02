@@ -880,6 +880,17 @@ export const documentRequirements = pgTable(
     programId: text("program_id").references(() => programs.id, { onDelete: "cascade" }),
     /** Only a required item gates the stage. The rest are asked for, not enforced. */
     required: boolean("required").notNull().default(true),
+    /**
+     * A gate nobody may let a student past, whatever their reason.
+     *
+     * Most gates can be overridden by an admin with a reason that is logged,
+     * because a branch sometimes knows something the list does not. A few
+     * cannot: a passport that is not on file is not a judgement call, and an
+     * override there becomes a rejection three months later. Which ones those
+     * are is Medcity's to decide, so it is set here rather than written into
+     * the code.
+     */
+    neverWaive: boolean("never_waive").notNull().default(false),
     owedBy: owedBy("owed_by").notNull().default("STUDENT"),
     /**
      * How long one of these stays good for, counted from the date on the
@@ -942,6 +953,8 @@ export const checklistItems = pgTable(
     /** Where the requirement came from, in words: "United Kingdom", "KC Overseas". */
     sourceLabel: text("source_label"),
     required: boolean("required").notNull().default(true),
+    /** Copied from the requirement, so the gate reads one row rather than two tables. */
+    neverWaive: boolean("never_waive").notNull().default(false),
     owedBy: owedBy("owed_by").notNull().default("STUDENT"),
     state: checklistState("state").notNull().default("NOT_ASKED"),
 
