@@ -34,9 +34,9 @@ export function ActionForm({
   const [dismissed, setDismissed] = useState(false);
   const ref = useRef<HTMLFormElement>(null);
   const router = useRouter();
-  useEffect(() => {
-    if (state.redirectTo) router.push(state.redirectTo);
-  }, [state, router]);
+  // The toast is raised before any navigation, because an action that both says
+  // something and moves the page would otherwise say it to a screen the person
+  // never sees. The toast host lives in the shell, so it survives the move.
   useEffect(() => {
     if (!state.ok) return;
     if (resetOnSuccess) ref.current?.reset();
@@ -45,6 +45,9 @@ export function ActionForm({
     // keeps the confirmation visible even when the form has scrolled away.
     if (!state.keep) toast(state.ok);
   }, [state, resetOnSuccess]);
+  useEffect(() => {
+    if (state.redirectTo) router.push(state.redirectTo);
+  }, [state, router]);
   // Submit through a transition instead of the form action prop, so React does not
   // clear what the user typed when the server returns a validation error.
   function onSubmit(e: FormEvent<HTMLFormElement>) {

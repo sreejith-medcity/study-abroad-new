@@ -5,7 +5,7 @@ import { LIVING_FUNDS } from "./living-funds";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import bcrypt from "bcryptjs";
-import { asc, eq, sql } from "drizzle-orm";
+import { asc, eq, inArray, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
@@ -819,6 +819,85 @@ async function main() {
         createdById: admin.id,
       })),
     );
+  }
+
+  // One invoice raised, sent and part paid, so the queue, the list, the ageing
+  // report and the document all have something real on them.
+  // The company that raises the invoices. Fictional details; the LUT is what
+  // decides whether a vendor abroad is invoiced zero-rated.
+  const [billing] = await db
+    .insert(schema.billingCompanies)
+    .values({
+      orgId: hq.id,
+      legalName: "Medcity International Overseas Corporation",
+      address: "Sample Tower, Sample Road\nKottayam, Kerala 686001",
+      state: "Kerala",
+      pan: "AAAAA0000A",
+      gstin: "32AAAAA0000A1Z5",
+      lutNumber: "AD320426000000X",
+      lutValidUntil: "2027-03-31",
+      bankAccountName: "Medcity International Overseas Corporation",
+      bankAccountNumber: "00000000000000",
+      ifsc: "SAMP0000001",
+      isDefault: true,
+    })
+    .returning();
+  const invoiceable = await db
+    .select({ lineId: schema.incomeLines.id, vendorId: schema.programRoutes.vendorId, gross: schema.commissions.grossAmount, currency: schema.commissions.currency, student: schema.students.firstName, lastName: schema.students.lastName })
+    .from(schema.incomeLines)
+    .innerJoin(schema.applications, eq(schema.applications.id, schema.incomeLines.applicationId))
+    .innerJoin(schema.programRoutes, eq(schema.programRoutes.id, schema.applications.routeId))
+    .innerJoin(schema.commissions, eq(schema.commissions.id, schema.incomeLines.commissionId))
+    .innerJoin(schema.students, eq(schema.students.id, schema.incomeLines.studentId))
+    .limit(3);
+  if (billing && invoiceable.length) {
+    const vendorId = invoiceable[0].vendorId;
+    const mine = invoiceable.filter((x) => x.vendorId === vendorId && x.currency === invoiceable[0].currency);
+    const net = mine.reduce((sum, x) => sum + x.gross, 0);
+    const raisedOn = months(40).toISOString().slice(0, 10);
+    const [invoice] = await db
+      .insert(schema.vendorInvoices)
+      .values({
+        number: `MIO/26-27/0001`,
+        vendorId,
+        billingCompanyId: billing.id,
+        currency: invoiceable[0].currency,
+        total: net,
+        rupeeTotal: invoiceable[0].currency === "INR" ? net : null,
+        rateUsed: invoiceable[0].currency === "INR" ? 1 : null,
+        taxTreatment: "Export of service, zero-rated under LUT",
+        taxPercent: 0,
+        taxAmount: 0,
+        state: "PART_PAID",
+        raisedOn,
+        dueOn: new Date(Date.now() - 12 * 86400000).toISOString().slice(0, 10),
+        sentAt: months(39),
+        sentById: admin.id,
+        sentTo: "partners@example.com",
+        receivedAmount: Math.round(net / 2),
+        note: "Against your statement of last month",
+        createdById: admin.id,
+        createdAt: months(40),
+      })
+      .returning();
+    await db.insert(schema.vendorInvoiceLines).values(
+      mine.map((x) => ({ invoiceId: invoice.id, incomeLineId: x.lineId, amount: x.gross, description: `${x.student} ${x.lastName}` })),
+    );
+    await db
+      .update(schema.incomeLines)
+      .set({ invoiceId: invoice.id, invoicedAmount: sql`coalesce(${schema.incomeLines.expectedAmount}, 0)`, state: "INVOICED" })
+      .where(inArray(schema.incomeLines.id, mine.map((x) => x.lineId)));
+    await db.insert(schema.invoicePayments).values({
+      invoiceId: invoice.id,
+      amount: Math.round(net / 2),
+      currency: invoiceable[0].currency,
+      rupeeAmount: invoiceable[0].currency === "INR" ? Math.round(net / 2) : null,
+      rateUsed: invoiceable[0].currency === "INR" ? 1 : null,
+      receivedOn: months(20).toISOString().slice(0, 10),
+      reference: "UTR0099123456",
+      note: "Half now, the rest with the next statement",
+      recordedById: admin.id,
+    });
   }
 
   await db.insert(schema.auditLogs).values(trail);

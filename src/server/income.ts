@@ -18,6 +18,9 @@ export type IncomeRow = typeof schema.incomeLines.$inferSelect & {
   commissionCurrency: string | null;
   commissionStatus: string | null;
   rateNote: string | null;
+  /** The invoice this line went on, where it has been invoiced. */
+  invoiceNumber: string | null;
+  invoiceState: string | null;
 };
 
 /** One student's lines, newest first within each kind. */
@@ -34,6 +37,8 @@ export async function studentIncome(studentId: string): Promise<IncomeRow[]> {
       commissionCurrency: schema.commissions.currency,
       commissionStatus: schema.commissions.status,
       rateNote: rc.note,
+      invoiceNumber: schema.vendorInvoices.number,
+      invoiceState: schema.vendorInvoices.state,
     })
     .from(il)
     .leftJoin(vn, eq(vn.id, il.vendorId))
@@ -41,6 +46,7 @@ export async function studentIncome(studentId: string): Promise<IncomeRow[]> {
     .leftJoin(pg, eq(pg.id, ap.programId))
     .leftJoin(schema.commissions, eq(schema.commissions.id, il.commissionId))
     .leftJoin(rc, eq(rc.id, il.rateCardId))
+    .leftJoin(schema.vendorInvoices, eq(schema.vendorInvoices.id, il.invoiceId))
     .where(eq(il.studentId, studentId))
     .orderBy(asc(il.kind), desc(il.createdAt));
   return rows.map((r) => ({
@@ -54,6 +60,8 @@ export async function studentIncome(studentId: string): Promise<IncomeRow[]> {
     commissionCurrency: r.commissionCurrency,
     commissionStatus: r.commissionStatus,
     rateNote: r.rateNote,
+    invoiceNumber: r.invoiceNumber,
+    invoiceState: r.invoiceState,
   }));
 }
 

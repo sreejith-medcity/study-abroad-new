@@ -323,6 +323,13 @@
       "when": 1790865618326,
       "tag": "0045_income_lines",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1790927989454,
+      "tag": "0046_vendor_invoices",
+      "breakpoints": true
     }
   ]
 }

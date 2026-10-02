@@ -113,6 +113,15 @@ export const checklistState = pgEnum("checklist_state", [
   "REJECTED",
 ]);
 /**
+ * Where a vendor invoice has got to.
+ *
+ * Draft while it is being put together, raised once it has a number, sent once it
+ * has gone, then paid in part or in full. Disputed is the vendor saying no, which
+ * is a state and not a failure: it is worked out and the invoice carries on.
+ */
+export const invoiceState = pgEnum("invoice_state", ["DRAFT", "RAISED", "SENT", "PART_PAID", "PAID", "DISPUTED", "WRITTEN_OFF"]);
+
+/**
  * Every kind of money a student brings in. The ones Medcity earns from the
  * student, and the ones a vendor or a provider pays Medcity for sending them.
  */
@@ -1137,6 +1146,8 @@ export const incomeLines = pgTable(
     /** Null until somebody records it. Never nought standing in for unknown. */
     expectedAmount: integer("expected_amount"),
     invoicedAmount: integer("invoiced_amount"),
+    /** The invoice this line went on, where it has been invoiced. */
+    invoiceId: text("invoice_id"),
     receivedAmount: integer("received_amount"),
     state: incomeState("state").notNull().default("EXPECTED"),
     /** The branch's cut of this line, where it has one. */
@@ -1158,6 +1169,96 @@ export const incomeLines = pgTable(
     index("income_lines_vendor_idx").on(t.vendorId),
     uniqueIndex("income_lines_service_uq").on(t.serviceRequestId),
   ],
+);
+
+/**
+ * One invoice to one vendor, covering as many students as the desk puts on it.
+ *
+ * Vendors settle in batches, so an invoice per placement is an invoice nobody
+ * pays. The number is per financial year and unique, the figures are the sum of
+ * the lines rather than a typed total, and the rupee figure is kept with the
+ * rate it was worked out at so the books can be read back.
+ */
+export const vendorInvoices = pgTable(
+  "vendor_invoices",
+  {
+    id: id(),
+    number: text("number").notNull(),
+    vendorId: text("vendor_id")
+      .notNull()
+      .references(() => vendors.id),
+    /** The Medcity company that raises it, with its own GSTIN and LUT. */
+    billingCompanyId: text("billing_company_id").references(() => billingCompanies.id, { onDelete: "set null" }),
+    currency: text("currency").notNull().default("INR"),
+    /** The sum of the lines. Never typed in by hand. */
+    total: integer("total").notNull().default(0),
+    /**
+     * The rupee figure and the rate it came from, kept together: a rupee total
+     * without its rate is a number nobody can check against the bank later.
+     */
+    rupeeTotal: integer("rupee_total"),
+    rateUsed: real("rate_used"),
+    /** Tax as it applies to this company: zero-rated under a LUT, or charged. */
+    taxTreatment: text("tax_treatment"),
+    taxPercent: real("tax_percent"),
+    taxAmount: integer("tax_amount"),
+    state: invoiceState("state").notNull().default("DRAFT"),
+    raisedOn: date("raised_on"),
+    dueOn: date("due_on"),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    sentById: text("sent_by_id").references(() => users.id),
+    sentTo: text("sent_to"),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    receivedAmount: integer("received_amount").notNull().default(0),
+    disputeReason: text("dispute_reason"),
+    disputedAt: timestamp("disputed_at", { withTimezone: true }),
+    writtenOffReason: text("written_off_reason"),
+    writtenOffById: text("written_off_by_id").references(() => users.id),
+    note: text("note"),
+    createdById: text("created_by_id").references(() => users.id),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("vendor_invoices_number_uq").on(t.number), index("vendor_invoices_vendor_idx").on(t.vendorId, t.state)],
+);
+
+/** One student's line on one invoice. The amount is fixed when it is raised. */
+export const vendorInvoiceLines = pgTable(
+  "vendor_invoice_lines",
+  {
+    id: id(),
+    invoiceId: text("invoice_id")
+      .notNull()
+      .references(() => vendorInvoices.id, { onDelete: "cascade" }),
+    incomeLineId: text("income_line_id")
+      .notNull()
+      .references(() => incomeLines.id, { onDelete: "cascade" }),
+    amount: integer("amount").notNull(),
+    description: text("description").notNull(),
+  },
+  (t) => [uniqueIndex("vendor_invoice_lines_uq").on(t.invoiceId, t.incomeLineId), index("vendor_invoice_lines_income_idx").on(t.incomeLineId)],
+);
+
+/** Money against one invoice, in the instalments vendors actually pay in. */
+export const invoicePayments = pgTable(
+  "invoice_payments",
+  {
+    id: id(),
+    invoiceId: text("invoice_id")
+      .notNull()
+      .references(() => vendorInvoices.id, { onDelete: "cascade" }),
+    amount: integer("amount").notNull(),
+    currency: text("currency").notNull().default("INR"),
+    /** What hit the bank in rupees, with the rate, where the invoice is not in rupees. */
+    rupeeAmount: integer("rupee_amount"),
+    rateUsed: real("rate_used"),
+    receivedOn: date("received_on").notNull(),
+    reference: text("reference"),
+    note: text("note"),
+    recordedById: text("recorded_by_id").references(() => users.id),
+    createdAt: createdAt(),
+  },
+  (t) => [index("invoice_payments_invoice_idx").on(t.invoiceId, t.receivedOn)],
 );
 
 /** A gate let through with a reason, which is logged and shown on the file. */
@@ -2244,6 +2345,25 @@ export const checklistFilesRelations = relations(checklistFiles, ({ one }) => ({
   decidedBy: one(users, { fields: [checklistFiles.decidedById], references: [users.id], relationName: "checklistFileDecider" }),
 }));
 
+export const vendorInvoicesRelations = relations(vendorInvoices, ({ one, many }) => ({
+  vendor: one(vendors, { fields: [vendorInvoices.vendorId], references: [vendors.id] }),
+  billingCompany: one(billingCompanies, { fields: [vendorInvoices.billingCompanyId], references: [billingCompanies.id] }),
+  createdBy: one(users, { fields: [vendorInvoices.createdById], references: [users.id] }),
+  sentBy: one(users, { fields: [vendorInvoices.sentById], references: [users.id], relationName: "invoiceSender" }),
+  lines: many(vendorInvoiceLines),
+  payments: many(invoicePayments),
+}));
+
+export const vendorInvoiceLinesRelations = relations(vendorInvoiceLines, ({ one }) => ({
+  invoice: one(vendorInvoices, { fields: [vendorInvoiceLines.invoiceId], references: [vendorInvoices.id] }),
+  incomeLine: one(incomeLines, { fields: [vendorInvoiceLines.incomeLineId], references: [incomeLines.id] }),
+}));
+
+export const invoicePaymentsRelations = relations(invoicePayments, ({ one }) => ({
+  invoice: one(vendorInvoices, { fields: [invoicePayments.invoiceId], references: [vendorInvoices.id] }),
+  recordedBy: one(users, { fields: [invoicePayments.recordedById], references: [users.id] }),
+}));
+
 export const rateCardsRelations = relations(rateCards, ({ one, many }) => ({
   org: one(organizations, { fields: [rateCards.orgId], references: [organizations.id] }),
   setBy: one(users, { fields: [rateCards.setById], references: [users.id] }),
@@ -2382,4 +2502,5 @@ export type ContactOutcome = (typeof contactOutcome.enumValues)[number];
 export type IncomeKind = (typeof incomeKind.enumValues)[number];
 export type IncomeState = (typeof incomeState.enumValues)[number];
 export type IncomePayer = (typeof incomePayer.enumValues)[number];
+export type InvoiceState = (typeof invoiceState.enumValues)[number];
 export type AppSettings = typeof appSettings.$inferSelect;

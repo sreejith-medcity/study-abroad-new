@@ -117,6 +117,7 @@ export default async function StudentIncomePage({ params }: { params: Promise<{ 
                     <p className="mt-0.5 max-w-sm text-xs text-muted">{row.note ?? INCOME_MEANS[row.kind]}</p>
                     {read.sourced && <p className="text-xs text-muted">{read.sourced}</p>}
                     {row.ackNo && <p className="text-xs text-muted">{row.ackNo}{row.course ? ` · ${row.course}` : ""}</p>}
+                    {row.invoiceNumber && <p className="text-xs text-muted">On invoice {row.invoiceNumber}</p>}
                   </Td>
                   <Td className="text-xs">
                     {row.vendorName ?? row.providerName ?? PAYER_LABEL[row.payer]}

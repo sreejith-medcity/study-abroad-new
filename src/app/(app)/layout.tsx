@@ -113,6 +113,7 @@ const ADMIN_NAV: NavGroup[] = [
     items: [
       { href: "/admin/commission", label: "Commission", icon: "commission" },
       { href: "/admin/income", label: "Income and rate cards", icon: "insights" },
+      { href: "/admin/invoices", label: "Invoices", icon: "commission" },
       { href: "/admin/payments", label: "Online payments", icon: "wallet" },
     ],
   },
