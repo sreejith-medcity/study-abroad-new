@@ -153,3 +153,30 @@ Three things to copy from it when writing a new suite:
   screen.
 - Nav group titles are CSS-uppercased. Match an item label (`My referrals`), or
   use a case-insensitive regex.
+
+## crm-link.mjs
+
+The link to Medcity's own CRM, on the plain seed. A key made on the screen (with
+the secret shown once, kept hashed, and a sealed copy because a signature cannot
+be checked without the secret), then the three ways a caller is refused. Then
+registering a student: refused without the CRM's own `updatedAt` and without a
+branch, created with a Medcity ID from that branch, consent recorded as the CRM's
+claim rather than restated as the portal's. Then idempotency: the same call twice
+is answered from the first one and creates nothing. Then last edit wins in both
+directions, including a counsellor's correction surviving a stale message, with
+the field named back to the caller and put on the queue. Then the lookup, a lead,
+signing switched on for a key, a tampered body and an hour-old signature both
+refused, and the outbound queue against a listener standing in for the CRM: a
+real stage move queued rather than posted, drained, signed, a 400 not retried, a
+503 retried after a wait, and a row put back in the queue by hand.
+
+Four things to copy from it when writing a new suite:
+
+- It stands up an `http.createServer` on 127.0.0.1:4555 as the CRM, and flips
+  what that answers to exercise the retry rules. Close it at the end.
+- A diagnostic the desk reads while on the phone to the vendor is a `keep` alert,
+  not a toast. Assert against the form, not `[role="status"]`.
+- Where two actions in a row leave messages in the same form, wait on the
+  database rather than the screen: the second wait will match the first message.
+- The stage mover is a select plus a "Move the stage" button, and a gate in the
+  way wants a reason. Read the options rather than assuming which stage is next.

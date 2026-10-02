@@ -83,6 +83,8 @@ This repository currently contains **Phase 0 basics and Phase 1 (core pipeline)*
 | The agreement | Super admin writes, the sub-agent accepts | A memorandum kept as versions rather than one editable page: a sub-agent accepted particular words on a particular day, and a new version is published beside the old one rather than over it. Accepting it asks for a typed name and a tick, and keeps who pressed it, the name, the day and where from. The page says plainly that this is a record of acceptance and not a signature in law. Publishing a new version asks every sub-agent again, and the desk sees who has not. |
 | Referrals | Sub-agents send, the desk routes | A sub-agent sends a lead with a name, a number and whatever else they know, having confirmed the person agreed to it. It lands with the head office as an enquiry, and the desk gives it to a branch; ownership moves, the referrer does not, because the referrer is who gets paid. The sub-agent's own page shows the stage in words a family would understand and who is holding it, and nothing else: no documents, no notes, no fees, nobody else's leads. When the branch registers the lead, the student file carries the referrer and the earning is opened the same day. |
 | Referral fees and withdrawal | Admins set, sub-agents withdraw | A rate per sub-agent or one platform default, added rather than edited so an old figure can be read back, as a share of the commission Medcity received or a fixed amount per enrolment. Both figures start unset, so a referral reads "Not recorded" rather than nought, and the desk has a list of earnings nobody has priced. An earning becomes payable, and the wallet credited, only when Medcity's own money is in: a commission marked received or a vendor invoice paid, guarded so neither path credits twice. A withdrawal is asked for from the same wallet a branch uses, against four conditions shown in full rather than one refusal at a time: the agreement accepted, bank details and PAN on file, any minimum met, and nothing already waiting with the desk. |
+| The CRM link | Super admin sets up, the CRM calls | Medcity's own CRM registers students into the portal, looks one up, and sends leads in, over three documented endpoints. A key identifies the caller; it may send the secret as a bearer token to start with, or sign the body, which is switched on per key without a new key or a deploy. An `idempotency-key` makes a retry after a timeout safe: the same call twice is answered from the first one rather than registering the student twice. Going the other way, the portal queues what happens here (a stage move, an application's status, money, a document decision) and posts it to a URL you set, signed, with retries and a growing wait; a refusal the CRM meant is not retried but put in front of somebody. Every exchange both ways is on **The CRM link** under Platform, with what was sent and what came back, and a tab for what needs a person. The page the vendor builds against is there too, read from the same constants the code enforces, so it cannot go stale. |
+| Which edit wins | All | The later one. The CRM sends its own `updatedAt` and it is required: without it there is no way to tell which edit is later, and a message from last week would undo a correction made this morning. Where the CRM's copy is older, nothing is written, every field it would have changed is named back in the answer with both values, and it goes on the queue for a person. A blank from the CRM never clears a value the portal holds, a field outside the agreed list is named rather than written, and every change is kept in the audit log with what it replaced, so a bad overwrite can be undone. |
 | Document storage | All | Supabase Storage in production, local disk in development. |
 
 All four phases are built. Every nav item leads somewhere.
@@ -157,6 +159,10 @@ All seeded users share the password `Password@123`. Every person, university and
 | `POST /api/razorpay/webhook` | Razorpay's webhook for payment.captured, order.paid and payment.failed, signed with the webhook secret |
 | `POST /api/cron/cricos` | Monthly CRICOS refresh for a scheduler, with `Authorization: Bearer $CRON_SECRET`. New courses land as drafts |
 | `POST /api/cron/documents` | Daily documentation chasing, same header. Reminders at three days of silence, the counsellor's desk at seven, expiry flags and gate notices |
+| `POST /api/cron/crm` | Drains the queue of events waiting for Medcity's own CRM, same header. Every few minutes. Without it the queue only moves when somebody presses the button on The CRM link |
+| `POST /api/crm/students` | Medcity's CRM registers or updates a student. Keyed and optionally signed; see **For the vendor** on The CRM link |
+| `GET /api/crm/students` | The same CRM looks a student up by its own id, the Medcity ID, an email or a number |
+| `POST /api/crm/enquiries` | A lead from that CRM, before anybody has decided it is a student |
 | `npx tsx scripts/sync-cricos.ts <folder> [--publish]` | Load the CRICOS register from its three downloaded CSVs (the admin screen does the same from data.gov.au) |
 | `npx tsx scripts/supabase-part.ts <migration tag> "<title>"` | Write a migration as SQL that is safe to run twice in the Supabase SQL editor, with the migration recorded |
 | `npx tsx scripts/cricos-reconcile-sql.ts > out.sql` | Write SQL that links hand-researched Australian programs to their CRICOS codes from the catalogue CSVs and removes any untouched draft twin a sync added |
@@ -292,11 +298,18 @@ Who may hand out which role: a super admin can set any role. An ops manager can 
 
 ## Next
 
-The family side and the sub-agent module are built. What remains from the
-wireframe is the link to Medcity's own CRM, so a student registered in one place
-is registered in both: integration keys and signatures, the registration
-endpoint, the student lookup, webhooks out with retries, a field map that fills
-blanks only, and the queue of rows that need a person.
+Everything in the wireframe is built. What is left is other people's work and
+yours.
+
+The CRM link is the portal's half. Medcity's own CRM is still being built by its
+vendor, so nothing here assumes its shape: the portal states what it accepts,
+sends **For the vendor** as the contract, and where events go is a setting rather
+than code. When their side is real: make a key, give them the key id and the
+secret, point the webhook at their URL, tick which kinds to send, switch it on,
+and send a test event. Signing should be on before go-live.
+
+Point a scheduler at `POST /api/cron/crm` with the cron secret, every few
+minutes, or the outbound queue only drains when somebody presses the button.
 
 Before sub-agents are let in: set the referral rate (Sub-agents, Sub-agents tab),
 read the seeded agreement and replace it with the one your lawyer approves, and

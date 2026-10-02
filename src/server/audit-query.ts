@@ -128,6 +128,18 @@ const ACTION_LABEL: Record<string, string> = {
   "referral.submit": "Referral sent in",
   "referral.assign": "Referral given to a branch",
   "settings.agents": "Sub-agent settings changed",
+  "integration.key.create": "CRM key created",
+  "integration.key.revoke": "CRM key revoked",
+  "integration.key.signing": "CRM key signing changed",
+  "integration.target": "CRM target changed",
+  "integration.test": "CRM test event sent",
+  "integration.drain": "CRM queue drained",
+  "integration.retry": "CRM event retried",
+  "integration.resolve": "CRM event dealt with",
+  "integration.ignore": "CRM event ignored",
+  "crm.student.create": "Student registered from the CRM",
+  "crm.student.update": "Student updated from the CRM",
+  "crm.drain_failed": "CRM sending failed",
   "student.reassign": "Student reassigned",
   "student.archive": "Student archived",
   "student.unarchive": "Student restored",
@@ -153,7 +165,7 @@ export function actionLabel(action: string) {
 
 /** Sensitive-looking actions get a louder tone in the table. */
 export function actionTone(action: string): "bad" | "warn" | "info" | "neutral" {
-  if (/(delete|deactivate|reveal|revoke)/.test(action)) return "bad";
+  if (/(delete|deactivate|reveal|revoke|_failed)/.test(action)) return "bad";
   if (/(role_change|password|lock|export|invite|create|guardian)/.test(action)) return "warn";
   if (/(status|import|update|classify)/.test(action)) return "info";
   return "neutral";

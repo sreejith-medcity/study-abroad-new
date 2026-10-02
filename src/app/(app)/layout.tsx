@@ -128,6 +128,7 @@ const PLATFORM_NAV: NavGroup = {
   title: "Platform",
   items: [
     { href: "/admin/audit", label: "Audit log", icon: "shield" },
+    { href: "/admin/integrations", label: "The CRM link", icon: "flow" },
     { href: "/settings/platform", label: "Platform settings", icon: "settings" },
     { href: "/admin/go-live", label: "Go live", icon: "spark" },
   ],

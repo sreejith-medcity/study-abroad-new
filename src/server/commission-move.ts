@@ -6,6 +6,7 @@ import { audit } from "@/lib/audit";
 import { inr } from "@/lib/money";
 import { notifyUsers, partnerRecipients } from "@/server/notify";
 import { settleReferralForCommission } from "@/server/referral-earnings";
+import { sendMoneyEvent } from "@/server/crm-out";
 
 export type CommissionMove = { status: (typeof schema.commissionStatus.enumValues)[number]; invoiceRef: string | null; partnerAmountInr: number | null; note: string | null };
 
@@ -67,6 +68,17 @@ export async function moveCommission(user: SessionUser, commission: typeof schem
   if (d.status === "RECEIVED" || d.status === "SETTLED") {
     await settleReferralForCommission(commission.id, user.id);
   }
+
+  await sendMoneyEvent(commission.id, {
+    what: "commission",
+    applicationId: commission.applicationId,
+    orgId: commission.orgId,
+    from: commission.status,
+    to: d.status,
+    currency: commission.currency,
+    gross: commission.grossAmount,
+    partnerShareInr: partnerInr,
+  });
 
   await audit(user.id, "commission.status", "commission", commission.id, { from: commission.status, to: d.status });
   return null;

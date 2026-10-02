@@ -6,6 +6,7 @@ import { effectiveRate } from "@/server/agents";
 import { getSettings } from "@/server/settings";
 import { inr } from "@/lib/money";
 import { notifyUsers, partnerRecipients } from "@/server/notify";
+import { sendMoneyEvent } from "@/server/crm-out";
 
 /**
  * What a sub-agent earns for a student they referred, and when it becomes money
@@ -121,6 +122,14 @@ export async function settleReferralForCommission(commissionId: string, actorId:
     `${inr(amount)} for ${student.firstName} ${student.lastName}`,
     "/wallet",
   );
+  await sendMoneyEvent(earning.id, {
+    what: "referral fee",
+    orgId: student.referredByOrgId,
+    studentId: student.id,
+    medcityId: student.medcityId,
+    crmId: student.crmId,
+    amountInr: amount,
+  });
   return { credited: amount };
 }
 

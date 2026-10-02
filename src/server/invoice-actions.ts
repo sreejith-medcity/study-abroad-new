@@ -14,6 +14,7 @@ import { getSettings } from "@/server/settings";
 import { notifyUsers, partnerRecipients } from "@/server/notify";
 import type { FormState } from "@/lib/form-state";
 import { settleReferralsForCommissions } from "@/server/referral-earnings";
+import { sendMoneyEvent } from "@/server/crm-out";
 
 const { incomeLines: il, vendorInvoices: vi, vendorInvoiceLines: vil, invoicePayments: ip } = schema;
 
@@ -230,6 +231,15 @@ export async function recordInvoicePaymentAction(_: FormState, fd: FormData): Pr
     }
   }
   await audit(user.id, "invoice.payment", "invoice", invoice.id, { amount, on, reference: d.reference ?? null, state });
+  await sendMoneyEvent(invoice.id, {
+    what: "vendor invoice payment",
+    invoiceNumber: invoice.number,
+    vendorId: invoice.vendorId,
+    currency: invoice.currency,
+    amount,
+    receivedOn: on,
+    invoiceState: state,
+  });
   revalidatePath(`/admin/invoices/${invoice.id}`);
   revalidatePath("/admin/invoices");
   return {

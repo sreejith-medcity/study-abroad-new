@@ -200,6 +200,18 @@ export const resourceKind = pgEnum("resource_kind", ["GUIDE", "TEMPLATE", "POLIC
 
 // ---------- Sub-agents ----------
 
+// ---------- The link to Medcity's own CRM ----------
+
+/** Which way one recorded exchange went. */
+export const integrationDirection = pgEnum("integration_direction", ["IN", "OUT"]);
+
+/**
+ * Where one exchange stands. NEEDS_A_PERSON is the point of the whole table: a
+ * call that half worked, or a field the portal would not overwrite, is put in
+ * front of somebody rather than dropped.
+ */
+export const integrationStatus = pgEnum("integration_status", ["PENDING", "SENT", "RECEIVED", "FAILED", "NEEDS_A_PERSON", "RESOLVED", "IGNORED"]);
+
 /** Where a sub-agent's application to join has got to. */
 export const agentApplicationStatus = pgEnum("agent_application_status", ["NEW", "REVIEWING", "APPROVED", "REJECTED"]);
 
@@ -547,13 +559,22 @@ export const students = pgTable(
      * was converted. Null for a student a branch found itself.
      */
     referredByOrgId: text("referred_by_org_id").references(() => organizations.id),
+    /** The same person's id in Medcity's own CRM, where the two are linked. */
+    crmId: text("crm_id"),
+    /** When the portal last exchanged anything about this student with the CRM. */
+    crmLastSyncedAt: timestamp("crm_last_synced_at", { withTimezone: true }),
+    /**
+     * The CRM's own updatedAt as last seen. Last edit wins is decided against
+     * this, so a stale message cannot undo a correction made here since.
+     */
+    crmUpdatedAt: timestamp("crm_updated_at", { withTimezone: true }),
     archived: boolean("archived").notNull().default(false),
     source: text("source").notNull().default("partner"), // partner | qr | crm
     crmLeadId: text("crm_lead_id"),
     createdAt: createdAt(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("students_org_idx").on(t.orgId), index("students_email_idx").on(t.email)],
+  (t) => [index("students_org_idx").on(t.orgId), index("students_email_idx").on(t.email), uniqueIndex("students_crm_id_uq").on(t.crmId)],
 );
 
 export const academicRecords = pgTable("academic_records", {
@@ -1742,6 +1763,97 @@ export const referralEarnings = pgTable(
   ],
 );
 
+// ---------- The link to Medcity's own CRM ----------
+
+/**
+ * A key the CRM proves itself with.
+ *
+ * The secret is hashed, never kept: it is shown once when the key is made and
+ * cannot be read back, which is the only way to be able to say honestly that
+ * nobody here can see it. Signing is enforced per key rather than globally, so a
+ * vendor can start on the key alone and signing is switched on before go-live
+ * without a deploy.
+ */
+export const integrationKeys = pgTable(
+  "integration_keys",
+  {
+    id: id(),
+    /** What this key is for, in words: "Medcity CRM, staging". */
+    name: text("name").notNull(),
+    /** The public half, sent in the header so the caller can be identified. */
+    keyId: text("key_id").notNull(),
+    /** bcrypt of the secret half, for the bearer-token way in. */
+    secretHash: text("secret_hash").notNull(),
+    /**
+     * The same secret sealed, which signing cannot do without: an HMAC is worked
+     * out from the shared secret, so verifying one means holding it. Sealed under
+     * AUTH_SECRET rather than left in the open, and only ever read to verify.
+     */
+    secretBox: text("secret_box"),
+    /** Whether a request on this key must also carry a valid signature. */
+    signatureRequired: boolean("signature_required").notNull().default(false),
+    /** What this key may do: register, lookup, enquiry. Empty means all of them. */
+    scopes: text("scopes").array().notNull().default(sql`'{}'::text[]`),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    active: boolean("active").notNull().default(true),
+    createdById: text("created_by_id").references(() => users.id),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    revokedById: text("revoked_by_id").references(() => users.id),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("integration_keys_key_id_uq").on(t.keyId)],
+);
+
+/**
+ * Every exchange with the CRM, both ways, kept whether it worked or not.
+ *
+ * An integration nobody can see is an integration nobody can fix. One row per
+ * call: what was sent or received, what came back, how many attempts it took,
+ * and where a person has to look. Payloads are kept because the first question
+ * about any sync problem is "what exactly did they send".
+ */
+export const integrationEvents = pgTable(
+  "integration_events",
+  {
+    id: id(),
+    direction: integrationDirection("direction").notNull(),
+    /** What happened, in dotted words: student.register, application.status. */
+    kind: text("kind").notNull(),
+    status: integrationStatus("status").notNull().default("PENDING"),
+    /** The key the call came in on. Null on anything the portal sent. */
+    integrationKeyId: text("integration_key_id").references(() => integrationKeys.id, { onDelete: "set null" }),
+    /**
+     * The caller's own id for this request. Repeating it returns the first answer
+     * rather than doing the work twice, which is what makes a retry safe for them.
+     */
+    idempotencyKey: text("idempotency_key"),
+    entityType: text("entity_type"),
+    entityId: text("entity_id"),
+    /** What was sent or received, as it was. */
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+    /** What the portal answered, or what the CRM answered us. */
+    response: jsonb("response").$type<Record<string, unknown>>(),
+    responseStatus: integer("response_status"),
+    attempts: integer("attempts").notNull().default(0),
+    lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+    /** When to try again. Null on anything not waiting to be retried. */
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }),
+    error: text("error"),
+    /** Why a person is needed, in words they can act on. */
+    needsAPersonBecause: text("needs_a_person_because"),
+    resolvedById: text("resolved_by_id").references(() => users.id),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    note: text("note"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("integration_events_idempotency_uq").on(t.idempotencyKey),
+    index("integration_events_status_idx").on(t.status, t.createdAt),
+    index("integration_events_due_idx").on(t.nextAttemptAt),
+    index("integration_events_entity_idx").on(t.entityType, t.entityId),
+  ],
+);
+
 // ---------- Settings ----------
 
 /**
@@ -1792,6 +1904,20 @@ export const appSettings = pgTable("app_settings", {
 
   // Money: indicative rates, overwritten by the real figure at settlement
   fxRates: jsonb("fx_rates").notNull().default(sql`'{"GBP":112,"EUR":96,"AUD":58,"CAD":62,"USD":88}'::jsonb`),
+
+  /**
+   * Where the portal posts what happens, and whether it does.
+   *
+   * Kept as settings rather than in code because the CRM's production build is
+   * somebody else's work in progress: when they say what shape they want, this
+   * changes without a deploy. The secret is sealed, as the payment keys are, and
+   * is sent as a signature over the body rather than in the open.
+   */
+  crmWebhookUrl: text("crm_webhook_url"),
+  crmWebhookSecretBox: text("crm_webhook_secret_box"),
+  crmWebhookEnabled: boolean("crm_webhook_enabled").notNull().default(false),
+  /** Which kinds of event go out. Empty means none, which is also the default. */
+  crmWebhookKinds: text("crm_webhook_kinds").array().notNull().default(sql`'{}'::text[]`),
 
   // Sub-agents
   /**
@@ -2363,6 +2489,8 @@ export const enquiries = pgTable(
      * gets paid if it turns into a student.
      */
     submittedByOrgId: text("submitted_by_org_id").references(() => organizations.id),
+    /** The same lead's id in Medcity's own CRM, where it came from there. */
+    crmId: text("crm_id"),
     createdAt: createdAt(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -2370,6 +2498,7 @@ export const enquiries = pgTable(
     index("enquiries_org_idx").on(t.orgId, t.stage),
     index("enquiries_follow_up_idx").on(t.nextFollowUpAt),
     index("enquiries_referrer_idx").on(t.submittedByOrgId),
+    uniqueIndex("enquiries_crm_id_uq").on(t.crmId),
   ],
 );
 
@@ -2751,6 +2880,16 @@ export const commissionRulesRelations = relations(commissionRules, ({ one, many 
   commissions: many(commissions),
 }));
 
+export const integrationKeysRelations = relations(integrationKeys, ({ one, many }) => ({
+  createdBy: one(users, { fields: [integrationKeys.createdById], references: [users.id] }),
+  events: many(integrationEvents),
+}));
+
+export const integrationEventsRelations = relations(integrationEvents, ({ one }) => ({
+  key: one(integrationKeys, { fields: [integrationEvents.integrationKeyId], references: [integrationKeys.id] }),
+  resolvedBy: one(users, { fields: [integrationEvents.resolvedById], references: [users.id] }),
+}));
+
 export const agentApplicationsRelations = relations(agentApplications, ({ one }) => ({
   referredByOrg: one(organizations, { fields: [agentApplications.referredByOrgId], references: [organizations.id] }),
   org: one(organizations, { fields: [agentApplications.orgId], references: [organizations.id] }),
@@ -2833,4 +2972,6 @@ export type InvoiceState = (typeof invoiceState.enumValues)[number];
 export type AgentApplicationStatus = (typeof agentApplicationStatus.enumValues)[number];
 export type AgentFeeKind = (typeof agentFeeKind.enumValues)[number];
 export type ReferralEarningState = (typeof referralEarningState.enumValues)[number];
+export type IntegrationDirection = (typeof integrationDirection.enumValues)[number];
+export type IntegrationStatus = (typeof integrationStatus.enumValues)[number];
 export type AppSettings = typeof appSettings.$inferSelect;

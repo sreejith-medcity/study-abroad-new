@@ -14,6 +14,7 @@ import { stageGate, studentChecklist, studentContext, syncChecklist } from "@/se
 import { packContents } from "@/server/pack";
 import type { FormState } from "@/lib/form-state";
 import type { JourneyStage } from "@/db/schema";
+import { sendDocumentDecision, sendStageChange } from "@/server/crm-out";
 
 const { checklistItems: ci, checklistFiles: cf } = schema;
 
@@ -145,6 +146,13 @@ export async function acceptItemAction(_: FormState, fd: FormData): Promise<Form
     await db.update(cf).set({ outcome: "ACCEPTED", decidedAt: now, decidedById: user.id }).where(and(eq(cf.itemId, item.id), eq(cf.version, item.version)));
   }
   await audit(user.id, "checklist.accept", "student", item.studentId, { typeCode: item.typeCode, validTo: dateOnly(validTo) });
+  await sendDocumentDecision(item.studentId, {
+    decision: "ACCEPTED",
+    typeCode: item.typeCode,
+    document: item.type.label,
+    validTo: dateOnly(validTo),
+    decidedBy: user.name,
+  });
   refresh(item.studentId);
   return { ok: `${item.type.label} accepted.` };
 }
@@ -176,6 +184,14 @@ export async function rejectItemAction(_: FormState, fd: FormData): Promise<Form
     await db.update(cf).set({ outcome: "REJECTED", reasonCode: reason.code, reason: parsed.data.reason || null, decidedAt: now, decidedById: user.id }).where(and(eq(cf.itemId, item.id), eq(cf.version, item.version)));
   }
   await audit(user.id, "checklist.reject", "student", item.studentId, { typeCode: item.typeCode, reason: reason.label });
+  await sendDocumentDecision(item.studentId, {
+    decision: "REJECTED",
+    typeCode: item.typeCode,
+    document: item.type.label,
+    reason: reason.label,
+    note: parsed.data.reason || null,
+    decidedBy: user.name,
+  });
   refresh(item.studentId);
   return { ok: `${item.type.label} sent back: ${reason.label}.` };
 }
@@ -290,6 +306,14 @@ export async function setStageAction(_: FormState, fd: FormData): Promise<FormSt
   }
   await db.update(schema.students).set({ journeyStage: stage, stageEnteredAt: new Date(), updatedAt: new Date() }).where(eq(schema.students.id, studentId));
   await audit(user.id, "student.stage", "student", studentId, { from: student.journeyStage, to: stage });
+  await sendStageChange(studentId, {
+    medcityId: student.medcityId,
+    crmId: student.crmId,
+    name: `${student.firstName} ${student.lastName}`,
+    from: student.journeyStage,
+    to: stage,
+    movedBy: user.name,
+  });
   await syncChecklist(studentId);
   refresh(studentId);
   return { ok: `Moved to ${stageLabel(stage)}.` };
