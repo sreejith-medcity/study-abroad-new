@@ -80,7 +80,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
         actions={
           <>
             <LinkButton variant="secondary" href={archived ? "/students" : "/students?view=archived"}>{archived ? "Active students" : "Archived students"}</LinkButton>
-            {canWrite && !staff && <LinkButton href="/students/new"><IconPlus className="size-4" /> Register student</LinkButton>}
+            {canWrite && <LinkButton href="/students/new"><IconPlus className="size-4" /> Register student</LinkButton>}
           </>
         }
       />
@@ -128,9 +128,9 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                 <LinkButton variant="secondary" href={archived ? "/students?view=archived" : "/students"}>
                   Clear the filters
                 </LinkButton>
-              ) : !archived && canWrite && !staff ? (
+              ) : !archived && canWrite ? (
                 <LinkButton href="/students/new">
-                  <IconPlus className="size-4" /> Register your first student
+                  <IconPlus className="size-4" /> Register {staff ? "a student" : "your first student"}
                 </LinkButton>
               ) : undefined
             }

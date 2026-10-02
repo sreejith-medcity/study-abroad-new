@@ -119,7 +119,39 @@ const other = await signIn("kochi@medcity.test", "10.97.1.3");
 const res = await other.page.goto(`${BASE}/students/${sid}/applications?app=${appId}`);
 check(res.status() === 404, "isolation: another branch cannot open the file");
 
-for (const [who, e] of [["partner", partner.errors]]) check(e.length === 0, `${who}: no page errors or 500s ${e.slice(0, 3).join(" | ")}`);
+// --- Registering one student by hand, from both sides of the desk.
+// A branch registers into itself; the Overseas team has to say which branch,
+// because a student on the head office belongs to nobody.
+const tagR = String(Date.now()).slice(-5);
+await partner.page.goto(`${BASE}/students`);
+check((await partner.page.getByRole("link", { name: /Register (a |your first )?student/ }).count()) > 0, "register: a branch is offered the button");
+await partner.page.goto(`${BASE}/students/new`);
+check((await partner.page.locator('input[name="firstName"]').count()) > 0, "register: and the form");
+check((await partner.page.locator('select[name="orgId"]').count()) === 0, "register: with no branch to choose, because it is their own");
+
+const desk = await signIn("admin@medcityoverseas.test", "10.97.1.4");
+await desk.page.goto(`${BASE}/students`);
+check((await desk.page.getByRole("link", { name: /Register (a |your first )?student/ }).count()) > 0, "register: the Overseas team is offered it too");
+await desk.page.goto(`${BASE}/students/new`);
+check((await desk.page.locator('input[name="firstName"]').count()) > 0, "register: the desk can open the form");
+check((await desk.page.locator('select[name="orgId"]').count()) > 0, "register: and is asked which branch");
+await desk.page.fill('input[name="firstName"]', "Desk");
+await desk.page.fill('input[name="lastName"]', `Registered${tagR}`);
+await desk.page.fill('input[name="phone"]', `+91 98700${tagR}`);
+await desk.page.locator('input[name="consent"]').check();
+await desk.page.locator('button[type="submit"]').first().click();
+await desk.page.waitForTimeout(2500);
+check(/Choose the branch this student belongs to/.test(await desk.page.locator("main").innerText()), "register: without a branch it is refused, not filed against the head office");
+check(sql(`select count(*) from students where last_name = 'Registered${tagR}'`) === "0", "register: and nothing is written");
+const branchId = sql("select id from organizations where name = 'Medcity Kottayam'");
+await desk.page.locator('select[name="orgId"]').selectOption(branchId);
+await desk.page.locator('button[type="submit"]').first().click();
+await desk.page.waitForURL((u) => /\/students\/[^/]+\/profile/.test(String(u)), { timeout: 20000 }).catch(() => {});
+check(sql(`select org_id from students where last_name = 'Registered${tagR}'`) === branchId, "register: with one chosen, the student belongs to that branch");
+check(sql(`select coalesce(medcity_id, '') ~ '^MC-KOT-' from students where last_name = 'Registered${tagR}'`) === "t", "register: and carries that branch's letters in their Medcity ID");
+check(sql(`select count(*) from notifications where title = 'A student registered for you'`) !== "0", "register: the branch is told, so the file is not left unassigned and unwatched");
+
+for (const [who, e] of [["partner", partner.errors], ["desk", desk.errors]]) check(e.length === 0, `${who}: no page errors or 500s ${e.slice(0, 3).join(" | ")}`);
 await browser.close();
 if (fails.length) { console.log(`\n${fails.length} failed`); process.exit(1); }
 console.log("\nall passed");

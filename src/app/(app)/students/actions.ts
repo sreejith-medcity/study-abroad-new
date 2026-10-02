@@ -44,7 +44,18 @@ export async function createStudentAction(_: FormState, formData: FormData): Pro
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Check the highlighted fields." };
   const d = parsed.data;
 
-  const orgId = isStaff(user) ? String(formData.get("orgId") || user.orgId) : user.orgId;
+  // A branch registers into itself. The Overseas team has to say which branch,
+  // because a student sitting on the head office belongs to nobody: every screen
+  // that scopes by organisation would lose them, and commission is per branch.
+  let orgId = user.orgId;
+  if (isStaff(user)) {
+    const chosen = String(formData.get("orgId") || "");
+    const branch = chosen ? await db.query.organizations.findFirst({ where: eq(schema.organizations.id, chosen) }) : null;
+    if (!branch || branch.type === "HQ" || !branch.active) {
+      return { error: "Choose the branch this student belongs to.", fieldErrors: { orgId: ["Pick a branch"] } };
+    }
+    orgId = branch.id;
+  }
   if (d.assignedToId) {
     const assignee = await db.query.users.findFirst({ where: eq(schema.users.id, d.assignedToId) });
     if (!assignee || assignee.orgId !== orgId) return { error: "Pick a counsellor from this organisation." };
@@ -86,7 +97,17 @@ export async function createStudentAction(_: FormState, formData: FormData): Pro
       medcityId: await tryMintStudentId(orgId),
     })
     .returning();
-  await audit(user.id, "student.create", "student", student.id, { consent: true });
+  await audit(user.id, "student.create", "student", student.id, { consent: true, orgId });
+  // Registered by the desk rather than by the branch: the branch is told, so the
+  // file does not sit unassigned in a list nobody is watching.
+  if (isStaff(user)) {
+    await notifyUsers(
+      await partnerRecipients(orgId, d.assignedToId ?? null),
+      "A student registered for you",
+      `${d.firstName} ${d.lastName} was registered by the Overseas team. Assign a counsellor when you can.`,
+      `/students/${student.id}/profile`,
+    );
+  }
 
   // Registered straight from an enquiry: close the enquiry against this student.
   const enquiryId = String(formData.get("enquiryId") || "");

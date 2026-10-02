@@ -12,20 +12,41 @@ export type StudentPrefill = {
   preferredCountry?: string;
   preferredPathway?: string;
   enquiryId?: string;
+  orgId?: string;
 };
 
 export function NewStudentForm({
   counsellors,
   countries,
   prefill = {},
+  branches = [],
 }: {
   counsellors: { id: string; name: string; deskLabel: string | null }[];
   countries: string[];
   prefill?: StudentPrefill;
+  /** Passed only for the Overseas team, who must say which branch the student belongs to. */
+  branches?: { id: string; name: string; city: string | null }[];
 }) {
   return (
     <ActionForm action={createStudentAction} submitLabel="Create student" pendingLabel="Creating…">
       {prefill.enquiryId && <input type="hidden" name="enquiryId" value={prefill.enquiryId} />}
+      {branches.length > 0 && (
+        <SelectField
+          label="Branch"
+          name="orgId"
+          required
+          defaultValue={prefill.orgId ?? ""}
+          hint="A student belongs to a branch. Whoever runs it assigns a counsellor once the file lands."
+        >
+          <option value="">Choose the branch</option>
+          {branches.map((b) => (
+            <option key={b.id} value={b.id}>
+              {b.name}
+              {b.city ? `, ${b.city}` : ""}
+            </option>
+          ))}
+        </SelectField>
+      )}
       <div className="grid gap-4 sm:grid-cols-2">
         <TextField label="First name" name="firstName" required autoComplete="off" defaultValue={prefill.firstName} />
         <TextField label="Last name" name="lastName" required autoComplete="off" defaultValue={prefill.lastName} />
@@ -41,10 +62,12 @@ export function NewStudentForm({
           <option value="AUSBILDUNG">Ausbildung (Germany)</option>
           <option value="NURSING">Nurse registration</option>
         </SelectField>
-        <SelectField label="Assign to" name="assignedToId" defaultValue="">
-          <option value="">Me / unassigned</option>
-          {counsellors.map((c) => <option key={c.id} value={c.id}>{c.deskLabel ?? c.name}</option>)}
-        </SelectField>
+        {counsellors.length > 0 && (
+          <SelectField label="Assign to" name="assignedToId" defaultValue="">
+            <option value="">Me / unassigned</option>
+            {counsellors.map((c) => <option key={c.id} value={c.id}>{c.deskLabel ?? c.name}</option>)}
+          </SelectField>
+        )}
       </div>
       <div className="rounded-md border border-line bg-ground/60 p-3">
         <label className="flex items-start gap-2">
