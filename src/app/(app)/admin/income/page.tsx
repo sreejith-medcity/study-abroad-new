@@ -8,12 +8,15 @@ import { allRates, departureBoard, leakageReport, unpricedLines } from "@/server
 import { DEPARTURE_KINDS, INCOME_LABEL, INCOME_MEANS, PAYER_LABEL } from "@/lib/income";
 import { Alert, Card, CardHeader, Chip, EmptyState, PageHeader, Table, Td, Th, cn } from "@/components/ui";
 import { RateCardForm } from "@/components/income-forms";
+import { financialYearFrom } from "@/lib/money-report";
+import { MondayRead } from "./monday";
 import { DeleteRate } from "./forms";
 
 export const metadata = { title: "Income and rate cards" };
 export const dynamic = "force-dynamic";
 
 const TABS = [
+  { key: "monday", label: "What came in" },
   { key: "departures", label: "Leaving soon" },
   { key: "leakage", label: "Left on the table" },
   { key: "rates", label: "Rate cards" },
@@ -27,10 +30,11 @@ const TABS = [
  * "Not recorded" and is counted nowhere, because a branch owner deciding whether
  * to push forex cards needs a real number or none at all.
  */
-export default async function IncomeAdminPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+export default async function IncomeAdminPage({ searchParams }: { searchParams: Promise<{ tab?: string; fy?: string }> }) {
   const user = await requireUser([...REPORTING_ROLES, "PARTNER"]);
-  const { tab = "departures" } = await searchParams;
+  const { tab = "monday", fy } = await searchParams;
   const scope = isStaff(user) ? undefined : user.orgId;
+  const today = new Date();
   const [board, leak, rates, unpriced, branches] = await Promise.all([
     departureBoard({ orgId: scope, withinDays: 240 }),
     leakageReport({ orgId: scope }),
@@ -56,7 +60,7 @@ export default async function IncomeAdminPage({ searchParams }: { searchParams: 
         ))}
       </div>
 
-      {unpriced.length > 0 && tab !== "rates" && (
+      {unpriced.length > 0 && tab !== "rates" && tab !== "leakage" && (
         <Alert tone="warn" title={`${unpriced.length} line${unpriced.length === 1 ? "" : "s"} with no amount on them`}>
           {unpriced
             .slice(0, 6)
@@ -65,6 +69,8 @@ export default async function IncomeAdminPage({ searchParams }: { searchParams: 
           {unpriced.length > 6 ? ` and ${unpriced.length - 6} more` : ""}. They are counted in no total until somebody prices them.
         </Alert>
       )}
+
+      {tab === "monday" && <MondayRead year={financialYearFrom(fy, today)} orgId={scope} today={today} oneBranch={!isStaff(user)} />}
 
       {tab === "rates" && (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
@@ -201,7 +207,7 @@ export default async function IncomeAdminPage({ searchParams }: { searchParams: 
         </div>
       )}
 
-      {tab !== "rates" && tab !== "leakage" && (
+      {tab === "departures" && (
         <Card>
           <CardHeader
             title={`Leaving soon (${board.length})`}

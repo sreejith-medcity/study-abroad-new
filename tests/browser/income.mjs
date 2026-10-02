@@ -148,7 +148,7 @@ if ((await svcRow.count()) > 0) {
 
 // --- The departure board and leakage.
 sql("update applications set visa_decision = 'GRANTED', visa_decision_on = current_date - 10 where id in (select id from applications order by created_at limit 4)");
-text = await go(ap, "/admin/income");
+text = await go(ap, "/admin/income?tab=departures");
 check(/Leaving soon/.test(text), "departures: the board exists");
 check(/not booked/i.test(text), "departures: what each has not bought is beside them");
 check(/before they buy it somewhere else/.test(text), "departures: and it says why anybody should care");
@@ -157,6 +157,24 @@ text = await go(ap, "/admin/income?tab=leakage");
 check(/What was left on the table/.test(text), "leakage: the report exists");
 check(/A shortlist is not a missed sale/.test(text), "leakage: it says who is counted and who is not");
 check(/Forex card|Ticket|SIM/.test(text), "leakage: by kind");
+
+// --- What management reads on a Monday.
+text = await go(ap, "/admin/income");
+check(/Where the money came down/.test(text), "monday: the read opens on the money that came in");
+check(/What the money was for/.test(text), "monday: by line");
+check(/Where the money actually comes from/.test(text), "monday: by destination");
+check(/Which branch sent the student/.test(text), "monday: by branch, for somebody who sees them all");
+check(/days to pay/i.test(text), "monday: and how long each road takes to pay");
+check(/belongs to the year its money arrived/.test(text), "monday: it says what it counted");
+// A figure nobody recorded must never read as nought.
+check(/Not recorded/.test(text), "monday: an unpriced row says so rather than reading INR 0");
+check(!/Leaving soon \(/.test(text), "monday: the departure board stays on its own tab");
+const fy = new Date();
+const year = fy.getMonth() >= 3 ? fy.getFullYear() : fy.getFullYear() - 1;
+check(text.includes(`${year}-${String((year + 1) % 100).padStart(2, "0")}`), "monday: the financial year is named");
+await ap.screenshot({ path: `${OUT}/04-monday.png`, fullPage: true });
+text = await go(ap, `/admin/income?tab=monday&fy=${year - 1}`);
+check(text.includes(`${year - 1}-${String(year % 100).padStart(2, "0")}`), "monday: an earlier year can be read");
 
 // --- Writing money off: a super admin only, with a reason.
 const offLine = sql(`select id from income_lines where student_id = '${student}' and kind = 'PICKUP'`);
@@ -189,6 +207,12 @@ check(/expected/i.test(text), "roles: and opens again when the owner allows it")
 const mgmt = await signIn("management@medcityoverseas.test", "10.180.1.4");
 text = await go(mgmt.page, "/admin/income?tab=rates");
 check((await mgmt.page.getByRole("button", { name: "Record the rate" }).count()) === 0, "roles: management reads the rates and changes nothing");
+
+// A branch owner reads the same figures, for their own branch and no other.
+const ownerUser = await signIn("kottayam@medcity.test", "10.180.1.5");
+text = await go(ownerUser.page, "/admin/income");
+check(/Where the money came down/.test(text), "monday: a branch owner reads it too");
+check(!/Which branch sent the student/.test(text), "monday: and is not shown a table of one row about themselves");
 
 for (const [who, e] of [["admin", admin.errors], ["super admin", sup.errors], ["counsellor", counsellor.errors], ["management", mgmt.errors]]) {
   check(e.length === 0, `${who}: no page errors or 500s ${e.slice(0, 3).join(" | ")}`);
