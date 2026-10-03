@@ -1015,6 +1015,12 @@ export const checklistItems = pgTable(
     index("checklist_items_state_idx").on(t.state),
     index("checklist_items_stage_idx").on(t.stage),
     index("checklist_items_claimed_idx").on(t.claimedById),
+    /**
+     * Only the decided rows, because that is all the desk's "checked by a
+     * branch" view reads and a partial index stays small while the table does
+     * not. Without it that view sorts every item on every file.
+     */
+    index("checklist_items_decided_idx").on(t.decidedAt.desc()).where(sql`decided_at is not null`),
   ],
 );
 
@@ -2554,7 +2560,19 @@ export const auditLogs = pgTable(
     meta: jsonb("meta"),
     createdAt: createdAt(),
   },
-  (t) => [index("audit_entity_idx").on(t.entityType, t.entityId)],
+  (t) => [
+    index("audit_entity_idx").on(t.entityType, t.entityId),
+    /**
+     * The log is the fastest-growing table in the portal: one row per action,
+     * kept forever. Two screens read it on every view (the readiness tab asks
+     * when each scheduled job last ran, the audit screen shows the newest
+     * entries), and without these both read it by scanning the whole thing.
+     * At three hundred thousand rows that was already twenty to seventy
+     * milliseconds a page; it grows from there and never shrinks.
+     */
+    index("audit_action_time_idx").on(t.action, t.createdAt.desc()),
+    index("audit_time_idx").on(t.createdAt.desc()),
+  ],
 );
 
 // ---------- Relations ----------

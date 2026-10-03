@@ -321,6 +321,22 @@ problems leaves nobody sure the rest was looked at.
 - Set `PUBLIC_BASE_URL` if the portal ever moves off `doc.medcityoverseas.com`: it is the address printed inside the branch QR codes.
 - Set `COMMISSION_FX` (for example `GBP:115,EUR:98,AUD:60`) so the rupee estimate on foreign-currency commission matches your bank's rate. The figure entered when a partner's share is settled always wins.
 
+## Reading the audit log
+
+Every action in the portal writes a row to `audit_logs`, so it is the
+fastest-growing table here and the one that never shrinks. Two screens read it
+on every view: the readiness tab asks when each scheduled job last ran, and the
+audit screen shows the newest entries. Both are indexed for that, on
+`(action, created_at desc)` and on `created_at desc`.
+
+Measured against three hundred thousand rows, which the portal will pass in its
+first couple of years: the scheduler check went from 19 ms to 0.1 ms, the "has
+it ever failed" check from 22 ms to 0.04 ms, and the audit screen's own first
+page from 77 ms to 0.13 ms. Filtering the audit screen by actor is still a scan,
+about 30 ms at that size; it is left unindexed on purpose, because the index
+would be paid for on every write in the portal to speed up a screen a super
+admin opens occasionally.
+
 ## Deploying a schema change
 
 The Hostinger build does not touch the database, so a migration is applied on purpose:
