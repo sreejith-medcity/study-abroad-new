@@ -30,7 +30,7 @@ This repository currently contains **Phase 0 basics and Phase 1 (core pipeline)*
 | WhatsApp | System | Outbound adapter (`console` for development, `meta` for WhatsApp Cloud API) and an inbound webhook that verifies Meta's signature and posts student replies into the Student channel. |
 
 | Program search | All | Search the catalogue by keyword, destination (one or several), level, intake and English requirement, with quick filters. Pick a student and every row shows eligible, on track (including practice scores from Medcity's own test platform) or not yet, with the reason. Apply straight from a result. |
-| Vendors and routes | Admins keep, all read | The roads Medcity reaches a university by: its own agreements, KC Overseas, StudentOps360 and whoever comes next, each with a two-letter code and a colour that travel together on every screen. A route is one road to one course, carrying its own commission (a percentage of the first year or a flat fee), when it is paid and within how many days, its application fee, its offer turnaround, the course's code in the vendor's portal and what it asks for beyond the university's list. Recorded on a course by hand or from a vendor's sheet through the **Routes** bulk upload, which never creates a course. Search and the finder filter by route, or by "no route recorded" to find the gaps. A percentage is never applied to a whole-course fee, and a rate nobody has given reads "Not recorded". |
+| Vendors and routes | Admins keep, all read | The roads Medcity reaches a university by: its own agreements, KC Overseas, StudentOps360 and whoever comes next, each with a two-letter code and a colour that travel together on every screen. A route is one road to one course, carrying its own commission (a percentage of the first year or a flat fee), when it is paid and within how many days, its application fee, its offer turnaround, the course's code in the vendor's portal and what it asks for beyond the university's list. Recorded on a course by hand or from a vendor's sheet through the **Routes** bulk upload, which never creates a course. Search and the finder filter by route, or by "no route recorded" to find the gaps. A percentage is never applied to a whole-course fee, and a rate nobody has given reads "Not recorded". A course Medcity holds its own agreement on sorts above the vendor-routed ones in search, whatever the counsellor has sorted by, and its chip is marked "ours" so the reason is visible rather than implied. |
 | The documentation spine | Partners, staff, the documentation team | Nine stages from Profile to Arrived, and the paper that gates each one. A student's list is built from five places at once: the stage itself, the destination, the route, the university and anything added for that student by hand, with a document asked for twice asked for once and every row saying where it came from. Each document is not needed, not asked, asked, uploaded, in review, accepted or sent back, and a rejection needs a reason from the team's own list, which is what the student reads. A file sent back keeps its version and its reason; the replacement is the next version. Expiry is read off the document (a TB test six months from its date, a test report two years) and measured against the course start, not against today, so a passport valid for four months against a two-year course counts as missing and says so. A requirement can be marked as one nobody may waive: the override stops being offered, and an admin who posts the move anyway is refused with the same words. Which ones those are is set on the requirements screen rather than written into the code. A branch can be set to do its own first pass: its staff then accept and send back their own students' documents, with the rule that nobody passes a file they uploaded themselves, and the desk reviews what the branch decided under "Checked by a branch" rather than checking all of it again. Off for every branch to begin with, and set per branch on the Partners screen. |
 | Gates and overrides | Partners, staff | A stage cannot be left while a required document is missing, rejected or out of date, and the refusal names what is missing rather than being a bare error. An ops manager may let it through with a reason, which is logged and shown on the file. The apply screen names the same list before a course is chosen; whether it refuses the application outright is one switch in Platform settings, off to begin with, because a desk part way through a season has to collect the paper first. |
 | Documentation queue | The documentation team, admins | One screen for the people who check paper all day: everything sent in and not yet decided, oldest first or visa stage first, filtered by branch, stage or route. Opening a document claims it for twenty minutes so two people never check the same bank statement, and the rule the team wrote sits beside the document while it is judged. Accepting reads the date off the document and records when it runs out; rejecting picks a reason and sends it to the student word for word. |
@@ -320,6 +320,28 @@ problems leaves nobody sure the rest was looked at.
 - Set `TZ=Asia/Kolkata` on the server.
 - Set `PUBLIC_BASE_URL` if the portal ever moves off `doc.medcityoverseas.com`: it is the address printed inside the branch QR codes.
 - Set `COMMISSION_FX` (for example `GBP:115,EUR:98,AUD:60`) so the rupee estimate on foreign-currency commission matches your bank's rate. The figure entered when a partner's share is settled always wins.
+
+## What a sub-agent tells us about itself
+
+The sign-up form at `/join` asks for the firm on paper (registered name,
+registration number, GSTIN, PAN, address) and for the owner's proof of identity
+(the kind, and the number on it). All of it is optional, because somebody
+working in their own name has no company to describe and a blank is better than
+an invented answer, but what is filled in is checked for shape before it is
+kept: a GSTIN that cannot be a GSTIN, or one that does not carry the PAN given
+beside it, is refused at the form rather than found at the first invoice.
+
+The owner's number is held the way a student's passport is, and shown the same
+way: the first and last characters on screen, the whole of it only to whoever
+may already see a passport. Nothing here is verified by the portal. It is what
+the applicant typed, shown on the Applications tab so the desk can check it
+against the papers before approving anybody.
+
+One thing for Medcity's own lawyer rather than for this portal: India's Aadhaar
+Act limits what a private company may store of an Aadhaar number. Aadhaar is on
+the list of proofs because people offer it, but PAN is the safer thing to ask
+for, and dropping Aadhaar from the list is a one-line change if that is the
+advice.
 
 ## Reading the audit log
 

@@ -2,8 +2,8 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { fmtDate, fmtDateTime } from "@/lib/format";
 import { inr } from "@/lib/money";
-import { ADMIN_ROLES, isSuperAdmin } from "@/lib/permissions";
-import { APPLICATION_STATUS_LABEL, EARNING_STATE_LABEL, FEE_KIND_LABEL, REFERRAL_STAGE_LABEL, rateText } from "@/lib/agents";
+import { ADMIN_ROLES, canSeeFullPassport, isSuperAdmin } from "@/lib/permissions";
+import { APPLICATION_STATUS_LABEL, EARNING_STATE_LABEL, FEE_KIND_LABEL, OWNER_ID_LABEL, REFERRAL_STAGE_LABEL, maskOwnerId, rateText } from "@/lib/agents";
 import {
   agentApplicationCounts,
   agentApplications,
@@ -109,6 +109,9 @@ async function Applications({
   branches: { id: string; name: string; city: string | null }[];
 }) {
   const rows = await agentApplications(filters);
+  // The same rule as a student's passport: the whole number only to whoever is
+  // already trusted with one.
+  const fullId = canSeeFullPassport(await requireUser([...ADMIN_ROLES]));
 
   return (
     <>
@@ -149,6 +152,7 @@ async function Applications({
                 <Th>Who</Th>
                 <Th>Where</Th>
                 <Th>About them</Th>
+                <Th>On paper</Th>
                 <Th>Status</Th>
                 <Th />
               </tr>
@@ -168,6 +172,32 @@ async function Applications({
                     <span className="block text-xs">Applied {fmtDate(r.createdAt)}</span>
                   </Td>
                   <Td className="max-w-[22rem] text-[12.5px] leading-relaxed text-ink-soft">{r.aboutThem ?? <span className="text-muted">Nothing written</span>}</Td>
+                  {/*
+                    What the applicant said about the firm and its owner. Nothing
+                    here is verified by the portal: it is what they typed, shown
+                    so the desk can check it against the papers before approving.
+                    The identity number follows the same rule as a passport.
+                  */}
+                  <Td className="max-w-[18rem] text-[12.5px] leading-relaxed">
+                    {r.companyLegalName || r.gstin || r.companyPan || r.companyRegistrationNo || r.ownerIdNumber ? (
+                      <>
+                        {r.companyLegalName && <span className="block font-medium text-ink">{r.companyLegalName}</span>}
+                        {r.companyRegistrationNo && <span className="block text-xs text-muted">Registered {r.companyRegistrationNo}</span>}
+                        {r.gstin && <span className="block text-xs text-muted tabular">GSTIN {r.gstin}</span>}
+                        {r.companyPan && <span className="block text-xs text-muted tabular">PAN {r.companyPan}</span>}
+                        {r.companyAddress && <span className="mt-0.5 block text-xs text-muted">{r.companyAddress}</span>}
+                        {r.ownerIdKind && (
+                          <span className="mt-1 block text-xs text-muted">
+                            {r.ownerName ? `${r.ownerName}, ` : ""}
+                            {OWNER_ID_LABEL[r.ownerIdKind] ?? r.ownerIdKind}{" "}
+                            <span className="tabular">{fullId ? r.ownerIdNumber : maskOwnerId(r.ownerIdNumber)}</span>
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-muted">Nothing given</span>
+                    )}
+                  </Td>
                   <Td>
                     <Chip tone={STATUS_TONE[r.status]}>{APPLICATION_STATUS_LABEL[r.status]}</Chip>
                     {r.decisionNote && <p className="mt-1 max-w-[16rem] text-xs text-muted">{r.decisionNote}</p>}

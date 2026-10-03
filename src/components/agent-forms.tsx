@@ -5,7 +5,7 @@ import { ActionForm } from "@/components/action-form";
 import { Modal } from "@/components/modal";
 import { SelectField, TextField, TextareaField } from "@/components/fields";
 import { Button, Checkbox, Field, Input, Select } from "@/components/ui";
-import { AGENT_CONSENT, FEE_KIND_LABEL } from "@/lib/agents";
+import { AGENT_CONSENT, OWNER_ID_KINDS, OWNER_ID_LABEL, FEE_KIND_LABEL } from "@/lib/agents";
 import {
   acceptMouAction,
   approveAgentApplicationAction,
@@ -40,6 +40,49 @@ export function JoinForm({ branches }: { branches: { slug: string; name: string 
         rows={4}
         hint="Who do you already help go abroad, and where to? How many in a year? Anything you want us to know."
       />
+      {/*
+        The company and the owner, for the file the desk has to keep on anybody
+        it pays. All of it optional on purpose: somebody working in their own
+        name has no company to describe, and an empty answer is better than an
+        invented one. What is filled in is checked for shape before it is kept.
+      */}
+      <fieldset className="rounded-lg border border-line p-4">
+        <legend className="px-1 text-[13px] font-medium">Your company, if you have registered one</legend>
+        <p className="mb-3 text-[13px] text-muted">
+          Leave any of this empty if it does not apply to you. We ask because Medcity has to know who it is paying before it pays
+          anybody.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <TextField label="Registered name" name="companyLegalName" hint="As it appears on the registration certificate." />
+          <TextField label="Registration number" name="companyRegistrationNo" hint="CIN, LLPIN, or whatever it is registered under." />
+          <TextField label="GSTIN" name="gstin" hint="Fifteen characters, like 32ABCDE1234F1Z5." className="uppercase" />
+          <TextField label="Company PAN" name="companyPan" hint="Ten characters, like ABCDE1234F." className="uppercase" />
+        </div>
+        <div className="mt-3">
+          <TextareaField label="Registered address" name="companyAddress" rows={2} />
+        </div>
+      </fieldset>
+
+      <fieldset className="rounded-lg border border-line p-4">
+        <legend className="px-1 text-[13px] font-medium">Who owns the firm</legend>
+        <p className="mb-3 text-[13px] text-muted">
+          Only if that is somebody other than you, or if you want to give the proof now rather than later. The number is held the way
+          a student&rsquo;s passport is: only the last characters are shown on screen, and the whole of it only to those who need it.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <TextField label="Owner's name" name="ownerName" hint="Leave blank if that is you." />
+          <SelectField label="Proof of identity" name="ownerIdKind">
+            <option value="">Not now</option>
+            {OWNER_ID_KINDS.map((k) => (
+              <option key={k} value={k}>
+                {OWNER_ID_LABEL[k]}
+              </option>
+            ))}
+          </SelectField>
+          <TextField label="Number on it" name="ownerIdNumber" className="uppercase" />
+        </div>
+      </fieldset>
+
       {branches.length > 0 && (
         <SelectField label="Which Medcity branch told you about this?" name="referredBy" hint="Optional. It helps us put you with the right people.">
           <option value="">Nobody in particular</option>

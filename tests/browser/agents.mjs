@@ -73,6 +73,16 @@ await ap0.fill('input[name="email"]', `anil.${tag}@example.com`);
 await ap0.fill('input[name="phone"]', `+91 9000${tag}`);
 await ap0.fill('input[name="city"]', "Alappuzha");
 await ap0.locator('textarea[name="aboutThem"]').fill("Twelve nursing students a year ask me about Germany.");
+
+// The company and its owner. A GSTIN that cannot be one is refused at the form.
+await ap0.fill('input[name="companyLegalName"]', `Kumar Guidance LLP ${tag}`);
+await ap0.fill('input[name="companyRegistrationNo"]', "AAB-1234");
+await ap0.fill('input[name="gstin"]', "32ABCDE1234F1Z5");
+await ap0.fill('input[name="companyPan"]', "ABCDE1234F");
+await ap0.locator('textarea[name="companyAddress"]').fill("Second floor, Market Road, Alappuzha");
+await ap0.fill('input[name="ownerName"]', "Anil Kumar");
+await ap0.locator('select[name="ownerIdKind"]').selectOption("PAN");
+await ap0.fill('input[name="ownerIdNumber"]', "zzzzz9999z");
 await ap0.locator('input[name="consent"]').check();
 await ap0.getByRole("button", { name: "Send my application" }).click();
 check(/Thank you/i.test(await waitText(ap0, /Thank you/i)), "join: sending it is confirmed");
@@ -80,6 +90,24 @@ check((await waitSql("select count(*) from agent_applications", String(Number(be
 const applicationId = sql(`select id from agent_applications where email = 'anil.${tag}@example.com'`);
 check(sql(`select status from agent_applications where id = '${applicationId}'`) === "NEW", "join: it starts as new");
 check(sql(`select consent_text is not null from agent_applications where id = '${applicationId}'`) === "t", "join: what they agreed to is kept with the row");
+check(sql(`select gstin from agent_applications where id = '${applicationId}'`) === "32ABCDE1234F1Z5", "join: the company's GSTIN is kept");
+check(sql(`select company_pan from agent_applications where id = '${applicationId}'`) === "ABCDE1234F", "join: and its PAN");
+check(sql(`select owner_id_kind from agent_applications where id = '${applicationId}'`) === "PAN", "join: what the owner proved themselves with");
+check(sql(`select owner_id_number from agent_applications where id = '${applicationId}'`) === "ZZZZZ9999Z", "join: tidied to upper case rather than refused");
+
+// A GSTIN that cannot be a GSTIN never reaches the database.
+{
+  const before = sql("select count(*) from agent_applications");
+  await go(ap0, "/join");
+  await ap0.fill('input[name="contactName"]', `Bad Gst ${tag}`);
+  await ap0.fill('input[name="email"]', `badgst.${tag}@example.com`);
+  await ap0.fill('input[name="phone"]', `+91 9111${tag}`);
+  await ap0.fill('input[name="gstin"]', "NOT-A-GSTIN");
+  await ap0.locator('input[name="consent"]').check();
+  await ap0.getByRole("button", { name: "Send my application" }).click();
+  check(await waitText(ap0, /Fifteen characters/i), "join: a GSTIN that cannot be one is refused, with what one looks like");
+  check(sql("select count(*) from agent_applications") === before, "join: and nothing was written");
+}
 await ap0.screenshot({ path: `${OUT}/01-join.png`, fullPage: true });
 
 // The same number again is the same person, not a second partner.

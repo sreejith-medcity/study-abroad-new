@@ -213,6 +213,14 @@ export const integrationDirection = pgEnum("integration_direction", ["IN", "OUT"
 export const integrationStatus = pgEnum("integration_status", ["PENDING", "SENT", "RECEIVED", "FAILED", "NEEDS_A_PERSON", "RESOLVED", "IGNORED"]);
 
 /** Where a sub-agent's application to join has got to. */
+/**
+ * What the owner of a sub-agent firm proves who they are with.
+ *
+ * The list is theirs to choose from rather than one we insist on, because what
+ * a one-person firm in Kerala can show is not what a registered company can.
+ */
+export const ownerIdKind = pgEnum("owner_id_kind", ["PAN", "PASSPORT", "DRIVING_LICENCE", "VOTER_ID", "AADHAAR"]);
+
 export const agentApplicationStatus = pgEnum("agent_application_status", ["NEW", "REVIEWING", "APPROVED", "REJECTED"]);
 
 /**
@@ -1653,6 +1661,31 @@ export const agentApplications = pgTable(
     state: text("state"),
     /** In their own words: who they already send abroad, and where. */
     aboutThem: text("about_them"),
+
+    /**
+     * The firm, as it exists on paper.
+     *
+     * All of it optional: a sub-agent who has not registered a company is still
+     * a sub-agent, and a blank here reads as "Not recorded" rather than being
+     * guessed at. What is given is checked for shape, so a GSTIN that cannot be
+     * a GSTIN is refused at the form rather than found at invoicing.
+     */
+    companyLegalName: text("company_legal_name"),
+    companyAddress: text("company_address"),
+    gstin: text("gstin"),
+    companyPan: text("company_pan"),
+    /** CIN, LLPIN, or whatever number the firm is registered under. */
+    companyRegistrationNo: text("company_registration_no"),
+
+    /** Who owns the firm, where that is not the person filling the form in. */
+    ownerName: text("owner_name"),
+    ownerIdKind: ownerIdKind("owner_id_kind"),
+    /**
+     * Held for the same reason a student's passport number is, and shown the
+     * same way: in full only to whoever may see a passport, and as the last few
+     * characters to everybody else.
+     */
+    ownerIdNumber: text("owner_id_number"),
     /** The branch that pointed them at the form, where they say one did. */
     referredByOrgId: text("referred_by_org_id").references(() => organizations.id),
     status: agentApplicationStatus("status").notNull().default("NEW"),

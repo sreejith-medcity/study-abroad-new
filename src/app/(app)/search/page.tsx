@@ -50,6 +50,18 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const checker = student ? { backlogs: student.backlogs, gapYears: student.gapYears, tests: student.tests, academics: student.academics } : adhoc;
   const where = and(...searchConds(f, checker, rates));
   const byShare = partnerShareJoins(rates);
+  /**
+   * Whether Medcity holds its own agreement for this course.
+   *
+   * Read from the routes rather than kept on the programme, so turning a vendor
+   * into a direct tie-up on the Vendors screen moves its courses up the list
+   * the same day, with nothing to rebuild.
+   */
+  const ourOwnFirst = sql`exists (
+    select 1 from ${schema.programRoutes} rt
+    join ${schema.vendors} vd on vd.id = rt.vendor_id
+    where rt.program_id = ${p.id} and rt.active and vd.active and vd.is_direct
+  ) desc`;
   const levelsOn = listOf(f.level);
   const seasonsOn = listOf(f.season);
   const tagsOn = listOf(f.tags);
@@ -125,6 +137,11 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           .leftJoin(byShare.rc, eq(byShare.rc.key, u.countryId))
           .where(where)
           .orderBy(
+            // Medcity's own agreements first, whatever else the counsellor has
+            // sorted by. A course we hold the agreement on is the one to send a
+            // student down when the rest is equal, and a counsellor should not
+            // have to remember which those are.
+            ourOwnFirst,
             ...(f.sort === "rank"
               ? [sql`${u.rankSort} asc nulls last`, asc(u.name), asc(p.name)]
               : f.sort === "commission"

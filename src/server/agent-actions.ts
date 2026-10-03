@@ -13,7 +13,8 @@ import { phoneKey } from "@/lib/phone";
 import { rateLimit } from "@/server/rate-limit";
 import { adminIds, notifyUsers, partnerRecipients } from "@/server/notify";
 import { getSettings } from "@/server/settings";
-import { AGENT_CONSENT } from "@/lib/agents";
+import { AGENT_CONSENT, checkOwnerId, OWNER_ID_KINDS } from "@/lib/agents";
+import { GSTIN_RE, PAN_RE, gstinMatchesPan } from "@/lib/billing";
 import { activeMou, mouStanding } from "@/server/agents";
 import { openReferralEarning } from "@/server/referral-earnings";
 
@@ -43,6 +44,16 @@ const applicationShape = z.object({
   city: z.string().trim().max(80).optional().transform((v) => v || null),
   state: z.string().trim().max(80).optional().transform((v) => v || null),
   aboutThem: z.string().trim().max(1500).optional().transform((v) => v || null),
+
+  companyLegalName: z.string().trim().max(200).optional().transform((v) => v || null),
+  companyAddress: z.string().trim().max(400).optional().transform((v) => v || null),
+  gstin: z.string().trim().toUpperCase().max(20).optional().transform((v) => v || null),
+  companyPan: z.string().trim().toUpperCase().max(12).optional().transform((v) => v || null),
+  companyRegistrationNo: z.string().trim().max(40).optional().transform((v) => v || null),
+
+  ownerName: z.string().trim().max(160).optional().transform((v) => v || null),
+  ownerIdKind: z.string().trim().optional().transform((v) => v || null),
+  ownerIdNumber: z.string().trim().max(40).optional().transform((v) => v || null),
   referredBy: z.string().trim().optional(),
   consent: z.string().optional(),
   /** A field a person never sees and a robot always fills in. */
@@ -65,6 +76,32 @@ export async function submitAgentApplicationAction(_: FormState, formData: FormD
   const d = parsed.data;
   if (d.website) return { keep: true, ok: "Thank you. We will be in touch." };
   if (!d.consent) return { fieldErrors: { consent: ["Please agree before sending"] }, error: "Please agree before sending." };
+
+  /*
+   * What they tell us about the firm is checked for shape before it is kept.
+   * All of it is optional, because a sub-agent who has not registered a company
+   * is still a sub-agent, but a GSTIN that cannot be a GSTIN is caught here
+   * rather than at the first invoice.
+   */
+  if (d.gstin && !GSTIN_RE.test(d.gstin)) {
+    return { fieldErrors: { gstin: ["Fifteen characters, like 32ABCDE1234F1Z5"] }, error: "Check the highlighted fields." };
+  }
+  if (d.companyPan && !PAN_RE.test(d.companyPan)) {
+    return { fieldErrors: { companyPan: ["Ten characters, like ABCDE1234F"] }, error: "Check the highlighted fields." };
+  }
+  // A GSTIN carries its own PAN, so the two disagreeing means one is mistyped.
+  if (d.gstin && d.companyPan && !gstinMatchesPan(d.gstin, d.companyPan)) {
+    return { fieldErrors: { gstin: ["This GSTIN does not carry that PAN"] }, error: "Check the highlighted fields." };
+  }
+
+  let ownerIdNumber: string | null = null;
+  if (d.ownerIdNumber || d.ownerIdKind) {
+    if (!d.ownerIdKind) return { fieldErrors: { ownerIdKind: ["Say what the number is from"] }, error: "Check the highlighted fields." };
+    if (!d.ownerIdNumber) return { fieldErrors: { ownerIdNumber: ["Give the number, or leave both empty"] }, error: "Check the highlighted fields." };
+    const checked = checkOwnerId(d.ownerIdKind, d.ownerIdNumber);
+    if (!checked.ok) return { fieldErrors: { ownerIdNumber: [checked.says] }, error: "Check the highlighted fields." };
+    ownerIdNumber = checked.value;
+  }
 
   const head = await headers();
   const caller = (head.get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
@@ -98,6 +135,14 @@ export async function submitAgentApplicationAction(_: FormState, formData: FormD
       city: d.city,
       state: d.state,
       aboutThem: d.aboutThem,
+      companyLegalName: d.companyLegalName,
+      companyAddress: d.companyAddress,
+      gstin: d.gstin,
+      companyPan: d.companyPan,
+      companyRegistrationNo: d.companyRegistrationNo,
+      ownerName: d.ownerName,
+      ownerIdKind: (d.ownerIdKind as (typeof OWNER_ID_KINDS)[number] | null) ?? null,
+      ownerIdNumber,
       referredByOrgId: referredBy?.id ?? null,
       consentAt: new Date(),
       consentText: AGENT_CONSENT,

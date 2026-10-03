@@ -236,3 +236,52 @@ export const REFERRAL_STAGE_LABEL: Record<string, string> = {
 
 /** Whether a referral is still live, for the counts above the list. */
 export const stillLive = (stage: string) => stage !== "LOST";
+
+/* ---------------- Who they are, on paper ---------------- */
+
+export const OWNER_ID_LABEL: Record<string, string> = {
+  PAN: "PAN card",
+  PASSPORT: "Passport",
+  DRIVING_LICENCE: "Driving licence",
+  VOTER_ID: "Voter ID",
+  AADHAAR: "Aadhaar",
+};
+
+export const OWNER_ID_KINDS = ["PAN", "PASSPORT", "DRIVING_LICENCE", "VOTER_ID", "AADHAAR"] as const;
+export type OwnerIdKind = (typeof OWNER_ID_KINDS)[number];
+
+/**
+ * The shape each kind of number comes in.
+ *
+ * Shape only. None of this proves the number belongs to the person, and the
+ * portal never says it does: it catches a typed digit and a pasted placeholder,
+ * which is what a form can honestly do.
+ */
+const ID_SHAPE: Record<OwnerIdKind, { re: RegExp; says: string }> = {
+  PAN: { re: /^[A-Z]{5}\d{4}[A-Z]$/, says: "Ten characters, like ABCDE1234F" },
+  PASSPORT: { re: /^[A-Z][0-9]{7}$/, says: "One letter and seven digits, like K1234567" },
+  DRIVING_LICENCE: { re: /^[A-Z]{2}[0-9]{2}\s?[0-9]{4}[0-9]{7}$/, says: "Like KL07 20110012345" },
+  VOTER_ID: { re: /^[A-Z]{3}[0-9]{7}$/, says: "Three letters and seven digits, like ABC1234567" },
+  AADHAAR: { re: /^[2-9][0-9]{11}$/, says: "Twelve digits, not starting with 0 or 1" },
+};
+
+export const tidyId = (v: string) => v.replace(/[\s-]/g, "").toUpperCase();
+
+/** Whether a number could be the kind of number it is offered as. */
+export function checkOwnerId(kind: string, raw: string): { ok: true; value: string } | { ok: false; says: string } {
+  const shape = ID_SHAPE[kind as OwnerIdKind];
+  if (!shape) return { ok: false, says: "Choose what the number is from" };
+  const value = tidyId(raw);
+  return shape.re.test(value) ? { ok: true, value } : { ok: false, says: shape.says };
+}
+
+/**
+ * The last few characters, for everybody who has no business reading the whole
+ * number. The same rule the portal already uses for a student's passport.
+ */
+export function maskOwnerId(value: string | null | undefined) {
+  if (!value) return "Not recorded";
+  if (value.length <= 3) return "•••";
+  // The same shape as a student's passport on screen, so one habit covers both.
+  return value[0] + "•".repeat(Math.max(3, value.length - 3)) + value.slice(-2);
+}

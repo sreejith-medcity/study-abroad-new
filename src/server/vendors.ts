@@ -40,7 +40,7 @@ export async function routesForProgram(programId: string, program: ProgramMoney)
   return rows.map((r) => ({ ...r, commission: routeCommission(r.route as RouteLike, program) }));
 }
 
-export type RouteChip = { vendorId: string; code: string; colour: string; name: string; active: boolean; commission: RouteCommission };
+export type RouteChip = { vendorId: string; code: string; colour: string; name: string; active: boolean; isDirect: boolean; commission: RouteCommission };
 
 /**
  * The routes behind a list of courses, for rows in search and the finder. One
@@ -50,11 +50,13 @@ export async function routeChips(programs: { id: string; tuitionPerYear: number 
   const out = new Map<string, RouteChip[]>();
   if (!programs.length) return out;
   const rows = await db
-    .select({ programId: pr.programId, route: pr, vendorId: v.id, code: v.code, colour: v.colour, name: v.name })
+    .select({ programId: pr.programId, route: pr, vendorId: v.id, code: v.code, colour: v.colour, name: v.name, isDirect: v.isDirect })
     .from(pr)
     .innerJoin(v, eq(pr.vendorId, v.id))
     .where(and(inArray(pr.programId, programs.map((x) => x.id)), eq(v.active, true)))
-    .orderBy(asc(v.name));
+    // Our own agreement first in the row as well, so the chips read in the same
+    // order the list itself is sorted in.
+    .orderBy(sql`${v.isDirect} desc`, asc(v.name));
   const byId = new Map(programs.map((x) => [x.id, x]));
   for (const r of rows) {
     const program = byId.get(r.programId);
@@ -66,6 +68,7 @@ export async function routeChips(programs: { id: string; tuitionPerYear: number 
       colour: r.colour,
       name: r.name,
       active: r.route.active,
+      isDirect: r.isDirect,
       commission: routeCommission(r.route as RouteLike, program),
     });
     out.set(r.programId, list);

@@ -179,6 +179,45 @@ total2 > rowsShown ? ok(`unfiltered search holds ${total2} live programmes`) : b
 allRows > 0 ? ok("search renders rows at full catalogue size") : bad("search rendered no rows");
 await page.screenshot({ path: `${OUT}/03-work-rights.png`, fullPage: true });
 
+// Medcity's own agreements come first, whatever else the list is sorted by, and
+// are marked rather than merely sorted, so a counsellor can see which road is
+// ours without counting rows.
+{
+  const rows = page.locator("main tbody tr");
+  const shown = Math.min(await rows.count(), 12);
+  let firstWithout = -1;
+  let lastWithOurs = -1;
+  for (let i = 0; i < shown; i++) {
+    const t = await rows.nth(i).innerText();
+    if (/\bours\b/i.test(t)) lastWithOurs = i;
+    else if (firstWithout === -1) firstWithout = i;
+  }
+  lastWithOurs >= 0 ? ok("search marks the courses Medcity holds its own agreement on") : bad("no course is marked as ours");
+  firstWithout === -1 || lastWithOurs < firstWithout
+    ? ok("and every one of them sorts above the courses that go through a vendor")
+    : bad(`a vendor-only course at row ${firstWithout} sits above one of ours at row ${lastWithOurs}`);
+
+  // The same must hold when the counsellor sorts by something else.
+  for (const sort of ["rank", "fee", "name"]) {
+    await page.goto(`${BASE}/search?sort=${sort}`);
+    await settle(page);
+    const r2 = page.locator("main tbody tr");
+    const n = Math.min(await r2.count(), 12);
+    let without = -1;
+    let withOurs = -1;
+    for (let i = 0; i < n; i++) {
+      const t = await r2.nth(i).innerText();
+      if (/\bours\b/i.test(t)) withOurs = i;
+      else if (without === -1) without = i;
+    }
+    without === -1 || withOurs < without
+      ? ok(`sorted by ${sort}, ours still come first`)
+      : bad(`sorted by ${sort}, a vendor-only course outranks one of ours`);
+  }
+  await page.goto(`${BASE}/search`);
+  await settle(page);
+}
+
 // A partner sees the same warning, since they are the ones advising the student.
 await ctx.close();
 {

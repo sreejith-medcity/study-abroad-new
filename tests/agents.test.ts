@@ -2,6 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   canWithdraw,
+  checkOwnerId,
+  maskOwnerId,
   conditionsFor,
   heldToEveryCondition,
   earningFrom,
@@ -179,4 +181,23 @@ test("the summary follows whichever list the organisation is held to", () => {
   const f = facts({ mouAccepted: false, hasBankDetails: false });
   assert.match(withdrawalSummary(f, "SUB_AGENT"), /2 things to sort out/);
   assert.match(withdrawalSummary(f, "BRANCH"), /ready to withdraw/);
+});
+
+test("an identity number is checked for shape, and nothing more is claimed", () => {
+  assert.deepEqual(checkOwnerId("PAN", "abcde1234f"), { ok: true, value: "ABCDE1234F" }, "lower case and spacing are tidied, not refused");
+  assert.deepEqual(checkOwnerId("PAN", "ABCDE1234"), { ok: false, says: "Ten characters, like ABCDE1234F" });
+  assert.equal(checkOwnerId("AADHAAR", "234567890123").ok, true);
+  assert.equal(checkOwnerId("AADHAAR", "123456789012").ok, false, "an Aadhaar never starts with 0 or 1");
+  assert.equal(checkOwnerId("AADHAAR", "23456789012").ok, false, "eleven digits is a typo");
+  assert.equal(checkOwnerId("PASSPORT", "K1234567").ok, true);
+  assert.equal(checkOwnerId("VOTER_ID", "ABC1234567").ok, true);
+  assert.equal(checkOwnerId("DRIVING_LICENCE", "KL07 20110012345").ok, true, "the space people write is allowed");
+  assert.equal(checkOwnerId("SOMETHING_ELSE", "ABCDE1234F").ok, false, "a kind nobody offered is not accepted");
+});
+
+test("an identity number is shown as its last few characters, like a passport", () => {
+  // The same shape a student's passport is shown in, so one habit covers both.
+  assert.equal(maskOwnerId("ABCDE1234F"), "A•••••••4F");
+  assert.equal(maskOwnerId(null), "Not recorded", "nothing recorded says so rather than showing dots");
+  assert.equal(maskOwnerId("ABC"), "•••", "a short one gives nothing away at all");
 });
