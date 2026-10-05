@@ -9,7 +9,7 @@ import { checkEligibility } from "@/lib/eligibility";
 import { fmtDate, fmtMoney } from "@/lib/format";
 import { partnerEstimate, pickRule } from "@/lib/money";
 import { activeRules } from "@/server/commission-estimate";
-import { ADMIN_ROLES, APP_ROLES } from "@/lib/permissions";
+import { ADMIN_ROLES, APP_ROLES, PARTNER_ROLES } from "@/lib/permissions";
 import { getStudentForUser } from "@/server/queries";
 import { fxRates, getSettings } from "@/server/settings";
 import { ShortlistButton } from "@/components/shortlist-button";
@@ -19,7 +19,7 @@ import { IconAlert, IconCheck, IconClock, IconSearch } from "@/components/icons"
 
 export const metadata = { title: "Shortlist" };
 
-const CAN_EDIT: readonly string[] = ["PARTNER", "COUNSELLOR", ...ADMIN_ROLES];
+const CAN_EDIT: readonly string[] = [...PARTNER_ROLES, ...ADMIN_ROLES];
 
 export default async function ShortlistPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser([...APP_ROLES]);

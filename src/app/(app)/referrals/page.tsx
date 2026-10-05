@@ -11,6 +11,7 @@ import { Alert, Card, CardHeader, Chip, EmptyState, PageHeader, Stat, Table, Td,
 import { IconPartners } from "@/components/icons";
 import { ReferForm } from "@/components/agent-forms";
 import type { ReferralEarningState } from "@/db/schema";
+import { PARTNER_ROLES } from "@/lib/permissions";
 
 export const metadata = { title: "Referrals" };
 export const dynamic = "force-dynamic";
@@ -31,7 +32,7 @@ const STATE_TONE: Record<ReferralEarningState, "neutral" | "ok" | "warn" | "bad"
  * they do not see documents, notes, fees or anybody else's students.
  */
 export default async function ReferralsPage({ searchParams }: { searchParams: Promise<{ sent?: string }> }) {
-  const user = await requireUser(["PARTNER", "COUNSELLOR"]);
+  const user = await requireUser([...PARTNER_ROLES]);
   const sp = await searchParams;
   const org = await db.query.organizations.findFirst({ where: eq(schema.organizations.id, user.orgId) });
   const isSubAgent = org?.type === "SUB_AGENT";

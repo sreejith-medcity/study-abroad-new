@@ -4,7 +4,7 @@ import { and, eq, gte, ilike, inArray, lte, or, sql, type SQL } from "drizzle-or
 import { notFound } from "next/navigation";
 import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
-import { isStaff, orgScope } from "@/lib/permissions";
+import { PARTNER_ROLES, isStaff, orgScope } from "@/lib/permissions";
 
 const { applications: a, students: s, programs: p, universities: u, countries: c, statusDefinitions: sd } = schema;
 
@@ -147,5 +147,5 @@ export async function orgUsers(orgId: string) {
   return db
     .select({ id: schema.users.id, name: schema.users.name, deskLabel: schema.users.deskLabel })
     .from(schema.users)
-    .where(and(eq(schema.users.orgId, orgId), inArray(schema.users.role, ["PARTNER", "COUNSELLOR"]), eq(schema.users.active, true)));
+    .where(and(eq(schema.users.orgId, orgId), inArray(schema.users.role, [...PARTNER_ROLES]), eq(schema.users.active, true)));
 }

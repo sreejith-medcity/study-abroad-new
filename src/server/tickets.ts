@@ -7,12 +7,12 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import type { FormState } from "@/lib/form-state";
-import { PROCESSING_ROLES, isStaff } from "@/lib/permissions";
+import { PARTNER_ROLES, PROCESSING_ROLES, isStaff } from "@/lib/permissions";
 import { ticketForUser } from "@/server/ticket-access";
 import { TICKET_CATEGORIES, TICKET_STATUSES, TICKET_STATUS_LABEL } from "@/lib/tickets";
 import { adminIds, notifyUsers } from "@/server/notify";
 
-const RAISERS = ["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES] as const;
+const RAISERS = [...PARTNER_ROLES, ...PROCESSING_ROLES] as const;
 
 const open = z.object({
   subject: z.string().trim().min(5, "A short summary").max(200),

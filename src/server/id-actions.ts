@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { ADMIN_ROLES } from "@/lib/permissions";
+import { ADMIN_ROLES, PARTNER_ROLES } from "@/lib/permissions";
 import { getStudentForUser } from "@/server/queries";
 import { ensureStudentId } from "@/server/medcity-id";
 
@@ -16,7 +16,7 @@ import { ensureStudentId } from "@/server/medcity-id";
  * registration that went through while the numbering was unavailable.
  */
 export async function assignStudentIdAction(formData: FormData) {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...ADMIN_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...ADMIN_ROLES]);
   const studentId = String(formData.get("studentId"));
   const student = await getStudentForUser(user, studentId);
   if (student.medcityId) return;

@@ -7,14 +7,14 @@ import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { getStudentForUser } from "@/server/queries";
 import { deleteUpload, saveUpload, UploadError } from "@/server/storage";
-import { PROCESSING_ROLES, isAdmin } from "@/lib/permissions";
+import { PARTNER_ROLES, PROCESSING_ROLES, isAdmin } from "@/lib/permissions";
 import { attachUploadToChecklist } from "@/server/documentation";
 
 import type { FormState } from "@/lib/form-state";
 export type { FormState };
 
 export async function uploadDocumentAction(_: FormState, formData: FormData): Promise<FormState> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
   const studentId = String(formData.get("studentId"));
   const typeCode = String(formData.get("typeCode") || "");
   const file = formData.get("file");
@@ -41,7 +41,7 @@ export async function uploadDocumentAction(_: FormState, formData: FormData): Pr
 }
 
 export async function deleteDocumentAction(formData: FormData) {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
   const documentId = String(formData.get("documentId"));
   const doc = await db.query.documents.findFirst({ where: eq(schema.documents.id, documentId), with: { type: true } });
   if (!doc) return;
@@ -56,7 +56,7 @@ export async function deleteDocumentAction(formData: FormData) {
 
 /** Show or hide one document in the student's portal. */
 export async function shareDocumentAction(formData: FormData) {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
   const doc = await db.query.documents.findFirst({ where: eq(schema.documents.id, String(formData.get("documentId"))) });
   if (!doc) return;
   await getStudentForUser(user, doc.studentId);

@@ -1,7 +1,7 @@
 import { asc, ne } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
-import { ADMIN_ROLES, isStaff } from "@/lib/permissions";
+import { ADMIN_ROLES, PARTNER_ROLES, isStaff } from "@/lib/permissions";
 import { orgUsers } from "@/server/queries";
 import { Card, PageHeader } from "@/components/ui";
 import { EnquiryForm } from "../forms";
@@ -9,7 +9,7 @@ import { EnquiryForm } from "../forms";
 export const metadata = { title: "New enquiry" };
 
 export default async function NewEnquiryPage() {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...ADMIN_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...ADMIN_ROLES]);
   const staff = isStaff(user);
   const [people, countries, orgs] = await Promise.all([
     staff ? Promise.resolve([]) : orgUsers(user.orgId),

@@ -9,7 +9,7 @@ import { db, schema } from "@/db";
 import { hashPassword, requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { phoneKey } from "@/lib/phone";
-import { ADMIN_ROLES, isAdmin, isStaff } from "@/lib/permissions";
+import { ADMIN_ROLES, PARTNER_ROLES, isAdmin, isCounsellor, isStaff } from "@/lib/permissions";
 import { adminIds, notifyUsers, partnerRecipients } from "@/server/notify";
 import { getStudentForUser } from "@/server/queries";
 import { tryMintStudentId } from "@/server/medcity-id";
@@ -39,7 +39,7 @@ const newStudent = z.object({
 });
 
 export async function createStudentAction(_: FormState, formData: FormData): Promise<FormState> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...ADMIN_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...ADMIN_ROLES]);
   const parsed = newStudent.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Check the highlighted fields." };
   const d = parsed.data;
@@ -85,7 +85,7 @@ export async function createStudentAction(_: FormState, formData: FormData): Pro
     .values({
       orgId,
       createdById: user.id,
-      assignedToId: d.assignedToId ?? (user.role === "COUNSELLOR" ? user.id : null),
+      assignedToId: d.assignedToId ?? (isCounsellor(user.role) ? user.id : null),
       firstName: d.firstName,
       lastName: d.lastName,
       email: d.email,
@@ -145,7 +145,7 @@ export async function createStudentAction(_: FormState, formData: FormData): Pro
 }
 
 export async function reassignStudentAction(formData: FormData) {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...ADMIN_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...ADMIN_ROLES]);
   const studentId = String(formData.get("studentId"));
   const assignedToId = String(formData.get("assignedToId") || "") || null;
   const student = await getStudentForUser(user, studentId);
@@ -177,7 +177,7 @@ export async function archiveStudentAction(formData: FormData) {
 // ---------- Profile ----------
 
 async function editableStudent(studentId: string) {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...ADMIN_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...ADMIN_ROLES]);
   const student = await getStudentForUser(user, studentId);
   if (student.profileLocked && !isAdmin(user)) {
     return { user, student, locked: true as const };
@@ -357,7 +357,7 @@ export async function deleteProfileRowAction(formData: FormData) {
 }
 
 export async function requestEditAction(_: FormState, formData: FormData): Promise<FormState> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR"]);
+  const user = await requireUser([...PARTNER_ROLES]);
   const studentId = String(formData.get("studentId"));
   const student = await getStudentForUser(user, studentId);
   const section = String(formData.get("section") || "profile");
@@ -383,7 +383,7 @@ export async function toggleLockAction(formData: FormData) {
 }
 
 export async function revealPassportAction(formData: FormData) {
-  const user = await requireUser(["ADMIN", "SUPER_ADMIN", "OPS_MANAGER", "DOCUMENTATION", "PARTNER", "COUNSELLOR"]);
+  const user = await requireUser(["ADMIN", "SUPER_ADMIN", "OPS_MANAGER", "DOCUMENTATION", ...PARTNER_ROLES]);
   const studentId = String(formData.get("studentId"));
   await getStudentForUser(user, studentId);
   await audit(user.id, "passport.reveal", "student", studentId);
@@ -404,7 +404,7 @@ function portalPassword() {
  * missing and message their counsellor, and nothing else.
  */
 export async function invitePortalAction(_: FormState, formData: FormData): Promise<FormState> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...ADMIN_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...ADMIN_ROLES]);
   const studentId = String(formData.get("studentId"));
   const student = await getStudentForUser(user, studentId);
   if (!student.email) return { error: "Add an email address to the student's profile first." };
@@ -445,7 +445,7 @@ export async function invitePortalAction(_: FormState, formData: FormData): Prom
 }
 
 export async function togglePortalAccessAction(formData: FormData) {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...ADMIN_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...ADMIN_ROLES]);
   const studentId = String(formData.get("studentId"));
   await getStudentForUser(user, studentId);
   const account = await db.query.users.findFirst({ where: and(eq(schema.users.studentId, studentId), eq(schema.users.role, "STUDENT")) });

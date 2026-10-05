@@ -3,7 +3,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fullName } from "@/lib/format";
-import { ADMIN_ROLES, APP_ROLES, isStaff } from "@/lib/permissions";
+import { ADMIN_ROLES, APP_ROLES, PARTNER_ROLES, isStaff } from "@/lib/permissions";
 import { commissionVisible } from "@/server/commission-visibility";
 import { adhocStudent, LEVELS, listOf, QUICK, readSearch } from "@/server/program-search";
 import { destinationCounts, studyFields, FINDER_KEYS } from "@/server/finder";
@@ -349,7 +349,7 @@ export default async function FinderPage({ searchParams }: { searchParams: Promi
           checker={checker}
           studentId={student?.id ?? null}
           studentName={student ? fullName(student) : null}
-          canShortlist={(["PARTNER", "COUNSELLOR", ...ADMIN_ROLES] as readonly string[]).includes(user.role)}
+          canShortlist={([...PARTNER_ROLES, ...ADMIN_ROLES] as readonly string[]).includes(user.role)}
         />
       )}
     </>

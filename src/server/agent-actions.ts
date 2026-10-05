@@ -8,7 +8,7 @@ import { z } from "zod";
 import { db, schema } from "@/db";
 import { hashPassword, requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { ADMIN_ROLES } from "@/lib/permissions";
+import { ADMIN_ROLES, PARTNER_ROLES } from "@/lib/permissions";
 import { phoneKey } from "@/lib/phone";
 import { rateLimit } from "@/server/rate-limit";
 import { adminIds, notifyUsers, partnerRecipients } from "@/server/notify";
@@ -454,7 +454,7 @@ const referralShape = z.object({
  * while the referrer does not, because the referrer is who gets paid.
  */
 export async function submitReferralAction(_: FormState, formData: FormData): Promise<FormState> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR"]);
+  const user = await requireUser([...PARTNER_ROLES]);
   const org = await db.query.organizations.findFirst({ where: eq(schema.organizations.id, user.orgId) });
   if (org?.type !== "SUB_AGENT") return { error: "Referrals are for sub-agents. Register the student yourself from Students." };
 

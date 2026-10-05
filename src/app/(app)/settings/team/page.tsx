@@ -5,6 +5,7 @@ import { fmtDateTime } from "@/lib/format";
 import { setCounsellorActiveAction } from "@/server/team";
 import { Alert, Button, Card, CardHeader, Chip } from "@/components/ui";
 import { AddCounsellorForm, DeskLabelForm, ResetPasswordForm } from "./forms";
+import { PARTNER_ROLES } from "@/lib/permissions";
 
 export const metadata = { title: "Team" };
 
@@ -28,9 +29,9 @@ export default async function TeamPage() {
       apps: sql<number>`(select count(*)::int from applications a join students s on s.id = a.student_id where s.assigned_to_id = users.id)`,
     })
     .from(u)
-    .where(and(eq(u.orgId, org.id), inArray(u.role, ["PARTNER", "COUNSELLOR"])))
+    .where(and(eq(u.orgId, org.id), inArray(u.role, [...PARTNER_ROLES])))
     .orderBy(sql`${u.role} = 'PARTNER' desc`, sql`${u.active} desc`, u.name);
-  const [{ used }] = await db.select({ used: count() }).from(u).where(and(eq(u.orgId, org.id), eq(u.active, true), inArray(u.role, ["PARTNER", "COUNSELLOR"])));
+  const [{ used }] = await db.select({ used: count() }).from(u).where(and(eq(u.orgId, org.id), eq(u.active, true), inArray(u.role, [...PARTNER_ROLES])));
   const free = Math.max(0, org.counsellorSeats - used);
 
   return (

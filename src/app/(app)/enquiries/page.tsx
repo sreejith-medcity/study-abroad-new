@@ -3,7 +3,7 @@ import { asc, ne, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fmtDate, intakeLabel } from "@/lib/format";
-import { ADMIN_ROLES, isStaff } from "@/lib/permissions";
+import { ADMIN_ROLES, PARTNER_ROLES, isStaff } from "@/lib/permissions";
 import { orgUsers } from "@/server/queries";
 import {
   SOURCE_LABEL,
@@ -43,7 +43,7 @@ export const metadata = { title: "Enquiries" };
 const PAGE = 40;
 
 export default async function EnquiriesPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...ADMIN_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...ADMIN_ROLES]);
   const f = readEnquiryFilters(await searchParams);
   const page = Math.max(1, Number(f.page ?? 1));
   const staff = isStaff(user);

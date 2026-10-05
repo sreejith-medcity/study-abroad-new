@@ -2,7 +2,7 @@ import "server-only";
 import { and, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
-import { isAdmin } from "@/lib/permissions";
+import { PARTNER_ROLES, isAdmin } from "@/lib/permissions";
 
 export type ImportLine = { line: number; message: string };
 export type ImportResult = {
@@ -59,7 +59,7 @@ export async function staffByEmail(orgIds: string[]) {
   const rows = await db
     .select({ id: schema.users.id, email: schema.users.email, orgId: schema.users.orgId })
     .from(schema.users)
-    .where(and(inArray(schema.users.orgId, orgIds), eq(schema.users.active, true), inArray(schema.users.role, ["PARTNER", "COUNSELLOR"])));
+    .where(and(inArray(schema.users.orgId, orgIds), eq(schema.users.active, true), inArray(schema.users.role, [...PARTNER_ROLES])));
   return new Map(rows.map((r) => [`${r.orgId}|${r.email.toLowerCase()}`, r]));
 }
 

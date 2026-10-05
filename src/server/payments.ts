@@ -7,7 +7,7 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import type { FormState } from "@/lib/form-state";
-import { canManageSettings, PROCESSING_ROLES } from "@/lib/permissions";
+import { PARTNER_ROLES, PROCESSING_ROLES, canManageSettings } from "@/lib/permissions";
 import { RAZORPAY_CURRENCIES, checkoutSignatureOk, toMinor } from "@/lib/razorpay";
 import { seal } from "@/lib/secret-box";
 import { getApplicationForUser } from "@/server/queries";
@@ -50,7 +50,7 @@ export type CheckoutStart = { ok: true; keyId: string; orderId: string; amountMi
 
 /** Opens a Razorpay order for an application's fee, at the fee and currency the program records. */
 export async function startFeePaymentAction(applicationId: string): Promise<CheckoutStart> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
   const base = await getApplicationForUser(user, applicationId);
   const app = await db.query.applications.findFirst({
     where: eq(schema.applications.id, base.id),
@@ -91,7 +91,7 @@ export async function startFeePaymentAction(applicationId: string): Promise<Chec
 
 /** Checkout's success callback. The signature proves Razorpay sent it; the webhook confirms it again. */
 export async function confirmPaymentAction(input: { orderId: string; paymentId: string; signature: string }): Promise<{ ok: boolean; error?: string }> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
   const cfg = await razorpayConfig();
   if (!cfg) return { ok: false, error: "Online payments are not set up." };
   const pay = await db.query.payments.findFirst({ where: eq(schema.payments.razorpayOrderId, String(input.orderId)) });

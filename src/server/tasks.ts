@@ -3,7 +3,7 @@ import { and, asc, count, desc, eq, inArray, isNull, lte, or, sql } from "drizzl
 import { db, schema } from "@/db";
 import { whenDue, type When } from "@/lib/crm";
 import type { SessionUser } from "@/lib/auth";
-import { isStaff } from "@/lib/permissions";
+import { PARTNER_ROLES, isStaff } from "@/lib/permissions";
 
 const { tasks: tk, students: st, users: us, organizations: og, applications: ap } = schema;
 
@@ -109,8 +109,8 @@ export async function taskCounts(userId: string, today = new Date()) {
 /** The people a task can be given to inside one branch, plus the Overseas desk. */
 export async function assignableUsers(user: SessionUser) {
   const where = isStaff(user)
-    ? inArray(us.role, ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "PARTNER", "COUNSELLOR"])
-    : and(eq(us.orgId, user.orgId), inArray(us.role, ["PARTNER", "COUNSELLOR"]));
+    ? inArray(us.role, ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", ...PARTNER_ROLES])
+    : and(eq(us.orgId, user.orgId), inArray(us.role, [...PARTNER_ROLES]));
   return db
     .select({ id: us.id, name: us.name, deskLabel: us.deskLabel, role: us.role, orgId: us.orgId })
     .from(us)

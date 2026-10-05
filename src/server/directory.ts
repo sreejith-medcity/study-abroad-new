@@ -7,7 +7,7 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import type { FormState } from "@/lib/form-state";
-import { ADMIN_ROLES } from "@/lib/permissions";
+import { ADMIN_ROLES, PARTNER_ROLES } from "@/lib/permissions";
 import { notifyUsers } from "@/server/notify";
 
 const opt = (max: number) => z.string().trim().max(max).optional().transform((v) => v || null);
@@ -97,7 +97,7 @@ export async function createPromotionAction(_: FormState, fd: FormData): Promise
     .select({ id: schema.users.id, role: schema.users.role, sees: schema.organizations.counsellorsSeeCommission })
     .from(schema.users)
     .innerJoin(schema.organizations, eq(schema.users.orgId, schema.organizations.id))
-    .where(and(inArray(schema.users.role, ["PARTNER", "COUNSELLOR"]), eq(schema.users.active, true)));
+    .where(and(inArray(schema.users.role, [...PARTNER_ROLES]), eq(schema.users.active, true)));
   await notifyUsers(people.filter((p) => p.role === "PARTNER" || p.sees).map((p) => p.id), `New scheme: ${row.title}`, row.summary, `/promotions#${row.id}`);
   revalidatePath("/admin/promotions");
   return { ok: "Published. Partners have been told." };

@@ -2,7 +2,7 @@ import { asc, eq, ne, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fmtDate } from "@/lib/format";
-import { ADMIN_ROLES, HQ_ROLES, canManageSuperAdmins, canManageUsers, canResetPasswords, ROLE_BLURB, ROLE_LABEL } from "@/lib/permissions";
+import { ADMIN_ROLES, HQ_ROLES, PARTNER_ROLES, ROLE_BLURB, ROLE_LABEL, canManageSuperAdmins, canManageUsers, canResetPasswords } from "@/lib/permissions";
 import { Button, Card, CardHeader, Chip, Input, PageHeader, Select, Alert } from "@/components/ui";
 import { IconPartners } from "@/components/icons";
 import { toggleUserAction, updateOrgAction } from "./actions";
@@ -73,7 +73,7 @@ export default async function PartnersPage() {
         <div className="space-y-4">
           {orgs.map((o) => {
             const hq = o.type === "HQ";
-            const seatsUsed = o.users.filter((u) => u.active && (u.role === "PARTNER" || u.role === "COUNSELLOR")).length;
+            const seatsUsed = o.users.filter((u) => u.active && (PARTNER_ROLES as readonly string[]).includes(u.role)).length;
             return (
               <Card key={o.id}>
                 <CardHeader
@@ -148,7 +148,7 @@ export default async function PartnersPage() {
                       </span>
                       <div className="ml-auto flex flex-wrap items-center gap-2">
                         {manageUsers && u.id !== me.id && (
-                          <RoleForm userId={u.id} role={u.role} hq={hq} roleLabel={ROLE_LABEL} canSetSuperAdmin={superAdmin} />
+                          <RoleForm userId={u.id} role={u.role} hq={hq} subAgent={o.type === "SUB_AGENT"} roleLabel={ROLE_LABEL} canSetSuperAdmin={superAdmin} />
                         )}
                         {manageUsers && <TitleForm userId={u.id} title={u.deskLabel} />}
                         {canResetPasswords(me) && <ResetPasswordForm userId={u.id} email={u.email} />}
@@ -182,6 +182,7 @@ export default async function PartnersPage() {
                     <AddUserForm
                       orgId={o.id}
                       hq={hq}
+                      subAgent={o.type === "SUB_AGENT"}
                       canCreateStaff={manageUsers}
                       canCreateSuperAdmin={superAdmin}
                       roleLabel={ROLE_LABEL}

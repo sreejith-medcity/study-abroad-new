@@ -5,7 +5,7 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { LEVEL_LABEL, intakesText, tuitionText } from "@/lib/catalogue";
-import { ADMIN_ROLES, APP_ROLES, HQ_ROLES } from "@/lib/permissions";
+import { ADMIN_ROLES, APP_ROLES, HQ_ROLES, PARTNER_ROLES } from "@/lib/permissions";
 import { readUpload } from "@/server/storage";
 import { INTERVIEW_KINDS, type InterviewKind } from "@/lib/interview";
 import { aiAllowance, aiConfig, callClaude, recordAiUsage, replyText, type ClaudeMessage, type ClaudeTool } from "@/server/ai";
@@ -121,7 +121,7 @@ const QUESTIONS = 6;
  * intake go to the AI service, never the student's name or documents.
  */
 export async function interviewTurnAction(input: { kind: string; applicationId: string | null; transcript: Line[] }): Promise<InterviewTurn> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...ADMIN_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...ADMIN_ROLES]);
   const cfg = await aiConfig();
   if (!cfg?.enabled || !cfg.features.interview) return { ok: false, error: "Practice interviews are not switched on." };
   if (!(input.kind in INTERVIEW_KINDS)) return { ok: false, error: "Choose the kind of interview." };
@@ -216,7 +216,7 @@ const day = (v: unknown) => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test
 
 /** Reads one uploaded document with the AI service and returns what it found, for a person to check and save. Nothing is saved here. */
 export async function extractDocumentAction(documentId: string): Promise<Extracted> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...ADMIN_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...ADMIN_ROLES]);
   const cfg = await aiConfig();
   if (!cfg?.enabled || !cfg.features.autofill) return { ok: false, error: "Reading documents is not switched on." };
   const doc = await db.query.documents.findFirst({ where: eq(schema.documents.id, documentId), with: { student: { columns: { orgId: true } } } });

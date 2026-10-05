@@ -357,6 +357,26 @@ sheet, because they are part of what that student is worth to Medcity, and they
 are counted in no Overseas total, because adding them would flatter every money
 screen by an amount a different company earned.
 
+## The counsellor roles
+
+"Counsellor" was doing the work of several jobs, so there are now five of them,
+and what each may actually do is set on the screen below rather than written
+into the code.
+
+| Role | Sits | Sees |
+| --- | --- | --- |
+| Overseas desk counsellor | Medcity Overseas | Students across every branch, like the other desk roles. Advises rather than processes. |
+| Branch head | One branch | Their branch: students, team, wallet, branch settings. |
+| Senior counsellor | One branch | Their branch's students. Not the wallet, the team or the branch settings. |
+| Counsellor | One branch | Their branch's students. |
+| Trainee counsellor | One branch | Their branch's students, but does not start an application or write to a student: they build the file and somebody else sends it. |
+| Sub-agent counsellor | One sub-agent firm | That firm's own students, under whoever signed its agreement. |
+
+Scoping is by organisation, as it always was, so every screen that scoped a
+counsellor scopes all of them. The trainee's two limits are capabilities, which
+means a branch that wants its trainees to message students can simply turn that
+on.
+
 ## Who may do what
 
 Settings, **Who may do what**, super admin only. One row per thing somebody can

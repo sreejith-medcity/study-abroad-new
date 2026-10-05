@@ -14,6 +14,7 @@ import * as schema from "./schema";
 import { DOCUMENT_TYPES, STATUS_SEED } from "./statuses";
 import { DOCUMENTATION_TYPES, REJECTION_REASONS, STAGE_REQUIREMENTS } from "./documentation-seed";
 import { syncChecklist } from "./documentation-sync";
+import { PARTNER_ROLES } from "@/lib/permissions";
 
 const client = postgres(process.env.DATABASE_URL!, { max: 1 });
 const db = drizzle(client, { schema });
@@ -573,7 +574,7 @@ async function main() {
       countryId: c.GB,
       pathway: "DEGREE" as const,
       url: "https://www.gov.uk/student-visa",
-      audience: ["PARTNER", "COUNSELLOR"],
+      audience: [...PARTNER_ROLES],
       pinned: true,
       createdById: admin.id,
     },
@@ -581,7 +582,7 @@ async function main() {
       title: "Statement of purpose: structure that works",
       summary: "The five paragraphs we ask for, with the study gap and finance sections spelled out.",
       kind: "TEMPLATE" as const,
-      audience: ["PARTNER", "COUNSELLOR"],
+      audience: [...PARTNER_ROLES],
       pinned: true,
       createdById: admin.id,
     },
@@ -591,14 +592,14 @@ async function main() {
       kind: "TRAINING" as const,
       countryId: c.DE,
       pathway: "AUSBILDUNG" as const,
-      audience: ["PARTNER", "COUNSELLOR"],
+      audience: [...PARTNER_ROLES],
       createdById: officerDe.id,
     },
     {
       title: "Data protection: handling passports and marksheets",
       summary: "What we may store, who may see a full passport number, and how long documents are kept.",
       kind: "POLICY" as const,
-      audience: ["PARTNER", "COUNSELLOR", "ADMIN", "MANAGEMENT"],
+      audience: [...PARTNER_ROLES, "ADMIN", "MANAGEMENT"],
       createdById: admin.id,
     },
     {
@@ -606,7 +607,7 @@ async function main() {
       summary: "The order of CBT, OET or IELTS, and the board application, with realistic timelines.",
       kind: "FAQ" as const,
       pathway: "NURSING" as const,
-      audience: ["PARTNER", "COUNSELLOR"],
+      audience: [...PARTNER_ROLES],
       createdById: officerNurse.id,
     },
     {

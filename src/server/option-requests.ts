@@ -8,13 +8,13 @@ import { audit } from "@/lib/audit";
 import { SHORTLIST_LIMIT } from "@/lib/catalogue";
 import type { FormState } from "@/lib/form-state";
 import { EDUCATION_LEVELS, MAX_CHOICES, newRequestNo } from "@/lib/options";
-import { PROCESSING_ROLES, isStaff } from "@/lib/permissions";
+import { PARTNER_ROLES, PROCESSING_ROLES, isStaff } from "@/lib/permissions";
 import { adminIds, notifyUsers } from "@/server/notify";
 import { optionRequestForUser } from "@/server/option-access";
 import { getStudentForUser } from "@/server/queries";
 import { saveUpload, UploadError } from "@/server/storage";
 
-const PARTNERS = ["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES] as const;
+const PARTNERS = [...PARTNER_ROLES, ...PROCESSING_ROLES] as const;
 const LEVELS = ["UG_DIPLOMA", "UG", "PG_DIPLOMA", "PG", "PHD", "VOCATIONAL", "CERTIFICATE"];
 
 /** A partner asks the team which programs suit a student. */
@@ -144,7 +144,7 @@ export async function linkStudentAction(fd: FormData) {
 
 /** Shortlists every recommended program for the linked student, up to the shortlist limit. */
 export async function shortlistAllAction(_: FormState, fd: FormData): Promise<FormState> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
   const r = await optionRequestForUser(user, String(fd.get("requestId") ?? ""));
   if (!r || !r.studentId) return { error: "Link the request to a student first." };
   const picks = await db.select({ programId: schema.optionRequestPrograms.programId }).from(schema.optionRequestPrograms).where(eq(schema.optionRequestPrograms.requestId, r.id));

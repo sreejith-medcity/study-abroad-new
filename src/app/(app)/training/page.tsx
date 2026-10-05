@@ -3,7 +3,7 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fmtDate } from "@/lib/format";
-import { APP_ROLES, isStaff } from "@/lib/permissions";
+import { APP_ROLES, PARTNER_ROLES, isStaff } from "@/lib/permissions";
 import { Card, CardHeader, Chip, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
 
 export const metadata = { title: "Training" };
@@ -19,7 +19,7 @@ export default async function TrainingPage() {
         .select({ id: schema.users.id, name: schema.users.name, org: schema.organizations.name })
         .from(schema.users)
         .innerJoin(schema.organizations, eq(schema.users.orgId, schema.organizations.id))
-        .where(and(inArray(schema.users.role, ["PARTNER", "COUNSELLOR"]), eq(schema.users.active, true), isStaff(user) ? undefined : eq(schema.users.orgId, user.orgId)))
+        .where(and(inArray(schema.users.role, [...PARTNER_ROLES]), eq(schema.users.active, true), isStaff(user) ? undefined : eq(schema.users.orgId, user.orgId)))
         .orderBy(asc(schema.organizations.name), asc(schema.users.name))
     : [];
   const passes = team.length

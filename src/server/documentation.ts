@@ -4,6 +4,7 @@ import { db, schema } from "@/db";
 import { gate, standing, stageRank, validUntil, type Gate, type GateItem, visaFirstOrder } from "@/lib/journey";
 import { courseStartFor, intakeStart, requirementsFor, studentContext, syncChecklist, type Requirement, type StudentContext } from "@/db/documentation-sync";
 import type { ChecklistState, JourneyStage, RequirementSource } from "@/db/schema";
+import { PARTNER_ROLES } from "@/lib/permissions";
 
 const { checklistItems: ci, checklistFiles: cf, documentRequirements: dr, documentTypes: dt, students: st, applications: ap, programs: pg, universities: un, programRoutes: pr, vendors: vn, organizations: og } = schema;
 
@@ -400,7 +401,7 @@ export async function branchChecked(limit = 60): Promise<BranchChecked[]> {
     .innerJoin(og, eq(og.id, st.orgId))
     .innerJoin(dt, eq(dt.code, ci.typeCode))
     .innerJoin(decider, eq(decider.id, ci.decidedById))
-    .where(and(inArray(decider.role, ["PARTNER", "COUNSELLOR"]), isNotNull(ci.decidedAt)))
+    .where(and(inArray(decider.role, [...PARTNER_ROLES]), isNotNull(ci.decidedAt)))
     .orderBy(desc(ci.decidedAt))
     .limit(limit);
 }

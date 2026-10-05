@@ -3,7 +3,7 @@ import { and, count, desc, eq, sql, type SQL } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fmtDateTime } from "@/lib/format";
-import { PROCESSING_ROLES, isStaff } from "@/lib/permissions";
+import { PARTNER_ROLES, PROCESSING_ROLES, isStaff } from "@/lib/permissions";
 import { CATEGORY_LABEL, TICKET_CATEGORIES, TICKET_STATUSES, TICKET_STATUS_LABEL, TICKET_STATUS_TONE, type TicketStatus } from "@/lib/tickets";
 import { Card, CardHeader, Chip, EmptyState, PageHeader, cn } from "@/components/ui";
 import { OpenTicketForm } from "@/components/ticket-forms";
@@ -12,7 +12,7 @@ export const metadata = { title: "Help desk" };
 
 /** Partners see their branch's tickets; the Overseas team sees every branch, open ones first. */
 export default async function SupportPage({ searchParams }: { searchParams: Promise<{ status?: string; category?: string; subject?: string; body?: string }> }) {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
   const staff = isStaff(user);
   const sp = await searchParams;
   const status = (TICKET_STATUSES as readonly string[]).includes(sp.status ?? "") ? (sp.status as TicketStatus) : undefined;

@@ -5,7 +5,7 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { checkEligibility, type Eligibility } from "@/lib/eligibility";
 import { fmtMoney, fullName, MONTHS } from "@/lib/format";
-import { ADMIN_ROLES, APP_ROLES, isStaff } from "@/lib/permissions";
+import { ADMIN_ROLES, APP_ROLES, PARTNER_ROLES, isStaff } from "@/lib/permissions";
 import { ShortlistButton } from "@/components/shortlist-button";
 import { CheckDropdown } from "@/components/check-dropdown";
 import { fxRates, getSettings } from "@/server/settings";
@@ -212,7 +212,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     .limit(300);
 
 
-  const canShortlist = (["PARTNER", "COUNSELLOR", ...ADMIN_ROLES] as readonly string[]).includes(user.role);
+  const canShortlist = ([...PARTNER_ROLES, ...ADMIN_ROLES] as readonly string[]).includes(user.role);
   const picked = student
     ? new Set((await db.select({ id: schema.shortlists.programId }).from(schema.shortlists).where(eq(schema.shortlists.studentId, student.id))).map((x) => x.id))
     : new Set<string>();

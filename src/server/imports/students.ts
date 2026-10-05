@@ -7,6 +7,7 @@ import { EMAIL, PHONE, day, num, oneOf, splitName, text, yes, type Problems } fr
 import { createId } from "@/lib/id";
 import { reserveStudentIds } from "@/server/medcity-id";
 import { branchOwner, branchResolver, emptyResult, lineOf, phoneKey, staffByEmail, type ImportResult } from "./common";
+import { isCounsellor } from "@/lib/permissions";
 
 export const STUDENT_COLUMNS = [
   "branch", "name", "first_name", "last_name", "email", "phone", "counsellor_email", "consent",
@@ -223,7 +224,7 @@ export async function importStudents(user: SessionUser, rows: Row[], commit: boo
       if (!plan.email) out.notes.push({ line: plan.line, message: "no email, so the student is kept on their phone number and cannot use the student portal until an address is added" });
       out.created++;
       if (out.sample.length < 8) out.sample.push(`New: ${plan.label}`);
-      if (commit) toCreate.push({ plan, id: createId(), assignedToId: assignedToId ?? (user.role === "COUNSELLOR" ? user.id : owners.get(plan.orgId) ?? null) });
+      if (commit) toCreate.push({ plan, id: createId(), assignedToId: assignedToId ?? (isCounsellor(user.role) ? user.id : owners.get(plan.orgId) ?? null) });
       continue;
     }
 

@@ -6,6 +6,7 @@ import { acceptancesFor, mouStanding } from "@/server/agents";
 import { Alert, Card, CardHeader, Chip, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
 import { IconDoc } from "@/components/icons";
 import { AcceptMouForm, MouBody } from "@/components/agent-forms";
+import { PARTNER_ROLES } from "@/lib/permissions";
 
 export const metadata = { title: "The agreement" };
 export const dynamic = "force-dynamic";
@@ -18,7 +19,7 @@ export const dynamic = "force-dynamic";
  * a signature, because it is not one, and saying so would be the dishonest part.
  */
 export default async function AgreementPage() {
-  const user = await requireUser(["PARTNER", "COUNSELLOR"]);
+  const user = await requireUser([...PARTNER_ROLES]);
   const org = await db.query.organizations.findFirst({ where: eq(schema.organizations.id, user.orgId) });
   const [standing, history] = await Promise.all([mouStanding(user.orgId), acceptancesFor(user.orgId)]);
   const canAccept = user.role === "PARTNER";

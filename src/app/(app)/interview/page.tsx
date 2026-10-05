@@ -4,7 +4,7 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fmtDateTime, fullName } from "@/lib/format";
 import { INTERVIEW_KINDS } from "@/lib/interview";
-import { ADMIN_ROLES, isStaff } from "@/lib/permissions";
+import { ADMIN_ROLES, PARTNER_ROLES, isStaff } from "@/lib/permissions";
 import { aiConfig } from "@/server/ai";
 import { RichText } from "@/components/rich-text";
 import { Card, CardHeader, EmptyState, PageHeader } from "@/components/ui";
@@ -13,7 +13,7 @@ import { InterviewPractice } from "./practice";
 export const metadata = { title: "Practice interview" };
 
 export default async function InterviewPage({ searchParams }: { searchParams: Promise<{ app?: string; session?: string }> }) {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...ADMIN_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...ADMIN_ROLES]);
   const sp = await searchParams;
   const cfg = await aiConfig();
   const on = !!cfg && cfg.enabled && cfg.features.interview;

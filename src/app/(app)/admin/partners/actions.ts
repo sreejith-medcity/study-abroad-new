@@ -7,7 +7,7 @@ import { z } from "zod";
 import { db, schema } from "@/db";
 import { hashPassword, requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { ADMIN_ROLES, HQ_ROLES, canManageSuperAdmins, canManageUsers, canResetPasswords, isFamilyRole, ROLE_LABEL } from "@/lib/permissions";
+import { ADMIN_ROLES, HQ_ROLES, PARTNER_ROLES, ROLE_LABEL, canManageSuperAdmins, canManageUsers, canResetPasswords, isFamilyRole } from "@/lib/permissions";
 import { makeSlug } from "@/server/public-form";
 
 import type { FormState } from "@/lib/form-state";
@@ -53,7 +53,7 @@ const addUser = z.object({
   name: z.string().trim().min(2, "Name is required").max(100),
   email: z.string().trim().toLowerCase().email("Enter a valid email"),
   deskLabel: z.string().trim().max(60).optional(),
-  role: z.enum(["PARTNER", "COUNSELLOR", "ADMIN", "MANAGEMENT", "SUPER_ADMIN", "OPS_MANAGER", "DOCUMENTATION"]),
+  role: z.enum([...PARTNER_ROLES, "ADMIN", "MANAGEMENT", "SUPER_ADMIN", "OPS_MANAGER", "DOCUMENTATION"]),
 });
 
 export async function addUserAction(_: FormState, formData: FormData): Promise<FormState> {
@@ -72,11 +72,11 @@ export async function addUserAction(_: FormState, formData: FormData): Promise<F
   if (org.type === "HQ" && !canManageUsers(user)) {
     return { error: "Only a super admin can create Medcity Overseas staff accounts." };
   }
-  if (org.type !== "HQ" && !["PARTNER", "COUNSELLOR"].includes(d.role)) return { error: "Partner users must be a Branch head or a Counsellor." };
+  if (org.type !== "HQ" && !(PARTNER_ROLES as readonly string[]).includes(d.role)) return { error: "A partner's people are a branch head or one of the counsellor roles." };
   if (await db.query.users.findFirst({ where: eq(schema.users.email, d.email) })) return { error: "A user with that email already exists." };
 
   if (org.type !== "HQ") {
-    const [{ n }] = await db.select({ n: count() }).from(schema.users).where(and(eq(schema.users.orgId, org.id), eq(schema.users.active, true), inArray(schema.users.role, ["PARTNER", "COUNSELLOR"])));
+    const [{ n }] = await db.select({ n: count() }).from(schema.users).where(and(eq(schema.users.orgId, org.id), eq(schema.users.active, true), inArray(schema.users.role, [...PARTNER_ROLES])));
     if (n >= org.counsellorSeats) return { error: `${org.name} has used all ${org.counsellorSeats} seats for its tier.` };
   }
 
@@ -159,7 +159,7 @@ export async function changeRoleAction(_: FormState, formData: FormData): Promis
   if (hq && !(HQ_ROLES as readonly string[]).includes(role)) {
     return { error: "Medcity Overseas staff can be Super admin, Ops manager, Overseas admin, Documentation team or Management." };
   }
-  if (!hq && !["PARTNER", "COUNSELLOR"].includes(role)) return { error: "Partner staff can only be Branch head or Counsellor." };
+  if (!hq && !(PARTNER_ROLES as readonly string[]).includes(role)) return { error: "A partner's people are a branch head or one of the counsellor roles." };
   if ((role === "SUPER_ADMIN" || target.role === "SUPER_ADMIN") && !canManageSuperAdmins(actor)) {
     return { error: "Only a super admin can add or remove another super admin." };
   }

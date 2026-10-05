@@ -8,13 +8,14 @@ import { db, schema } from "@/db";
 import { hashPassword, requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import type { FormState } from "@/lib/form-state";
+import { BRANCH_COUNSELLOR_ROLES, PARTNER_ROLES } from "@/lib/permissions";
 
 const tempPassword = () => `Mc-${randomBytes(6).toString("base64url")}`;
 
 /** A counsellor of the owner's own branch, or null. Owners never manage other owners. */
 async function ownCounsellor(orgId: string, userId: string) {
   const u = await db.query.users.findFirst({ where: and(eq(schema.users.id, userId), eq(schema.users.orgId, orgId)) });
-  return u && u.role === "COUNSELLOR" ? u : null;
+  return u && (BRANCH_COUNSELLOR_ROLES as readonly string[]).includes(u.role) ? u : null;
 }
 
 const newCounsellor = z.object({
@@ -35,7 +36,7 @@ export async function addCounsellorAction(_: FormState, fd: FormData): Promise<F
   const [{ n }] = await db
     .select({ n: count() })
     .from(schema.users)
-    .where(and(eq(schema.users.orgId, org.id), eq(schema.users.active, true), inArray(schema.users.role, ["PARTNER", "COUNSELLOR"])));
+    .where(and(eq(schema.users.orgId, org.id), eq(schema.users.active, true), inArray(schema.users.role, [...PARTNER_ROLES])));
   if (n >= org.counsellorSeats) return { error: `All ${org.counsellorSeats} seats for your tier are in use. Switch someone off, or ask the Overseas team about a higher tier.` };
   if (await db.query.users.findFirst({ where: eq(schema.users.email, d.email) })) return { fieldErrors: { email: ["Someone already signs in with this email"] }, error: "Check the highlighted fields." };
   const password = tempPassword();
@@ -59,7 +60,7 @@ export async function setCounsellorActiveAction(fd: FormData) {
     const [{ n }] = await db
       .select({ n: count() })
       .from(schema.users)
-      .where(and(eq(schema.users.orgId, owner.orgId), eq(schema.users.active, true), inArray(schema.users.role, ["PARTNER", "COUNSELLOR"])));
+      .where(and(eq(schema.users.orgId, owner.orgId), eq(schema.users.active, true), inArray(schema.users.role, [...PARTNER_ROLES])));
     if (!org || n >= org.counsellorSeats) return;
   }
   let moved = 0;

@@ -3,14 +3,31 @@ import type { PgColumn } from "drizzle-orm/pg-core";
 import type { SessionUser } from "./auth";
 
 /** Roles that work inside Medcity Overseas rather than at a partner. */
-export const STAFF_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "MANAGEMENT"] as const;
+export const STAFF_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "MANAGEMENT", "DESK_COUNSELLOR"] as const;
 /** Roles that process applications: status changes, programs, partners, money. */
 export const ADMIN_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN"] as const;
 /** Everyone who reads the numbers: admins and management, but not the documentation team. */
 export const REPORTING_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "MANAGEMENT"] as const;
 /** Admins plus the documentation team, who work the same files without moving them. */
 export const PROCESSING_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION"] as const;
-export const PARTNER_ROLES = ["PARTNER", "COUNSELLOR"] as const;
+/**
+ * Everybody who works inside one organisation rather than at the desk: a branch
+ * or a sub-agent firm. Every screen that scopes by organisation reads this, so a
+ * role added here is scoped correctly everywhere at once.
+ */
+export const PARTNER_ROLES = ["PARTNER", "COUNSELLOR", "SENIOR_COUNSELLOR", "TRAINEE_COUNSELLOR", "SUB_AGENT_COUNSELLOR"] as const;
+
+/**
+ * The roles that advise students, wherever they sit. A student created by one
+ * of these is assigned to them by default, because they are the person the
+ * student will ring.
+ */
+export const COUNSELLING_ROLES = ["COUNSELLOR", "SENIOR_COUNSELLOR", "TRAINEE_COUNSELLOR", "SUB_AGENT_COUNSELLOR", "DESK_COUNSELLOR"] as const;
+
+/** A counsellor who works inside one branch, at whatever level. */
+export const BRANCH_COUNSELLOR_ROLES = ["COUNSELLOR", "SENIOR_COUNSELLOR", "TRAINEE_COUNSELLOR", "SUB_AGENT_COUNSELLOR"] as const;
+
+export const isCounsellor = (role: string) => (COUNSELLING_ROLES as readonly string[]).includes(role);
 /** Every signed-in role that uses the internal app shell. */
 export const APP_ROLES = [
   "SUPER_ADMIN",
@@ -20,6 +37,10 @@ export const APP_ROLES = [
   "MANAGEMENT",
   "PARTNER",
   "COUNSELLOR",
+  "DESK_COUNSELLOR",
+  "SENIOR_COUNSELLOR",
+  "TRAINEE_COUNSELLOR",
+  "SUB_AGENT_COUNSELLOR",
 ] as const;
 
 /** One label per role, used in the header, the people table and confirmations. */
@@ -31,6 +52,10 @@ export const ROLE_LABEL: Record<string, string> = {
   MANAGEMENT: "Management",
   PARTNER: "Branch head",
   COUNSELLOR: "Counsellor",
+  DESK_COUNSELLOR: "Overseas desk counsellor",
+  SENIOR_COUNSELLOR: "Senior counsellor",
+  TRAINEE_COUNSELLOR: "Trainee counsellor",
+  SUB_AGENT_COUNSELLOR: "Sub-agent counsellor",
   STUDENT: "Student",
   PARENT: "Parent or guardian",
 };
@@ -44,12 +69,16 @@ export const ROLE_BLURB: Record<string, string> = {
   MANAGEMENT: "Reads everything, changes nothing",
   PARTNER: "Runs a branch or sub-agent: their own students, applications, team and wallet",
   COUNSELLOR: "Works their own students inside one branch",
+  DESK_COUNSELLOR: "Advises students across every branch, from the Overseas desk, without processing applications",
+  SENIOR_COUNSELLOR: "Runs a branch's students without running the branch: no wallet, no team, no branch settings",
+  TRAINEE_COUNSELLOR: "Works their own students while somebody else sends what goes out",
+  SUB_AGENT_COUNSELLOR: "Works inside a sub-agent firm, under whoever signed its agreement",
   STUDENT: "Sees only their own application, in the student portal",
   PARENT: "Reads one student's journey and what is outstanding, and changes nothing",
 };
 
 /** Roles that belong to Medcity Overseas itself rather than to a partner. */
-export const HQ_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "MANAGEMENT"] as const;
+export const HQ_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "MANAGEMENT", "DESK_COUNSELLOR"] as const;
 
 /**
  * The family: a student and the parents who read that student's file. Neither

@@ -3,7 +3,7 @@ import { asc } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fmtDate, fmtDateTime, intakeLabel } from "@/lib/format";
-import { ADMIN_ROLES, isStaff } from "@/lib/permissions";
+import { ADMIN_ROLES, PARTNER_ROLES, isStaff } from "@/lib/permissions";
 import { orgUsers } from "@/server/queries";
 import { SOURCE_LABEL, STAGE_LABEL, STAGE_TONE, getEnquiryForUser } from "@/server/enquiries";
 import { Alert, Button, Card, CardHeader, Chip, DataList, LinkButton, PageHeader, Select } from "@/components/ui";
@@ -16,7 +16,7 @@ export const metadata = { title: "Enquiry" };
 const OPEN_STAGES = ["NEW", "CONTACTED", "QUALIFIED", "COUNSELLING"];
 
 export default async function EnquiryPage({ params }: { params: Promise<{ id: string }> }) {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...ADMIN_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...ADMIN_ROLES]);
   const { id } = await params;
   const enquiry = await getEnquiryForUser(user, id);
   const [people, countries] = await Promise.all([

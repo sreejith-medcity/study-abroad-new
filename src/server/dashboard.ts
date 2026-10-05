@@ -2,7 +2,7 @@ import "server-only";
 import { and, asc, count, desc, eq, gte, inArray, isNull, ne, sql, type SQL } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
-import { orgScope } from "@/lib/permissions";
+import { PARTNER_ROLES, orgScope } from "@/lib/permissions";
 import { getSettings, slaDays } from "./settings";
 import { MONTHS } from "@/lib/format";
 import { DEADLINE_WINDOWS } from "@/lib/deadline-types";
@@ -315,7 +315,7 @@ export async function teamLoad(orgId: string) {
       )::int`,
     })
     .from(us)
-    .where(and(eq(us.orgId, orgId), inArray(us.role, ["PARTNER", "COUNSELLOR"])))
+    .where(and(eq(us.orgId, orgId), inArray(us.role, [...PARTNER_ROLES])))
     .orderBy(asc(us.name));
   return rows.map((r) => ({ ...r, students: Number(r.students), live: Number(r.live), waiting: Number(r.waiting), won: Number(r.won) }));
 }

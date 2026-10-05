@@ -12,7 +12,7 @@ import { cn } from "@/components/ui";
 import { BrandLogo, BrandStyle } from "@/components/brand";
 import { IconBell, IconLogout } from "@/components/icons";
 import { logoutAction } from "@/app/login/actions";
-import { APP_ROLES, isAdmin, isSuperAdmin, ROLE_LABEL } from "@/lib/permissions";
+import { APP_ROLES, PARTNER_ROLES, ROLE_LABEL, isAdmin, isSuperAdmin } from "@/lib/permissions";
 import { getSettings } from "@/server/settings";
 
 const partnerNav = (home: string): NavGroup[] => [
@@ -202,7 +202,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // A sub-agent refers rather than only registering, and is held to an
   // agreement. Both screens are theirs alone: a branch has no referrals of its
   // own and nothing to accept.
-  const subAgent = user.orgType === "SUB_AGENT" && (user.role === "PARTNER" || user.role === "COUNSELLOR");
+  const subAgent = user.orgType === "SUB_AGENT" && (PARTNER_ROLES as readonly string[]).includes(user.role);
   const navGroups: NavGroup[] = [
     ...withImports,
     ...(subAgent

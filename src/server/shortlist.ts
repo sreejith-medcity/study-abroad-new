@@ -5,7 +5,7 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { SHORTLIST_LIMIT } from "@/lib/catalogue";
-import { ADMIN_ROLES } from "@/lib/permissions";
+import { ADMIN_ROLES, PARTNER_ROLES } from "@/lib/permissions";
 import { getStudentForUser } from "@/server/queries";
 
 /**
@@ -18,7 +18,7 @@ import { getStudentForUser } from "@/server/queries";
  * as well made the search page fetch twice and cancel both.
  */
 export async function toggleShortlistAction(formData: FormData): Promise<{ on: boolean; error?: string }> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...ADMIN_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...ADMIN_ROLES]);
   const studentId = String(formData.get("studentId") ?? "");
   const programId = String(formData.get("programId") ?? "");
   const student = await getStudentForUser(user, studentId);

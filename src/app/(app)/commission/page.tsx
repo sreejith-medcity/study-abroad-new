@@ -4,7 +4,7 @@ import { asc, desc } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fmtDate, fullName, intakeLabel } from "@/lib/format";
-import { ADMIN_ROLES, isStaff } from "@/lib/permissions";
+import { ADMIN_ROLES, PARTNER_ROLES, isStaff } from "@/lib/permissions";
 import {
   STATUS_LABEL,
   STATUS_TONE,
@@ -39,7 +39,7 @@ export const metadata = { title: "Commission" };
 
 /** The partner's own statement. Medcity's view of every partner lives under /admin/commission. */
 export default async function CommissionPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...ADMIN_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...ADMIN_ROLES]);
   if (isStaff(user)) {
     const { redirect } = await import("next/navigation");
     redirect("/admin/commission");

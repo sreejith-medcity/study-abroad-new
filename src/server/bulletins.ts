@@ -8,7 +8,7 @@ import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { BULLETIN_KINDS, BULLETIN_LABEL } from "@/lib/bulletins";
 import type { FormState } from "@/lib/form-state";
-import { ADMIN_ROLES } from "@/lib/permissions";
+import { ADMIN_ROLES, PARTNER_ROLES } from "@/lib/permissions";
 import { notifyUsers } from "@/server/notify";
 
 const input = z
@@ -40,7 +40,7 @@ export async function createBulletinAction(_: FormState, fd: FormData): Promise<
   const [row] = await db.insert(schema.bulletins).values({ ...v, countries, universityId, createdById: user.id }).returning();
   await audit(user.id, "bulletin.publish", "bulletin", row.id, { kind: row.kind, title: row.title });
   if (row.kind !== "WHATS_NEW") {
-    const people = await db.select({ id: schema.users.id }).from(schema.users).where(and(inArray(schema.users.role, ["PARTNER", "COUNSELLOR"]), eq(schema.users.active, true)));
+    const people = await db.select({ id: schema.users.id }).from(schema.users).where(and(inArray(schema.users.role, [...PARTNER_ROLES]), eq(schema.users.active, true)));
     await notifyUsers(people.map((p) => p.id), `${BULLETIN_LABEL[row.kind]}: ${row.title}`, row.body.slice(0, 120), row.kind === "UPDATE" ? `/updates?id=${row.id}` : `/updates?tab=announcements&id=${row.id}`);
   }
   revalidatePath("/admin/updates");

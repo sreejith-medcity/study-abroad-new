@@ -12,6 +12,7 @@ import { IconWallet, IconCheck, IconClock } from "@/components/icons";
 import { PayoutForm, CancelPayoutButton } from "./forms";
 import { paymentList } from "@/server/payment-queries";
 import { PaymentTable } from "@/components/payment-table";
+import { PARTNER_ROLES } from "@/lib/permissions";
 
 export const metadata = { title: "Wallet" };
 
@@ -31,7 +32,7 @@ const PAYOUT_TONE: Record<string, "neutral" | "info" | "ok" | "bad"> = {
 };
 
 export default async function WalletPage() {
-  const user = await requireUser(["PARTNER", "COUNSELLOR"]);
+  const user = await requireUser([...PARTNER_ROLES]);
   if (!(await commissionVisible(user))) {
     const { redirect } = await import("next/navigation");
     redirect("/dashboard");

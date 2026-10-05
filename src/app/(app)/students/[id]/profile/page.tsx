@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { can } from "@/server/capabilities";
 import { profileCompleteness } from "@/lib/checks";
 import { fmtDate, fmtDateTime } from "@/lib/format";
-import { APP_ROLES, canSeeFullPassport, isAdmin, maskPassport } from "@/lib/permissions";
+import { APP_ROLES, PARTNER_ROLES, canSeeFullPassport, isAdmin, maskPassport } from "@/lib/permissions";
 import { getStudentForUser } from "@/server/queries";
 import { Alert, Button, Card, Chip } from "@/components/ui";
 import { deleteProfileRowAction, revealPassportAction, toggleLockAction, togglePortalAccessAction } from "../../actions";
@@ -102,7 +102,7 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
           </ul>
         </Card>
       )}
-      {student.profileLocked && (user.role === "PARTNER" || user.role === "COUNSELLOR") && (
+      {student.profileLocked && (PARTNER_ROLES as readonly string[]).includes(user.role) && (
         <Card className="p-4">
           <h2 className="mb-2 font-semibold">Request an edit</h2>
           <RequestEditForm studentId={id} />

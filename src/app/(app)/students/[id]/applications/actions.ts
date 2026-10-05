@@ -8,12 +8,13 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
+import { can } from "@/server/capabilities";
 import { waiveRefusal } from "@/lib/journey";
 import { audit } from "@/lib/audit";
 import { nextAckNo } from "@/lib/ack";
 import { summarise } from "@/lib/checks";
 import { intakeLabel } from "@/lib/format";
-import { ADMIN_ROLES, PROCESSING_ROLES, isAdmin, isStaff } from "@/lib/permissions";
+import { ADMIN_ROLES, PARTNER_ROLES, PROCESSING_ROLES, isAdmin, isStaff } from "@/lib/permissions";
 import { changeStatus, checkApplication, StatusChangeError } from "@/server/applications";
 import { adminIds, notifyUsers, partnerRecipients } from "@/server/notify";
 import { getApplicationForUser, getStudentForUser } from "@/server/queries";
@@ -35,7 +36,12 @@ const createSchema = z.object({
 });
 
 export async function createApplicationAction(_: FormState, formData: FormData): Promise<FormState> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...ADMIN_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...ADMIN_ROLES]);
+  // A trainee builds the file; somebody else starts the application. Which roles
+  // those are is on the "Who may do what" screen rather than written in here.
+  if (!(await can(user, "SUBMIT_APPLICATION"))) {
+    return { error: "Your role does not start applications. Ask whoever does at your branch to send this one." };
+  }
   const parsed = createSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Choose a program and intake." };
   const student = await getStudentForUser(user, parsed.data.studentId);
@@ -150,7 +156,7 @@ export async function changeStatusAction(_: FormState, formData: FormData): Prom
 }
 
 export async function addCommentAction(_: FormState, formData: FormData): Promise<FormState> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
   const applicationId = String(formData.get("applicationId"));
   const channel = formData.get("channel") === "STUDENT" ? "STUDENT" : "TEAM";
   const body = String(formData.get("body") ?? "").trim();
@@ -158,6 +164,11 @@ export async function addCommentAction(_: FormState, formData: FormData): Promis
   const hasFile = file instanceof File && file.size > 0;
   if (!body && !hasFile) return { error: "Write a message or attach a file." };
   if (body.length > 5000) return { error: "Messages can be up to 5,000 characters." };
+  // Writing to the student is the part a trainee does not do. Talking to the
+  // team is not affected: that is how somebody asks for the message to go out.
+  if (channel === "STUDENT" && !(await can(user, "MESSAGE_STUDENT"))) {
+    return { error: "Your role does not write to students. Leave it as a team note and whoever does can send it." };
+  }
 
   const app = await getApplicationForUser(user, applicationId);
   const full = await db.query.applications.findFirst({ where: eq(schema.applications.id, app.id), with: { student: true, program: true } });
@@ -230,7 +241,7 @@ export async function askPartnerAction(formData: FormData) {
 }
 
 export async function setDocumentTypeAction(formData: FormData) {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
   const documentId = String(formData.get("documentId"));
   const typeCode = String(formData.get("typeCode"));
   const doc = await db.query.documents.findFirst({ where: eq(schema.documents.id, documentId) });
@@ -287,7 +298,7 @@ export async function addDeadlineAction(_: FormState, fd: FormData): Promise<For
 
 /** Either side can tick a milestone off; the team can also remove one. */
 export async function setDeadlineDoneAction(fd: FormData) {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
   const d = await db.query.applicationDeadlines.findFirst({ where: eq(schema.applicationDeadlines.id, String(fd.get("id") ?? "")) });
   if (!d) return;
   const app = await getApplicationForUser(user, d.applicationId);
@@ -303,7 +314,7 @@ export async function setDeadlineDoneAction(fd: FormData) {
 
 /** Branch's own ordering of its applications: which to chase first. */
 export async function setPriorityAction(fd: FormData) {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
   const priority = String(fd.get("priority") ?? "");
   if (!(schema.applicationPriority.enumValues as readonly string[]).includes(priority)) return;
   const app = await getApplicationForUser(user, String(fd.get("applicationId") ?? ""));

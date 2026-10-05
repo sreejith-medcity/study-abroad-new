@@ -6,13 +6,13 @@ import { z } from "zod";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { ADMIN_ROLES } from "@/lib/permissions";
+import { ADMIN_ROLES, PARTNER_ROLES } from "@/lib/permissions";
 import { UploadError, deleteUpload, saveUpload } from "@/server/storage";
 
 import type { FormState } from "@/lib/form-state";
 export type { FormState };
 
-const AUDIENCES = ["PARTNER", "COUNSELLOR", "ADMIN", "MANAGEMENT"] as const;
+const AUDIENCES = [...PARTNER_ROLES, "ADMIN", "MANAGEMENT"] as const;
 
 const resourceShape = z.object({
   title: z.string().trim().min(3, "Give it a title").max(160),

@@ -6,7 +6,7 @@ import { requireUser } from "@/lib/auth";
 import { LEVEL_LABEL, tuitionText } from "@/lib/catalogue";
 import { fmtDateTime, fullName } from "@/lib/format";
 import { OPTIONS_STATUS_LABEL, OPTIONS_STATUS_TONE } from "@/lib/options";
-import { PROCESSING_ROLES, isStaff } from "@/lib/permissions";
+import { PARTNER_ROLES, PROCESSING_ROLES, isStaff } from "@/lib/permissions";
 import { optionRequestForUser } from "@/server/option-access";
 import { addOptionAction, linkStudentAction, removeOptionAction, sendOptionsAction, setArchivedAction } from "@/server/option-requests";
 import { Button, Card, Chip, EmptyState, Input, LinkButton, PageHeader, Select, cn } from "@/components/ui";
@@ -21,7 +21,7 @@ type SP = { id?: string; tab?: string; q?: string; status?: string; pq?: string 
  * team's list and acts on it without leaving the page.
  */
 export default async function ProgramOptionsPage({ searchParams }: { searchParams: Promise<SP> }) {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
   const sp = await searchParams;
   const staff = isStaff(user);
   const r = schema.optionRequests;
@@ -228,7 +228,7 @@ export default async function ProgramOptionsPage({ searchParams }: { searchParam
               <h2 className="mb-2 font-semibold">Messages</h2>
               <ul className="mb-3 space-y-2">
                 {detail.messages.map((m) => {
-                  const team = m.author ? !["PARTNER", "COUNSELLOR"].includes(m.author.role) : false;
+                  const team = m.author ? !(PARTNER_ROLES as readonly string[]).includes(m.author.role) : false;
                   return (
                     <li key={m.id} className={cn("flex", team ? "justify-start" : "justify-end")}>
                       <div className={cn("max-w-[85%] rounded-lg px-3 py-2 text-[13px]", team ? "bg-brand-50" : "bg-slate-100")}>

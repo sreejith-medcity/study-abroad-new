@@ -6,7 +6,7 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { summarise } from "@/lib/checks";
 import { fmtDate, fmtDateTime, fmtMoney, intakeLabel } from "@/lib/format";
-import { APP_ROLES, isAdmin, isDocumentationTeam, isStaff } from "@/lib/permissions";
+import { APP_ROLES, PARTNER_ROLES, isAdmin, isDocumentationTeam, isStaff } from "@/lib/permissions";
 import { stageGate, studentChecklist, studentContext } from "@/server/documentation";
 import { canHandOver, OUTCOME_LABEL, SETTLES_IT, turnaroundText, vendorTurnaround } from "@/lib/desk";
 import { routeChoicesFor, updatesFor } from "@/server/desk";
@@ -456,7 +456,7 @@ async function ApplicationDetail({ appId, studentId, channel, canProcess, canChe
           {canWrite && <CommentComposer applicationId={app.id} channel={channel} whatsapp={whatsapp} />}
           <ul className="space-y-3">
             {[...comments].reverse().map((c) => {
-              const mine = c.author && (c.author.role === "PARTNER" || c.author.role === "COUNSELLOR");
+              const mine = c.author && (PARTNER_ROLES as readonly string[]).includes(c.author.role);
               const fromStudent = c.source === "WHATSAPP";
               const system = c.source === "SYSTEM";
               return (

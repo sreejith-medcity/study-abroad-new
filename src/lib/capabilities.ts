@@ -22,6 +22,8 @@ export const CAPABILITIES = [
   "RAISE_INVOICES",
   "SEE_FULL_PASSPORT",
   "VIEW_AUDIT_LOG",
+  "SUBMIT_APPLICATION",
+  "MESSAGE_STUDENT",
 ] as const;
 
 export type Capability = (typeof CAPABILITIES)[number];
@@ -34,6 +36,8 @@ export const CAPABILITY_LABEL: Record<Capability, string> = {
   RAISE_INVOICES: "Raise and send an invoice",
   SEE_FULL_PASSPORT: "See a whole passport number",
   VIEW_AUDIT_LOG: "Read the audit log",
+  SUBMIT_APPLICATION: "Create an application",
+  MESSAGE_STUDENT: "Message a student",
 };
 
 export const CAPABILITY_MEANS: Record<Capability, string> = {
@@ -44,6 +48,8 @@ export const CAPABILITY_MEANS: Record<Capability, string> = {
   RAISE_INVOICES: "Turning what is owed into an invoice against a billing company, and sending it.",
   SEE_FULL_PASSPORT: "The whole number rather than the first and last characters. Every reveal is in the audit log either way.",
   VIEW_AUDIT_LOG: "Who did what, across the whole portal.",
+  SUBMIT_APPLICATION: "Starting an application against a course. A trainee builds the file and somebody else sends it.",
+  MESSAGE_STUDENT: "Writing to the student, on WhatsApp or in the portal. Reading what was said is not affected.",
 };
 
 /**
@@ -53,12 +59,14 @@ export const CAPABILITY_MEANS: Record<Capability, string> = {
  * it is the rule below.
  */
 export const DEFAULTS: Record<Capability, AppRole[]> = {
-  SEE_MONEY: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "MANAGEMENT", "PARTNER", "COUNSELLOR"],
+  SEE_MONEY: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "MANAGEMENT", "PARTNER", "COUNSELLOR", "SENIOR_COUNSELLOR", "DESK_COUNSELLOR"],
   DECIDE_DOCUMENTS: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION"],
   READ_INVOICES: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "MANAGEMENT", "PARTNER"],
   RAISE_INVOICES: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN"],
   SEE_FULL_PASSPORT: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "PARTNER"],
   VIEW_AUDIT_LOG: ["SUPER_ADMIN"],
+  SUBMIT_APPLICATION: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "PARTNER", "COUNSELLOR", "SENIOR_COUNSELLOR", "DESK_COUNSELLOR", "SUB_AGENT_COUNSELLOR"],
+  MESSAGE_STUDENT: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "PARTNER", "COUNSELLOR", "SENIOR_COUNSELLOR", "DESK_COUNSELLOR"],
 };
 
 /** A capability nobody may take off a super admin, whatever the matrix says. */

@@ -9,7 +9,7 @@ import { audit } from "@/lib/audit";
 import { expectedFromRate, INCOME_FOR_SERVICE } from "@/lib/income";
 import { ratesForOrg } from "@/server/income";
 import type { FormState } from "@/lib/form-state";
-import { PROCESSING_ROLES } from "@/lib/permissions";
+import { PARTNER_ROLES, PROCESSING_ROLES } from "@/lib/permissions";
 import { SERVICE_LABEL, SERVICE_STATUSES, SERVICE_TYPES, STATUS_LABEL } from "@/lib/services";
 import { adminIds, notifyUsers, partnerRecipients } from "@/server/notify";
 import { getStudentForUser } from "@/server/queries";
@@ -22,7 +22,7 @@ const request = z.object({
 
 /** A partner, counsellor or the team asks for a service for one student. */
 export async function requestServiceAction(_: FormState, fd: FormData): Promise<FormState> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
   const parsed = request.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Check the highlighted fields." };
   const student = await getStudentForUser(user, parsed.data.studentId);

@@ -14,7 +14,10 @@ import {
   isAdmin,
   isDocumentationTeam,
   isPartner,
+  isCounsellor,
   isStaff,
+  HQ_ROLES,
+  PARTNER_ROLES,
   isSuperAdmin,
   maskPassport,
   mayAcceptUpload,
@@ -100,7 +103,9 @@ test("super admin inherits everything an admin can do", () => {
     assert.ok(!isPartner(user));
   }
   assert.deepEqual([...ADMIN_ROLES], ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN"]);
-  assert.deepEqual([...STAFF_ROLES], ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "MANAGEMENT"]);
+  // The desk counsellor is staff too: they sit at Medcity Overseas and see
+  // across branches, which is what staff means here.
+  assert.deepEqual([...STAFF_ROLES], ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "MANAGEMENT", "DESK_COUNSELLOR"]);
 });
 
 test("management reads but never writes, and partners stay scoped to their own org", () => {
@@ -163,4 +168,34 @@ test("nobody at a branch marks their own upload good", () => {
 
   // And none of it applies where the branch does not check its own documents.
   assert.equal(mayAcceptUpload(at("COUNSELLOR", "me"), false, "colleague"), false);
+});
+
+test("the four new counsellors are scoped where they sit", () => {
+  const at = (role: string, orgId = "branch-1") => ({ id: "u1", name: "Somebody", email: "s@x.test", role, orgId, orgName: "A branch" }) as never;
+
+  // The desk counsellor sits at Medcity Overseas, so they see across branches.
+  assert.equal(isStaff(at("DESK_COUNSELLOR")), true);
+  assert.ok((HQ_ROLES as readonly string[]).includes("DESK_COUNSELLOR"));
+
+  // The other three work inside one organisation, so every screen that scopes
+  // by organisation scopes them.
+  for (const role of ["SENIOR_COUNSELLOR", "TRAINEE_COUNSELLOR", "SUB_AGENT_COUNSELLOR"]) {
+    assert.equal(isStaff(at(role)), false, `${role} must not see other branches`);
+    assert.ok((PARTNER_ROLES as readonly string[]).includes(role), `${role} is not scoped to its organisation`);
+  }
+
+  // None of them runs the branch.
+  for (const role of ["DESK_COUNSELLOR", "SENIOR_COUNSELLOR", "TRAINEE_COUNSELLOR", "SUB_AGENT_COUNSELLOR"]) {
+    assert.equal(isAdmin(at(role)), false);
+    assert.equal(canManageUsers(at(role)), false);
+  }
+});
+
+test("a counsellor of any level is who a student they take on belongs to", () => {
+  for (const role of ["COUNSELLOR", "SENIOR_COUNSELLOR", "TRAINEE_COUNSELLOR", "SUB_AGENT_COUNSELLOR", "DESK_COUNSELLOR"]) {
+    assert.equal(isCounsellor(role), true, `${role} should be counted as a counsellor`);
+  }
+  for (const role of ["PARTNER", "ADMIN", "DOCUMENTATION", "MANAGEMENT", "STUDENT"]) {
+    assert.equal(isCounsellor(role), false, `${role} is not a counsellor`);
+  }
 });

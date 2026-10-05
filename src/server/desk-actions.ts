@@ -7,7 +7,7 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { intakeLabel } from "@/lib/format";
-import { ADMIN_ROLES, PROCESSING_ROLES } from "@/lib/permissions";
+import { ADMIN_ROLES, PARTNER_ROLES, PROCESSING_ROLES } from "@/lib/permissions";
 import { canHandOver, OUTCOME_LABEL, SETTLES_IT, TELLS_THE_BRANCH, vendorTurnaround } from "@/lib/desk";
 import { changeStatus, StatusChangeError } from "@/server/applications";
 import { stageGate, studentChecklist, studentContext } from "@/server/documentation";
@@ -53,7 +53,7 @@ const refresh = (studentId: string) => {
  * is named rather than hidden behind a refusal.
  */
 export async function handOverAction(_: FormState, fd: FormData): Promise<FormState> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
   const id = String(fd.get("applicationId") ?? "");
   const note = String(fd.get("note") ?? "").trim().slice(0, 400) || null;
   await getApplicationForUser(user, id);

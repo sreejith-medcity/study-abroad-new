@@ -9,7 +9,7 @@ import { audit } from "@/lib/audit";
 import { EVENT_KINDS, EVENT_KIND_LABEL } from "@/lib/events";
 import type { FormState } from "@/lib/form-state";
 import { fromIstInput, istDateTime } from "@/lib/format";
-import { ADMIN_ROLES } from "@/lib/permissions";
+import { ADMIN_ROLES, PARTNER_ROLES } from "@/lib/permissions";
 import { notifyUsers } from "@/server/notify";
 import { getStudentForUser } from "@/server/queries";
 
@@ -44,7 +44,7 @@ export async function createEventAction(_: FormState, fd: FormData): Promise<For
   }
   const [row] = await db.insert(schema.events).values({ ...v, universityId, createdById: user.id }).returning();
   await audit(user.id, "event.create", "event", row.id, { title: row.title });
-  const partners = await db.select({ id: schema.users.id }).from(schema.users).where(and(inArray(schema.users.role, ["PARTNER", "COUNSELLOR"]), eq(schema.users.active, true)));
+  const partners = await db.select({ id: schema.users.id }).from(schema.users).where(and(inArray(schema.users.role, [...PARTNER_ROLES]), eq(schema.users.active, true)));
   await notifyUsers(partners.map((p) => p.id), `${EVENT_KIND_LABEL[row.kind]}: ${row.title}`, istDateTime(row.startsAt), "/events");
   revalidatePath("/admin/events");
   return { ok: "Event published. Partners have been told." };
@@ -67,7 +67,7 @@ async function seatsLeft(eventId: string, capacity: number | null) {
 
 /** A partner's own seat: on, or off again. */
 export async function toggleAttendAction(_: FormState, fd: FormData): Promise<FormState> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...ADMIN_ROLES, "DOCUMENTATION", "MANAGEMENT"]);
+  const user = await requireUser([...PARTNER_ROLES, ...ADMIN_ROLES, "DOCUMENTATION", "MANAGEMENT"]);
   const eventId = String(fd.get("eventId") ?? "");
   const event = await db.query.events.findFirst({ where: and(eq(schema.events.id, eventId), eq(schema.events.published, true)) });
   if (!event) return { error: "That event is no longer on." };
@@ -87,7 +87,7 @@ export async function toggleAttendAction(_: FormState, fd: FormData): Promise<Fo
 
 /** A partner registers one of their students for an event open to students. */
 export async function registerStudentAction(_: FormState, fd: FormData): Promise<FormState> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...ADMIN_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...ADMIN_ROLES]);
   const eventId = String(fd.get("eventId") ?? "");
   const studentId = String(fd.get("studentId") ?? "");
   if (!studentId) return { error: "Choose a student." };
@@ -104,7 +104,7 @@ export async function registerStudentAction(_: FormState, fd: FormData): Promise
 }
 
 export async function removeRegistrationAction(fd: FormData) {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...ADMIN_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...ADMIN_ROLES]);
   const id = String(fd.get("id") ?? "");
   const r = schema.eventRegistrations;
   const row = await db.query.eventRegistrations.findFirst({ where: eq(r.id, id), with: { user: { columns: { orgId: true } } } });

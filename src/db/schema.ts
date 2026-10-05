@@ -22,7 +22,31 @@ const createdAt = () => timestamp("created_at", { withTimezone: true }).notNull(
 
 export const orgType = pgEnum("org_type", ["HQ", "BRANCH", "SUB_AGENT"]);
 export const tier = pgEnum("tier", ["SILVER", "GOLD", "ELITE", "PLATINUM"]);
-export const role = pgEnum("role", ["ADMIN", "MANAGEMENT", "PARTNER", "COUNSELLOR", "STUDENT", "SUPER_ADMIN", "OPS_MANAGER", "DOCUMENTATION", "PARENT"]);
+export const role = pgEnum("role", [
+  "ADMIN",
+  "MANAGEMENT",
+  "PARTNER",
+  "COUNSELLOR",
+  "STUDENT",
+  "SUPER_ADMIN",
+  "OPS_MANAGER",
+  "DOCUMENTATION",
+  "PARENT",
+  /**
+   * Four more counsellors, because "counsellor" was doing the work of several
+   * jobs at once. A desk counsellor sits at Medcity Overseas and advises across
+   * branches; a senior counsellor runs a branch's students without running the
+   * branch; a trainee works their own students while somebody checks what goes
+   * out; and a sub-agent's counsellor is the second and third person at a firm
+   * that until now shared one login.
+   *
+   * What each may actually do is set on the "Who may do what" screen, not here.
+   */
+  "DESK_COUNSELLOR",
+  "SENIOR_COUNSELLOR",
+  "TRAINEE_COUNSELLOR",
+  "SUB_AGENT_COUNSELLOR",
+]);
 export const pathway = pgEnum("pathway", ["DEGREE", "AUSBILDUNG", "NURSING"]);
 export const studyLevel = pgEnum("study_level", [
   "SCHOOL",

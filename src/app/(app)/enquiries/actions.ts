@@ -7,14 +7,14 @@ import { z } from "zod";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { ADMIN_ROLES, isStaff } from "@/lib/permissions";
+import { ADMIN_ROLES, PARTNER_ROLES, isCounsellor, isStaff } from "@/lib/permissions";
 import { notifyUsers } from "@/server/notify";
 import { getEnquiryForUser, STAGE_LABEL } from "@/server/enquiries";
 
 import type { FormState } from "@/lib/form-state";
 export type { FormState };
 
-const ROLES = ["PARTNER", "COUNSELLOR", ...ADMIN_ROLES] as const;
+const ROLES = [...PARTNER_ROLES, ...ADMIN_ROLES] as const;
 
 const optionalText = z.string().trim().max(200).optional().transform((v) => v || null);
 const optionalDate = z
@@ -71,7 +71,7 @@ export async function createEnquiryAction(_: FormState, formData: FormData): Pro
     .values({
       orgId,
       createdById: user.id,
-      assignedToId: d.assignedToId ?? (user.role === "COUNSELLOR" ? user.id : null),
+      assignedToId: d.assignedToId ?? (isCounsellor(user.role) ? user.id : null),
       name: d.name,
       phone: d.phone,
       email: d.email,

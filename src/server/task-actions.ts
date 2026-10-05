@@ -6,7 +6,7 @@ import { z } from "zod";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { APP_ROLES, isStaff, PROCESSING_ROLES } from "@/lib/permissions";
+import { APP_ROLES, PARTNER_ROLES, PROCESSING_ROLES, isStaff } from "@/lib/permissions";
 import { autoKeys, CHANNEL_LABEL, OUTCOME_LABEL, TASK_KIND_LABEL } from "@/lib/crm";
 import { getStudentForUser } from "@/server/queries";
 import type { FormState } from "@/lib/form-state";
@@ -223,7 +223,7 @@ export async function logContactAction(_: FormState, fd: FormData): Promise<Form
 
 /** Ticks off every task a person can see that is already done elsewhere. */
 export async function clearDoneTasksAction(fd: FormData): Promise<void> {
-  const user = await requireUser([...PROCESSING_ROLES, "PARTNER", "COUNSELLOR"]);
+  const user = await requireUser([...PROCESSING_ROLES, ...PARTNER_ROLES]);
   const ids = fd.getAll("taskId").map(String).filter(Boolean);
   if (!ids.length) return;
   const rows = await db.select({ id: tk.id, orgId: tk.orgId }).from(tk).where(and(inArray(tk.id, ids), isNull(tk.doneAt)));

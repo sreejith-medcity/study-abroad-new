@@ -393,6 +393,13 @@
       "when": 1791203397316,
       "tag": "0055_role_permissions",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1791206037499,
+      "tag": "0056_counsellor_roles",
+      "breakpoints": true
     }
   ]
 }

@@ -10,7 +10,7 @@ import { requireUser } from "@/lib/auth";
 import { LEVEL_LABEL, PATHWAY_LABEL, SHORTLIST_LIMIT, daysUntil, deadlineText, durationText, feeText, inrApprox, intakesText, tuitionText } from "@/lib/catalogue";
 import { QUALIFYING_LABEL, checkEligibility, qualifyingLevel } from "@/lib/eligibility";
 import { MONTHS, fmtMoney, fullName } from "@/lib/format";
-import { ADMIN_ROLES, APP_ROLES, isAdmin, isStaff } from "@/lib/permissions";
+import { ADMIN_ROLES, APP_ROLES, PARTNER_ROLES, isAdmin, isStaff } from "@/lib/permissions";
 import { PROGRAM_TAGS } from "@/lib/program-tags";
 import { openScholarships } from "@/server/scholarships";
 import { programDeadlines } from "@/server/deadlines";
@@ -74,7 +74,7 @@ export default async function ProgramPage({
     })
   ).filter((x) => base(x.name) === base(program.name) && x.workRights !== program.workRights && x.campus !== program.campus);
 
-  const canShortlist = (["PARTNER", "COUNSELLOR", ...ADMIN_ROLES] as readonly string[]).includes(user.role);
+  const canShortlist = ([...PARTNER_ROLES, ...ADMIN_ROLES] as readonly string[]).includes(user.role);
   const picks = student
     ? await db.select({ programId: schema.shortlists.programId }).from(schema.shortlists).where(eq(schema.shortlists.studentId, student.id))
     : [];

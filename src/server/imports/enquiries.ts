@@ -5,6 +5,7 @@ import type { SessionUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { EMAIL, PHONE, day, num, oneOf, text, type Problems } from "@/lib/import-values";
 import { branchOwner, branchResolver, emptyResult, lineOf, staffByEmail, type ImportResult } from "./common";
+import { isCounsellor } from "@/lib/permissions";
 
 export const ENQUIRY_COLUMNS = ["branch", "name", "phone", "email", "city", "source", "interest_country", "interest_pathway", "intake_month", "intake_year", "budget_lakhs", "next_follow_up", "counsellor_email", "notes"] as const;
 export const ENQUIRY_EXAMPLE = ["", "Rahul Nair", "+91 94460 11223", "rahul.nair@example.com", "Pala", "WALK_IN", "Germany", "AUSBILDUNG", "9", "2027", "8", "2026-10-05", "", "Plus two science, 78%. Wants nursing Ausbildung."];
@@ -95,7 +96,7 @@ export async function importEnquiries(user: SessionUser, rows: Record<string, st
       toCreate.push({
         orgId: plan.orgId,
         createdById,
-        assignedToId: assignedToId ?? (user.role === "COUNSELLOR" ? user.id : null),
+        assignedToId: assignedToId ?? (isCounsellor(user.role) ? user.id : null),
         name: f.name as string,
         phone: plan.phone,
         email: f.email as string | null,

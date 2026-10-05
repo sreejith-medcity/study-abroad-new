@@ -3,14 +3,14 @@ import { and, asc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fullName } from "@/lib/format";
-import { PROCESSING_ROLES, isStaff } from "@/lib/permissions";
+import { PARTNER_ROLES, PROCESSING_ROLES, isStaff } from "@/lib/permissions";
 import { Card, PageHeader } from "@/components/ui";
 import { OptionRequestForm } from "@/components/option-forms";
 
 export const metadata = { title: "Request program options" };
 
 export default async function NewOptionRequestPage({ searchParams }: { searchParams: Promise<{ student?: string }> }) {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
   const sp = await searchParams;
   const s = schema.students;
   const students = await db

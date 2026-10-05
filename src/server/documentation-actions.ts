@@ -6,7 +6,7 @@ import { z } from "zod";
 import { db, schema } from "@/db";
 import { requireUser, type SessionUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { ADMIN_ROLES, DECIDE_REFUSAL, isAdmin, mayAcceptUpload, mayDecideDocuments, OWN_UPLOAD_REFUSAL, PROCESSING_ROLES } from "@/lib/permissions";
+import { ADMIN_ROLES, DECIDE_REFUSAL, OWN_UPLOAD_REFUSAL, PARTNER_ROLES, PROCESSING_ROLES, isAdmin, mayAcceptUpload, mayDecideDocuments } from "@/lib/permissions";
 import { can } from "@/server/capabilities";
 import { claimHeld, CLAIM_MINUTES, stageLabel, validUntil, waiveRefusal } from "@/lib/journey";
 import { getStudentForUser } from "@/server/queries";
@@ -63,7 +63,7 @@ const refresh = (studentId: string) => {
 
 /** Builds the list from the requirements as they stand, without touching history. */
 export async function syncChecklistAction(fd: FormData): Promise<void> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
   const studentId = String(fd.get("studentId") ?? "");
   await getStudentForUser(user, studentId);
   const { added } = await syncChecklist(studentId);
@@ -86,7 +86,7 @@ const askSchema = z.object({ itemId: z.string().min(1), dueOn: z.string().option
 
 /** Records that the student has been asked, with the day it is wanted by. */
 export async function markAskedAction(_: FormState, fd: FormData): Promise<FormState> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
   const parsed = askSchema.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { error: "Something was missing from that request." };
   const item = await itemForUser(user, parsed.data.itemId);
@@ -116,7 +116,7 @@ const dueOn = (given: Date | null, held: string | null) => (given ? dateOnly(giv
 
 /** Opening a document claims it for twenty minutes, so two people never check it twice. */
 export async function claimItemAction(fd: FormData): Promise<void> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
   const item = await itemForUser(user, String(fd.get("itemId") ?? ""));
   if (!item || !(await mayDecide(user, item.studentId))) return;
   if (item.claimedById && item.claimedById !== user.id && claimHeld(item.claimedAt)) return;
@@ -127,7 +127,7 @@ export async function claimItemAction(fd: FormData): Promise<void> {
 
 /** Lets go of a claim without deciding anything. */
 export async function releaseItemAction(fd: FormData): Promise<void> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
   const item = await itemForUser(user, String(fd.get("itemId") ?? ""));
   if (!item || item.claimedById !== user.id) return;
   await db.update(ci).set({ state: item.state === "IN_REVIEW" ? "UPLOADED" : item.state, claimedById: null, claimedAt: null, updatedAt: new Date() }).where(eq(ci.id, item.id));
@@ -147,7 +147,7 @@ const acceptSchema = z.object({
  * neither is on record the portal records no expiry rather than inventing one.
  */
 export async function acceptItemAction(_: FormState, fd: FormData): Promise<FormState> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
   const parsed = acceptSchema.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { error: "Something was missing from that decision." };
   const item = await itemForUser(user, parsed.data.itemId);
@@ -211,7 +211,7 @@ const rejectSchema = z.object({
  * on is how a file stalls for a fortnight, and the reason is what they read.
  */
 export async function rejectItemAction(_: FormState, fd: FormData): Promise<FormState> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
   const parsed = rejectSchema.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Pick a reason the student can act on." };
   const item = await itemForUser(user, parsed.data.itemId);
@@ -244,7 +244,7 @@ const skipSchema = z.object({ itemId: z.string().min(1), reason: z.string().trim
 
 /** Not needed for this student, with a reason, which stays on the row. */
 export async function notNeededAction(_: FormState, fd: FormData): Promise<FormState> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
   const parsed = skipSchema.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Say why it is not needed." };
   const item = await itemForUser(user, parsed.data.itemId);
@@ -258,7 +258,7 @@ export async function notNeededAction(_: FormState, fd: FormData): Promise<FormS
 
 /** Puts an item back on the list after it was marked not needed. */
 export async function needAgainAction(fd: FormData): Promise<void> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
   const item = await itemForUser(user, String(fd.get("itemId") ?? ""));
   if (!item || item.state !== "NOT_NEEDED") return;
   await db.update(ci).set({ state: item.documentId ? "UPLOADED" : "NOT_ASKED", reason: null, decidedAt: null, decidedById: null, updatedAt: new Date() }).where(eq(ci.id, item.id));
@@ -278,7 +278,7 @@ const addSchema = z.object({
 
 /** One document this student alone needs, with the reason it was added. */
 export async function addChecklistItemAction(_: FormState, fd: FormData): Promise<FormState> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
   const parsed = addSchema.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Check the highlighted fields." };
   const d = parsed.data;
@@ -307,7 +307,7 @@ export async function addChecklistItemAction(_: FormState, fd: FormData): Promis
 
 /** Takes off an item that was added by hand and has nothing against it. */
 export async function removeChecklistItemAction(fd: FormData): Promise<void> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
   const item = await itemForUser(user, String(fd.get("itemId") ?? ""));
   if (!item || item.source !== "STUDENT" || item.version > 0) return;
   await db.delete(ci).where(eq(ci.id, item.id));
@@ -324,7 +324,7 @@ const stageSchema = z.object({ studentId: z.string().min(1), stage: z.string().m
  * a reason, which is logged and shown on the file.
  */
 export async function setStageAction(_: FormState, fd: FormData): Promise<FormState> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
   const parsed = stageSchema.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { error: "Choose a stage." };
   const { studentId, reason } = parsed.data;
@@ -502,7 +502,7 @@ const requestSchema = z.object({
  * whether it went.
  */
 export async function sendDocumentRequestAction(_: FormState, fd: FormData): Promise<FormState> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
   const parsed = requestSchema.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Check the highlighted fields." };
   const d = parsed.data;
@@ -582,7 +582,7 @@ export async function sendDocumentRequestAction(_: FormState, fd: FormData): Pro
  * sent short is a fact on the file rather than an argument later.
  */
 export async function buildPackAction(_: FormState, fd: FormData): Promise<FormState> {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...PROCESSING_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
   const applicationId = String(fd.get("applicationId") ?? "");
   const note = String(fd.get("note") ?? "").trim().slice(0, 400) || null;
   const app = await db.query.applications.findFirst({ where: eq(schema.applications.id, applicationId) });

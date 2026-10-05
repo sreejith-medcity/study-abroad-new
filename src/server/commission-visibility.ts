@@ -3,7 +3,7 @@ import { cache } from "react";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
-import { isFamilyRole } from "@/lib/permissions";
+import { BRANCH_COUNSELLOR_ROLES, isFamilyRole } from "@/lib/permissions";
 import { can } from "@/server/capabilities";
 
 /**
@@ -20,7 +20,7 @@ export const commissionVisible = cache(async (user: Pick<SessionUser, "role" | "
   // The role-level answer is Medcity's to set; the branch owner's own switch
   // sits on top of it and can only take money away from their counsellors.
   if (!(await can(user, "SEE_MONEY"))) return false;
-  if (user.role !== "COUNSELLOR") return true;
+  if (!(BRANCH_COUNSELLOR_ROLES as readonly string[]).includes(user.role)) return true;
   const org = await db.query.organizations.findFirst({ where: eq(schema.organizations.id, user.orgId), columns: { counsellorsSeeCommission: true } });
   return org?.counsellorsSeeCommission ?? true;
 });

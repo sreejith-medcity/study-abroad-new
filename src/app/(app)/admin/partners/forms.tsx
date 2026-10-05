@@ -5,6 +5,7 @@ import { ActionForm } from "@/components/action-form";
 import { SelectField, TextField } from "@/components/fields";
 import { Button, Input, Select } from "@/components/ui";
 import { addUserAction, changeRoleAction, invitePartnerAction, resetPasswordAction, setTitleAction } from "./actions";
+import { PARTNER_ROLES } from "@/lib/permissions";
 
 export function InvitePartnerForm() {
   return (
@@ -31,8 +32,8 @@ export function InvitePartnerForm() {
 }
 
 /** Which roles may be handed out where, with a line each on what they mean. */
-export const HQ_ROLE_OPTIONS = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "MANAGEMENT"] as const;
-export const PARTNER_ROLE_OPTIONS = ["PARTNER", "COUNSELLOR"] as const;
+export const HQ_ROLE_OPTIONS = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "MANAGEMENT", "DESK_COUNSELLOR"] as const;
+export const PARTNER_ROLE_OPTIONS = [...PARTNER_ROLES] as const;
 
 const TITLE_SUGGESTIONS: Record<string, string> = {
   SUPER_ADMIN: "Platform owner",
@@ -41,12 +42,17 @@ const TITLE_SUGGESTIONS: Record<string, string> = {
   DOCUMENTATION: "Documentation",
   MANAGEMENT: "Management",
   PARTNER: "Branch head",
+  DESK_COUNSELLOR: "Overseas counselling",
+  SENIOR_COUNSELLOR: "Senior counsellor",
+  TRAINEE_COUNSELLOR: "Trainee",
+  SUB_AGENT_COUNSELLOR: "Counsellor",
   COUNSELLOR: "Ausbildung counsellor",
 };
 
 export function AddUserForm({
   orgId,
   hq,
+  subAgent,
   canCreateStaff,
   canCreateSuperAdmin,
   roleLabel,
@@ -54,13 +60,18 @@ export function AddUserForm({
 }: {
   orgId: string;
   hq: boolean;
+  subAgent?: boolean;
   canCreateStaff: boolean;
   canCreateSuperAdmin: boolean;
   roleLabel: Record<string, string>;
   roleBlurb: Record<string, string>;
 }) {
-  const options = hq ? HQ_ROLE_OPTIONS : PARTNER_ROLE_OPTIONS;
-  const [role, setRole] = useState<string>(hq ? (canCreateStaff ? "ADMIN" : "MANAGEMENT") : "COUNSELLOR");
+  // A sub-agent's own counsellor only makes sense inside a sub-agent firm, so a
+  // branch is not offered it and a firm is not offered the branch's levels.
+  const options = hq
+    ? HQ_ROLE_OPTIONS
+    : PARTNER_ROLE_OPTIONS.filter((r) => (subAgent ? r !== "COUNSELLOR" && r !== "SENIOR_COUNSELLOR" && r !== "TRAINEE_COUNSELLOR" : r !== "SUB_AGENT_COUNSELLOR"));
+  const [role, setRole] = useState<string>(hq ? (canCreateStaff ? "ADMIN" : "MANAGEMENT") : subAgent ? "SUB_AGENT_COUNSELLOR" : "COUNSELLOR");
   const locked = (value: string) =>
     (!canCreateStaff && value !== "MANAGEMENT" && hq) || (value === "SUPER_ADMIN" && !canCreateSuperAdmin);
 
@@ -98,16 +109,22 @@ export function RoleForm({
   userId,
   role,
   hq,
+  subAgent,
   roleLabel,
   canSetSuperAdmin,
 }: {
   userId: string;
   role: string;
   hq: boolean;
+  subAgent?: boolean;
   roleLabel: Record<string, string>;
   canSetSuperAdmin: boolean;
 }) {
-  const options = hq ? HQ_ROLE_OPTIONS : PARTNER_ROLE_OPTIONS;
+  // A sub-agent's own counsellor only makes sense inside a sub-agent firm, so a
+  // branch is not offered it and a firm is not offered the branch's levels.
+  const options = hq
+    ? HQ_ROLE_OPTIONS
+    : PARTNER_ROLE_OPTIONS.filter((r) => (subAgent ? r !== "COUNSELLOR" && r !== "SENIOR_COUNSELLOR" && r !== "TRAINEE_COUNSELLOR" : r !== "SUB_AGENT_COUNSELLOR"));
   return (
     <ActionForm action={changeRoleAction} hideSubmit className="space-y-1.5">
       <input type="hidden" name="userId" value={userId} />

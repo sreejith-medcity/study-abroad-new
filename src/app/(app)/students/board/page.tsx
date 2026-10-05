@@ -3,7 +3,7 @@ import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fmtDate } from "@/lib/format";
-import { APP_ROLES, isStaff, orgScope } from "@/lib/permissions";
+import { APP_ROLES, PARTNER_ROLES, isStaff, orgScope } from "@/lib/permissions";
 import { STAGES, stageLabel } from "@/lib/journey";
 import { lastContactFor, openTasksFor } from "@/server/tasks";
 import { Card, Chip, EmptyState, PageHeader } from "@/components/ui";
@@ -73,7 +73,7 @@ export default async function BoardPage({ searchParams }: { searchParams: Promis
     db
       .select({ id: schema.users.id, name: schema.users.name, deskLabel: schema.users.deskLabel })
       .from(schema.users)
-      .where(and(eq(schema.users.active, true), inArray(schema.users.role, ["PARTNER", "COUNSELLOR"]), isStaff(user) ? undefined : eq(schema.users.orgId, user.orgId)))
+      .where(and(eq(schema.users.active, true), inArray(schema.users.role, [...PARTNER_ROLES]), isStaff(user) ? undefined : eq(schema.users.orgId, user.orgId)))
       .orderBy(asc(schema.users.name))
       .limit(60),
   ]);

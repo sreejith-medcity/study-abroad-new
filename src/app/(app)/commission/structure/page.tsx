@@ -3,7 +3,7 @@ import { asc, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
-import { ADMIN_ROLES, isStaff } from "@/lib/permissions";
+import { ADMIN_ROLES, PARTNER_ROLES, isStaff } from "@/lib/permissions";
 import { money } from "@/lib/money";
 import { rulesWithScope } from "@/server/commission";
 import { commissionVisible } from "@/server/commission-visibility";
@@ -19,7 +19,7 @@ const round = (n: number) => Math.round(n * 100) / 100;
  * program's own rule beats its university's, which beats the destination's.
  */
 export default async function CommissionStructurePage({ searchParams }: { searchParams: Promise<{ country?: string; q?: string }> }) {
-  const user = await requireUser(["PARTNER", "COUNSELLOR", ...ADMIN_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...ADMIN_ROLES]);
   if (!isStaff(user) && !(await commissionVisible(user))) redirect("/dashboard");
   const sp = await searchParams;
   const countries = await db.select().from(schema.countries).orderBy(asc(schema.countries.name));
