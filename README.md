@@ -357,6 +357,30 @@ sheet, because they are part of what that student is worth to Medcity, and they
 are counted in no Overseas total, because adding them would flatter every money
 screen by an amount a different company earned.
 
+## Who may do what
+
+Settings, **Who may do what**, super admin only. One row per thing somebody can
+do (see money, accept or send back a document, read the invoice queue, raise an
+invoice, see a whole passport number, read the audit log) and one column per
+role.
+
+Every box starts exactly where the portal already stood, and only the
+differences are stored, so an empty table behaves identically to the portal
+before the screen existed, and a default changed in the code still reaches any
+portal that never overrode it. A box that has been moved says who moved it and
+when.
+
+Three things no tick can change. A super admin keeps everything, so nobody can
+lock the last person out of the screen that would undo it. A student or a parent
+gains nothing, whatever is written in the table. And the rules that exist for
+reasons outside Medcity's choosing stay: nobody passes a document they uploaded
+themselves, every reveal of a passport number is in the audit log, and a parent
+sees what the student allows.
+
+A branch owner's own switches, for whether counsellors see commission and
+whether the branch checks its own documents, sit on top of this and can only
+take away.
+
 ## Reading the audit log
 
 Every action in the portal writes a row to `audit_logs`, so it is the

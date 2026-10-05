@@ -1,9 +1,11 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { asc } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fmtDate, fmtMoney } from "@/lib/format";
-import { isStaff, REPORTING_ROLES } from "@/lib/permissions";
+import { APP_ROLES, isStaff } from "@/lib/permissions";
+import { can } from "@/server/capabilities";
 import { ageing, invoiceList, queueByVendor } from "@/server/invoicing";
 import { AGE_LABEL, AGE_ORDER, INVOICE_STATE_LABEL, taxFor } from "@/lib/invoicing";
 import { Alert, Card, CardHeader, Chip, EmptyState, PageHeader, Table, Td, Th, cn } from "@/components/ui";
@@ -40,10 +42,11 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
   // A branch owner reads their own lines here. The queries below were already
   // scoped by branch for a non-staff viewer; nobody could reach them, because
   // the door was shut one line above.
-  const user = await requireUser([...REPORTING_ROLES, "PARTNER"]);
+  const user = await requireUser([...APP_ROLES]);
+  if (!(await can(user, "READ_INVOICES"))) redirect("/forbidden");
   const sp = await searchParams;
   const tab = TABS.some((t) => t.key === sp.tab) ? sp.tab : "queue";
-  const canRaise = user.role === "ADMIN" || user.role === "OPS_MANAGER" || user.role === "SUPER_ADMIN";
+  const canRaise = await can(user, "RAISE_INVOICES");
 
   const [vendors, invoices, aged, companies] = await Promise.all([
     queueByVendor({ orgId: isStaff(user) ? undefined : user.orgId }),

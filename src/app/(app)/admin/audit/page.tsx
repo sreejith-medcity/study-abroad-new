@@ -1,5 +1,8 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
+import { APP_ROLES } from "@/lib/permissions";
+import { can } from "@/server/capabilities";
 import { fmtDateTime } from "@/lib/format";
 import { actionLabel, actionTone, auditBase, auditCount, auditFacets, auditOrder, auditWhere, metaPairs, readAuditFilters } from "@/server/audit-query";
 import { Button, Card, Chip, EmptyState, DateInput, Input, LinkButton, PageHeader, Select, Table, Td, Th } from "@/components/ui";
@@ -28,7 +31,10 @@ function entityHref(entityType: string, entityId: string) {
 }
 
 export default async function AuditPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  await requireUser(["SUPER_ADMIN"]);
+  const user = await requireUser([...APP_ROLES]);
+  // Refused the same way every other screen refuses: the page is not rendered
+  // at all, rather than rendered with an apology on it.
+  if (!(await can(user, "VIEW_AUDIT_LOG"))) redirect("/forbidden");
   const f = readAuditFilters(await searchParams);
   const page = Math.max(1, Number(f.page ?? 1));
   const where = auditWhere(f);

@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { isFamilyRole } from "@/lib/permissions";
+import { can } from "@/server/capabilities";
 
 /**
  * Whether this user sees commission figures, the commission pages and the
@@ -16,7 +17,9 @@ import { isFamilyRole } from "@/lib/permissions";
  */
 export const commissionVisible = cache(async (user: Pick<SessionUser, "role" | "orgId">) => {
   if (isFamilyRole(user.role)) return false;
-  if (user.role === "DOCUMENTATION") return false;
+  // The role-level answer is Medcity's to set; the branch owner's own switch
+  // sits on top of it and can only take money away from their counsellors.
+  if (!(await can(user, "SEE_MONEY"))) return false;
   if (user.role !== "COUNSELLOR") return true;
   const org = await db.query.organizations.findFirst({ where: eq(schema.organizations.id, user.orgId), columns: { counsellorsSeeCommission: true } });
   return org?.counsellorsSeeCommission ?? true;

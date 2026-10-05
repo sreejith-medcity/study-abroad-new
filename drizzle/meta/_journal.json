@@ -386,6 +386,13 @@
       "when": 1791202195732,
       "tag": "0054_declined_and_more_services",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1791203397316,
+      "tag": "0055_role_permissions",
+      "breakpoints": true
     }
   ]
 }

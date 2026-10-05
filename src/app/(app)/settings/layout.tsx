@@ -15,7 +15,7 @@ export default async function SettingsLayout({ children }: { children: React.Rea
           { href: "/settings/students", label: "Students" },
         ]
       : []),
-    ...(canManageSettings(user) ? [{ href: "/settings/platform", label: "Platform" }] : []),
+    ...(canManageSettings(user) ? [{ href: "/settings/platform", label: "Platform" }, { href: "/settings/access", label: "Who may do what" }] : []),
   ];
 
   return (

@@ -2588,6 +2588,28 @@ export const enquiryNotes = pgTable(
   (t) => [index("enquiry_notes_idx").on(t.enquiryId)],
 );
 
+/**
+ * What Medcity has set a role to be allowed, where that differs from how the
+ * portal behaves out of the box.
+ *
+ * Only the differences are stored. A role with no row here behaves exactly as
+ * it always did, which means this table being empty is the same as it not
+ * existing, and a default that changes in the code reaches every portal that
+ * has not deliberately overridden it.
+ */
+export const rolePermissions = pgTable(
+  "role_permissions",
+  {
+    id: id(),
+    role: text("role").notNull(),
+    capability: text("capability").notNull(),
+    allowed: boolean("allowed").notNull(),
+    setById: text("set_by_id").references(() => users.id),
+    setAt: timestamp("set_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("role_permissions_uq").on(t.role, t.capability)],
+);
+
 export const auditLogs = pgTable(
   "audit_logs",
   {

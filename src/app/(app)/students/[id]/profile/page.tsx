@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
+import { can } from "@/server/capabilities";
 import { profileCompleteness } from "@/lib/checks";
 import { fmtDate, fmtDateTime } from "@/lib/format";
 import { APP_ROLES, canSeeFullPassport, isAdmin, maskPassport } from "@/lib/permissions";
@@ -48,7 +49,7 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
   // A locked profile stops the details being edited. Who may read the file is a
   // separate question, so family access follows the role and not the lock.
   const canManageFamily = user.role !== "MANAGEMENT";
-  const showFull = canSeeFullPassport(user) || reveal === "1";
+  const showFull = (await can(user, "SEE_FULL_PASSPORT")) || reveal === "1";
   const passportDisplay = showFull ? student.passportNumber ?? "" : maskPassport(student.passportNumber);
 
   const sections = [

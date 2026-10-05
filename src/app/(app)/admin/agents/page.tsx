@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
+import { can } from "@/server/capabilities";
 import { fmtDate, fmtDateTime } from "@/lib/format";
 import { inr } from "@/lib/money";
 import { ADMIN_ROLES, canSeeFullPassport, isSuperAdmin } from "@/lib/permissions";
@@ -111,7 +112,7 @@ async function Applications({
   const rows = await agentApplications(filters);
   // The same rule as a student's passport: the whole number only to whoever is
   // already trusted with one.
-  const fullId = canSeeFullPassport(await requireUser([...ADMIN_ROLES]));
+  const fullId = await can(await requireUser([...ADMIN_ROLES]), "SEE_FULL_PASSPORT");
 
   return (
     <>

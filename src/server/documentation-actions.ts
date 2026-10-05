@@ -7,6 +7,7 @@ import { db, schema } from "@/db";
 import { requireUser, type SessionUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { ADMIN_ROLES, DECIDE_REFUSAL, isAdmin, mayAcceptUpload, mayDecideDocuments, OWN_UPLOAD_REFUSAL, PROCESSING_ROLES } from "@/lib/permissions";
+import { can } from "@/server/capabilities";
 import { claimHeld, CLAIM_MINUTES, stageLabel, validUntil, waiveRefusal } from "@/lib/journey";
 import { getStudentForUser } from "@/server/queries";
 import { sendWhatsAppRecorded } from "@/server/whatsapp";
@@ -42,7 +43,9 @@ async function branchChecksOwn(studentId: string) {
 }
 
 async function mayDecide(user: SessionUser, studentId: string) {
-  if ((PROCESSING_ROLES as readonly string[]).includes(user.role)) return true;
+  // Who checks documents at all is Medcity's to set; a branch's own first pass
+  // is a second switch on top of it, per branch.
+  if (await can(user, "DECIDE_DOCUMENTS")) return true;
   return mayDecideDocuments(user, await branchChecksOwn(studentId));
 }
 
