@@ -9,6 +9,7 @@ import { orgUsers, readFilters } from "@/server/queries";
 import { Button, Card, Chip, EmptyState, DateInput, Input, LinkButton, PageHeader, Select, Table, Td, Th, Toolbar } from "@/components/ui";
 import { IconPlus, IconStudents } from "@/components/icons";
 import { archiveStudentAction, reassignStudentAction } from "./actions";
+import { ownStudentsOnly } from "@/server/scope";
 
 export const metadata = { title: "Students" };
 
@@ -21,6 +22,9 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
 
   const conds = [
     staff ? (f.org ? eq(s.orgId, f.org) : undefined) : eq(s.orgId, user.orgId),
+    // And, for a role that sees only its own students, the same rule the student
+    // file itself enforces, so the list and the file can never disagree.
+    await ownStudentsOnly(user),
     eq(s.archived, archived),
     f.assignedTo ? eq(s.assignedToId, f.assignedTo) : undefined,
     f.from ? gte(s.createdAt, new Date(f.from)) : undefined,

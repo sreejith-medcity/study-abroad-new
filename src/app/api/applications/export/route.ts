@@ -5,6 +5,7 @@ import { audit } from "@/lib/audit";
 import { fmtDate, intakeLabel } from "@/lib/format";
 import { applicationsBase, applicationWhere, readFilters } from "@/server/queries";
 import { isFamilyRole } from "@/lib/permissions";
+import { ownApplicationsOnly } from "@/server/scope";
 
 function csvCell(v: unknown) {
   const s = v == null ? "" : String(v);
@@ -18,7 +19,7 @@ export async function GET(req: Request) {
   if (!user || isFamilyRole(user.role)) return new Response("Sign in required", { status: 401 });
   const params = Object.fromEntries(new URL(req.url).searchParams);
   const f = readFilters(params);
-  const rows = await applicationsBase().where(applicationWhere(user, f)).orderBy(desc(schema.applications.createdAt)).limit(10000);
+  const rows = await applicationsBase().where(applicationWhere(user, f, await ownApplicationsOnly(user))).orderBy(desc(schema.applications.createdAt)).limit(10000);
 
   const header = ["Ack no", "Date created", "Student", "University", "Country", "Program", "Intake", "Pathway", "Status", "Status since", "Deadline", "Created by", "Officer", "Offer", "Offer date", "Deposit paid", "CAS / I-20 / CoE", "Visa lodged", "Visa decision", "Decision date", "Priority"];
   const lines = [header.map(csvCell).join(",")];

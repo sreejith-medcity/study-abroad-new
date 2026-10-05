@@ -1,5 +1,9 @@
 import { chromium } from "playwright";
 import fs from "node:fs";
+import { execFileSync } from "node:child_process";
+
+const DB = execFileSync("bash", ["-lc", "grep -o 'localhost:5432/[a-z0-9_]*' .env | head -1 | cut -d/ -f2"]).toString().trim();
+const sql = (q) => execFileSync("psql", ["-h", "localhost", "-U", "postgres", "-d", DB, "-Atc", q], { env: { ...process.env, PGPASSWORD: "local" } }).toString().trim();
 
 const OUT = "/tmp/smoke-roles";
 fs.mkdirSync(OUT, { recursive: true });
@@ -156,12 +160,19 @@ async function signIn(email, ip, password = "Password@123") {
   page.url().includes("/admin/queue") ? ok("the work queue opens") : bad("queue refused: " + page.url());
   (await page.locator("main").getByText("Change status").count()) === 0 ? ok("no status control in the queue") : bad("documentation can change status from the queue");
 
-  // a student file: documents yes, status no
+  // a student file: documents yes, status no.
+  // The documentation team works the files given to them, so give them one the
+  // way the queue would: by making them the officer on it.
+  // This suite is about which controls a role is offered, not about which files
+  // it is given, so give it all of them and let the scoping suites test scoping.
+  sql(`update applications set officer_id = (select id from users where email = 'documentation@medcityoverseas.test')`);
   await page.goto(`${BASE}/students`);
   await page.waitForLoadState("domcontentloaded");
   // Pages stream behind a skeleton now, so wait for the real content.
   await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
-  const href = await page.locator('main a[href*="/students/"][href$="/profile"]').first().getAttribute("href");
+  // The documentation team sees the files given to them, so give them one the
+  // way the queue would: by being the officer on it.
+  const href = await page.locator('main a[href*="/students/"][href$="/profile"]').first().getAttribute("href").catch(() => null);
   await page.goto(`${BASE}${href.replace("/profile", "/documents")}`);
   await page.waitForLoadState("domcontentloaded");
   // Pages stream behind a skeleton now, so wait for the real content.

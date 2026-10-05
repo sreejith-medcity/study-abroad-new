@@ -31,6 +31,7 @@ import {
 import { IconAlert, IconApplications, IconChat, IconCheck, IconClock, IconDoc, IconEnquiry, IconPlus, IconSearch, IconSpark } from "@/components/icons";
 import { AgingCard, DashboardFilters, DeadlinesCard, RecentChangesCard } from "./parts";
 import { AnnouncementBanner, UpdatesCard } from "./updates-card";
+import { ownApplicationsOnly } from "@/server/scope";
 
 const TILES = [
   { key: "", label: "All applications", tone: "brand" as const, icon: <IconApplications className="size-4" /> },
@@ -72,7 +73,7 @@ export default async function PartnerDashboard({
   const [schemes, links] = await Promise.all([showMoney ? currentPromotions() : Promise.resolve([]), quickLinkList()]);
 
   const [kpis, work, deadlines, recent, org, countries, destinations, points, steps, enquiries, followUps, wallet, commission] = await Promise.all([
-    kpiTotals(user, and(applicationWhere(user, filters), mine)),
+    kpiTotals(user, and(applicationWhere(user, filters, await ownApplicationsOnly(user)), mine)),
     myWork(user),
     deadlineList(user, windowFor((f as Record<string, string | undefined>).dw), 6, mine),
     recentChanges(user, 6, mine),

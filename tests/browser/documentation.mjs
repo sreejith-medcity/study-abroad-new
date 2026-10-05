@@ -92,6 +92,22 @@ check(/Sent back|Rejected/.test(text), "gate: a document sent back shows its rea
 // A counsellor cannot move a stage that is not clear.
 const counsellor = await signIn("uk.docs@medcity.test", "10.130.1.2");
 const cp = counsellor.page;
+// A counsellor sees their own students now, so the one they are about to work
+// on is theirs. Which is the point: the next check proves somebody else's is not.
+sql(`update students set assigned_to_id = (select id from users where email = 'uk.docs@medcity.test') where id = '${firstStudent}'`);
+{
+  const someoneElses = sql(
+    `select s.id from students s where s.org_id = (select org_id from users where email = 'uk.docs@medcity.test')
+     and s.assigned_to_id is not null and s.assigned_to_id <> (select id from users where email = 'uk.docs@medcity.test') limit 1`,
+  );
+  if (someoneElses) {
+    await cp.goto(`${BASE}/students/${someoneElses}/documentation`);
+    await cp.waitForTimeout(800);
+    check(!/Documentation list/i.test(await cp.locator("body").innerText()), "scope: a counsellor cannot open another counsellor's student");
+  } else {
+    ok("scope: no second counsellor's student in that branch to try");
+  }
+}
 text = await go(cp, `/students/${firstStudent}/documentation`);
 if (/Move the stage/.test(text)) {
   await cp.locator('select[name="stage"]').first().selectOption(stageNext);
@@ -218,6 +234,10 @@ check(sql(`select asked_channel from checklist_items where id = '${asked}'`) ===
 
 // --- The documentation team's queue.
 const docs = await signIn("documentation@medcityoverseas.test", "10.130.1.3");
+// The documentation team works the files given to them. Claiming from the queue
+// is how that normally happens; here it is done directly so the rest of the
+// suite has a file to work on.
+sql(`update applications set officer_id = (select id from users where email = 'documentation@medcityoverseas.test')`);
 const dp = docs.page;
 text = await go(dp, "/documentation");
 check(/waiting/.test(text) && /Oldest first/.test(text) && /Visa stage first/.test(text), "queue: it opens oldest first and offers the visa sort");
@@ -303,6 +323,7 @@ sql("update app_settings set hold_applications_on_documents = true where id = 'a
 applyText = await go(ap, `/students/${applyStudent}/applications?tab=apply`);
 check(/Reason for applying anyway/i.test(applyText), "apply: with the hold on an admin is asked for a reason");
 const counsellorStudent = sql("select id from students where org_id = (select org_id from users where email = 'uk.docs@medcity.test') and journey_stage = 'PROFILE' limit 1");
+if (counsellorStudent) sql(`update students set assigned_to_id = (select id from users where email = 'uk.docs@medcity.test') where id = '${counsellorStudent}'`);
 if (counsellorStudent) {
   applyText = await go(cp, `/students/${counsellorStudent}/applications?tab=apply`);
   check(/Collect them on the Documentation tab/i.test(applyText), "apply: a counsellor is told to collect the paper, not given an override");

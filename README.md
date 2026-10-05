@@ -357,6 +357,28 @@ sheet, because they are part of what that student is worth to Medcity, and they
 are counted in no Overseas total, because adding them would flatter every money
 screen by an amount a different company earned.
 
+## Whose students somebody sees
+
+Two questions, in order, applied in SQL rather than filtered afterwards, so a
+list, a count and a page of results can never disagree.
+
+**Whose organisation.** The desk sees every branch; everybody else sees their
+own. That has always been true.
+
+**Whose students.** A role without "See every student" sees only the ones
+assigned to them: the students they counsel, the applications they are the
+officer on, and the documents they have claimed or checked. Out of the box that
+means a counsellor, a trainee and a sub-agent's counsellor see their own
+students, and the documentation team sees the files it has been given. A branch
+head, a senior counsellor and the desk roles see everything in their scope.
+
+Two things keep this workable. A student nobody has taken on is visible to their
+own branch, because a student no counsellor can open is a student nobody picks
+up. And the documentation queue stays a pool: claiming a document from it is
+what makes that file yours, so the queue is never full of work nobody can reach.
+
+If it proves too tight, it is a tick on "Who may do what" rather than a deploy.
+
 ## The counsellor roles
 
 "Counsellor" was doing the work of several jobs, so there are now five of them,

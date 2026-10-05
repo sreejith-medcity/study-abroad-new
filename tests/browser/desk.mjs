@@ -79,6 +79,9 @@ await bp.screenshot({ path: `${OUT}/01-handed-over.png`, fullPage: true });
 // --- The desk's queue.
 const docs = await signIn("documentation@medcityoverseas.test", "10.160.1.3");
 const dp = docs.page;
+// The desk works the files given to it. This suite is about the hand-over and
+// the road, not about which files land on whose desk, so give it all of them.
+sql(`update applications set officer_id = (select id from users where email = 'documentation@medcityoverseas.test')`);
 text = await go(dp, "/admin/desk");
 check(/The Overseas desk/.test(text), "desk: the queue exists");
 check(/Waiting for the desk/.test(text) && /Lodged with the vendor/.test(text), "desk: the steps are the tabs across the top");
@@ -151,7 +154,10 @@ if (ready) {
   await dp.getByRole("button", { name: "Send it back" }).last().click();
   check(await toast(dp, /Sent back/), "return: it goes back with the reason");
   check((await waitSql(`select desk_stage from applications where id = '${ready}'`, "RETURNED")) === "RETURNED", "return: the file is back with the branch");
-  const readyOrgStaff = sql(`select u.email from users u join students s on s.org_id = u.org_id where s.id = '${readyStudent}' and u.role in ('PARTNER','COUNSELLOR') limit 1`);
+  // A branch head sees their whole branch, so they are who reads a file back
+  // whoever at the branch built it. A counsellor would need it to be their own.
+  const readyOrgStaff = sql(`select u.email from users u join students s on s.org_id = u.org_id where s.id = '${readyStudent}' and u.role = 'PARTNER' limit 1`)
+    || sql(`select u.email from users u join students s on s.org_id = u.org_id where s.id = '${readyStudent}' and u.id = s.assigned_to_id limit 1`);
   const back = readyOrgStaff === staffForOrg ? bp : (await signIn(readyOrgStaff, "10.160.1.5")).page;
   text = await go(back, `/students/${readyStudent}/applications?app=${ready}`);
   check(/The Overseas desk sent this back/.test(text) && /consolidated sheet/.test(text), "return: the counsellor reads the reason on the file");
@@ -166,7 +172,9 @@ await cp.waitForURL((u) => !String(u).includes("/admin/desk"), { timeout: 8000 }
 check(!cp.url().includes("/admin/desk"), "roles: a counsellor is turned away from the desk's queue");
 const anySubmitted = sql("select id from applications where desk_stage = 'SUBMITTED' limit 1");
 const submittedStudent = sql(`select student_id from applications where id = '${anySubmitted}'`);
+// Their own student, since a counsellor reads the files that are theirs.
 const submittedOrgStaff = sql(`select u.email from users u join students s on s.org_id = u.org_id where s.id = '${submittedStudent}' and u.role = 'COUNSELLOR' limit 1`);
+if (submittedOrgStaff) sql(`update students set assigned_to_id = (select id from users where email = '${submittedOrgStaff}') where id = '${submittedStudent}'`);
 if (submittedOrgStaff) {
   const theirs = submittedOrgStaff === "uk.docs@medcity.test" ? cp : (await signIn(submittedOrgStaff, "10.160.1.6")).page;
   text = await go(theirs, `/students/${submittedStudent}/applications?app=${anySubmitted}`);

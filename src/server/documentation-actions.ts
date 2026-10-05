@@ -6,7 +6,7 @@ import { z } from "zod";
 import { db, schema } from "@/db";
 import { requireUser, type SessionUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { ADMIN_ROLES, DECIDE_REFUSAL, OWN_UPLOAD_REFUSAL, PARTNER_ROLES, PROCESSING_ROLES, isAdmin, mayAcceptUpload, mayDecideDocuments } from "@/lib/permissions";
+import { ADMIN_ROLES, DECIDE_REFUSAL, OWN_UPLOAD_REFUSAL, PARTNER_ROLES, PROCESSING_ROLES, isAdmin, isStaff, mayAcceptUpload, mayDecideDocuments } from "@/lib/permissions";
 import { can } from "@/server/capabilities";
 import { claimHeld, CLAIM_MINUTES, stageLabel, validUntil, waiveRefusal } from "@/lib/journey";
 import { getStudentForUser } from "@/server/queries";
@@ -49,10 +49,20 @@ async function mayDecide(user: SessionUser, studentId: string) {
   return mayDecideDocuments(user, await branchChecksOwn(studentId));
 }
 
+/**
+ * The item, if this person may work on it.
+ *
+ * Deliberately an organisation check rather than the narrower "is this student
+ * yours": the documentation queue is a pool, and somebody has to be able to
+ * claim a file before it becomes theirs. What they may then do with it is the
+ * DECIDE_DOCUMENTS question, asked separately by each action.
+ */
 async function itemForUser(user: SessionUser, itemId: string) {
   const item = await db.query.checklistItems.findFirst({ where: eq(ci.id, itemId), with: { type: { columns: { label: true } } } });
   if (!item) return null;
-  await getStudentForUser(user, item.studentId);
+  const student = await db.query.students.findFirst({ where: eq(schema.students.id, item.studentId), columns: { orgId: true } });
+  if (!student) return null;
+  if (!isStaff(user) && student.orgId !== user.orgId) return null;
   return item;
 }
 

@@ -33,6 +33,7 @@ import {
 } from "@/components/ui";
 import { IconAlert, IconApplications, IconCheck } from "@/components/icons";
 import { DashboardFilters, RecentChangesCard } from "./parts";
+import { ownApplicationsOnly } from "@/server/scope";
 
 function rate(a: number, b: number) {
   if (!b) return "0%";
@@ -45,7 +46,7 @@ export default async function ManagementDashboard({ user, f }: { user: SessionUs
   const filters: ApplicationFilters = { from: f.from, to: f.to, country: f.country, intakeYear: f.intakeYear, intakeMonth: f.intakeMonth };
 
   const [kpis, steps, points, groups, late, partners, destinations, pathways, recent, today, countries, enquiries, commission] = await Promise.all([
-    kpiTotals(user, applicationWhere(user, filters)),
+    kpiTotals(user, applicationWhere(user, filters, await ownApplicationsOnly(user))),
     funnel(user),
     monthlyPoints(user, 12),
     groupCounts(user),

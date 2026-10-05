@@ -24,10 +24,31 @@ export const CAPABILITIES = [
   "VIEW_AUDIT_LOG",
   "SUBMIT_APPLICATION",
   "MESSAGE_STUDENT",
+  "SEE_EVERY_STUDENT",
 ] as const;
 
 export type Capability = (typeof CAPABILITIES)[number];
 export type AppRole = (typeof APP_ROLES)[number];
+
+/**
+ * Short names, for the matrix only.
+ *
+ * "Sub-agent counsellor" across ten columns pushes the table off the screen,
+ * and a table you have to scroll sideways to read is not a matrix. The full
+ * name is on the People screen, where there is room for it.
+ */
+export const SHORT_ROLE: Record<string, string> = {
+  OPS_MANAGER: "Ops",
+  ADMIN: "Admin",
+  DOCUMENTATION: "Docs",
+  MANAGEMENT: "Mgmt",
+  PARTNER: "Branch head",
+  COUNSELLOR: "Counsellor",
+  DESK_COUNSELLOR: "Desk",
+  SENIOR_COUNSELLOR: "Senior",
+  TRAINEE_COUNSELLOR: "Trainee",
+  SUB_AGENT_COUNSELLOR: "Sub-agent",
+};
 
 export const CAPABILITY_LABEL: Record<Capability, string> = {
   SEE_MONEY: "See money",
@@ -38,6 +59,7 @@ export const CAPABILITY_LABEL: Record<Capability, string> = {
   VIEW_AUDIT_LOG: "Read the audit log",
   SUBMIT_APPLICATION: "Create an application",
   MESSAGE_STUDENT: "Message a student",
+  SEE_EVERY_STUDENT: "See every student, not only their own",
 };
 
 export const CAPABILITY_MEANS: Record<Capability, string> = {
@@ -50,6 +72,8 @@ export const CAPABILITY_MEANS: Record<Capability, string> = {
   VIEW_AUDIT_LOG: "Who did what, across the whole portal.",
   SUBMIT_APPLICATION: "Starting an application against a course. A trainee builds the file and somebody else sends it.",
   MESSAGE_STUDENT: "Writing to the student, on WhatsApp or in the portal. Reading what was said is not affected.",
+  SEE_EVERY_STUDENT:
+    "Without this, somebody sees only the students assigned to them: the ones they counsel, or the applications they are the officer on. The branch or the desk they belong to still bounds it either way.",
 };
 
 /**
@@ -67,6 +91,10 @@ export const DEFAULTS: Record<Capability, AppRole[]> = {
   VIEW_AUDIT_LOG: ["SUPER_ADMIN"],
   SUBMIT_APPLICATION: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "PARTNER", "COUNSELLOR", "SENIOR_COUNSELLOR", "DESK_COUNSELLOR", "SUB_AGENT_COUNSELLOR"],
   MESSAGE_STUDENT: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "PARTNER", "COUNSELLOR", "SENIOR_COUNSELLOR", "DESK_COUNSELLOR"],
+  // A counsellor works their own students; a branch head and a senior counsellor
+  // work the branch's. The documentation team sees the files they were given,
+  // which is what "assigned" means for them: the applications they are on.
+  SEE_EVERY_STUDENT: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "MANAGEMENT", "PARTNER", "SENIOR_COUNSELLOR", "DESK_COUNSELLOR"],
 };
 
 /** A capability nobody may take off a super admin, whatever the matrix says. */

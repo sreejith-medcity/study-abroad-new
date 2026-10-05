@@ -3,6 +3,7 @@ import { fmtDateTime } from "@/lib/format";
 import { canManageSettings, ROLE_LABEL } from "@/lib/permissions";
 import {
   CAPABILITIES,
+  SHORT_ROLE,
   CAPABILITY_LABEL,
   CAPABILITY_MEANS,
   SETTABLE_ROLES,
@@ -43,24 +44,18 @@ export default async function AccessPage() {
           </span>
         }
         title="Who may do what"
-        subtitle="One row per thing somebody can do, one column per role. Everything starts where the portal already stood, so changing nothing here changes nothing."
+        subtitle="A tick is allowed. Click one to change it. A dot means it has been moved from where the portal started."
       />
 
-      <Alert tone={set.length > 0 ? "info" : "ok"} title={matrixSummary(set)}>
-        A super admin always keeps everything, so nobody can lock the last person out of this screen. Students and parents never gain
-        any of it, whatever is ticked. A branch owner&rsquo;s own switches, for what counsellors see and whether the branch checks its
-        own documents, sit on top of this and can only take away.
-      </Alert>
-
-      <Card className="mt-4">
-        <CardHeader title="The table" subtitle="A tick is allowed. A box that has been moved from where it started is marked." />
-        <Table tableClassName="min-w-[900px]">
+      <Card>
+        <CardHeader title={matrixSummary(set)} subtitle="A super admin always keeps everything. Students and parents never gain any of it." />
+        <Table>
           <thead>
             <tr>
               <Th>What</Th>
               {SETTABLE_ROLES.map((r) => (
-                <Th key={r} className="text-center">
-                  {ROLE_LABEL[r] ?? r}
+                <Th key={r} className="whitespace-nowrap px-2 text-center">
+                  <span title={ROLE_LABEL[r] ?? r}>{SHORT_ROLE[r] ?? ROLE_LABEL[r] ?? r}</span>
                 </Th>
               ))}
             </tr>
@@ -68,23 +63,25 @@ export default async function AccessPage() {
           <tbody>
             {CAPABILITIES.map((capability) => (
               <tr key={capability}>
-                <Td>
-                  <span className="font-medium">{CAPABILITY_LABEL[capability as Capability]}</span>
-                  <p className="mt-0.5 max-w-md text-xs leading-relaxed text-muted">{CAPABILITY_MEANS[capability as Capability]}</p>
+                {/* The explanation is on hover rather than in the row: ten columns
+                    and a paragraph do not fit on one screen, and a matrix you
+                    have to scroll is not telling you its shape. */}
+                <Td className="whitespace-nowrap font-medium" title={CAPABILITY_MEANS[capability as Capability]}>
+                  {CAPABILITY_LABEL[capability as Capability]}
                 </Td>
                 {SETTABLE_ROLES.map((role) => {
                   const allowed = roleCan(role, capability as Capability, set);
                   const moved = isChanged(role, capability as Capability, allowed);
                   const who = by.get(`${role}:${capability}`);
                   return (
-                    <Td key={role} className="text-center align-top">
-                      <CapabilityToggle role={role} capability={capability} allowed={allowed} />
-                      {moved && (
-                        <span className="mt-1 block text-[11px] text-muted">
-                          {who?.setBy ? `${who.setBy}, ` : ""}
-                          {who?.setAt ? fmtDateTime(who.setAt) : "changed"}
-                        </span>
-                      )}
+                    <Td key={role} className="text-center">
+                      <CapabilityToggle
+                        role={role}
+                        capability={capability}
+                        allowed={allowed}
+                        moved={moved}
+                        note={who?.setBy ? `${who.setBy}, ${who.setAt ? fmtDateTime(who.setAt) : ""}` : undefined}
+                      />
                     </Td>
                   );
                 })}
@@ -94,23 +91,11 @@ export default async function AccessPage() {
         </Table>
       </Card>
 
-      <Card className="mt-4">
-        <CardHeader title="What this screen cannot do" />
-        <div className="space-y-2 p-4 text-[13px] leading-relaxed text-muted">
-          <p>
-            It does not make roles. The portal&rsquo;s seven roles are what they are; this decides what each may reach.
-          </p>
-          <p>
-            It does not reach a single person. A counsellor who needs something nobody else at their branch needs is a conversation,
-            not a tick: giving it to them here gives it to every counsellor at every branch.
-          </p>
-          <p>
-            It never overrides a rule that exists for a reason outside Medcity&rsquo;s choosing: nobody passes a document they
-            uploaded themselves, a reveal of a passport number is in the audit log whoever does it, and a parent sees what the student
-            allows and nothing else. <Chip tone="ok">Always</Chip>
-          </p>
-        </div>
-      </Card>
+      <p className="mt-3 text-[13px] leading-relaxed text-muted">
+        A tick here reaches every person with that role, at every branch. It never overrides the rules that are not Medcity&rsquo;s to
+        choose: nobody passes a document they uploaded themselves, every passport reveal is in the audit log, and a branch
+        owner&rsquo;s own switches still sit on top of this.
+      </p>
     </>
   );
 }

@@ -37,6 +37,7 @@ import {
 } from "@/components/ui";
 import { IconAlert, IconApplications, IconCheck, IconClock, IconQueue, IconSearch } from "@/components/icons";
 import { AgingCard, DashboardFilters, DeadlinesCard, RecentChangesCard } from "./parts";
+import { ownApplicationsOnly } from "@/server/scope";
 
 /** The processing desk: what needs a decision today, and who is carrying it. */
 export default async function AdminDashboard({ user, f, showMoney = true }: { user: SessionUser; f: ApplicationFilters; showMoney?: boolean }) {
@@ -45,7 +46,7 @@ export default async function AdminDashboard({ user, f, showMoney = true }: { us
 
   const [kpis, groups, late, mine, today, aging, unassignedRows, deadlines, recent, partners, countries, destinations, pathways, points, load, enquiries, commission] =
     await Promise.all([
-      kpiTotals(user, applicationWhere(user, filters)),
+      kpiTotals(user, applicationWhere(user, filters, await ownApplicationsOnly(user))),
       groupCounts(user),
       lateWork(user),
       agingList(user, 6, eq(a.officerId, user.id)),

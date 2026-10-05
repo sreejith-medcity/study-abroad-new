@@ -2,6 +2,7 @@ import { requireUser } from "@/lib/auth";
 import { canManageSettings, ROLE_LABEL } from "@/lib/permissions";
 import { PageHeader } from "@/components/ui";
 import { SubTabs } from "@/components/tabs";
+import { SettingsWidth } from "./width";
 
 export default async function SettingsLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
@@ -26,7 +27,9 @@ export default async function SettingsLayout({ children }: { children: React.Rea
         subtitle="Your details, how you sign in, and the values the portal runs on."
       />
       <SubTabs tabs={tabs} label="Settings sections" />
-      <div className="max-w-3xl space-y-5">{children}</div>
+      {/* Each settings page sets its own width: most want a narrow column to read,
+          and the permissions matrix wants the screen. */}
+      <SettingsWidth>{children}</SettingsWidth>
     </div>
   );
 }

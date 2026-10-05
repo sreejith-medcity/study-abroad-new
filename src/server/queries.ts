@@ -2,6 +2,7 @@ import "server-only";
 import { DEADLINE_TYPES } from "@/lib/deadline-types";
 import { and, eq, gte, ilike, inArray, lte, or, sql, type SQL } from "drizzle-orm";
 import { notFound } from "next/navigation";
+import { mayOpenStudent } from "@/server/scope";
 import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { PARTNER_ROLES, isStaff, orgScope } from "@/lib/permissions";
@@ -51,8 +52,11 @@ export const KPI_WHERE: Record<string, SQL> = {
   pending_partner: sql`${sd.group} = 'PENDING_PARTNER'`,
 };
 
-export function applicationWhere(user: SessionUser, f: ApplicationFilters): SQL | undefined {
-  const conds: (SQL | undefined)[] = [orgScope(user, a.orgId)];
+export function applicationWhere(user: SessionUser, f: ApplicationFilters, mine?: SQL): SQL | undefined {
+  // `mine` narrows an organisation to the files one person is actually on. It is
+  // passed in rather than read here because this is the one filter the exports
+  // and the dashboards share, and it has to stay synchronous.
+  const conds: (SQL | undefined)[] = [orgScope(user, a.orgId), mine];
   if (f.from) conds.push(gte(a.createdAt, new Date(f.from)));
   if (f.to) conds.push(lte(a.createdAt, new Date(`${f.to}T23:59:59`)));
   if (f.country) conds.push(eq(c.code, f.country));
@@ -132,7 +136,9 @@ export async function getStudentForUser(user: SessionUser, id: string) {
     with: { assignedTo: true, org: true },
   });
   if (!student) notFound();
-  if (!isStaff(user) && student.orgId !== user.orgId) notFound();
+  // Not found rather than refused, so a counsellor cannot learn who exists at
+  // their branch by trying ids.
+  if (!(await mayOpenStudent(user, student))) notFound();
   return student;
 }
 
@@ -140,6 +146,8 @@ export async function getApplicationForUser(user: SessionUser, id: string) {
   const app = await db.query.applications.findFirst({ where: eq(a.id, id) });
   if (!app) notFound();
   if (!isStaff(user) && app.orgId !== user.orgId) notFound();
+  const student = await db.query.students.findFirst({ where: eq(s.id, app.studentId), columns: { id: true, orgId: true, assignedToId: true } });
+  if (!student || !(await mayOpenStudent(user, student))) notFound();
   return app;
 }
 
