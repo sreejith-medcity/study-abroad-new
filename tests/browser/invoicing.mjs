@@ -218,10 +218,16 @@ const mgmt = await signIn("management@medcityoverseas.test", "10.190.1.3");
 text = await go(mgmt.page, "/admin/invoices");
 check(/To invoice/.test(text), "roles: management reads the invoices");
 check((await mgmt.page.getByRole("button", { name: /Raise an invoice/ }).count()) === 0, "roles: and raises none");
+// A branch owner reads what is owed on their own students, and raises nothing.
 const partner = await signIn("kottayam@medcity.test", "10.190.1.4");
-await go(partner.page, "/admin/invoices");
-await partner.page.waitForURL((u) => !String(u).includes("/admin/invoices"), { timeout: 8000 }).catch(() => {});
-check(!partner.page.url().includes("/admin/invoices"), "roles: a branch owner is turned away from the invoice screens");
+const partnerText = await go(partner.page, "/admin/invoices");
+check(partner.page.url().includes("/admin/invoices"), "roles: a branch owner reaches the invoice screens");
+check(/To invoice/.test(partnerText), "roles: and sees what is owed");
+check((await partner.page.getByRole("button", { name: /Raise an invoice/ }).count()) === 0, "roles: but raises none");
+// What they see is their own branch's, not every branch's.
+const theirBranch = sql("select name from organizations where id = (select org_id from users where email = 'kottayam@medcity.test')");
+const otherBranch = sql(`select name from organizations where type <> 'HQ' and name <> '${theirBranch}' limit 1`);
+check(!new RegExp(otherBranch).test(partnerText), `roles: and not ${otherBranch}'s`);
 
 for (const [who, e] of [["admin", admin.errors], ["management", mgmt.errors], ["partner", partner.errors]]) {
   check(e.length === 0, `${who}: no page errors or 500s ${e.slice(0, 3).join(" | ")}`);

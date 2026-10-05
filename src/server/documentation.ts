@@ -1,7 +1,7 @@
 import "server-only";
 import { and, asc, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { gate, standing, stageRank, validUntil, type Gate, type GateItem } from "@/lib/journey";
+import { gate, standing, stageRank, validUntil, type Gate, type GateItem, visaFirstOrder } from "@/lib/journey";
 import { courseStartFor, intakeStart, requirementsFor, studentContext, syncChecklist, type Requirement, type StudentContext } from "@/db/documentation-sync";
 import type { ChecklistState, JourneyStage, RequirementSource } from "@/db/schema";
 
@@ -191,11 +191,10 @@ export async function documentationQueue(filters: QueueFilters, userId: string) 
     fileName: r.fileName,
     documentId: r.documentId,
   }));
-  if (filters.sort === "VISA_FIRST") {
-    // The sort the team lives on: the visa stage first, and inside a stage the
-    // file that has waited longest.
-    mapped.sort((a, b) => stageRank(b.stage) - stageRank(a.stage) || (a.uploadedAt?.getTime() ?? 0) - (b.uploadedAt?.getTime() ?? 0));
-  }
+  // The rule itself is in lib/journey.ts, so it can be tested without a
+  // database and so the queue and anything built on it later cannot disagree
+  // about what "visa first" means.
+  if (filters.sort === "VISA_FIRST") mapped.sort((a, b) => visaFirstOrder(a, b));
   return mapped;
 }
 

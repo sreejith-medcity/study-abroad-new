@@ -11,9 +11,13 @@ import {
   standing,
   standingText,
   validUntil,
+  visaFirstOrder,
+  visaFirstRank,
+  type QueueOrderItem,
   waiveRefusal,
   type GateItem,
 } from "../src/lib/journey";
+import type { JourneyStage } from "../src/db/schema";
 
 const day = 86_400_000;
 const today = new Date("2026-09-30T00:00:00Z");
@@ -161,4 +165,32 @@ test("two locked items are named together and read as plural", () => {
   assert.match(refusal, /Passport, Degree certificate cannot be waived/);
   assert.match(refusal, /They have been marked/);
   assert.match(refusal, /until they are in/);
+});
+
+test("the queue puts the visa stage first, not the last stage", () => {
+  const at = (stage: JourneyStage): QueueOrderItem => ({ stage, dueOn: null, uploadedAt: new Date("2026-09-01T00:00:00Z") });
+  const order = (["ARRIVED", "PROFILE", "DEPARTURE", "VISA", "CONFIRMATION", "APPLICATION"] as JourneyStage[])
+    .map(at)
+    .sort((a, b) => visaFirstOrder(a, b, today))
+    .map((x) => x.stage);
+  assert.deepEqual(order, ["VISA", "CONFIRMATION", "APPLICATION", "PROFILE", "DEPARTURE", "ARRIVED"]);
+  // A file at Departure or Arrived has already cleared the thing that was going
+  // to go wrong, so it waits behind the ones that have not.
+  assert.ok(visaFirstRank("VISA") < visaFirstRank("DEPARTURE"));
+  assert.ok(visaFirstRank("PROFILE") < visaFirstRank("ARRIVED"));
+});
+
+test("a deadline inside a fortnight floats to the top of its stage, soonest first", () => {
+  const soon: QueueOrderItem = { stage: "VISA", dueOn: "2026-10-03", uploadedAt: new Date("2026-09-29T00:00:00Z") };
+  const sooner: QueueOrderItem = { stage: "VISA", dueOn: "2026-10-01", uploadedAt: new Date("2026-09-29T00:00:00Z") };
+  const waited: QueueOrderItem = { stage: "VISA", dueOn: null, uploadedAt: new Date("2026-08-01T00:00:00Z") };
+  const far: QueueOrderItem = { stage: "VISA", dueOn: "2027-02-01", uploadedAt: new Date("2026-09-30T00:00:00Z") };
+  const order = [waited, far, soon, sooner].sort((a, b) => visaFirstOrder(a, b, today));
+  assert.deepEqual(order, [sooner, soon, waited, far], "due first, then the longest wait, and a far-off date is not urgent");
+});
+
+test("with nothing due, the queue is oldest first, which is what stops somebody being skipped", () => {
+  const old: QueueOrderItem = { stage: "OFFER", dueOn: null, uploadedAt: new Date("2026-08-01T00:00:00Z") };
+  const recent: QueueOrderItem = { stage: "OFFER", dueOn: null, uploadedAt: new Date("2026-09-28T00:00:00Z") };
+  assert.deepEqual([recent, old].sort((a, b) => visaFirstOrder(a, b, today)), [old, recent]);
 });

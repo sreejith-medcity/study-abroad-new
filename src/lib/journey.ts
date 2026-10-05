@@ -223,3 +223,51 @@ export function validUntil(issuedOn: Date | string | null, validityMonths: numbe
   if (d.getDate() < day) d.setDate(0);
   return d;
 }
+
+/* ---------------- The order the documentation team works in ---------------- */
+
+/** A deadline closer than this is the thing to do next, whatever else is waiting. */
+export const URGENT_DAYS = 14;
+
+/**
+ * How near the visa a stage is, for the queue's "visa stage first" order.
+ *
+ * Not the stage's own number: a file at Visa is the one that costs a student
+ * their intake if it slips, and a file at Departure or Arrived has already
+ * cleared the thing that was going to go wrong. So Visa leads, the stages
+ * working up to it follow in reverse order, and the two after it come last.
+ */
+export function visaFirstRank(stage: JourneyStage): number {
+  if (stage === "VISA") return 0;
+  const after = stage === "DEPARTURE" || stage === "ARRIVED";
+  // Below the visa: the later the stage, the sooner it is wanted.
+  return after ? 100 + stageRank(stage) : 10 + (stageRank("VISA") - stageRank(stage));
+}
+
+export type QueueOrderItem = { stage: JourneyStage; dueOn: string | null; uploadedAt: Date | null };
+
+/**
+ * The sort the team lives on.
+ *
+ * The visa stage first, then whatever is nearest to it. Inside any stage, a file
+ * wanted within a fortnight floats above the rest, soonest first, and after that
+ * the one that has waited longest goes first, because a queue that is not
+ * oldest-first is a queue somebody is quietly skipped in.
+ */
+export function visaFirstOrder(a: QueueOrderItem, b: QueueOrderItem, today = new Date()): number {
+  const byStage = visaFirstRank(a.stage) - visaFirstRank(b.stage);
+  if (byStage !== 0) return byStage;
+
+  const urgency = (x: QueueOrderItem) => {
+    if (!x.dueOn) return null;
+    const left = days(today, new Date(`${x.dueOn}T00:00:00Z`));
+    return left <= URGENT_DAYS ? left : null;
+  };
+  const ua = urgency(a);
+  const ub = urgency(b);
+  if (ua != null && ub != null) return ua - ub;
+  if (ua != null) return -1;
+  if (ub != null) return 1;
+
+  return (a.uploadedAt?.getTime() ?? 0) - (b.uploadedAt?.getTime() ?? 0);
+}

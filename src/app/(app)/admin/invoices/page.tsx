@@ -37,7 +37,10 @@ const STATE_TONE: Record<InvoiceState, "neutral" | "info" | "warn" | "bad" | "ok
  * nobody pays.
  */
 export default async function InvoicesPage({ searchParams }: { searchParams: Promise<{ tab?: string; state?: string }> }) {
-  const user = await requireUser([...REPORTING_ROLES]);
+  // A branch owner reads their own lines here. The queries below were already
+  // scoped by branch for a non-staff viewer; nobody could reach them, because
+  // the door was shut one line above.
+  const user = await requireUser([...REPORTING_ROLES, "PARTNER"]);
   const sp = await searchParams;
   const tab = TABS.some((t) => t.key === sp.tab) ? sp.tab : "queue";
   const canRaise = user.role === "ADMIN" || user.role === "OPS_MANAGER" || user.role === "SUPER_ADMIN";

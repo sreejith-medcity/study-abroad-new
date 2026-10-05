@@ -10,6 +10,8 @@ const { incomeLines: il, rateCards: rc, students: st, organizations: og, applica
 export type IncomeRow = typeof schema.incomeLines.$inferSelect & {
   vendorName: string | null;
   vendorCode: string | null;
+  /** So a line reads the same colour here as on the invoice queue. */
+  vendorColour: string | null;
   ackNo: string | null;
   course: string | null;
   /** The commission figure, read from the commission row rather than copied. */
@@ -30,6 +32,7 @@ export async function studentIncome(studentId: string): Promise<IncomeRow[]> {
       line: il,
       vendorName: vn.name,
       vendorCode: vn.code,
+      vendorColour: vn.colour,
       ackNo: ap.ackNo,
       course: pg.name,
       commissionGross: schema.commissions.grossAmount,
@@ -52,6 +55,7 @@ export async function studentIncome(studentId: string): Promise<IncomeRow[]> {
   return rows.map((r) => ({
     ...r.line,
     vendorName: r.vendorName,
+    vendorColour: r.vendorColour,
     vendorCode: r.vendorCode,
     ackNo: r.ackNo,
     course: r.course,

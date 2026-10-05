@@ -30,7 +30,14 @@ export default async function StudentIncomePage({ params }: { params: Promise<{ 
   const student = await getStudentForUser(user, id);
   const canSeeMoney = await commissionVisible(user);
   if (!canSeeMoney) {
-    return <EmptyState title="Not for counsellors at this branch">Your branch owner has chosen to keep money off counsellors&rsquo; screens. Ask them if you need it.</EmptyState>;
+    return user.role === "DOCUMENTATION" ? (
+      <EmptyState title="Not for the documentation team">
+        Checking a document and knowing what the placement pays are kept apart on purpose. Everything you need to check this
+        student&rsquo;s paper is on their Documentation tab.
+      </EmptyState>
+    ) : (
+      <EmptyState title="Not for counsellors at this branch">Your branch owner has chosen to keep money off counsellors&rsquo; screens. Ask them if you need it.</EmptyState>
+    );
   }
   const canWrite = isAdmin(user) || user.role === "PARTNER";
 
@@ -120,7 +127,24 @@ export default async function StudentIncomePage({ params }: { params: Promise<{ 
                     {row.invoiceNumber && <p className="text-xs text-muted">On invoice {row.invoiceNumber}</p>}
                   </Td>
                   <Td className="text-xs">
-                    {row.vendorName ?? row.providerName ?? PAYER_LABEL[row.payer]}
+                    {/* The road's colour and code, the same as the invoice queue
+                        and the application carry, so one line can be followed
+                        across the three screens without reading names. */}
+                    {row.vendorName ? (
+                      <span className="inline-flex items-center gap-1">
+                        {row.vendorCode && (
+                          <span
+                            className="rounded px-1 py-0.5 text-[10px] font-semibold text-white"
+                            style={{ backgroundColor: row.vendorColour ?? "#475569" }}
+                          >
+                            {row.vendorCode}
+                          </span>
+                        )}
+                        {row.vendorName}
+                      </span>
+                    ) : (
+                      (row.providerName ?? PAYER_LABEL[row.payer])
+                    )}
                     {row.dueOn && <span className="block text-muted">due {fmtDate(row.dueOn)}</span>}
                   </Td>
                   <Td className="whitespace-nowrap text-right tabular">{read.expectedAmount == null ? <span className="text-muted">Not recorded</span> : fmtMoney(read.expectedAmount, read.currency)}</Td>
