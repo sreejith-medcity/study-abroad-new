@@ -186,10 +186,20 @@ const packStudent = sql(`select case when exists (select 1 from applications whe
 const appId = sql(`select id from applications where student_id = '${packStudent}' order by created_at limit 1`);
 sql(`update checklist_items set state = 'ACCEPTED', decided_at = now() where student_id = '${packStudent}' and document_id is not null`);
 sql(`update checklist_items set state = 'ACCEPTED', version = 1, decided_at = now() where student_id = '${packStudent}' and type_code in ('PASSPORT','MARKSHEET_12')`);
+// The route this application goes down, and the rules the vendor on it sets: a
+// pack is built the way they want it or it comes back.
+sql(`update applications set route_id = coalesce(route_id, (select pr.id from program_routes pr where pr.program_id = applications.program_id limit 1)) where id = '${appId}'`);
+const packVendor = sql(`select v.id from vendors v join program_routes pr on pr.vendor_id = v.id join applications a on a.route_id = pr.id where a.id = '${appId}'`);
+check(packVendor !== "", "pack: the application has a route, so the vendor's own rules apply");
+sql(`update vendors set pack_naming = '{SURNAME}_{GIVEN}_{TYPE}', pack_limit_mb = 25 where id = '${packVendor}'`);
+
 text = await go(ap, `/students/${packStudent}/documentation/pack?app=${appId}`);
 check(/What goes in/.test(text), "pack: the screen shows what would go in before anything is built");
-check(/Accepted documents only/.test(text), "pack: it says an unchecked file stays out");
-check(/01 /.test(text), "pack: the files are numbered as they will be in the folder");
+check(/under the names this route uses/.test(text), "pack: it says an unchecked file stays out unless somebody ticks it in");
+const surname = sql(`select upper(last_name) from students where id = '${packStudent}'`);
+check(text.includes(`${surname}_`), `pack: the screen shows the names the vendor writes, not ours (${surname}_)`);
+check(/Their system accepts 25 MB/.test(text), "pack: the vendor's upload limit is on the screen before anybody builds it");
+check(!/^01 /m.test(text), "pack: the portal's own numbering gives way to the vendor's pattern");
 await ap.locator('input[name="note"]').fill("Sent to the university with the bank statement to follow");
 const [download] = await Promise.all([
   ap.waitForEvent("download", { timeout: 30000 }).catch(() => null),
@@ -203,15 +213,45 @@ void download;
 // The folder itself, read back.
 const res = await ap.request.get(`${BASE}/api/packs/${packId}`);
 check(res.status() === 200, `pack: the download works (${res.status()})`);
+check((res.headers()["content-disposition"] ?? "").includes(".zip"), "pack: a vendor who takes a folder gets a zip");
 const zip = await JSZip.loadAsync(await res.body());
 const names = Object.keys(zip.files);
 check(names.some((n) => n.startsWith("00 What is in this folder")), "pack: there is a front sheet");
 check(names.length > 1, `pack: the accepted files are in it (${names.length - 1})`);
+check(names.some((n) => n.startsWith(`${surname}_`)), `pack: the files inside carry the vendor's own names (${names.join(", ").slice(0, 80)})`);
 const sheet = await zip.file(names.find((n) => n.startsWith("00 ")))?.async("string");
 check(/Student {8}/.test(sheet) && sheet.includes(sql(`select first_name from students where id = '${packStudent}'`)), "pack: the sheet names the student");
 check(/In this folder/.test(sheet), "pack: the sheet lists what is in the folder");
 check(/Not in this folder, and still required|Nothing required is missing|running out too early/.test(sheet), "pack: the sheet is honest about what is not in it");
+check(sheet.includes(`${surname}_`), "pack: the sheet names the files the way the folder does");
 fs.writeFileSync(`${OUT}/cover-sheet.txt`, sheet);
+
+// --- Something the desk has not accepted, sent on purpose and marked as such.
+const unchecked = sql(`select ci.id from checklist_items ci where ci.student_id = '${packStudent}' and ci.document_id is not null order by ci.stage limit 1`);
+sql(`update checklist_items set state = 'IN_REVIEW', decided_at = null where id = '${unchecked}'`);
+text = await go(ap, `/students/${packStudent}/documentation/pack?app=${appId}`);
+check(/Send something the desk has not accepted/.test(text), "pack: an unchecked file can be ticked in, rather than emailed around the portal");
+await ap.locator(`input[name="include"][value="${unchecked}"]`).check();
+const [secondDownload] = await Promise.all([
+  ap.waitForEvent("download", { timeout: 30000 }).catch(() => null),
+  ap.getByRole("button", { name: "Build and download" }).click(),
+]);
+void secondDownload;
+check((await waitSql(`select count(*) from submission_packs where application_id = '${appId}'`, "2")) === "2", "pack: the second build is recorded too");
+const tickedPack = sql(`select id from submission_packs where application_id = '${appId}' order by created_at desc limit 1`);
+check(sql(`select included from submission_packs where id = '${tickedPack}'`).includes(unchecked), "pack: what was ticked in is kept, so the same link rebuilds what was sent");
+const tickedRes = await ap.request.get(`${BASE}/api/packs/${tickedPack}`);
+const tickedSheet = await (await JSZip.loadAsync(await tickedRes.body())).file(/^00 /)[0].async("string");
+check(/NOT CHECKED, put in deliberately/.test(tickedSheet), "pack: the sheet says which file went out unchecked");
+
+// --- A vendor whose system takes one upload gets one PDF.
+sql(`update vendors set pack_shape = 'ONE_PDF' where id = '${packVendor}'`);
+text = await go(ap, `/students/${packStudent}/documentation/pack?app=${appId}`);
+check(/One PDF with everything in it/.test(text), "pack: the screen says it will be one PDF before anybody builds it");
+const onePdf = await ap.request.get(`${BASE}/api/packs/${tickedPack}`);
+check((onePdf.headers()["content-type"] ?? "").includes("pdf"), `pack: the download is a PDF (${onePdf.headers()["content-type"]})`);
+check((await onePdf.body()).subarray(0, 5).toString() === "%PDF-", "pack: and it is a real PDF, not a zip with a new name");
+sql(`update vendors set pack_shape = 'FOLDER' where id = '${packVendor}'`);
 
 // --- Who cannot do any of this.
 const mgmt = await signIn("management@medcityoverseas.test", "10.140.1.4");

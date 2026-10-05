@@ -12,7 +12,7 @@ import { claimHeld, CLAIM_MINUTES, stageLabel, validUntil, waiveRefusal } from "
 import { getStudentForUser } from "@/server/queries";
 import { sendWhatsAppRecorded } from "@/server/whatsapp";
 import { stageGate, studentChecklist, studentContext, syncChecklist } from "@/server/documentation";
-import { packContents } from "@/server/pack";
+import { packContents, packFits } from "@/server/pack";
 import type { FormState } from "@/lib/form-state";
 import type { JourneyStage } from "@/db/schema";
 import { sendDocumentDecision, sendStageChange } from "@/server/crm-out";
@@ -595,12 +595,19 @@ export async function buildPackAction(_: FormState, fd: FormData): Promise<FormS
   const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
   const applicationId = String(fd.get("applicationId") ?? "");
   const note = String(fd.get("note") ?? "").trim().slice(0, 400) || null;
+  // Rows somebody deliberately ticked in although the desk had not accepted
+  // them. Anything that is not this student's is simply not found when the pack
+  // is gathered, so a stale or forged id cannot pull in another file.
+  const asked = fd.getAll("include").map(String).filter(Boolean).slice(0, 40);
   const app = await db.query.applications.findFirst({ where: eq(schema.applications.id, applicationId) });
   if (!app) return { error: "That application no longer exists." };
   await getStudentForUser(user, app.studentId);
-  const contents = await packContents(applicationId);
+  const contents = await packContents(applicationId, asked);
   if (!contents) return { error: "That application no longer exists." };
   if (contents.files.length === 0) return { error: "Nothing has been accepted for this student yet, so there is nothing to pack." };
+  const included = contents.files.filter((f) => f.notYetAccepted).map((f) => f.itemId);
+  const room = packFits(contents);
+  if (!room.ok) return { error: room.says };
   const [pack] = await db
     .insert(schema.submissionPacks)
     .values({
@@ -609,10 +616,16 @@ export async function buildPackAction(_: FormState, fd: FormData): Promise<FormS
       builtById: user.id,
       itemCount: contents.files.length,
       missing: contents.missing.map((m) => m.label),
+      included,
       note,
     })
     .returning({ id: schema.submissionPacks.id });
-  await audit(user.id, "pack.build", "application", applicationId, { files: contents.files.length, missing: contents.missing.map((m) => m.label) });
+  await audit(user.id, "pack.build", "application", applicationId, {
+    files: contents.files.length,
+    missing: contents.missing.map((m) => m.label),
+    included,
+    shape: contents.rules.shape,
+  });
   revalidatePath(`/students/${app.studentId}`, "layout");
   return { redirectTo: `/api/packs/${pack.id}`, ok: `Packed ${contents.files.length} document${contents.files.length === 1 ? "" : "s"}.` };
 }

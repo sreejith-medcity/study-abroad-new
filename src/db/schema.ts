@@ -78,6 +78,8 @@ export const statusGroup = pgEnum("status_group", [
 ]);
 export const offerType = pgEnum("offer_type", ["CONDITIONAL", "UNCONDITIONAL"]);
 export const visaDecision = pgEnum("visa_decision", ["GRANTED", "REFUSED"]);
+export const packShape = pgEnum("pack_shape", ["FOLDER", "ONE_PDF"]);
+
 export const serviceType = pgEnum("service_type", ["EDUCATION_LOAN", "FOREX", "ACCOMMODATION", "INSURANCE", "FLIGHT", "SIM", "PICKUP", "OTHER"]);
 /**
  * DECLINED is not CANCELLED. A student who bought their own insurance has made
@@ -1153,6 +1155,12 @@ export const submissionPacks = pgTable(
     itemCount: integer("item_count").notNull().default(0),
     /** What was still missing when it was built, recorded rather than hidden. */
     missing: jsonb("missing").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    /**
+     * Checklist rows put in by hand although the desk had not accepted them.
+     * Kept so the same link next week rebuilds the folder that was sent, rather
+     * than a tidier one.
+     */
+    included: jsonb("included").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
     note: text("note"),
     createdAt: createdAt(),
   },
@@ -1538,6 +1546,20 @@ export const vendors = pgTable(
     active: boolean("active").notNull().default(true),
     /** Medcity's own agreements with universities, which nobody invoices. */
     isDirect: boolean("is_direct").notNull().default(false),
+    /**
+     * How this vendor wants a submission pack: a folder of files, or one PDF
+     * with everything in it. Theirs to dictate, not ours, and a pack sent the
+     * wrong shape is a pack that comes back.
+     */
+    packShape: packShape("pack_shape").notNull().default("FOLDER"),
+    /**
+     * What each file inside should be called, as a pattern. The portal fills in
+     * {SURNAME}, {GIVEN}, {TYPE}, {ID} and {N}, and anything else is left as
+     * written, so a vendor who wants a prefix gets their prefix.
+     */
+    packNaming: text("pack_naming"),
+    /** What the vendor's own system accepts, in megabytes. Null where they have not said. */
+    packLimitMb: integer("pack_limit_mb"),
     contactName: text("contact_name"),
     contactEmail: text("contact_email"),
     contactPhone: text("contact_phone"),

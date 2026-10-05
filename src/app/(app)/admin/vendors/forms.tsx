@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ActionForm, FieldError } from "@/components/action-form";
 import { saveVendorAction } from "@/server/vendor-actions";
 import { PAYABLE_ON, VENDOR_COLOURS } from "@/lib/vendors";
+import { NAMING_TOKENS, PACK_SHAPES } from "@/lib/pack";
 import { Checkbox, Field, Input, Select, Textarea, cn } from "@/components/ui";
 
 export type EditableVendor = {
@@ -12,6 +13,9 @@ export type EditableVendor = {
   code: string;
   colour: string;
   isDirect: boolean;
+  packShape: string;
+  packNaming: string | null;
+  packLimitMb: number | null;
   currency: string;
   payableOn: string;
   daysToPay: number;
@@ -64,6 +68,31 @@ export function VendorForm({ vendor, onDone }: { vendor?: EditableVendor; onDone
         <FieldError name="colour" />
       </Field>
       <Checkbox name="isDirect" label="Medcity's own agreement with the university, not a vendor" defaultChecked={vendor?.isDirect} />
+      <fieldset className="rounded-lg border border-line p-3">
+        <legend className="px-1 text-[13px] font-medium text-brand-700">How they want a submission pack</legend>
+        <p className="mb-3 text-xs text-muted">
+          Theirs to dictate, not ours. A pack sent in the wrong shape or under the wrong names is a pack that comes back, so it is recorded here once
+          instead of remembered every time.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Field label="Shape" htmlFor="vendor-pack-shape" required>
+            <Select id="vendor-pack-shape" name="packShape" defaultValue={vendor?.packShape ?? "FOLDER"}>
+              {Object.entries(PACK_SHAPES).map(([k, label]) => (
+                <option key={k} value={k}>{label}</option>
+              ))}
+            </Select>
+            <FieldError name="packShape" />
+          </Field>
+          <Field label="File names" htmlFor="vendor-pack-naming" hint={`Leave it blank for the portal's own numbering. The portal fills in ${NAMING_TOKENS.join(" ")}, and the capitals you write are the capitals you get.`}>
+            <Input id="vendor-pack-naming" name="packNaming" defaultValue={v(vendor?.packNaming ?? "")} placeholder="{SURNAME}_{GIVEN}_{TYPE}" />
+            <FieldError name="packNaming" />
+          </Field>
+          <Field label="Their upload limit" htmlFor="vendor-pack-limit" hint="Megabytes. Blank where they have not said, and then nothing is refused.">
+            <Input id="vendor-pack-limit" name="packLimitMb" inputMode="numeric" defaultValue={v(vendor?.packLimitMb ?? "")} placeholder="10" />
+            <FieldError name="packLimitMb" />
+          </Field>
+        </div>
+      </fieldset>
       <div className="grid gap-3 sm:grid-cols-3">
         <Field label="They settle in" htmlFor="vendor-currency" required hint="The currency their invoices are raised in.">
           <Input id="vendor-currency" name="currency" defaultValue={v(vendor?.currency ?? "INR")} className="uppercase" />

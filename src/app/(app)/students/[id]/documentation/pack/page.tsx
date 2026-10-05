@@ -5,7 +5,8 @@ import { requireUser } from "@/lib/auth";
 import { fmtDate, fmtDateTime, intakeLabel } from "@/lib/format";
 import { APP_ROLES } from "@/lib/permissions";
 import { getStudentForUser } from "@/server/queries";
-import { packContents } from "@/server/pack";
+import { nameInPack, packCandidates, packContents, packFits, partsOf } from "@/server/pack";
+import { packShapeText } from "@/lib/pack";
 import { Alert, Card, CardHeader, Chip, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
 import { PackForm } from "./form";
 
@@ -33,6 +34,8 @@ export default async function PackPage({ params, searchParams }: { params: Promi
   }
   const application = apps.find((a) => a.id === chosen) ?? apps.find((a) => a.status.group !== "CLOSED") ?? apps[0];
   const contents = await packContents(application.id);
+  const candidates = await packCandidates(id);
+  const fits = contents ? packFits(contents) : { ok: true, says: "" };
   const built = await db.query.submissionPacks.findMany({
     where: eq(schema.submissionPacks.applicationId, application.id),
     with: { builtBy: { columns: { name: true, deskLabel: true } } },
@@ -101,10 +104,16 @@ export default async function PackPage({ params, searchParams }: { params: Promi
         </Alert>
       )}
 
+      {!fits.ok && (
+        <Alert tone="bad" title="Bigger than this vendor's system accepts">
+          {fits.says}
+        </Alert>
+      )}
+
       <Card>
         <CardHeader
           title={`What goes in (${contents?.files.length ?? 0})`}
-          subtitle="Accepted documents only. Anything uploaded but not yet checked stays out, because sending an unchecked file is how a file comes back."
+          subtitle="Accepted documents, under the names this route uses. Anything uploaded but not yet checked stays out unless somebody ticks it in below, because sending an unchecked file is how a file comes back."
         />
         {!contents || contents.files.length === 0 ? (
           <p className="p-4 text-muted">Nothing has been accepted for this student yet.</p>
@@ -123,7 +132,7 @@ export default async function PackPage({ params, searchParams }: { params: Promi
             <tbody>
               {contents.files.map((f, i) => (
                 <tr key={f.itemId}>
-                  <Td className="font-mono text-xs">{`${String(i + 1).padStart(2, "0")} ${f.label}`}</Td>
+                  <Td className="font-mono text-xs">{nameInPack(contents.rules, i, partsOf(contents, f), f.fileName)}</Td>
                   <Td>{f.fileName ?? <span className="text-muted">No file on the row</span>}</Td>
                   <Td className="whitespace-nowrap text-xs">{f.stage}</Td>
                   <Td className="text-xs tabular">v{f.version || 1}</Td>
@@ -144,9 +153,14 @@ export default async function PackPage({ params, searchParams }: { params: Promi
       <Card className="p-4">
         <h2 className="mb-1 font-semibold text-brand-700">Build it</h2>
         <p className="mb-3 text-xs text-muted">
-          One zip: the front sheet, then the files, numbered so a stranger can read the folder. Nothing is stored, so the same link built next week gives the paperwork as it stands then.
+          {contents ? packShapeText(contents.rules) : "A folder, one file per document"}, with the front sheet first.{" "}
+          {contents?.rules.naming
+            ? `Files are named ${contents.rules.naming} because that is how ${contents.application.vendor?.name ?? "this route"} writes them.`
+            : "Files are numbered so a stranger can read the folder."}{" "}
+          {contents?.rules.limitMb ? `Their system accepts ${contents.rules.limitMb} MB.` : ""} Nothing is stored, so the same link built next week gives the
+          paperwork as it stands then.
         </p>
-        <PackForm applicationId={application.id} disabled={!contents || contents.files.length === 0} />
+        <PackForm applicationId={application.id} disabled={!contents || contents.files.length === 0} candidates={candidates} />
       </Card>
 
       {built.length > 0 && (
@@ -161,6 +175,11 @@ export default async function PackPage({ params, searchParams }: { params: Promi
                   <a href={`/api/packs/${b.id}`} className="ml-auto font-medium text-brand-600 hover:underline">Download again</a>
                 </div>
                 {b.missing.length > 0 && <p className="mt-0.5 text-muted">Missing then: {b.missing.join(", ")}</p>}
+                {b.included.length > 0 && (
+                  <p className="mt-0.5 text-muted">
+                    Put in before the desk accepted {b.included.length === 1 ? "it" : "them"}: {b.included.length} document{b.included.length === 1 ? "" : "s"}
+                  </p>
+                )}
                 {b.note && <p className="mt-0.5 text-muted">{b.note}</p>}
               </li>
             ))}

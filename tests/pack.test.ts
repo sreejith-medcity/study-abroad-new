@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { coverSheet, packFileName, packName, type PackContents } from "../src/lib/pack";
+import { DEFAULT_PACK_RULES, coverSheet, nameInPack, packFileName, packName, packShapeText, type PackContents, type PackRules, withinLimit } from "../src/lib/pack";
 
 const contents = (over: Partial<PackContents> = {}): PackContents => ({
   application: {
@@ -12,12 +12,23 @@ const contents = (over: Partial<PackContents> = {}): PackContents => ({
     campus: null,
     country: "United Kingdom",
     status: "Application in progress",
+    vendorReference: "KC-2026-99814",
     vendor: { name: "KC Overseas", code: "KC", extraDocuments: "KC application form, counsellor declaration", interviewRequired: true },
   },
-  student: { id: "s1", medcityId: "MC-KOT-26-0041", name: "Arathi Krishnan", branch: "Medcity Kottayam", passportNumber: "Z1234567", dateOfBirth: new Date("2002-04-18") },
+  rules: DEFAULT_PACK_RULES,
+  student: {
+    id: "s1",
+    medcityId: "MC-KOT-26-0041",
+    name: "Arathi Krishnan",
+    branch: "Medcity Kottayam",
+    passportNumber: "Z1234567",
+    dateOfBirth: new Date("2002-04-18"),
+    surname: "Krishnan",
+    given: "Arathi",
+  },
   files: [
-    { itemId: "i1", documentId: "d1", label: "Passport (front and back)", stage: "1. Profile", version: 2, validTo: "2031-03-18", acceptedOn: new Date("2026-09-01"), fileName: "passport.PDF", storageKey: "k1", mimeType: "application/pdf" },
-    { itemId: "i2", documentId: "d2", label: "IELTS test report", stage: "1. Profile", version: 1, validTo: "2026-11-10", acceptedOn: new Date("2026-09-02"), fileName: "ielts.jpg", storageKey: "k2", mimeType: "image/jpeg" },
+    { itemId: "i1", documentId: "d1", label: "Passport (front and back)", stage: "1. Profile", version: 2, validTo: "2031-03-18", acceptedOn: new Date("2026-09-01"), fileName: "passport.PDF", storageKey: "k1", mimeType: "application/pdf", bytes: 2_200_000 },
+    { itemId: "i2", documentId: "d2", label: "IELTS test report", stage: "1. Profile", version: 1, validTo: "2026-11-10", acceptedOn: new Date("2026-09-02"), fileName: "ielts.jpg", storageKey: "k2", mimeType: "image/jpeg", bytes: 900_000 },
   ],
   missing: [{ label: "Statement of purpose", why: "Asked for, nothing back", owedBy: "STUDENT" }],
   expiring: [{ label: "IELTS test report", validTo: "2026-11-10" }],
@@ -79,6 +90,29 @@ test("nothing unverified is filled in: a missing date reads as not recorded", ()
 
 test("the download is named so it can be found again on a desktop", () => {
   assert.equal(packName(contents()), "Arathi Krishnan 144472 26-27 University of Dundee.zip");
+  // A vendor who takes one upload gets a PDF, and the download says so.
+  assert.equal(packName(contents({ rules: { shape: "ONE_PDF", naming: null, limitMb: null } })), "Arathi Krishnan 144472 26-27 University of Dundee.pdf");
+});
+
+test("the vendor's own number for the application is on the sheet, or says it is not", () => {
+  assert.match(coverSheet(contents(), "Ops"), /Their number   KC-2026-99814/);
+  assert.match(coverSheet(contents({ application: { ...contents().application, vendorReference: null } }), "Ops"), /Their number {3}Not recorded/);
+});
+
+test("the sheet names the files the way the folder does, not its own way", () => {
+  const sheet = coverSheet(contents({ rules: { shape: "FOLDER", naming: "{SURNAME}_{TYPE}", limitMb: null } }), "Ops");
+  assert.match(sheet, /KRISHNAN_PASSPORT_FRONT_AND_BACK\.pdf/);
+  assert.doesNotMatch(sheet, /01 Passport front and back\.pdf/);
+});
+
+test("a document put in before the desk accepted it is marked as such", () => {
+  const c = contents();
+  c.files[1].notYetAccepted = true;
+  const sheet = coverSheet(c, "Ops");
+  assert.match(sheet, /IELTS test report.*NOT CHECKED, put in deliberately/);
+  assert.match(sheet, /added by hand before the desk accepted it/);
+  // The accepted one carries no such mark.
+  assert.doesNotMatch(sheet.split("\n").find((l) => l.includes("Passport")) ?? "", /NOT CHECKED/);
 });
 
 test("a document in the folder that is out of date is one problem, not two", () => {
@@ -92,4 +126,50 @@ test("the front sheet carries the Medcity ID, and says so when there is none", (
   assert.match(coverSheet(contents(), "Priya"), /Medcity ID {5}MC-KOT-26-0041/);
   const noId = contents({ student: { ...contents().student, medcityId: null } });
   assert.match(coverSheet(noId, "Priya"), /Medcity ID {5}Not recorded/);
+});
+
+test("each vendor's own naming, down to the capitals they write it in", () => {
+  const parts = { surname: "Krishnan", given: "Arathi", type: "Passport", medcityId: "MC-KTM-26-0041" };
+  const rules = (naming: string | null): PackRules => ({ shape: "FOLDER", naming, limitMb: null });
+
+  // KC writes it in capitals, so the file comes out in capitals.
+  assert.equal(nameInPack(rules("{SURNAME}_{GIVEN}_{TYPE}"), 0, parts, "scan.pdf"), "KRISHNAN_ARATHI_PASSPORT.pdf");
+  // Medcity's own agreements are written the way the student wrote their name.
+  assert.equal(nameInPack(rules("{Surname}_{Given}_{Type}"), 0, parts, "scan.pdf"), "Krishnan_Arathi_Passport.pdf");
+  // And a vendor who wants the ID in front of it gets that.
+  assert.equal(nameInPack(rules("{ID}_{TYPE}"), 0, parts, "a.jpg"), "MC-KTM-26-0041_PASSPORT.jpg");
+  assert.equal(nameInPack(rules("{N} {TYPE}"), 4, parts, "a.pdf"), "05 PASSPORT.pdf");
+
+  // No pattern recorded: the portal's own numbering, as before.
+  assert.equal(nameInPack(rules(null), 0, parts, "scan.pdf"), "01 Passport.pdf");
+
+  // The extension follows the file, not the pattern.
+  assert.equal(nameInPack(rules("{SURNAME}_{TYPE}"), 0, parts, "photo.PNG"), "KRISHNAN_PASSPORT.png");
+  // A name with punctuation in it does not become a name with punctuation in it.
+  assert.equal(nameInPack(rules("{SURNAME}_{TYPE}"), 0, { ...parts, surname: "O'Brien-Smith" }, "a.pdf"), "OBRIEN-SMITH_PASSPORT.pdf");
+
+  // A vendor who wrote underscores between the parts did not mean to receive
+  // half a name with spaces in it.
+  const long = { ...parts, type: "Passport (front and back)" };
+  assert.equal(nameInPack(rules("{SURNAME}_{GIVEN}_{TYPE}"), 0, long, "a.pdf"), "KRISHNAN_ARATHI_PASSPORT_FRONT_AND_BACK.pdf");
+  assert.equal(nameInPack(rules("{Surname}-{Type}"), 0, long, "a.pdf"), "Krishnan-Passport-front-and-back.pdf");
+  // One who wrote spaces keeps spaces.
+  assert.equal(nameInPack(rules("{N} {TYPE}"), 0, long, "a.pdf"), "01 PASSPORT FRONT AND BACK.pdf");
+});
+
+test("a pack bigger than the vendor accepts is refused with what to do about it", () => {
+  const rules: PackRules = { shape: "ONE_PDF", naming: null, limitMb: 10 };
+  assert.equal(withinLimit(rules, 9 * 1024 * 1024).ok, true);
+  const over = withinLimit(rules, 13 * 1024 * 1024);
+  assert.equal(over.ok, false);
+  assert.match(over.says, /13 MB and the vendor accepts 10 MB/);
+  assert.match(over.says, /Take out 3 MB/);
+
+  // A vendor who has not said is not second-guessed.
+  assert.equal(withinLimit({ shape: "FOLDER", naming: null, limitMb: null }, 500 * 1024 * 1024).ok, true);
+});
+
+test("the screen says what shape the pack will be before anybody builds it", () => {
+  assert.match(packShapeText({ shape: "ONE_PDF", naming: null, limitMb: null }), /One PDF/);
+  assert.match(packShapeText({ shape: "FOLDER", naming: null, limitMb: null }), /folder/);
 });

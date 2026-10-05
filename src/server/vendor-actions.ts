@@ -17,6 +17,24 @@ const vendorSchema = z.object({
   code: z.string().trim().transform(tidyCode).refine((v) => CODE_RE.test(v), "Two to four letters, such as KC"),
   colour: z.string().refine(isColour, "Pick a colour from the list"),
   isDirect: z.string().optional(),
+  packShape: z.enum(["FOLDER", "ONE_PDF"]),
+  // A pattern, not a file name: anything outside the tokens is left as written,
+  // so a vendor who wants their own prefix in front of every file gets it.
+  packNaming: z
+    .string()
+    .trim()
+    .max(80)
+    .optional()
+    .transform((x) => x || null)
+    .refine((x) => x === null || /\{(SURNAME|GIVEN|TYPE|ID|N)\}/i.test(x), "Use at least one of {SURNAME} {GIVEN} {TYPE} {ID} {N}, or leave it blank")
+    .refine((x) => x === null || !/[\\/:*?"<>|]/.test(x), "A file name cannot contain \\ / : * ? \" < > |"),
+  packLimitMb: z
+    .string()
+    .trim()
+    .max(6)
+    .optional()
+    .transform((x) => (x ? Number(x) : null))
+    .refine((x) => x === null || (Number.isInteger(x) && x > 0 && x <= 2000), "Megabytes, a whole number up to 2000, or blank"),
   currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/, "A three-letter currency, such as GBP"),
   payableOn: z.enum(Object.keys(PAYABLE_ON) as [keyof typeof PAYABLE_ON, ...(keyof typeof PAYABLE_ON)[]]),
   daysToPay: z.coerce.number().int().min(0, "Days cannot be negative").max(365, "A year at most"),
@@ -42,6 +60,9 @@ export async function saveVendorAction(_: FormState, fd: FormData): Promise<Form
     code: d.code,
     colour: d.colour,
     isDirect: fd.get("isDirect") === "on",
+    packShape: d.packShape,
+    packNaming: d.packNaming,
+    packLimitMb: d.packLimitMb,
     currency: d.currency,
     payableOn: d.payableOn,
     daysToPay: d.daysToPay,

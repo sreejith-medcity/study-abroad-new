@@ -2,6 +2,7 @@ import { requireUser } from "@/lib/auth";
 import { ADMIN_ROLES } from "@/lib/permissions";
 import { fmtDate } from "@/lib/format";
 import { PAYABLE_ON, termsAge } from "@/lib/vendors";
+import { packRulesLine } from "@/lib/pack";
 import { listVendors, vendorCoverage } from "@/server/vendors";
 import { confirmVendorTermsAction, setVendorActiveAction } from "@/server/vendor-actions";
 import { VendorForm, EditVendor } from "./forms";
@@ -58,6 +59,7 @@ export default async function VendorsPage() {
                           {!vendor.active && <Chip tone="warn">Paused</Chip>}
                         </div>
                         {vendor.contactName && <p className="mt-0.5 text-xs text-muted">{vendor.contactName}{vendor.contactEmail ? ` · ${vendor.contactEmail}` : ""}</p>}
+                        <p className="mt-0.5 text-xs text-muted">Packs: {packRulesLine({ shape: vendor.packShape, naming: vendor.packNaming, limitMb: vendor.packLimitMb })}</p>
                         <EditVendor vendor={{ ...vendor, payableOn: vendor.payableOn as string }} />
                       </Td>
                       <Td className="text-[13px]">
