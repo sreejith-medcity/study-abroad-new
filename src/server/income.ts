@@ -1,7 +1,7 @@
 import "server-only";
 import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { DEPARTURE_KINDS, leakage, outstanding, rateFor, totals, type LineLike, type RateLike } from "@/lib/income";
+import { DEPARTURE_KINDS, INCOME_FOR_SERVICE, leakage, outstanding, rateFor, totals, type LineLike, type RateLike } from "@/lib/income";
 import { intakeStart } from "@/db/documentation-sync";
 import type { IncomeKind } from "@/db/schema";
 
@@ -141,6 +141,8 @@ export type DepartureRow = {
   startsOn: Date;
   booked: IncomeKind[];
   missing: IncomeKind[];
+  /** What the student said no to. Neither booked nor missing: answered. */
+  declined: IncomeKind[];
   visaDecided: boolean;
 };
 
@@ -177,9 +179,20 @@ export async function departureBoard(opts: { orgId?: string; withinDays?: number
 
   const ids = [...new Set(rows.map((r) => r.studentId))];
   const booked = new Map<string, IncomeKind[]>();
+  const declined = new Map<string, IncomeKind[]>();
   if (ids.length) {
     for (const line of await db.select({ studentId: il.studentId, kind: il.kind }).from(il).where(and(inArray(il.studentId, ids), inArray(il.kind, DEPARTURE_KINDS)))) {
       booked.set(line.studentId, [...(booked.get(line.studentId) ?? []), line.kind]);
+    }
+    // A service the student turned down is an answer, not a gap. Without this
+    // the board asks a branch to ring somebody who has already said no.
+    const sr = schema.serviceRequests;
+    for (const r of await db
+      .select({ studentId: sr.studentId, type: sr.type })
+      .from(sr)
+      .where(and(inArray(sr.studentId, ids), eq(sr.status, "DECLINED")))) {
+      const kind = INCOME_FOR_SERVICE[r.type];
+      if (kind && DEPARTURE_KINDS.includes(kind)) declined.set(r.studentId, [...(declined.get(r.studentId) ?? []), kind]);
     }
   }
   const within = opts.withinDays ?? 180;
@@ -187,6 +200,7 @@ export async function departureBoard(opts: { orgId?: string; withinDays?: number
   return rows
     .map((r) => {
       const mine = booked.get(r.studentId) ?? [];
+      const saidNo = declined.get(r.studentId) ?? [];
       return {
         studentId: r.studentId,
         name: `${r.firstName} ${r.lastName}`,
@@ -198,7 +212,8 @@ export async function departureBoard(opts: { orgId?: string; withinDays?: number
         intakeYear: r.intakeYear,
         startsOn: intakeStart(r.intakeMonth, r.intakeYear),
         booked: mine,
-        missing: DEPARTURE_KINDS.filter((k) => !mine.includes(k)),
+        missing: DEPARTURE_KINDS.filter((k) => !mine.includes(k) && !saidNo.includes(k)),
+        declined: saidNo,
         visaDecided: r.visaDecision === "GRANTED",
       };
     })
@@ -214,7 +229,7 @@ export async function departureBoard(opts: { orgId?: string; withinDays?: number
 /** What was left on the table, per branch and altogether. */
 export async function leakageReport(opts: { orgId?: string } = {}, today = new Date()) {
   const board = await departureBoard({ orgId: opts.orgId, withinDays: 365 }, today);
-  const overall = leakage(board.map((b) => ({ studentId: b.studentId, kinds: b.booked })));
+  const overall = leakage(board.map((b) => ({ studentId: b.studentId, kinds: b.booked, declined: b.declined })));
   const byBranch = new Map<string, { branch: string; students: number; missed: number }>();
   for (const b of board) {
     const held = byBranch.get(b.orgId) ?? { branch: b.branch, students: 0, missed: 0 };

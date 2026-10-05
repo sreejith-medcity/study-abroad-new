@@ -70,6 +70,16 @@ export type LineLike = {
   branchSharePercent: number | null;
 };
 
+/**
+ * Coaching is the academy's money, not Overseas'.
+ *
+ * It is recorded against the student because it is part of what the student is
+ * worth to Medcity as a whole, and it is kept out of the Overseas totals
+ * because adding it would flatter every figure on every money screen by an
+ * amount that was earned by a different company.
+ */
+export const ANOTHER_COMPANY: IncomeKind[] = ["COACHING_FEE"];
+
 export type Totals = {
   /** Lines with a figure, added up per currency. */
   expected: Record<string, number>;
@@ -81,6 +91,8 @@ export type Totals = {
   unknown: number;
   /** Lines nobody will ever collect, kept visible rather than quietly dropped. */
   writtenOff: Record<string, number>;
+  /** The academy's money, shown beside the rest and counted in none of it. */
+  anotherCompany: Record<string, number>;
   lines: number;
 };
 
@@ -97,9 +109,16 @@ const add = (into: Record<string, number>, currency: string, amount: number) => 
  * it, with the rate it used on screen.
  */
 export function totals(lines: LineLike[]): Totals {
-  const out: Totals = { expected: {}, invoiced: {}, received: {}, branchShare: {}, unknown: 0, writtenOff: {}, lines: lines.length };
+  const out: Totals = { expected: {}, invoiced: {}, received: {}, branchShare: {}, unknown: 0, writtenOff: {}, anotherCompany: {}, lines: lines.length };
   for (const line of lines) {
     if (line.state === "NOT_APPLICABLE") continue;
+    // Counted on its own, so the student's worth to Medcity is still visible
+    // while no Overseas total is flattered by it.
+    if (ANOTHER_COMPANY.includes(line.kind)) {
+      const paid = line.receivedAmount ?? line.invoicedAmount ?? line.expectedAmount;
+      if (paid != null) add(out.anotherCompany, line.currency, paid);
+      continue;
+    }
     if (line.state === "WRITTEN_OFF") {
       if (line.invoicedAmount != null) add(out.writtenOff, line.currency, line.invoicedAmount);
       else if (line.expectedAmount != null) add(out.writtenOff, line.currency, line.expectedAmount);
@@ -169,26 +188,33 @@ export function expectedFromRate(rate: RateLike | null, saleAmount: number | nul
   return { amount: null, why: "The rate card carries no figure" };
 }
 
-export type LeakRow = { kind: IncomeKind; students: number; booked: number; missed: number };
+export type LeakRow = { kind: IncomeKind; students: number; booked: number; missed: number; declined: number };
 
 /**
  * What was left on the table: the departure services a student leaving soon has
  * not bought. Only students who are actually going are counted, because a
  * shortlist is not a missed sale.
  */
-export function leakage(rows: { studentId: string; kinds: IncomeKind[] }[]): LeakRow[] {
+export function leakage(rows: { studentId: string; kinds: IncomeKind[]; declined?: IncomeKind[] }[]): LeakRow[] {
   return DEPARTURE_KINDS.map((kind) => {
     const booked = rows.filter((r) => r.kinds.includes(kind)).length;
-    return { kind, students: rows.length, booked, missed: rows.length - booked };
+    // A student who said no is not a sale anybody lost. Counting them as
+    // leakage is how a report tells a branch to chase somebody who has already
+    // bought their own, and how the figure stops being believed.
+    const declined = rows.filter((r) => !r.kinds.includes(kind) && r.declined?.includes(kind)).length;
+    const asked = rows.length - declined;
+    return { kind, students: asked, booked, declined, missed: asked - booked };
   }).sort((a, b) => b.missed - a.missed);
 }
 
 /** Which kind of income a booked service earns. */
-export const INCOME_FOR_SERVICE: Record<"EDUCATION_LOAN" | "FOREX" | "ACCOMMODATION" | "INSURANCE" | "FLIGHT" | "OTHER", IncomeKind> = {
+export const INCOME_FOR_SERVICE: Record<"EDUCATION_LOAN" | "FOREX" | "ACCOMMODATION" | "INSURANCE" | "FLIGHT" | "SIM" | "PICKUP" | "OTHER", IncomeKind> = {
   EDUCATION_LOAN: "LOAN_REFERRAL",
   FOREX: "FOREX",
   ACCOMMODATION: "ACCOMMODATION",
   INSURANCE: "INSURANCE",
   FLIGHT: "TICKET",
+  SIM: "SIM",
+  PICKUP: "PICKUP",
   OTHER: "OTHER",
 };

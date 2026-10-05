@@ -21,9 +21,29 @@ import { shape, type FinancialYear, type MoneyRow } from "@/lib/money-report";
 const window = (fy: FinancialYear): SQL =>
   sql`coalesce(l.received_on, l.due_on, (l.created_at at time zone 'UTC')::date) between ${fy.from}::date and ${fy.to}::date`;
 
-const counted = sql`l.state <> 'WRITTEN_OFF' and l.currency = 'INR'`;
+/**
+ * One currency at a time, never converted.
+ *
+ * University commission is recorded in the vendor's own currency, so filtering
+ * to rupees left the biggest figures in the business off the page. Adding them
+ * needs a rate nobody recorded, and a made-up total is worse than one table per
+ * currency: every figure here matches the bank it came from.
+ */
+const counted = (currency: string) => sql`l.state <> 'WRITTEN_OFF' and l.currency = ${currency}`;
 
 const mine = (orgId?: string): SQL => (orgId ? sql`and l.org_id = ${orgId}` : sql``);
+
+/** Every currency with a line in this window, rupees first, for the picker. */
+export async function currenciesInPlay(fy: FinancialYear, orgId?: string): Promise<string[]> {
+  const rows = await db.execute<{ currency: string }>(sql`
+    select distinct l.currency
+    from income_lines l
+    where l.state <> 'WRITTEN_OFF' and ${window(fy)} ${mine(orgId)}
+  `);
+  const found = rows.map((r) => r.currency).filter(Boolean);
+  const rest = found.filter((c) => c !== "INR").sort();
+  return found.includes("INR") || found.length === 0 ? ["INR", ...rest] : rest;
+}
 
 type Raw = { key: string | null; label: string | null; students: number; expected: number | null; received: number | null; days_to_pay: number | null };
 
@@ -52,7 +72,7 @@ const DAYS_TO_PAY = sql`
   ) filter (where i.paid_at is not null and coalesce(i.sent_at, i.raised_on::timestamptz) is not null)`;
 
 /** By the road the student was sent down: the vendor on the line. */
-async function byRoute(fy: FinancialYear, orgId?: string) {
+async function byRoute(fy: FinancialYear, currency: string, orgId?: string) {
   const raw = await db.execute<Raw>(sql`
     select v.id as key, v.name as label,
       count(distinct l.student_id)::int as students,
@@ -62,14 +82,14 @@ async function byRoute(fy: FinancialYear, orgId?: string) {
     from income_lines l
     left join vendors v on v.id = l.vendor_id
     left join vendor_invoices i on i.id = l.invoice_id
-    where ${counted} and ${window(fy)} ${mine(orgId)}
+    where ${counted(currency)} and ${window(fy)} ${mine(orgId)}
     group by 1, 2
   `);
   return rows(raw, "No vendor on the line");
 }
 
 /** By what the money was for. */
-async function byLine(fy: FinancialYear, orgId?: string) {
+async function byLine(fy: FinancialYear, currency: string, orgId?: string) {
   const raw = await db.execute<Raw>(sql`
     select l.kind::text as key, l.kind::text as label,
       count(distinct l.student_id)::int as students,
@@ -77,14 +97,14 @@ async function byLine(fy: FinancialYear, orgId?: string) {
       sum(l.received_amount)::int as received,
       null::numeric as days_to_pay
     from income_lines l
-    where ${counted} and ${window(fy)} ${mine(orgId)}
+    where ${counted(currency)} and ${window(fy)} ${mine(orgId)}
     group by 1, 2
   `);
   return rows(raw, "Not recorded");
 }
 
 /** By the branch that sent the student. */
-async function byBranch(fy: FinancialYear, orgId?: string) {
+async function byBranch(fy: FinancialYear, currency: string, orgId?: string) {
   const raw = await db.execute<Raw>(sql`
     select o.id as key, o.name as label,
       count(distinct l.student_id)::int as students,
@@ -93,7 +113,7 @@ async function byBranch(fy: FinancialYear, orgId?: string) {
       null::numeric as days_to_pay
     from income_lines l
     join organizations o on o.id = l.org_id
-    where ${counted} and ${window(fy)} ${mine(orgId)}
+    where ${counted(currency)} and ${window(fy)} ${mine(orgId)}
     group by 1, 2
   `);
   return rows(raw, "Not recorded");
@@ -103,7 +123,7 @@ async function byBranch(fy: FinancialYear, orgId?: string) {
  * By where the money actually comes from, which is rarely where the enquiries
  * come from. A line with no application behind it has no country, and says so.
  */
-async function byDestination(fy: FinancialYear, orgId?: string) {
+async function byDestination(fy: FinancialYear, currency: string, orgId?: string) {
   const raw = await db.execute<Raw>(sql`
     select c.id as key, c.name as label,
       count(distinct l.student_id)::int as students,
@@ -116,7 +136,7 @@ async function byDestination(fy: FinancialYear, orgId?: string) {
     left join universities u on u.id = p.university_id
     left join countries c on c.id = u.country_id
     left join vendor_invoices i on i.id = l.invoice_id
-    where ${counted} and ${window(fy)} ${mine(orgId)}
+    where ${counted(currency)} and ${window(fy)} ${mine(orgId)}
     group by 1, 2
   `);
   return rows(raw, "Not tied to an application");
@@ -124,6 +144,7 @@ async function byDestination(fy: FinancialYear, orgId?: string) {
 
 export type MoneyReport = {
   year: FinancialYear;
+  currency: string;
   route: ReturnType<typeof shape>;
   line: ReturnType<typeof shape>;
   branch: ReturnType<typeof shape>;
@@ -132,17 +153,17 @@ export type MoneyReport = {
   setAside: { otherCurrency: number; writtenOff: number };
 };
 
-export async function moneyReport(fy: FinancialYear, orgId?: string): Promise<MoneyReport> {
+export async function moneyReport(fy: FinancialYear, currency: string, orgId?: string): Promise<MoneyReport> {
   const [route, line, branch, destination, aside] = await Promise.all([
-    byRoute(fy, orgId),
-    byLine(fy, orgId),
-    byBranch(fy, orgId),
-    byDestination(fy, orgId),
+    byRoute(fy, currency, orgId),
+    byLine(fy, currency, orgId),
+    byBranch(fy, currency, orgId),
+    byDestination(fy, currency, orgId),
     db.execute<{ other_currency: number; written_off: number; students: number }>(sql`
       select
-        count(*) filter (where l.currency <> 'INR' and l.state <> 'WRITTEN_OFF')::int as other_currency,
+        count(*) filter (where l.currency <> ${currency} and l.state <> 'WRITTEN_OFF')::int as other_currency,
         count(*) filter (where l.state = 'WRITTEN_OFF')::int as written_off,
-        count(distinct l.student_id) filter (where ${counted})::int as students
+        count(distinct l.student_id) filter (where ${counted(currency)})::int as students
       from income_lines l
       where ${window(fy)} ${mine(orgId)}
     `),
@@ -159,6 +180,7 @@ export async function moneyReport(fy: FinancialYear, orgId?: string): Promise<Mo
 
   return {
     year: fy,
+    currency,
     route: people(shape(route)),
     line: people(shape(line)),
     branch: people(shape(branch)),

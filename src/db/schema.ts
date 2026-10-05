@@ -54,8 +54,14 @@ export const statusGroup = pgEnum("status_group", [
 ]);
 export const offerType = pgEnum("offer_type", ["CONDITIONAL", "UNCONDITIONAL"]);
 export const visaDecision = pgEnum("visa_decision", ["GRANTED", "REFUSED"]);
-export const serviceType = pgEnum("service_type", ["EDUCATION_LOAN", "FOREX", "ACCOMMODATION", "INSURANCE", "FLIGHT", "OTHER"]);
-export const serviceStatus = pgEnum("service_status", ["NEW", "IN_PROGRESS", "DONE", "CANCELLED"]);
+export const serviceType = pgEnum("service_type", ["EDUCATION_LOAN", "FOREX", "ACCOMMODATION", "INSURANCE", "FLIGHT", "SIM", "PICKUP", "OTHER"]);
+/**
+ * DECLINED is not CANCELLED. A student who bought their own insurance has made
+ * a decision; a request somebody abandoned has not. Keeping them apart is what
+ * stops the departure board nagging about a sale that was never going to happen
+ * and what stops the leakage report counting it as money left on the table.
+ */
+export const serviceStatus = pgEnum("service_status", ["NEW", "IN_PROGRESS", "DONE", "CANCELLED", "DECLINED"]);
 export const eventKind = pgEnum("event_kind", ["WEBINAR", "UNIVERSITY_VISIT", "TRAINING", "FAIR"]);
 export const applicationPriority = pgEnum("application_priority", ["HIGH", "NORMAL", "LOW"]);
 export const ticketCategory = pgEnum("ticket_category", ["APPLICATION", "COMMISSION", "CATALOGUE", "ACCESS", "OTHER"]);

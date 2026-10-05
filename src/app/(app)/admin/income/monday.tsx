@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { INCOME_LABEL } from "@/lib/income";
 import { daysToPayText, financialYears, fastestPayer, inWords, shareText, type FinancialYear, type ShapedRow } from "@/lib/money-report";
-import { moneyReport } from "@/server/money-report";
+import { currenciesInPlay, moneyReport } from "@/server/money-report";
 import { Alert, Card, CardHeader, Table, Td, Th, cn } from "@/components/ui";
 import type { IncomeKind } from "@/db/schema";
 
@@ -84,8 +84,24 @@ function MoneyTable({
   );
 }
 
-export async function MondayRead({ year, orgId, today, oneBranch }: { year: FinancialYear; orgId?: string; today: Date; oneBranch: boolean }) {
-  const report = await moneyReport(year, orgId);
+export async function MondayRead({
+  year,
+  currency,
+  orgId,
+  today,
+  oneBranch,
+}: {
+  year: FinancialYear;
+  currency?: string;
+  orgId?: string;
+  today: Date;
+  oneBranch: boolean;
+}) {
+  // One currency at a time. Commission is recorded in the vendor's own, so a
+  // page that showed only rupees was leaving the largest figures off it.
+  const currencies = await currenciesInPlay(year, orgId);
+  const showing = currency && currencies.includes(currency) ? currency : currencies[0];
+  const report = await moneyReport(year, showing, orgId);
   const note = fastestPayer(report.route.rows);
 
   return (
@@ -95,7 +111,7 @@ export async function MondayRead({ year, orgId, today, oneBranch }: { year: Fina
         {financialYears(today).map((fy) => (
           <Link
             key={fy.key}
-            href={`/admin/income?tab=monday&fy=${fy.key}`}
+            href={`/admin/income?tab=monday&fy=${fy.key}&cur=${showing}`}
             className={cn(
               "rounded-md px-2.5 py-1 text-[13px] font-medium ring-1 ring-inset",
               fy.key === year.key ? "bg-brand-50 text-brand-700 ring-brand-200" : "text-muted ring-line hover:text-ink",
@@ -105,6 +121,25 @@ export async function MondayRead({ year, orgId, today, oneBranch }: { year: Fina
           </Link>
         ))}
       </div>
+
+      {currencies.length > 1 && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <span className="text-[13px] text-muted">Currency</span>
+          {currencies.map((c) => (
+            <Link
+              key={c}
+              href={`/admin/income?tab=monday&fy=${year.key}&cur=${c}`}
+              className={cn(
+                "rounded-md px-2.5 py-1 text-[13px] font-medium ring-1 ring-inset",
+                c === showing ? "bg-brand-50 text-brand-700 ring-brand-200" : "text-muted ring-line hover:text-ink",
+              )}
+            >
+              {c}
+            </Link>
+          ))}
+          <span className="text-[13px] text-muted">Nothing is converted, so every figure matches the bank it came from.</span>
+        </div>
+      )}
 
       {note && (
         <Alert tone="info" title="Worth noticing">
@@ -153,7 +188,7 @@ export async function MondayRead({ year, orgId, today, oneBranch }: { year: Fina
         A line belongs to the year its money arrived, or, where it has not arrived, the year it was due. Written-off lines are counted
         nowhere{report.setAside.writtenOff > 0 ? `, and ${report.setAside.writtenOff} of them fell in this year` : ""}.
         {report.setAside.otherCurrency > 0
-          ? ` ${report.setAside.otherCurrency} line${report.setAside.otherCurrency === 1 ? " is" : "s are"} in another currency and left out of these totals: adding them would need a rate nobody recorded.`
+          ? ` ${report.setAside.otherCurrency} line${report.setAside.otherCurrency === 1 ? " is" : "s are"} in another currency; they are on this page under ${currencies.filter((c) => c !== showing).join(", ")} rather than added to these totals, because adding them would need a rate nobody recorded.`
           : ""}
       </p>
     </>

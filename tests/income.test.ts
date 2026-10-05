@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import type { IncomeKind } from "../src/db/schema";
 import { DEPARTURE_KINDS, expectedFromRate, leakage, outstanding, rateFor, totals, type LineLike, type RateLike } from "../src/lib/income";
 
 const line = (over: Partial<LineLike> = {}): LineLike => ({
@@ -112,4 +113,34 @@ test("leakage counts only what a leaving student has not bought", () => {
 
 test("nobody leaving means nothing was missed", () => {
   assert.ok(leakage([]).every((r) => r.missed === 0 && r.students === 0));
+});
+
+
+test("a student who said no is not a sale anybody lost", () => {
+  const rows = [
+    { studentId: "a", kinds: ["TICKET"] as IncomeKind[], declined: [] as IncomeKind[] },
+    { studentId: "b", kinds: [] as IncomeKind[], declined: ["INSURANCE"] as IncomeKind[] },
+    { studentId: "c", kinds: [] as IncomeKind[], declined: [] as IncomeKind[] },
+  ];
+  const insurance = leakage(rows).find((r) => r.kind === "INSURANCE");
+  assert.ok(insurance);
+  assert.equal(insurance.declined, 1);
+  assert.equal(insurance.students, 2, "the student who said no is not counted as somebody to sell to");
+  assert.equal(insurance.missed, 2, "two were asked and neither bought");
+
+  const ticket = leakage(rows).find((r) => r.kind === "TICKET");
+  assert.ok(ticket);
+  assert.equal(ticket.booked, 1);
+  assert.equal(ticket.missed, 2);
+  assert.equal(ticket.declined, 0);
+});
+
+test("coaching fees are the academy's money and are counted in no Overseas total", () => {
+  const t = totals([
+    line({ kind: "SERVICE_FEE", expectedAmount: null, receivedAmount: 35000, state: "RECEIVED" }),
+    line({ kind: "COACHING_FEE", expectedAmount: null, receivedAmount: 60000, state: "RECEIVED" }),
+  ]);
+  assert.equal(t.received.INR, 35000, "the coaching fee is not in what Overseas received");
+  assert.equal(t.anotherCompany.INR, 60000, "it is counted on its own, so the student's worth is still visible");
+  assert.equal(t.unknown, 0);
 });

@@ -379,6 +379,13 @@
       "when": 1791039395731,
       "tag": "0053_agent_kyc",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1791202195732,
+      "tag": "0054_declined_and_more_services",
+      "breakpoints": true
     }
   ]
 }

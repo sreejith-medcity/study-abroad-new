@@ -40,7 +40,7 @@ This repository currently contains **Phase 0 basics and Phase 1 (core pipeline)*
 | Income per student | Admins and branch owners | Every kind of money one student brings in: service fee, commission, ticket, SIM, forex, insurance, accommodation, pickup, loan referral, coaching fee. Each line says who pays, what is expected, what has been invoiced, what has come in and the branch's share. Part payment is normal, so a line stays open until the whole of it is in. Totals are kept per currency rather than converted, so every figure matches the bank it came from. A line with no amount reads "Not recorded", is counted in no total, and the sheet says how many there are. Commission is read from the placement rather than copied, so the sheet and the commission screen cannot disagree. Follows the owner's switch that hides money from counsellors. |
 | Rate cards | Admins set, branches read | What a branch charges or keeps per kind, as a flat amount or a percentage of the sale, with who pays and the branch's share, from a day. Empty to begin with, because nobody outside the Overseas team knows what Medcity keeps on a SIM and an invented figure is worse than none. Rates are added rather than edited, so a student priced last season can still be read against the rate that applied then. "Lay out the usual lines" prices a student's sheet from them, and still adds the kinds with no rate so the gaps are visible. |
 | Money that stops being owed | Super admin only | Writing a line off needs a reason, stays on the sheet saying so, and is in the audit log. Nobody else can do it, because money that quietly disappears is how a branch's numbers stop meaning anything. |
-| Leaving soon, and what was left on the table | Admins and branch owners | Students with a granted visa, soonest first, with what they have not bought beside them: one call each before they buy it somewhere else. Beside it, what was not sold at all, by kind and by branch. Only students who are actually going are counted, because a shortlist is not a missed sale. A booked service writes its own income line when the team marks it done, priced from the rate card, or with no amount where no rate exists. |
+| Leaving soon, and what was left on the table | Admins and branch owners | Students with a granted visa, soonest first, with what they have not bought beside them: one call each before they buy it somewhere else. Beside it, what was not sold at all, by kind and by branch. Only students who are actually going are counted, because a shortlist is not a missed sale. A booked service writes its own income line when the team marks it done, priced from the rate card, or with no amount where no rate exists. A student who says no is marked as having said no, which is not the same as a request somebody abandoned: the board stops asking and the leakage report stops counting them as money left on the table. SIM cards and airport pickups are services in their own right, so each can be booked and each writes its own income line. |
 | What management reads on a Monday | Admins, management and branch owners | Four tables over one financial year: where the money came down (one row per vendor), what it was for, which branch sent the student, and which country pays. Days to pay is measured from the invoice going out to the money landing, as a median rather than an average, because one vendor who paid after four hundred days should not make a road look worse than every invoice on it. A branch owner sees only their own branch and is not shown the branch table. A column with nothing recorded behind it reads "Not recorded" and is counted in no total; lines in a currency other than rupees are left out and the number of them is stated, because adding them needs a rate nobody recorded. |
 | My day | All | What is due, overdue first, then today. A task is on a person for a day, raised by hand or by the portal: a document a week old with no answer, a vendor gone quiet, a gate that has come clear and needs the next step taken. Tick it off, push it to tomorrow or next week, or finish it with a note. Each task says where it came from, so nobody wonders who asked. The portal's own tasks carry a key for the fact they stand for, so the same thing never lands on a desk twice however often the chasing runs. |
 | Log a call in two clicks | Partners, staff | How they were spoken to (call, WhatsApp, visit, email, SMS), whether they called us, what came of it (spoke to them, no answer, they will send it, they want more time, wants to talk it through, not interested, wrong number) and what happens next. The outcome suggests the day to look again, which the counsellor can change. The next action becomes its own task, which is what makes the follow-up list build itself. |
@@ -342,6 +342,20 @@ Act limits what a private company may store of an Aadhaar number. Aadhaar is on
 the list of proofs because people offer it, but PAN is the safer thing to ask
 for, and dropping Aadhaar from the list is a one-line change if that is the
 advice.
+
+## Money in more than one currency
+
+Nothing is ever converted. University commission is recorded in the vendor's own
+currency, a service fee in rupees, and adding them would need a rate nobody
+wrote down. So every total is kept per currency, the student's income sheet
+shows one line per currency, and the Monday read has a currency picker: each
+table reports one currency at a time and says so, which means every figure on
+the page matches the bank it came from.
+
+Coaching fees are the academy's money, not Overseas'. They stay on the student's
+sheet, because they are part of what that student is worth to Medcity, and they
+are counted in no Overseas total, because adding them would flatter every money
+screen by an amount a different company earned.
 
 ## Reading the audit log
 

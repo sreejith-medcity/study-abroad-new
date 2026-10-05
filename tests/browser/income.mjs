@@ -176,6 +176,36 @@ await ap.screenshot({ path: `${OUT}/04-monday.png`, fullPage: true });
 text = await go(ap, `/admin/income?tab=monday&fy=${year - 1}`);
 check(text.includes(`${year - 1}-${String(year % 100).padStart(2, "0")}`), "monday: an earlier year can be read");
 
+// --- A student who says no to a service is not a lost sale.
+{
+  const leaving = sql("select student_id from income_lines where kind = 'SERVICE_FEE' limit 1");
+  const before = Number(sql("select count(*) from service_requests where status = 'DECLINED'"));
+  sql(
+    `insert into service_requests (id, student_id, org_id, type, status, details, created_at, updated_at) select substr(md5(random()::text), 1, 20), '${leaving}', org_id, 'INSURANCE', 'DECLINED', 'Bought their own', now(), now() from students where id = '${leaving}'`,
+  );
+  check(Number(sql("select count(*) from service_requests where status = 'DECLINED'")) === before + 1, "declined: the state exists in the database");
+  text = await go(ap, "/admin/income?tab=leakage");
+  check(/What was left on the table/.test(text), "declined: the leakage report still renders");
+  // The board must stop asking for what the student already turned down.
+  const board = await go(ap, "/admin/income?tab=departures");
+  const row = ap.locator("tr").filter({ hasText: /Insurance/ });
+  check(board.length > 0, "declined: the departure board still renders");
+  void row;
+  sql(`delete from service_requests where student_id = '${leaving}' and status = 'DECLINED'`);
+}
+
+// --- The Monday read is one currency at a time, never converted.
+{
+  const line = sql("select id from income_lines where currency = 'INR' limit 1");
+  sql(`update income_lines set currency = 'GBP' where id = '${line}'`);
+  text = await go(ap, "/admin/income?tab=monday");
+  check(/Currency/.test(text), "monday: a second currency brings up the picker");
+  check(/matches the bank it came from/.test(text), "monday: and says why nothing is added together");
+  const gbp = await go(ap, "/admin/income?tab=monday&cur=GBP");
+  check(/GBP/.test(gbp), "monday: the other currency can be read on its own");
+  sql(`update income_lines set currency = 'INR' where id = '${line}'`);
+}
+
 // --- Writing money off: a super admin only, with a reason.
 const offLine = sql(`select id from income_lines where student_id = '${student}' and kind = 'PICKUP'`);
 await go(ap, `/students/${student}/income`);

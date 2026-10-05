@@ -30,9 +30,9 @@ const TABS = [
  * "Not recorded" and is counted nowhere, because a branch owner deciding whether
  * to push forex cards needs a real number or none at all.
  */
-export default async function IncomeAdminPage({ searchParams }: { searchParams: Promise<{ tab?: string; fy?: string }> }) {
+export default async function IncomeAdminPage({ searchParams }: { searchParams: Promise<{ tab?: string; fy?: string; cur?: string }> }) {
   const user = await requireUser([...REPORTING_ROLES, "PARTNER"]);
-  const { tab = "monday", fy } = await searchParams;
+  const { tab = "monday", fy, cur } = await searchParams;
   const scope = isStaff(user) ? undefined : user.orgId;
   const today = new Date();
   const [board, leak, rates, unpriced, branches] = await Promise.all([
@@ -70,7 +70,7 @@ export default async function IncomeAdminPage({ searchParams }: { searchParams: 
         </Alert>
       )}
 
-      {tab === "monday" && <MondayRead year={financialYearFrom(fy, today)} orgId={scope} today={today} oneBranch={!isStaff(user)} />}
+      {tab === "monday" && <MondayRead year={financialYearFrom(fy, today)} currency={cur} orgId={scope} today={today} oneBranch={!isStaff(user)} />}
 
       {tab === "rates" && (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
