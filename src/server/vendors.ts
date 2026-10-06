@@ -179,9 +179,10 @@ export async function routeSearchRows(
     .innerJoin(pr, eq(pr.programId, p.id))
     .innerJoin(v, eq(v.id, pr.vendorId))
     .where(and(where, eq(pr.active, true), eq(v.active, true), onlyVendors(opts.vendorIds)))
-    // Medcity's own agreement first, as everywhere else: when two roads reach
-    // the same course, the one we hold is the one to send a student down.
-    .orderBy(sql`${v.isDirect} desc`, ...order)
+    // Ours first where nothing else was asked for. An explicit sort is obeyed,
+    // because a control that does not do what it says is worse than no control;
+    // the row carries "Our own agreement" in every order either way.
+    .orderBy(...(opts.sort ? [] : [sql`${v.isDirect} desc`]), ...order)
     .limit(opts.limit)
     .offset(opts.offset);
 }

@@ -378,7 +378,15 @@ means a counsellor, a trainee and a sub-agent's counsellor see their own
 students, and the documentation team sees the files it has been given. A branch
 head, a senior counsellor and the desk roles see everything in their scope.
 
-Three things keep this workable. Whoever registered a student keeps them,
+Four things keep this workable. The documentation desk sees the files the
+branches have handed it. Nothing in the portal assigns a student to a
+documentation officer, because there is no such field and no screen that sets
+one; what there is, is the moment a branch hands a file over, and from then the
+desk works it. Without this the desk could reach nothing it had not registered
+or claimed from the queue, which is a desk that cannot do its job. A student
+never handed over stays the branch's own business.
+
+Whoever registered a student keeps them,
 whatever else is true: somebody at the head office registering a walk-in cannot
 assign themselves, because the counsellor has to belong to the student's branch,
 and without this they would watch the student they just typed in turn into a

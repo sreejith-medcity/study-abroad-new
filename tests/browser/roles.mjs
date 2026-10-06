@@ -237,6 +237,36 @@ async function signIn(email, ip, password = "Password@123") {
       : bad("documentation: they registered a student and then got a 404 on it");
   }
 
+  // What the desk may open: the files the branches have handed it. Nothing
+  // assigns a student to a documentation officer, so without this the desk can
+  // reach nothing it did not register or claim, which is how it was shipped.
+  const handed = sql("select coalesce((select student_id from applications where handed_over_at is not null limit 1), '')");
+  // Not one they registered, not one they have touched in the queue, and not
+  // one they are the officer on: each of those is theirs for its own reason,
+  // and this check is about the one reason that is new.
+  const never = sql(`select coalesce((select s.id from students s
+      where not exists (select 1 from applications a where a.student_id = s.id and a.handed_over_at is not null)
+        and s.created_by_id is distinct from (select id from users where email = 'documentation@medcityoverseas.test')
+        and not exists (select 1 from checklist_items ci where ci.student_id = s.id and (ci.claimed_by_id = (select id from users where email = 'documentation@medcityoverseas.test') or ci.decided_by_id = (select id from users where email = 'documentation@medcityoverseas.test')))
+        and not exists (select 1 from applications a2 where a2.student_id = s.id and a2.officer_id = (select id from users where email = 'documentation@medcityoverseas.test'))
+        and not s.archived limit 1), '')`);
+  if (handed) {
+    await page.goto(`${BASE}/students/${handed}`);
+    await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
+    !/could not be found/i.test(await page.locator("body").innerText())
+      ? ok("documentation: a file the branch handed to the desk opens")
+      : bad("documentation: a file handed to the desk is a 404");
+  } else {
+    bad("documentation: the seed handed nothing to the desk, so this could not be tested");
+  }
+  if (never) {
+    await page.goto(`${BASE}/students/${never}`);
+    await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
+    /could not be found/i.test(await page.locator("body").innerText())
+      ? ok("documentation: a student the branch never handed over stays the branch's own")
+      : bad("documentation: the desk can open a student nobody handed it");
+  }
+
   // Management reads and changes nothing, so it keeps neither the button nor the screen.
   await page.goto(`${BASE}/students`);
   await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
