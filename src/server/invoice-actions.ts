@@ -7,9 +7,9 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { ADMIN_ROLES, isSuperAdmin } from "@/lib/permissions";
-import { dueOn as dueDateFrom, invoiceTotals, stateAfterPayment, taxFor } from "@/lib/invoicing";
+import { creditAllowed, dueOn as dueDateFrom, invoiceTotals, stateAfterSettlement, taxFor } from "@/lib/invoicing";
 import { fmtMoney } from "@/lib/format";
-import { invoiceQueue, loadInvoice, nextInvoiceNumber } from "@/server/invoicing";
+import { invoiceQueue, loadInvoice, nextCreditNoteNumber, nextInvoiceNumber } from "@/server/invoicing";
 import { getSettings } from "@/server/settings";
 import { notifyUsers, partnerRecipients } from "@/server/notify";
 import type { FormState } from "@/lib/form-state";
@@ -181,7 +181,9 @@ export async function recordInvoicePaymentAction(_: FormState, fd: FormData): Pr
   });
 
   const received = invoice.money.received + amount;
-  const state = stateAfterPayment(invoice.money.total, received, invoice.state);
+  // What has stopped being owed, by either route: a part payment on an invoice
+  // already half credited settles it.
+  const state = stateAfterSettlement(invoice.money.total, received + invoice.money.credited, invoice.state);
   await db
     .update(vi)
     .set({ receivedAmount: received, state, paidAt: state === "PAID" ? new Date() : null, updatedAt: new Date() })
@@ -318,4 +320,85 @@ export async function removeInvoiceLineAction(fd: FormData): Promise<void> {
   await db.update(vi).set({ total: net + taxAmount, taxAmount, updatedAt: new Date() }).where(eq(vi.id, line.invoiceId));
   await audit(user.id, "invoice.line_removed", "invoice", line.invoiceId, { incomeLineId: line.incomeLineId, amount: line.amount });
   revalidatePath(`/admin/invoices/${line.invoiceId}`);
+}
+
+// ---------- Credit notes ----------
+
+const creditSchema = z.object({
+  invoiceId: z.string().min(1),
+  amount: z.string().optional(),
+  reason: z.string().trim().min(5, "Say what is being credited and why").max(500),
+  issuedOn: z.string().optional(),
+  note: z.string().trim().max(400).optional(),
+});
+
+/**
+ * Takes money back off an invoice that has already gone out.
+ *
+ * A write-off says the invoice will never be paid; this says part of it was
+ * never owed, which is the ordinary case when a student defers after enrolment
+ * or a rate turns out to have been wrong. The vendor gets a numbered document
+ * for their own books, the ageing report stops chasing the credited part, and
+ * the students it covers are named so nobody has to reconstruct a year later
+ * which placement the money came off.
+ */
+export async function creditInvoiceAction(_: FormState, fd: FormData): Promise<FormState> {
+  const user = await requireUser([...ADMIN_ROLES]);
+  const parsed = creditSchema.safeParse(Object.fromEntries(fd));
+  if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Check the highlighted fields." };
+  const d = parsed.data;
+  const invoice = await loadInvoice(d.invoiceId);
+  if (!invoice) return { error: "That invoice is gone." };
+  if (invoice.state === "DRAFT") return { error: "This has not gone out yet. Take the line off the draft instead; a credit note against a draft is a document nobody needs." };
+  if (invoice.state === "WRITTEN_OFF") return { error: "This was written off whole. Reopen it before crediting part of it." };
+
+  const lineIds = fd.getAll("line").map(String).filter(Boolean);
+  const covered = invoice.lines.filter((l) => lineIds.includes(l.id));
+  if (lineIds.length && covered.length !== lineIds.length) return { error: "One of those students is no longer on this invoice. Open it again." };
+
+  // The lines decide the amount when any are named, because a credit that does
+  // not add up to the students it names is the thing an argument starts over.
+  const typed = whole(d.amount);
+  if (Number.isNaN(typed)) return { fieldErrors: { amount: ["A whole amount, or tick the students instead"] }, error: "Check the highlighted fields." };
+  const amount = covered.length ? covered.reduce((sum, l) => sum + l.amount, 0) : typed;
+  if (amount == null) return { fieldErrors: { amount: ["Give an amount, or tick the students it covers"] }, error: "Check the highlighted fields." };
+  const allowed = creditAllowed(invoice.money, amount);
+  if (!allowed.ok) return { fieldErrors: { amount: [allowed.says] }, error: allowed.says };
+
+  const issuedOn = dateOnly(d.issuedOn) ?? new Date().toISOString().slice(0, 10);
+  const number = await nextCreditNoteNumber();
+  const [note] = await db
+    .insert(schema.creditNotes)
+    .values({ number, invoiceId: invoice.id, currency: invoice.currency, amount, reason: d.reason, issuedOn, note: d.note || null, createdById: user.id })
+    .returning({ id: schema.creditNotes.id });
+  if (covered.length) {
+    await db.insert(schema.creditNoteLines).values(covered.map((l) => ({ creditNoteId: note.id, invoiceLineId: l.id, amount: l.amount })));
+    // A student's line that has been credited back is not income any more. It
+    // carries the credit note's number so the reason is on the student's own
+    // file, not only on the invoice.
+    await db
+      .update(il)
+      .set({ state: "WRITTEN_OFF", writtenOffReason: `Credited on ${number}: ${d.reason}`, writtenOffById: user.id, updatedAt: new Date() })
+      .where(inArray(il.id, covered.map((l) => l.incomeLineId)));
+  }
+
+  const state = stateAfterSettlement(invoice.money.total, invoice.money.received + invoice.money.credited + amount, invoice.state);
+  await db.update(vi).set({ state, updatedAt: new Date() }).where(eq(vi.id, invoice.id));
+  await audit(user.id, "invoice.credit_note", "invoice", invoice.id, {
+    number,
+    amount,
+    currency: invoice.currency,
+    reason: d.reason,
+    students: covered.length,
+    state,
+  });
+  revalidatePath(`/admin/invoices/${invoice.id}`);
+  revalidatePath("/admin/invoices");
+  const left = Math.max(0, invoice.money.outstanding - amount);
+  return {
+    ok:
+      left === 0
+        ? `${number} raised for ${fmtMoney(amount, invoice.currency)}. ${invoice.number} is settled and off the ageing report.`
+        : `${number} raised for ${fmtMoney(amount, invoice.currency)}. ${fmtMoney(left, invoice.currency)} still owed on ${invoice.number}.`,
+  };
 }

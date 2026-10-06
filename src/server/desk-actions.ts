@@ -132,14 +132,28 @@ export async function chooseRouteAction(_: FormState, fd: FormData): Promise<For
   });
   if (!route) return { fieldErrors: { routeId: ["That route is not recorded for this course"] }, error: "Choose the road it goes down." };
   if (!route.active || !route.vendor.active) return { fieldErrors: { routeId: ["That route is paused"] }, error: "Choose the road it goes down." };
-  const changing = app.routeId && app.routeId !== route.id;
+  const changing = !!app.routeId && app.routeId !== route.id;
   if (app.deskStage === "SUBMITTED") {
     return { error: "This is lodged with the vendor already. Changing the road now is a withdrawal and a fresh application, which is what actually happens in practice." };
+  }
+  // Changing a road already chosen moves the commission, the extra paperwork and
+  // who gets invoiced at the end. A reason is required at the moment it happens,
+  // because nobody reconstructs one honestly a month later.
+  const reason = (parsed.data.note ?? "").trim();
+  if (changing && reason.length < 5) {
+    return { fieldErrors: { note: ["Say why it is moving off " + (app.route?.vendor.name ?? "the road it was on")] }, error: "A road already chosen is only changed with a reason." };
   }
   const now = new Date();
   await db
     .update(ap)
-    .set({ routeId: route.id, routeChosenById: user.id, routeChosenAt: now, deskStage: "CHOSEN", updatedAt: now })
+    .set({
+      routeId: route.id,
+      routeChosenById: user.id,
+      routeChosenAt: now,
+      routeChangeReason: changing ? reason : null,
+      deskStage: "CHOSEN",
+      updatedAt: now,
+    })
     .where(eq(ap.id, app.id));
   await audit(user.id, changing ? "application.route_changed" : "application.route_chosen", "application", app.id, {
     vendor: route.vendor.name,
@@ -147,7 +161,11 @@ export async function chooseRouteAction(_: FormState, fd: FormData): Promise<For
     note: parsed.data.note ?? null,
   });
   refresh(app.studentId);
-  return { ok: `${app.ackNo} goes through ${route.vendor.name}. Lodge it in their portal next.` };
+  return {
+    ok: changing
+      ? `${app.ackNo} moves from ${app.route?.vendor.name ?? "its old road"} to ${route.vendor.name}. The reason is on the application.`
+      : `${app.ackNo} goes through ${route.vendor.name}. Lodge it in their portal next.`,
+  };
 }
 
 const submitSchema = z.object({

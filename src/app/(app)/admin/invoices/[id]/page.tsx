@@ -7,7 +7,7 @@ import { describeLine, loadInvoice } from "@/server/invoicing";
 import { AGE_LABEL, INVOICE_STATE_LABEL, INVOICE_STATE_MEANS } from "@/lib/invoicing";
 import { Alert, Card, CardHeader, Chip, PageHeader, Table, Td, Th } from "@/components/ui";
 import { PrintButton } from "@/components/print-button";
-import { DisputeInvoice, RecordPayment, SendInvoice, WriteOffInvoice } from "@/components/invoice-forms";
+import { CreditInvoice, DisputeInvoice, RecordPayment, SendInvoice, WriteOffInvoice } from "@/components/invoice-forms";
 import { RemoveLine } from "./forms";
 
 export const dynamic = "force-dynamic";
@@ -62,6 +62,14 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
           </Chip>
         )}
         {canWork && !settled && <DisputeInvoice invoiceId={invoice.id} disputed={invoice.state === "DISPUTED"} />}
+        {canWork && !settled && invoice.state !== "DRAFT" && invoice.money.outstanding > 0 && (
+          <CreditInvoice
+            invoiceId={invoice.id}
+            currency={invoice.currency}
+            outstanding={invoice.money.outstanding}
+            lines={invoice.lines.map((l) => ({ id: l.id, amount: l.amount, description: l.description }))}
+          />
+        )}
         {isSuperAdmin(user) && invoice.state !== "WRITTEN_OFF" && invoice.state !== "PAID" && <WriteOffInvoice invoiceId={invoice.id} />}
       </div>
 
@@ -169,6 +177,45 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
         </div>
       </Card>
 
+      {invoice.creditNotes.length > 0 && (
+        <Card className="mt-4" data-print="hide">
+          <CardHeader
+            title={`Credited back (${invoice.creditNotes.length})`}
+            subtitle="Part of this invoice that turned out not to be owed. The invoice itself is left as it was raised, because that is what the vendor has on file."
+          />
+          <Table>
+            <thead>
+              <tr>
+                <Th>Credit note</Th>
+                <Th>Issued</Th>
+                <Th className="text-right">Amount</Th>
+                <Th>Why</Th>
+                <Th>By</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {invoice.creditNotes.map((n) => (
+                <tr key={n.id}>
+                  <Td className="whitespace-nowrap font-medium tabular">{n.number}</Td>
+                  <Td className="whitespace-nowrap text-xs tabular">{fmtDate(n.issuedOn)}</Td>
+                  <Td className="whitespace-nowrap text-right tabular">{fmtMoney(n.amount, n.currency)}</Td>
+                  <Td className="text-[13px]">
+                    {n.reason}
+                    {n.lines.length > 0 && (
+                      <span className="block text-xs text-muted">
+                        {n.lines.length} student{n.lines.length === 1 ? "" : "s"}: {n.lines.map((l) => l.invoiceLine.description).join("; ")}
+                      </span>
+                    )}
+                    {n.note && <span className="block text-xs text-muted">{n.note}</span>}
+                  </Td>
+                  <Td className="text-xs">{n.createdBy ? (n.createdBy.deskLabel ?? n.createdBy.name) : "—"}</Td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </Card>
+      )}
+
       <div className="mt-4 grid gap-4 lg:grid-cols-2" data-print="hide">
         <Card>
           <CardHeader title={`Money in (${invoice.payments.length})`} subtitle="Each payment is its own row, so nothing is overwritten and a part payment is not mistaken for the whole." />
@@ -208,6 +255,18 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
               <dt className="text-muted">Total</dt>
               <dd className="tabular font-medium">{fmtMoney(invoice.money.total, invoice.currency)}</dd>
             </div>
+            {invoice.money.credited > 0 && (
+              <>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted">Credited back</dt>
+                  <dd className="tabular font-medium">&minus;{fmtMoney(invoice.money.credited, invoice.currency)}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted">What it is now worth</dt>
+                  <dd className="tabular font-medium">{fmtMoney(invoice.money.owed, invoice.currency)}</dd>
+                </div>
+              </>
+            )}
             <div className="flex justify-between gap-4">
               <dt className="text-muted">Received</dt>
               <dd className="tabular font-medium">{fmtMoney(invoice.money.received, invoice.currency)}</dd>

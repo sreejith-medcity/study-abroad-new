@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ageOf, AGE_ORDER, dueOn, invoiceableOn, invoiceNumber, invoiceTotals, numberSuffix, stateAfterPayment, taxFor } from "../src/lib/invoicing";
+import { ageOf, AGE_ORDER, creditAllowed, creditNoteNumber, dueOn, invoiceableOn, invoiceNumber, invoiceTotals, numberSuffix, stateAfterSettlement, taxFor } from "../src/lib/invoicing";
 
 test("a placement is invoiceable only once the milestone has a date on it", () => {
   const visa = { payableOn: "VISA_APPROVED" as const, offerAcceptedOn: "2026-05-01", feePaidOn: "2026-06-01", visaGrantedOn: null, enrolledOn: null };
@@ -70,10 +70,10 @@ test("paying over is shown rather than hidden", () => {
 });
 
 test("an invoice is part paid until the whole of it is in", () => {
-  assert.equal(stateAfterPayment(100000, 40000, "SENT"), "PART_PAID");
-  assert.equal(stateAfterPayment(100000, 100000, "PART_PAID"), "PAID");
-  assert.equal(stateAfterPayment(100000, 120000, "SENT"), "PAID");
-  assert.equal(stateAfterPayment(100000, 50000, "WRITTEN_OFF"), "WRITTEN_OFF", "a written-off invoice is not revived by a payment arriving");
+  assert.equal(stateAfterSettlement(100000, 40000, "SENT"), "PART_PAID");
+  assert.equal(stateAfterSettlement(100000, 100000, "PART_PAID"), "PAID");
+  assert.equal(stateAfterSettlement(100000, 120000, "SENT"), "PAID");
+  assert.equal(stateAfterSettlement(100000, 50000, "WRITTEN_OFF"), "WRITTEN_OFF", "a written-off invoice is not revived by a payment arriving");
 });
 
 test("how late an invoice is, in the buckets a finance meeting uses", () => {
@@ -99,4 +99,40 @@ test("an invoice number is a running count inside the financial year, and reads 
   assert.equal(numberSuffix("MIO/26-27/0007"), 7);
   assert.equal(numberSuffix("MIO/26-27/0123"), 123);
   assert.equal(numberSuffix("nonsense"), null);
+});
+
+test("a credit reduces what is owed without pretending money arrived", () => {
+  const money = invoiceTotals([{ amount: 100000 }], [{ amount: 30000 }], { percent: 0 }, [{ amount: 20000 }]);
+  assert.equal(money.total, 100000, "the invoice was still raised for the full amount");
+  assert.equal(money.received, 30000, "the bank is reconciled against what actually arrived");
+  assert.equal(money.credited, 20000);
+  assert.equal(money.owed, 80000, "what the vendor owes after the credit");
+  assert.equal(money.outstanding, 50000, "and what is left to chase");
+  assert.equal(money.overpaid, 0);
+});
+
+test("an invoice credited in full is settled, not left on the ageing report", () => {
+  const money = invoiceTotals([{ amount: 50000 }], [], { percent: 0 }, [{ amount: 50000 }]);
+  assert.equal(money.outstanding, 0);
+  assert.equal(stateAfterSettlement(money.total, money.settled, "SENT"), "PAID");
+  // Nothing was received, so nothing is reconciled against the bank.
+  assert.equal(money.received, 0);
+});
+
+test("a credit is held to what is still owed, because the rest is a refund", () => {
+  const money = invoiceTotals([{ amount: 100000 }], [{ amount: 60000 }], { percent: 0 });
+  assert.equal(creditAllowed(money, 40000).ok, true, "down to the last rupee outstanding");
+  const over = creditAllowed(money, 40001);
+  assert.equal(over.ok, false);
+  assert.match(over.says, /refund, not a credit note/);
+  assert.equal(creditAllowed(money, 0).ok, false);
+  assert.equal(creditAllowed(money, 1.5).ok, false, "whole amounts only");
+  const settled = invoiceTotals([{ amount: 100000 }], [{ amount: 100000 }], { percent: 0 });
+  assert.match(creditAllowed(settled, 1).says, /Nothing is outstanding/);
+});
+
+test("credit notes are numbered in their own series, not the invoice run", () => {
+  assert.equal(creditNoteNumber("26-27", 7), "MIO/CN/26-27/0007");
+  assert.notEqual(creditNoteNumber("26-27", 7), invoiceNumber("26-27", 7));
+  assert.equal(numberSuffix(creditNoteNumber("26-27", 7)), 7, "the running count reads back out of it");
 });

@@ -89,6 +89,14 @@ export function ChooseRoute({ applicationId, routes, current }: { applicationId:
         ))}
       </div>
       <FieldError name="routeId" />
+      {/* Only once a road has been chosen: the first choice needs no defence,
+          but moving off one moves the money and the paperwork with it. */}
+      {current && (
+        <Field label="Why it is moving" htmlFor={`route-why-${applicationId}`} required hint="Kept on the application, because the commission and who gets invoiced move with the road.">
+          <Input id={`route-why-${applicationId}`} name="note" placeholder="KC has no seats left for Sep; StudentOps360 confirmed one" />
+          <FieldError name="note" />
+        </Field>
+      )}
     </ActionForm>
   );
 }

@@ -357,6 +357,15 @@ async function ApplicationDetail({ appId, studentId, channel, canProcess, canChe
             {(app.deskStage === "READY" || app.deskStage === "CHOSEN" || app.deskStage === "RETURNED") && (
               <section>
                 <h4 className="mb-2 text-[13px] font-semibold">Which road it goes down</h4>
+                {/* A road that was moved says so on the file, not only in the
+                    audit log, because the next person to open this is the one
+                    who needs to know why the commission is not what they
+                    expected. */}
+                {app.routeChangeReason && (
+                  <p className="mb-2 rounded-lg border border-line bg-surface-2/50 px-3 py-2 text-[13px]">
+                    <span className="font-medium">Moved on {app.routeChosenAt ? fmtDate(app.routeChosenAt) : "a date not recorded"}:</span> {app.routeChangeReason}
+                  </p>
+                )}
                 <ChooseRoute applicationId={app.id} routes={routeChoices} current={app.routeId} />
               </section>
             )}

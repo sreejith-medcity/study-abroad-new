@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { ActionForm, FieldError } from "@/components/action-form";
 import { Modal } from "@/components/modal";
-import { Alert, Chip, Field, Input, Select, Textarea } from "@/components/ui";
+import { Alert, Checkbox, Chip, Field, Input, Select, Textarea } from "@/components/ui";
 import {
+  creditInvoiceAction,
   disputeInvoiceAction,
   raiseInvoiceAction,
   recordInvoicePaymentAction,
@@ -179,6 +180,100 @@ export function DisputeInvoice({ invoiceId, disputed }: { invoiceId: string; dis
             <Textarea id={`d-${invoiceId}`} name="reason" rows={3} />
             <FieldError name="reason" />
           </Field>
+        </ActionForm>
+      </Modal>
+    </>
+  );
+}
+
+/**
+ * Crediting part of an invoice back.
+ *
+ * Ticking the students is the usual case, and then the amount is their lines
+ * added up rather than a figure somebody types: a credit that does not match
+ * the students it names is what an argument a year later is made of.
+ */
+export function CreditInvoice({
+  invoiceId,
+  currency,
+  outstanding,
+  lines,
+}: {
+  invoiceId: string;
+  currency: string;
+  outstanding: number;
+  lines: { id: string; amount: number; description: string }[];
+}) {
+  const [open, setOpen] = useState(false);
+  const [ticked, setTicked] = useState<string[]>([]);
+  const today = new Date().toISOString().slice(0, 10);
+  const fromLines = lines.filter((l) => ticked.includes(l.id)).reduce((sum, l) => sum + l.amount, 0);
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)} className="text-[13px] text-muted hover:text-ink">Credit part of it</button>
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Raise a credit note"
+        description="For the part that was never owed: a student who deferred after enrolment, a rate corrected after the fact, a figure settled halfway. The vendor gets a numbered document, and the ageing report stops chasing it."
+      >
+        <ActionForm action={creditInvoiceAction} submitLabel="Raise the credit note" submitVariant="secondary">
+          <input type="hidden" name="invoiceId" value={invoiceId} />
+          {lines.length > 0 && (
+            <fieldset className="rounded-lg border border-line p-3">
+              <legend className="px-1 text-[13px] font-medium">Which students it covers</legend>
+              <p className="mb-2 text-xs text-muted">Tick them and the amount is their lines added up. Their income lines are written back with this note&rsquo;s number on them.</p>
+              <div className="max-h-48 space-y-1.5 overflow-y-auto">
+                {lines.map((l) => (
+                  <Checkbox
+                    key={l.id}
+                    name="line"
+                    value={l.id}
+                    checked={ticked.includes(l.id)}
+                    // Read before the updater runs: React has cleared the
+                    // event by the time a functional setState is applied, and
+                    // reading currentTarget in there throws.
+                    onChange={(e) => {
+                      const on = e.currentTarget.checked;
+                      setTicked((was) => (on ? [...was, l.id] : was.filter((x) => x !== l.id)));
+                    }}
+                    label={<span className="text-[13px]">{l.description} <span className="tabular text-muted">{l.amount.toLocaleString("en-IN")}</span></span>}
+                  />
+                ))}
+              </div>
+            </fieldset>
+          )}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field
+              label={`How much (${currency})`}
+              htmlFor={`cn-amt-${invoiceId}`}
+              required={ticked.length === 0}
+              hint={ticked.length ? `${fromLines.toLocaleString("en-IN")} from the students ticked.` : `${outstanding.toLocaleString("en-IN")} is still owed.`}
+            >
+              <Input id={`cn-amt-${invoiceId}`} name="amount" inputMode="numeric" value={ticked.length ? String(fromLines) : undefined} readOnly={ticked.length > 0} />
+              <FieldError name="amount" />
+            </Field>
+            <Field label="Issued on" htmlFor={`cn-on-${invoiceId}`} required>
+              <Input id={`cn-on-${invoiceId}`} type="date" name="issuedOn" defaultValue={today} max={today} />
+              <FieldError name="issuedOn" />
+            </Field>
+          </div>
+          <Field label="What is being credited and why" htmlFor={`cn-why-${invoiceId}`} required hint="It goes on the credit note itself, so write it as the vendor will read it.">
+            <Textarea id={`cn-why-${invoiceId}`} name="reason" rows={3} placeholder="Priya Menon deferred to Jan 2027 after enrolment; KC confirmed the commission is not payable for Sep." />
+            <FieldError name="reason" />
+          </Field>
+          <Field label="Note for our own file" htmlFor={`cn-note-${invoiceId}`}>
+            <Input id={`cn-note-${invoiceId}`} name="note" />
+          </Field>
+          {/* Said before the submit rather than after it: this happens whenever
+              the vendor has already paid some of an invoice and a student on it
+              later falls away. */}
+          {ticked.length > 0 && fromLines > outstanding && (
+            <Alert tone="warn" title="More than is still owed">
+              Those students come to {fromLines.toLocaleString("en-IN")} and only {outstanding.toLocaleString("en-IN")} is outstanding, because part of this
+              invoice has been paid. Credit what is owed and settle the difference as a refund, which is money going the other way and belongs in its own record.
+            </Alert>
+          )}
         </ActionForm>
       </Modal>
     </>

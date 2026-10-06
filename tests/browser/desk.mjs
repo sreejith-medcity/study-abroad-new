@@ -98,6 +98,15 @@ check(/usually takes/i.test(text), "desk: it says what each usually takes");
 text = await go(dp, `/students/${prepStudent}/applications?app=${prep}`);
 check(/The Overseas desk/.test(text), "desk: the desk's own panel is on the application");
 check(/Which road it goes down/.test(text), "desk: the first step is choosing the road");
+// A second road to the same course, so the change can be tested at all: some
+// courses in the seed are reached one way only.
+sql(`insert into program_routes (id, program_id, vendor_id, basis, percent_of_tuition, offer_tat_days, active, updated_at)
+     select 'desk-second-road', (select program_id from applications where id = '${prep}'), v.id, 'PERCENT_TUITION', 8, 6, true, now()
+     from vendors v
+     where v.active and not exists (select 1 from program_routes r where r.program_id = (select program_id from applications where id = '${prep}') and r.vendor_id = v.id)
+     limit 1
+     on conflict (id) do nothing`);
+text = await go(dp, `/students/${prepStudent}/applications?app=${prep}`);
 const routeCount = await dp.locator('input[name="routeId"]').count();
 if (routeCount > 0) {
   check(/Commission/.test(text) && /offer in/.test(text), "desk: each road shows what it pays and how fast it answers");
@@ -106,6 +115,29 @@ if (routeCount > 0) {
   check(await toast(dp, /goes through/), "desk: the choice is confirmed");
   check((await waitSql(`select desk_stage from applications where id = '${prep}'`, "CHOSEN")) === "CHOSEN", "desk: the route is recorded and the file moves on");
   check(sql(`select count(*) from applications where id = '${prep}' and route_chosen_by_id = (select id from users where email = 'documentation@medcityoverseas.test')`) === "1", "desk: who chose it is recorded");
+
+  // --- Moving off a road already chosen needs a reason, because the commission,
+  // the paperwork and who gets invoiced move with it.
+  if (routeCount > 1) {
+    text = await go(dp, `/students/${prepStudent}/applications?app=${prep}`);
+    check(/Why it is moving/i.test(text), "desk: changing a road already chosen asks why; choosing the first one did not");
+    const others = dp.locator('input[name="routeId"]');
+    for (let i = 0; i < routeCount; i += 1) {
+      if (!(await others.nth(i).isChecked())) { await others.nth(i).check(); break; }
+    }
+    await dp.getByRole("button", { name: "Change the route" }).click();
+    check(await waitText(dp, /Say why it is moving off/), "desk: and refuses the change without one");
+    await dp.locator('input[name="note"]').first().fill("KC has no seats left for the Sep intake; StudentOps360 confirmed one today.");
+    await dp.getByRole("button", { name: "Change the route" }).click();
+    check(await toast(dp, /moves from|goes through/), "desk: with a reason it goes through");
+    const moved = await waitSql(`select coalesce(route_change_reason, '') from applications where id = '${prep}'`, "KC has no seats left for the Sep intake; StudentOps360 confirmed one today.");
+    check(moved.includes("no seats left"), `desk: the reason is kept on the application, not only in the audit log (${moved.slice(0, 30)})`);
+    text = await go(dp, `/students/${prepStudent}/applications?app=${prep}`);
+    check(/Moved on/.test(text) && /no seats left/.test(text), "desk: and the next person to open the file reads it there");
+    check(sql(`select count(*) from audit_logs where action = 'application.route_changed' and entity_id = '${prep}'`) !== "0", "desk: the change is in the audit log too");
+  } else {
+    ok("desk: this course has one road only, so there was nothing to move it to");
+  }
 
   // --- Lodged in their portal.
   text = await go(dp, `/students/${prepStudent}/applications?app=${prep}`);

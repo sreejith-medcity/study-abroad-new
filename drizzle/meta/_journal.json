@@ -407,6 +407,13 @@
       "when": 1791220033126,
       "tag": "0057_pack_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1791267726560,
+      "tag": "0058_credit_notes",
+      "breakpoints": true
     }
   ]
 }

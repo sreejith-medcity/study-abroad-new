@@ -32,6 +32,16 @@ async function signIn(email, ip) {
 }
 const settle = (page) => page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
 const main = async (page) => { await settle(page); return page.locator("main").innerText(); };
+/** Opens a modal, retrying: a click can land before React has attached its handlers. */
+async function openModal(page, name) {
+  await page.getByRole("button", { name }).first().waitFor({ state: "visible", timeout: 15000 }).catch(() => {});
+  for (let i = 0; i < 8; i += 1) {
+    await page.getByRole("button", { name }).first().click().catch(() => {});
+    if (await page.getByRole("dialog").first().isVisible().catch(() => false)) return true;
+    await page.waitForTimeout(500);
+  }
+  return false;
+}
 async function go(page, p) { await page.goto(BASE + p); return main(page); }
 async function waitText(page, re, timeout = 15000) {
   const until = Date.now() + timeout;
@@ -196,6 +206,70 @@ if (older) {
   await go(ap, `/admin/invoices/${older}`);
   await ap.getByRole("button", { name: "It has been worked out" }).click();
   check((await waitSql(`select state from vendor_invoices where id = '${older}'`, "PART_PAID")) === "PART_PAID", "dispute: resolving it puts the invoice back where it was");
+
+  // --- A credit note: the part that was never owed.
+  const owedBefore = Number(sql(`select total - received_amount from vendor_invoices where id = '${older}'`));
+  text = await go(ap, `/admin/invoices/${older}`);
+  check(/Credit part of it/.test(text), "credit note: an invoice that has gone out can be part-credited");
+  await openModal(ap, "Credit part of it");
+  await ap.getByRole("button", { name: "Raise the credit note" }).last().click();
+  check(await waitText(ap, /Say what is being credited and why/), "credit note: a reason is required");
+
+  // More than is outstanding is a refund, not a credit, and is stopped here.
+  await ap.locator('input[name="amount"]').first().fill(String(owedBefore + 1000));
+  await ap.locator('textarea[name="reason"]').first().fill("Testing that a credit cannot exceed what is owed.");
+  await ap.getByRole("button", { name: "Raise the credit note" }).last().click();
+  check(await waitText(ap, /refund, not a credit note/), "credit note: more than is owed is refused, and says why");
+
+  // The same thing caught on the screen: this invoice is part paid, so its one
+  // student's line is now larger than what is left to credit.
+  const onlyLine = sql(`select id from vendor_invoice_lines where invoice_id = '${older}' order by amount desc limit 1`);
+  const onlyLineAmount = Number(sql(`select amount from vendor_invoice_lines where id = '${onlyLine}'`));
+  if (onlyLineAmount > owedBefore) {
+    await ap.locator(`input[name="line"][value="${onlyLine}"]`).click();
+    check(await waitText(ap, /More than is still owed/), "credit note: a student whose line is bigger than what is owed is caught before the submit");
+  } else {
+    ok("credit note: this invoice's line fits inside what is owed, so there was nothing to catch");
+  }
+
+  // Now the ordinary case: the vendor has paid nothing on it and the student
+  // falls away, so the whole line comes back off.
+  await ap.keyboard.press("Escape");
+  sql(`delete from invoice_payments where invoice_id = '${older}'`);
+  sql(`update vendor_invoices set received_amount = 0, paid_at = null, state = 'SENT' where id = '${older}'`);
+  await go(ap, `/admin/invoices/${older}`);
+  check(await openModal(ap, "Credit part of it"), "credit note: the form opens on an invoice with nothing paid against it");
+  await ap.locator(`input[name="line"][value="${onlyLine}"]`).click();
+  await ap.waitForFunction((want) => Number(document.querySelector('input[name="amount"]')?.value) === want, onlyLineAmount, { timeout: 10000 }).catch(() => {});
+  check(Number(await ap.locator('input[name="amount"]').first().inputValue()) === onlyLineAmount, `credit note: the amount comes from the student's line (${onlyLineAmount})`);
+  await ap.locator('textarea[name="reason"]').first().fill("The student deferred to the next intake after enrolment; the vendor agrees the commission is not payable.");
+  await ap.getByRole("button", { name: "Raise the credit note" }).last().click();
+  check((await waitSql(`select count(*) from credit_notes where invoice_id = '${older}'`, "1")) === "1", "credit note: it is recorded");
+  const cn = sql(`select number from credit_notes where invoice_id = '${older}'`);
+  check(/^MIO\/CN\//.test(cn), `credit note: numbered in its own series, not the invoice run (${cn})`);
+  check(sql(`select count(*) from credit_note_lines where credit_note_id = (select id from credit_notes where invoice_id = '${older}')`) === "1", "credit note: the student it covers is named on it");
+  const lineState = sql(`select state || '|' || coalesce(written_off_reason, '') from income_lines where id = (select income_line_id from vendor_invoice_lines where id = '${onlyLine}')`);
+  check(lineState.startsWith("WRITTEN_OFF"), `credit note: the student's income line is written back (${lineState.slice(0, 40)})`);
+  check(lineState.includes(cn), "credit note: with the credit note's number on it, so the reason is on their own file");
+  // Credited in full is settled, so it stops being chased. Nothing was received,
+  // so the bank still reconciles against nought.
+  check((await waitSql(`select state from vendor_invoices where id = '${older}'`, "PAID")) === "PAID", "credit note: an invoice credited in full is settled, not left on the ageing report");
+  check(sql(`select received_amount from vendor_invoices where id = '${older}'`) === "0", "credit note: and no money is pretended to have arrived");
+
+  text = await go(ap, `/admin/invoices/${older}`);
+  check(/Credited back/.test(text), "credit note: the invoice shows what was credited");
+  check(/What it is now worth/.test(text), "credit note: and what it is now worth, beside what it was raised for");
+  check(/deferred to the next intake/.test(text), "credit note: the reason is on the invoice");
+
+  // The ageing report downloads, and carries the credited column.
+  const csv = await ap.request.get(`${BASE}/api/invoices/ageing-export`);
+  check(csv.status() === 200, `ageing: the report downloads (${csv.status()})`);
+  const csvBody = await csv.text();
+  check(/Credited back/.test(csvBody.split("\r\n")[0]), "ageing: the file has a credited column");
+  check(!csvBody.includes(cn) && !new RegExp(sql(`select number from vendor_invoices where id = '${older}'`).replace(/\//g, "\\/")).test(csvBody), "ageing: a settled invoice is not in it");
+
+  // Put it back the way the rest of this suite expects to find it.
+  sql(`update vendor_invoices set state = 'PART_PAID', received_amount = 1238 where id = '${older}'`);
 
   // Writing off: super admin only.
   check((await ap.getByRole("button", { name: "Write it off" }).count()) === 0, "write off: an admin is not offered it");

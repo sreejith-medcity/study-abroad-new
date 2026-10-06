@@ -2,7 +2,7 @@ import "server-only";
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { financialYear, fmtMoney } from "@/lib/format";
-import { ageOf, invoiceableOn, invoiceNumber, invoiceTotals, numberSuffix, taxFor, type AgeBucket } from "@/lib/invoicing";
+import { ageOf, creditNoteNumber, invoiceableOn, invoiceNumber, invoiceTotals, numberSuffix, taxFor, type AgeBucket } from "@/lib/invoicing";
 import { routeTerms } from "@/lib/vendors";
 import type { InvoiceState } from "@/db/schema";
 
@@ -168,6 +168,17 @@ export async function nextInvoiceNumber(): Promise<string> {
   return invoiceNumber(year, highest + 1);
 }
 
+/** The next credit note number in this financial year, in its own series. */
+export async function nextCreditNoteNumber(): Promise<string> {
+  const year = financialYear();
+  const rows = await db
+    .select({ number: schema.creditNotes.number })
+    .from(schema.creditNotes)
+    .where(sql`${schema.creditNotes.number} like ${`MIO/CN/${year}/%`}`);
+  const highest = rows.map((r) => numberSuffix(r.number) ?? 0).reduce((a, b) => Math.max(a, b), 0);
+  return creditNoteNumber(year, highest + 1);
+}
+
 export type InvoiceFull = NonNullable<Awaited<ReturnType<typeof loadInvoice>>>;
 
 /** One invoice with everything the screen and the document need. */
@@ -180,6 +191,10 @@ export async function loadInvoice(id: string) {
       createdBy: { columns: { name: true, deskLabel: true } },
       sentBy: { columns: { name: true, deskLabel: true } },
       payments: { with: { recordedBy: { columns: { name: true, deskLabel: true } } }, orderBy: desc(schema.invoicePayments.receivedOn) },
+      creditNotes: {
+        with: { createdBy: { columns: { name: true, deskLabel: true } }, lines: { with: { invoiceLine: true } } },
+        orderBy: desc(schema.creditNotes.issuedOn),
+      },
       lines: {
         with: {
           incomeLine: {
@@ -200,7 +215,7 @@ export async function loadInvoice(id: string) {
     (invoice.vendor.currency ?? "INR") === "INR" || invoice.vendor.isDirect,
     invoice.raisedOn ? new Date(`${invoice.raisedOn}T00:00:00Z`) : new Date(),
   );
-  const money = invoiceTotals(invoice.lines, invoice.payments, { percent: invoice.taxPercent ?? tax.percent });
+  const money = invoiceTotals(invoice.lines, invoice.payments, { percent: invoice.taxPercent ?? tax.percent }, invoice.creditNotes);
   const age = ageOf(invoice.dueOn);
   return { ...invoice, tax, money, age };
 }
@@ -214,6 +229,7 @@ export type InvoiceRow = {
   currency: string;
   total: number;
   received: number;
+  credited: number;
   outstanding: number;
   state: InvoiceState;
   raisedOn: string | null;
@@ -232,6 +248,7 @@ export async function invoiceList(filters: { vendorId?: string; state?: string }
       vendorCode: vn.code,
       vendorColour: vn.colour,
       students: sql<number>`(select count(*) from ${vil} l where l.invoice_id = ${vi.id})`.mapWith(Number),
+      credited: sql<number>`coalesce((select sum(n.amount) from ${schema.creditNotes} n where n.invoice_id = ${vi.id}), 0)`.mapWith(Number),
     })
     .from(vi)
     .innerJoin(vn, eq(vn.id, vi.vendorId))
@@ -249,7 +266,10 @@ export async function invoiceList(filters: { vendorId?: string; state?: string }
       currency: invoice.currency,
       total: invoice.total,
       received: invoice.receivedAmount,
-      outstanding: Math.max(0, invoice.total - invoice.receivedAmount),
+      credited: r.credited,
+      // What is actually chased: the invoice less what was credited off it,
+      // less what came in. A credited invoice is not a late invoice.
+      outstanding: Math.max(0, invoice.total - r.credited - invoice.receivedAmount),
       state: invoice.state,
       raisedOn: invoice.raisedOn,
       dueOn: invoice.dueOn,

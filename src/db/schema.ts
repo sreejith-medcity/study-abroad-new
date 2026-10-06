@@ -784,6 +784,13 @@ export const applications = pgTable(
     vendorReference: text("vendor_reference"),
     routeChosenById: text("route_chosen_by_id").references(() => users.id),
     routeChosenAt: timestamp("route_chosen_at", { withTimezone: true }),
+    /**
+     * Why the road was changed after one had already been chosen. Required at
+     * the moment of the change, because the commission, the paperwork and who
+     * gets invoiced all move with it, and "it was always KC" a month later is
+     * how a file stops matching the money.
+     */
+    routeChangeReason: text("route_change_reason"),
 
     /**
      * The hand-over between the branch and the desk. Everything that existed
@@ -1451,6 +1458,58 @@ export const invoicePayments = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index("invoice_payments_invoice_idx").on(t.invoiceId, t.receivedOn)],
+);
+
+/**
+ * Money taken back off an invoice that has already gone out.
+ *
+ * A write-off says the whole invoice will never be paid; a credit note says
+ * part of it was never owed. A student who deferred after enrolment, a rate
+ * corrected after the fact, a figure settled halfway with the vendor: all of
+ * those are a smaller invoice, not a failed one, and the vendor needs a
+ * document with a number on it to put against their own books.
+ */
+export const creditNotes = pgTable(
+  "credit_notes",
+  {
+    id: id(),
+    number: text("number").notNull(),
+    invoiceId: text("invoice_id")
+      .notNull()
+      .references(() => vendorInvoices.id, { onDelete: "cascade" }),
+    /** Always the invoice's own currency: a credit in another currency is a different argument. */
+    currency: text("currency").notNull().default("INR"),
+    amount: integer("amount").notNull(),
+    /** Required. A credit nobody can explain later is a credit nobody can defend. */
+    reason: text("reason").notNull(),
+    issuedOn: date("issued_on").notNull(),
+    note: text("note"),
+    createdById: text("created_by_id").references(() => users.id),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("credit_notes_number_uq").on(t.number), index("credit_notes_invoice_idx").on(t.invoiceId)],
+);
+
+/**
+ * Which students' lines a credit covers, where it covers particular ones.
+ *
+ * A credit note may be a flat adjustment with no lines named, but naming them
+ * is what stops the argument a year later about which placement the money came
+ * off, so the screen asks for them whenever they are known.
+ */
+export const creditNoteLines = pgTable(
+  "credit_note_lines",
+  {
+    id: id(),
+    creditNoteId: text("credit_note_id")
+      .notNull()
+      .references(() => creditNotes.id, { onDelete: "cascade" }),
+    invoiceLineId: text("invoice_line_id")
+      .notNull()
+      .references(() => vendorInvoiceLines.id, { onDelete: "cascade" }),
+    amount: integer("amount").notNull(),
+  },
+  (t) => [uniqueIndex("credit_note_lines_uq").on(t.creditNoteId, t.invoiceLineId)],
 );
 
 /** A gate let through with a reason, which is logged and shown on the file. */
@@ -2928,6 +2987,18 @@ export const vendorInvoicesRelations = relations(vendorInvoices, ({ one, many })
   sentBy: one(users, { fields: [vendorInvoices.sentById], references: [users.id], relationName: "invoiceSender" }),
   lines: many(vendorInvoiceLines),
   payments: many(invoicePayments),
+  creditNotes: many(creditNotes),
+}));
+
+export const creditNotesRelations = relations(creditNotes, ({ one, many }) => ({
+  invoice: one(vendorInvoices, { fields: [creditNotes.invoiceId], references: [vendorInvoices.id] }),
+  createdBy: one(users, { fields: [creditNotes.createdById], references: [users.id] }),
+  lines: many(creditNoteLines),
+}));
+
+export const creditNoteLinesRelations = relations(creditNoteLines, ({ one }) => ({
+  creditNote: one(creditNotes, { fields: [creditNoteLines.creditNoteId], references: [creditNotes.id] }),
+  invoiceLine: one(vendorInvoiceLines, { fields: [creditNoteLines.invoiceLineId], references: [vendorInvoiceLines.id] }),
 }));
 
 export const vendorInvoiceLinesRelations = relations(vendorInvoiceLines, ({ one }) => ({

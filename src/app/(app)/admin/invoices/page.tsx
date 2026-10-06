@@ -57,6 +57,16 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
 
   const amounts = (by: Record<string, number>) => (Object.keys(by).length === 0 ? "nothing" : Object.entries(by).map(([c, n]) => fmtMoney(n, c)).join(" + "));
   const readyAltogether = vendors.reduce((n, v) => n + v.ready.length, 0);
+  const waitingAltogether = vendors.reduce((n, v) => n + v.waiting.length, 0);
+  const unpricedAltogether = vendors.reduce((n, v) => n + v.unpriced.length, 0);
+  // What the ready lines come to, kept per currency: adding GBP to INR to get
+  // one headline figure is the kind of number nobody can check.
+  const readyMoney: Record<string, number> = {};
+  for (const v of vendors) for (const l of v.ready) readyMoney[l.currency] = (readyMoney[l.currency] ?? 0) + (l.amount ?? 0);
+  const openInvoices = invoices.filter((r) => r.state !== "PAID" && r.state !== "WRITTEN_OFF" && r.state !== "DRAFT").length;
+  const lateInvoices = aged.invoices.filter((r) => r.bucket !== "NOT_DUE").length;
+  const tabCount = (key: string) =>
+    key === "queue" ? readyAltogether : key === "ageing" ? lateInvoices : key === "raised" || key === "invoices" ? openInvoices : 0;
 
   return (
     <>
@@ -68,7 +78,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
         {TABS.map((t) => (
           <Link key={t.key} href={`/admin/invoices?tab=${t.key}`} className={cn("-mb-px border-b-2 py-2 font-medium", t.key === tab ? "border-brand-600 text-brand-600" : "border-transparent text-muted hover:text-ink")}>
             {t.label}
-            {t.key === "queue" && readyAltogether > 0 ? ` (${readyAltogether})` : ""}
+            {tabCount(t.key) > 0 ? ` (${tabCount(t.key).toLocaleString("en-IN")})` : ""}
           </Link>
         ))}
       </div>
@@ -81,6 +91,27 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
 
       {tab === "queue" && (
         <div className="space-y-4">
+          {vendors.length > 0 && (
+            <Card className="flex flex-wrap items-center gap-x-6 gap-y-2 p-4">
+              <span className="text-[13px]">
+                <span className="tabular text-lg font-semibold">{readyAltogether.toLocaleString("en-IN")}</span>{" "}
+                <span className="text-muted">ready to invoice, worth {amounts(readyMoney)}</span>
+              </span>
+              {waitingAltogether > 0 && (
+                <span className="text-[13px] text-muted">
+                  <span className="tabular font-semibold text-ink">{waitingAltogether.toLocaleString("en-IN")}</span> waiting on a milestone
+                </span>
+              )}
+              {unpricedAltogether > 0 && (
+                <span className="text-[13px] text-muted">
+                  <span className="tabular font-semibold text-ink">{unpricedAltogether.toLocaleString("en-IN")}</span> with no rate recorded, which can never be invoiced until it is
+                </span>
+              )}
+              <span className="ml-auto text-[13px] text-muted">
+                across {vendors.length} vendor{vendors.length === 1 ? "" : "s"}
+              </span>
+            </Card>
+          )}
           {vendors.length === 0 ? (
             <EmptyState title="Nothing to invoice">
               A commission becomes invoiceable once the milestone its vendor pays on has happened: the visa granted, the enrolment confirmed, whatever their terms say.
@@ -226,7 +257,17 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
       {tab === "ageing" && (
         <div className="space-y-4">
           <Card>
-            <CardHeader title="What is owed, by how late it is" subtitle="Paid and written-off invoices are out of it. A disputed one stays in, because it is still money we are owed until somebody agrees otherwise." />
+            <CardHeader
+              title="What is owed, by how late it is"
+              subtitle="Paid and written-off invoices are out of it. A disputed one stays in, because it is still money we are owed until somebody agrees otherwise, and so does one part-credited, for the part still owed."
+              action={
+                aged.invoices.length > 0 ? (
+                  <a href="/api/invoices/ageing-export" className="text-[13px] font-medium text-brand-600 hover:underline">
+                    Download the {aged.invoices.length.toLocaleString("en-IN")} open invoice{aged.invoices.length === 1 ? "" : "s"}
+                  </a>
+                ) : undefined
+              }
+            />
             <Table>
               <thead>
                 <tr>

@@ -112,20 +112,47 @@ export function taxFor(company: { gstin: string | null; lutNumber: string | null
   };
 }
 
-/** The money on one invoice, from its lines and its payments. */
-export function invoiceTotals(lines: { amount: number }[], payments: { amount: number }[], tax: { percent: number }) {
+/**
+ * The money on one invoice, from its lines, its payments and its credit notes.
+ *
+ * A credit reduces what is owed without pretending money arrived, so it is kept
+ * apart from what was received: the bank reconciles against `received`, the
+ * vendor's statement against `total` less `credited`, and the ageing report
+ * against what is left. Collapsing the two into one figure is how an invoice
+ * comes to look paid when nothing was paid.
+ */
+export function invoiceTotals(lines: { amount: number }[], payments: { amount: number }[], tax: { percent: number }, credits: { amount: number }[] = []) {
   const net = lines.reduce((sum, l) => sum + l.amount, 0);
   const taxAmount = Math.round((net * tax.percent) / 100);
   const total = net + taxAmount;
   const received = payments.reduce((sum, p) => sum + p.amount, 0);
-  return { net, taxAmount, total, received, outstanding: Math.max(0, total - received), overpaid: Math.max(0, received - total) };
+  const credited = credits.reduce((sum, c) => sum + c.amount, 0);
+  const owed = Math.max(0, total - credited);
+  return {
+    net,
+    taxAmount,
+    total,
+    received,
+    credited,
+    /** What the vendor still owes after the credits: what the invoice is now worth. */
+    owed,
+    settled: received + credited,
+    outstanding: Math.max(0, owed - received),
+    overpaid: Math.max(0, received - owed),
+  };
 }
 
-/** Which state an invoice lands in once a payment is recorded. */
-export function stateAfterPayment(total: number, received: number, current: InvoiceState): InvoiceState {
+/**
+ * Which state an invoice lands in once money or a credit has moved.
+ *
+ * `settled` is what has stopped being owed, by either route: an invoice fully
+ * credited is as settled as one fully paid, and leaving it open would keep it
+ * on the ageing report for money nobody is going to send.
+ */
+export function stateAfterSettlement(total: number, settled: number, current: InvoiceState): InvoiceState {
   if (current === "WRITTEN_OFF") return current;
-  if (received <= 0) return current === "DISPUTED" ? "DISPUTED" : current;
-  if (received >= total) return "PAID";
+  if (settled <= 0) return current === "DISPUTED" ? "DISPUTED" : current;
+  if (settled >= total) return "PAID";
   return "PART_PAID";
 }
 
@@ -157,6 +184,31 @@ export function ageOf(dueDate: string | null, today = new Date()): { bucket: Age
 /** An invoice number: a running count inside the Indian financial year. */
 export function invoiceNumber(financialYear: string, count: number) {
   return `MIO/${financialYear}/${String(count).padStart(4, "0")}`;
+}
+
+/**
+ * A credit note's number, in its own series.
+ *
+ * Separate from the invoice series on purpose: a credit note that shares the
+ * invoice numbering looks like a missing invoice in anybody's audit of the run.
+ */
+export function creditNoteNumber(financialYear: string, count: number) {
+  return `MIO/CN/${financialYear}/${String(count).padStart(4, "0")}`;
+}
+
+/**
+ * What a credit may be, against one invoice as it stands.
+ *
+ * Never more than is still owed: a credit bigger than the invoice is either a
+ * refund, which is money going the other way and a different record, or a
+ * mistake. Both deserve to be stopped here rather than explained later.
+ */
+export function creditAllowed(money: { owed: number; received: number }, amount: number): { ok: boolean; says: string } {
+  if (!Number.isInteger(amount) || amount <= 0) return { ok: false, says: "A whole amount above nought." };
+  const room = money.owed - money.received;
+  if (room <= 0) return { ok: false, says: "Nothing is outstanding on this invoice, so there is nothing to credit." };
+  if (amount > room) return { ok: false, says: `Only ${room} is outstanding. A credit cannot be larger than what is still owed; money going back to the vendor is a refund, not a credit note.` };
+  return { ok: true, says: "" };
 }
 
 /** Reads the running count back out of a number, for working out the next one. */
