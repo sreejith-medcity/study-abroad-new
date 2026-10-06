@@ -8,7 +8,8 @@ import type { SessionUser } from "@/lib/auth";
 import { fmtDate, fullName, greetingName } from "@/lib/format";
 import { applicationWhere, type ApplicationFilters } from "@/server/queries";
 import { getSettings, tierTargets } from "@/server/settings";
-import { agingList, countryMix, deadlineList, windowFor, funnel, kpiTotals, monthlyPoints, myWork, recentChanges, teamLoad } from "@/server/dashboard";
+import { agingList, builtByWaiting, countryMix, deadlineList, windowFor, funnel, kpiTotals, monthlyPoints, myWork, recentChanges, teamLoad } from "@/server/dashboard";
+import { referralsFor } from "@/server/agents";
 import { STAGE_LABEL, STAGE_TONE, enquiryCounts, followUpQueue } from "@/server/enquiries";
 import { commissionTotals, inr, walletBalance } from "@/server/commission";
 import {
@@ -29,7 +30,7 @@ import {
   TrendChart,
 } from "@/components/ui";
 import { IconAlert, IconApplications, IconChat, IconCheck, IconClock, IconDoc, IconEnquiry, IconPlus, IconSearch, IconSpark } from "@/components/icons";
-import { AgingCard, DashboardFilters, DeadlinesCard, RecentChangesCard } from "./parts";
+import { AgingCard, DashboardFilters, DeadlinesCard, RecentChangesCard, partOfDay } from "./parts";
 import { AnnouncementBanner, UpdatesCard } from "./updates-card";
 import { ownApplicationsOnly } from "@/server/scope";
 
@@ -46,13 +47,6 @@ const TILES = [
 
 const NEXT_TIER = { SILVER: "Gold", GOLD: "Elite", ELITE: "Platinum", PLATINUM: null } as const;
 
-function partOfDay() {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
-}
-
 /**
  * Two related dashboards. The owner sees the branch: volume, the team and the
  * tier. A counsellor sees only their own desk: what is waiting on them today.
@@ -64,11 +58,16 @@ export default async function PartnerDashboard({
 }: {
   user: SessionUser;
   f: ApplicationFilters;
-  variant: "owner" | "counsellor";
+  variant: "owner" | "senior" | "counsellor" | "trainee" | "subagent";
 }) {
+  // A branch head runs the branch; a senior counsellor runs its students
+  // without running it, so they see the branch's numbers and none of its
+  // wallet, seats or team. Everybody else sees their own desk.
+  const branchWide = variant === "owner" || variant === "senior";
+  const personal = !branchWide;
   const { applications: a, students: s, countries: c, organizations: og } = schema;
   const filters: ApplicationFilters = { from: f.from, to: f.to, country: f.country, intakeYear: f.intakeYear, intakeMonth: f.intakeMonth };
-  const mine = variant === "counsellor" ? eq(s.assignedToId, user.id) : undefined;
+  const mine = personal ? eq(s.assignedToId, user.id) : undefined;
   const showMoney = await commissionVisible(user);
   const [schemes, links] = await Promise.all([showMoney ? currentPromotions() : Promise.resolve([]), quickLinkList()]);
 
@@ -91,7 +90,7 @@ export default async function PartnerDashboard({
   const targets = tierTargets(await getSettings());
 
   const yearAgo = new Date(Date.now() - 365 * 86400000);
-  const [[{ visas12m }], [{ openStudents }], team, waiting] = await Promise.all([
+  const [[{ visas12m }], [{ openStudents }], team, waiting, toSend, referrals] = await Promise.all([
     db
       .select({ visas12m: count() })
       .from(a)
@@ -100,6 +99,8 @@ export default async function PartnerDashboard({
     db.select({ openStudents: count() }).from(s).where(and(eq(s.orgId, user.orgId), eq(s.archived, false))),
     variant === "owner" ? teamLoad(user.orgId) : Promise.resolve([]),
     agingList(user, 6, mine),
+    variant === "trainee" ? builtByWaiting(user, 6) : Promise.resolve([]),
+    variant === "subagent" ? referralsFor(user.orgId) : Promise.resolve([]),
   ]);
 
   const qs = (extra: Record<string, string>) =>
@@ -110,12 +111,26 @@ export default async function PartnerDashboard({
   return (
     <>
       <DashboardHero
-        eyebrow={variant === "owner" ? `${org?.type === "SUB_AGENT" ? "Sub-agent" : "Branch"} workspace` : "Your desk"}
+        eyebrow={
+          variant === "owner"
+            ? `${org?.type === "SUB_AGENT" ? "Sub-agent" : "Branch"} workspace`
+            : variant === "senior"
+              ? `${user.orgName}, every student`
+              : variant === "trainee"
+                ? "Your desk, in training"
+                : "Your desk"
+        }
         title={variant === "owner" ? user.orgName : `${partOfDay()}, ${greetingName(user.name)}`}
         subtitle={
           variant === "owner"
             ? "Your branch at a glance: what is live, what is waiting on your team, and how close you are to the next benefits level."
-            : "Everything assigned to you, with the items the Medcity Overseas team is waiting on at the top."
+            : variant === "senior"
+              ? "Every student at this branch, not only your own, with what the Medcity Overseas team is waiting on at the top. The wallet and the team belong to the branch head."
+              : variant === "trainee"
+                ? "Everything assigned to you. What you have built but cannot send yourself is listed below, so it can be chased rather than waited on."
+                : variant === "subagent"
+                  ? "Everything assigned to you, and what your firm has referred. You are paid per student referred, not per placement."
+                  : "Everything assigned to you, with the items the Medcity Overseas team is waiting on at the top."
         }
         actions={
           <>
@@ -131,7 +146,7 @@ export default async function PartnerDashboard({
           </>
         }
         meta={
-          variant === "owner"
+          branchWide
             ? [
                 { label: "Live applications", value: kpis.all - (kpis.visa_received ?? 0) },
                 { label: "Waiting on us", value: kpis.pending_partner },
@@ -169,11 +184,11 @@ export default async function PartnerDashboard({
 
           <AgingCard
             rows={waiting}
-            title={variant === "owner" ? "Waiting on your branch" : "Waiting on you"}
+            title={branchWide ? "Waiting on your branch" : "Waiting on you"}
             subtitle="Oldest first. Anything marked late is holding up the file."
           />
 
-          {variant === "counsellor" && (
+          {personal && (
             <Card>
               <CardHeader
                 title="Student replies"
@@ -246,6 +261,54 @@ export default async function PartnerDashboard({
             </Card>
           </div>
 
+          {/* A trainee builds the file and somebody else sends it, so the one
+              thing they cannot see anywhere else is what is sitting finished
+              and waiting on a colleague. */}
+          {variant === "trainee" && (
+            <Card>
+              <CardHeader
+                title={`Built and waiting to be sent (${toSend.length})`}
+                subtitle="You put these together. Somebody with the authority to submit has to send them, so chase rather than wait."
+              />
+              {toSend.length === 0 ? (
+                <EmptyState title="Nothing waiting on anyone else">Everything you have built has gone out.</EmptyState>
+              ) : (
+                <ul className="divide-y divide-line">
+                  {toSend.map((r) => (
+                    <li key={r.id} className="px-4 py-2.5 text-[13px]">
+                      <Link href={`/students/${r.studentId}/applications?app=${r.id}`} className="font-medium text-brand-600 hover:underline">
+                        {r.firstName} {r.lastName}
+                      </Link>
+                      <span className="ml-2 text-muted">{r.program}</span>
+                      <p className="text-xs text-muted">{r.statusLabel} · built {fmtDate(r.createdAt)}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+          )}
+
+          {/* A sub-agent's counsellor is paid per student referred rather than
+              per placement, so what they are owed is the thing they open this
+              screen for. */}
+          {variant === "subagent" && (
+            <Card>
+              <CardHeader
+                title="What your firm has referred"
+                subtitle="Referrals and what they have earned. The rate and the agreement are on the Referrals screen."
+                action={<Link href="/referrals" className="text-[13px] font-medium text-brand-600 hover:underline">Open referrals</Link>}
+              />
+              <DataList
+                rows={[
+                  { label: "Referred altogether", value: referrals.length },
+                  { label: "Still open", value: referrals.filter((r) => !r.lostReason && r.stage !== "CONVERTED").length },
+                  { label: "Converted", value: referrals.filter((r) => r.stage === "CONVERTED").length },
+                  { label: "Earned so far", value: inr(referrals.reduce((n, r) => n + (r.earningAmount ?? 0), 0)), href: "/referrals" },
+                ]}
+              />
+            </Card>
+          )}
+
           <RecentChangesCard rows={recent} />
 
           {variant === "owner" && (
@@ -293,7 +356,11 @@ export default async function PartnerDashboard({
         <div className="space-y-5">
           {org && (
             <Card className="overflow-hidden">
-              {/* The companion surface, so the hero stays the only block of crimson. */}
+              {/* The benefits level, the wallet and the seats belong to whoever
+                  runs the branch. A senior counsellor runs its students, which
+                  is a different job and a different screen. */}
+              {variant === "owner" && (
+              <>
               <div className="tier-wash grain relative px-4 py-3.5">
                 <p className="relative z-10 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/60">Benefits level</p>
                 <p className="relative z-10 font-display text-xl font-semibold text-gold-300">
@@ -311,17 +378,19 @@ export default async function PartnerDashboard({
                   </p>
                 )}
               </div>
+              </>
+              )}
               <DataList
                 rows={[
-                  ...(showMoney
+                  ...(showMoney && variant === "owner"
                     ? [
                         { label: "Wallet balance", value: inr(wallet.balance), href: "/wallet", tone: wallet.balance > 0 ? ("ok" as const) : undefined },
                         { label: "Commission in flight", value: inr(commission.EXPECTED.partner + commission.INVOICED.partner + commission.RECEIVED.partner), href: "/commission" },
                       ]
                     : []),
-                  { label: "Counsellor seats", value: org.counsellorSeats },
+                  ...(variant === "owner" ? [{ label: "Counsellor seats", value: org.counsellorSeats }] : []),
                   { label: "Active students", value: Number(openStudents) },
-                  { label: variant === "counsellor" ? "My documents" : "Documents on file", value: variant === "counsellor" ? work.documents : work.orgDocuments },
+                  { label: personal ? "My documents" : "Documents on file", value: personal ? work.documents : work.orgDocuments },
                 ]}
               />
             </Card>

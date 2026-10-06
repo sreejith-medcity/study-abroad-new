@@ -55,8 +55,14 @@ async function main() {
   await u("Kottayam Branch Head", "kottayam@medcity.test", "PARTNER", kottayam.id);
   const ukDocs = await u("UK Documentation", "uk.docs@medcity.test", "COUNSELLOR", kottayam.id, "UK Documentation");
   const deDocs = await u("Germany Counsellor", "germany@medcity.test", "COUNSELLOR", kottayam.id, "Germany");
+  // One of each counsellor, because four roles sharing one seeded login is how
+  // a dashboard goes untested for a month.
+  const seniorKtm = await u("Anju Mathew", "senior@medcity.test", "SENIOR_COUNSELLOR", kottayam.id, "Senior counsellor");
+  const traineeKtm = await u("Rohit Das", "trainee@medcity.test", "TRAINEE_COUNSELLOR", kottayam.id, "Trainee");
+  const deskCounsellor = await u("Sneha Raj", "desk.counsellor@medcityoverseas.test", "DESK_COUNSELLOR", hq.id, "Overseas desk counsellor");
   const partnerKochi = await u("Kochi Branch Head", "kochi@medcity.test", "PARTNER", kochi.id);
   const partnerTsr = await u("Horizon Owner", "owner@horizon.test", "PARTNER", thrissur.id);
+  await u("Horizon Counsellor", "staff@horizon.test", "SUB_AGENT_COUNSELLOR", thrissur.id, "Referrals");
 
   await db.update(schema.organizations).set({ relationshipManagerId: admin.id }).where(sql`type <> 'HQ'`);
   // One branch with its public enquiry form open, so the QR panel has something to show.
@@ -172,9 +178,9 @@ async function main() {
   const seeds: StudentSeed[] = [
     { first: "Fathima", last: "Rahman", org: kottayam, assigned: ukDocs, creator: ukDocs, pathway: "DEGREE", country: "United Kingdom", dob: "2002-07-09", passportExpiry: "2027-02-14", backlogs: 2, gap: 2, tests: [{ test: "IELTS", overall: "7.0" }], docs: ["PASSPORT", "MARKSHEET_12", "DEGREE_MARKSHEETS", "ENGLISH_TEST"],
       apps: [{ program: "MSc Nursing (Adult)", status: "PENDING_PARTNER", month: 1, year: 2027, officer: admin }, { program: "BSc (Hons) Nursing (Adult)", status: "CASE_CLOSED", month: 9, year: 2026, officer: admin }] },
-    { first: "Arathi", last: "Krishnan", org: kottayam, assigned: ukDocs, creator: ukDocs, pathway: "DEGREE", country: "Australia", dob: "1999-03-22", passportExpiry: "2032-05-01", backlogs: 0, gap: 3, tests: [{ test: "IELTS", overall: "7.5" }], docs: ["PASSPORT", "MARKSHEET_12", "DEGREE_MARKSHEETS", "ENGLISH_TEST", "SOP", "NURSING_LICENSE"],
+    { first: "Arathi", last: "Krishnan", org: kottayam, assigned: seniorKtm, creator: seniorKtm, pathway: "DEGREE", country: "Australia", dob: "1999-03-22", passportExpiry: "2032-05-01", backlogs: 0, gap: 3, tests: [{ test: "IELTS", overall: "7.5" }], docs: ["PASSPORT", "MARKSHEET_12", "DEGREE_MARKSHEETS", "ENGLISH_TEST", "SOP", "NURSING_LICENSE"],
       apps: [{ program: "Master of Nursing Practice (Pre-registration)", status: "ON_HOLD_INTAKE", month: 2, year: 2027, officer: admin, deadline: "2026-10-21" }] },
-    { first: "Jibin", last: "Thomas", org: kottayam, assigned: ukDocs, creator: ukDocs, pathway: "DEGREE", country: "United Kingdom", dob: "1998-11-02", passportExpiry: "2031-08-19", backlogs: 4, gap: 4, tests: [{ test: "PTE", overall: "61" }], docs: ["PASSPORT", "MARKSHEET_12", "DEGREE_MARKSHEETS", "ENGLISH_TEST", "SOP"],
+    { first: "Jibin", last: "Thomas", org: kottayam, assigned: traineeKtm, creator: traineeKtm, pathway: "DEGREE", country: "United Kingdom", dob: "1998-11-02", passportExpiry: "2031-08-19", backlogs: 4, gap: 4, tests: [{ test: "PTE", overall: "61" }], docs: ["PASSPORT", "MARKSHEET_12", "DEGREE_MARKSHEETS", "ENGLISH_TEST", "SOP"],
       apps: [{ program: "MSc Digital Marketing", status: "CONDITIONAL_OFFER", month: 1, year: 2027, officer: admin }, { program: "MSc Artificial Intelligence", status: "SUBMITTED", month: 1, year: 2027, officer: admin }, { program: "MSc Artificial Intelligence", status: "CLOSED_NOT_QUALIFIED", month: 9, year: 2026, officer: admin }, { program: "MSc Digital Marketing", status: "ENROLLED", month: 9, year: 2026, officer: admin }] },
     { first: "Aswin", last: "Anil", org: kottayam, assigned: deDocs, creator: deDocs, pathway: "DEGREE", country: "Ireland", dob: "2000-01-15", passportExpiry: "2030-01-10", backlogs: 1, gap: 1, tests: [{ test: "IELTS", overall: "6.5" }], docs: ["PASSPORT", "MARKSHEET_12", "DEGREE_MARKSHEETS"],
       apps: [{ program: "MSc Computer Science: Adaptive Cybersecurity", status: "ASSESSMENT", month: 9, year: 2027, deadline: "2027-07-04" }] },
@@ -184,11 +190,11 @@ async function main() {
       apps: [{ program: "Ausbildung Pflegefachmann/-frau (Nursing)", status: "LANGUAGE_PENDING", month: 10, year: 2027, officer: officerDe }] },
     { first: "Simi", last: "Joseph", org: kottayam, assigned: ukDocs, creator: ukDocs, pathway: "NURSING", country: "United Kingdom", dob: "1995-12-01", passportExpiry: "2029-11-11", backlogs: 0, gap: 0, tests: [{ test: "OET", overall: "B" }], docs: ["PASSPORT", "DEGREE_CERTIFICATE", "NURSING_LICENSE", "ENGLISH_TEST", "CV"],
       apps: [{ program: "Registered Nurse (NMC) international recruitment", status: "BOARD_APPLICATION", month: 1, year: 2027, officer: officerNurse }, { program: "Registered Nurse (NMC) international recruitment", status: "DEPLOYED", month: 9, year: 2026, officer: officerNurse }] },
-    { first: "Anto", last: "Mathew", org: kochi, assigned: partnerKochi, creator: partnerKochi, pathway: "DEGREE", country: "United Kingdom", dob: "2001-04-04", passportExpiry: "2031-04-04", backlogs: 3, gap: 1, tests: [{ test: "IELTS", overall: "6.0" }], docs: ["PASSPORT", "MARKSHEET_12", "DEGREE_MARKSHEETS", "ENGLISH_TEST", "SOP"],
+    { first: "Anto", last: "Mathew", org: kochi, assigned: deskCounsellor, creator: deskCounsellor, pathway: "DEGREE", country: "United Kingdom", dob: "2001-04-04", passportExpiry: "2031-04-04", backlogs: 3, gap: 1, tests: [{ test: "IELTS", overall: "6.0" }], docs: ["PASSPORT", "MARKSHEET_12", "DEGREE_MARKSHEETS", "ENGLISH_TEST", "SOP"],
       apps: [{ program: "BSc (Hons) Nursing (Adult)", status: "VISA_RECEIVED", month: 9, year: 2026, officer: admin }, { program: "MSc Digital Marketing", status: "UNCONDITIONAL_OFFER", month: 1, year: 2027, officer: admin }] },
     { first: "Aleesha", last: "Varghese", org: kochi, assigned: partnerKochi, creator: partnerKochi, pathway: "DEGREE", country: "Malta", dob: "2002-02-18", passportExpiry: "2035-02-18", backlogs: 0, gap: 2, tests: [], docs: ["PASSPORT"],
       apps: [{ program: "Postgraduate Diploma in Beauty Therapy", status: "PENDING_PARTNER", month: 2, year: 2027, officer: admin }] },
-    { first: "Medhuna", last: "Suresh", org: thrissur, assigned: partnerTsr, creator: partnerTsr, pathway: "DEGREE", country: "United Kingdom", dob: "2000-08-08", passportExpiry: "2030-08-08", backlogs: 1, gap: 2, tests: [{ test: "IELTS", overall: "7.0" }], docs: ["PASSPORT", "MARKSHEET_12", "DEGREE_MARKSHEETS", "ENGLISH_TEST", "SOP"],
+    { first: "Medhuna", last: "Suresh", org: thrissur, assigned: deskCounsellor, creator: deskCounsellor, pathway: "DEGREE", country: "United Kingdom", dob: "2000-08-08", passportExpiry: "2030-08-08", backlogs: 1, gap: 2, tests: [{ test: "IELTS", overall: "7.0" }], docs: ["PASSPORT", "MARKSHEET_12", "DEGREE_MARKSHEETS", "ENGLISH_TEST", "SOP"],
       apps: [{ program: "BSc (Hons) Nursing (Adult)", status: "SUBMITTED", month: 1, year: 2027, officer: admin }] },
   ];
 
@@ -1075,6 +1081,10 @@ async function main() {
   console.log("  management@medcityoverseas.test  Management (read-only)");
   console.log("  kottayam@medcity.test             Partner owner, Medcity Kottayam");
   console.log("  uk.docs@medcity.test              Counsellor, Medcity Kottayam");
+  console.log("  senior@medcity.test               Senior counsellor (the branch's students, no wallet)");
+  console.log("  trainee@medcity.test              Trainee counsellor (builds, somebody else sends)");
+  console.log("  desk.counsellor@medcityoverseas.test Desk counsellor (own students, every branch)");
+  console.log("  staff@horizon.test                Sub-agent counsellor (referrals)");
   console.log("  owner@horizon.test                Sub-agent owner");
   console.log("  fathima.rahman@example.com        Student portal (Malayalam by default)");
 }

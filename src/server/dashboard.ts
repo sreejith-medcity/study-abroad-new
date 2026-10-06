@@ -369,7 +369,9 @@ export async function myWork(user: SessionUser) {
       .from(cm)
       .innerJoin(a, eq(cm.applicationId, a.id))
       .innerJoin(s, eq(a.studentId, s.id))
-      .where(and(scope(user), isNull(cm.readAt), isNull(cm.authorId), eq(cm.channel, "STUDENT")))
+      // Their own students only: this card says nobody else is going to answer
+      // these, which is a lie if the student belongs to another counsellor.
+      .where(and(scope(user), mine, isNull(cm.readAt), isNull(cm.authorId), eq(cm.channel, "STUDENT")))
       .orderBy(desc(cm.createdAt))
       .limit(5),
     db
@@ -491,4 +493,33 @@ export async function todayCounts(user: SessionUser) {
     db.select({ n: count() }).from(sh).innerJoin(a, eq(sh.applicationId, a.id)).where(and(scope(user), gte(sh.createdAt, start))),
   ]);
   return { students: Number(students.n), applications: Number(apps.n), moves: Number(moves.n) };
+}
+
+/**
+ * Files one person built that somebody else still has to send.
+ *
+ * A trainee counsellor puts an application together and a colleague submits it,
+ * because that is what the training is. The gap between those two moments is
+ * invisible from every other screen: the trainee's work looks done, and the
+ * colleague has no reason to look. This is the trainee's own list of what is
+ * sitting on somebody else's desk because of them.
+ */
+export async function builtByWaiting(user: SessionUser, limit = 6) {
+  return db
+    .select({
+      id: a.id,
+      studentId: s.id,
+      firstName: s.firstName,
+      lastName: s.lastName,
+      program: p.name,
+      statusLabel: sd.label,
+      createdAt: a.createdAt,
+    })
+    .from(a)
+    .innerJoin(s, eq(a.studentId, s.id))
+    .innerJoin(sd, eq(a.statusId, sd.id))
+    .innerJoin(p, eq(a.programId, p.id))
+    .where(and(eq(a.createdById, user.id), isNull(a.submittedToVendorAt), inArray(sd.group, [...ACTIVE_GROUPS])))
+    .orderBy(asc(a.createdAt))
+    .limit(limit);
 }

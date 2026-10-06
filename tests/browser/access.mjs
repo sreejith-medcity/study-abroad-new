@@ -54,7 +54,9 @@ await go(counsellor.page, "/admin/audit");
 check(!counsellor.page.url().includes("/admin/audit"), "and cannot again once it is taken back");
 
 // Taking money off a role reaches every money screen, not just one.
-const student = sql("select id from students where not archived limit 1");
+// One of theirs: a counsellor sees their own students only, so any student
+// would not do.
+const student = sql("select id from students where not archived and assigned_to_id = (select id from users where email = 'uk.docs@medcity.test') limit 1");
 check(/expected|income/i.test(await go(counsellor.page, `/students/${student}/income`)), "a counsellor sees the income sheet out of the box");
 sql("insert into role_permissions (id, role, capability, allowed, set_at) values (substr(md5(random()::text),1,20), 'COUNSELLOR', 'SEE_MONEY', false, now())");
 check(!/expected/i.test(await go(counsellor.page, `/students/${student}/income`)), "and stops when money is taken from the role");

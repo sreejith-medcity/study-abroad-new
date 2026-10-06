@@ -8,6 +8,14 @@ import { Button, Card, CardHeader, Chip, DateInput, LinkButton, Select, StatusBa
 import { IconClock } from "@/components/icons";
 
 /** Shared date, intake and destination filter used by the dashboards that report numbers. */
+/** The greeting at the top of a personal dashboard. Shared, so two do not drift. */
+export function partOfDay() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
 export function DashboardFilters({
   f,
   countries,
