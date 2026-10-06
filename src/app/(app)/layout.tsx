@@ -60,7 +60,12 @@ const partnerNav = (home: string): NavGroup[] => [
 ];
 
 const PARTNER_NAV = partnerNav("Dashboard");
-const COUNSELLOR_NAV = partnerNav("My desk");
+// The branch's income is the branch head's screen: a counsellor is refused by
+// it, and a link that refuses the person who was shown it is worse than no
+// link.
+const COUNSELLOR_NAV = partnerNav("My desk").map((g) =>
+  g.title === "Money" ? { ...g, items: g.items.filter((i) => i.href !== "/admin/income") } : g,
+);
 
 const ADMIN_NAV: NavGroup[] = [
   {
@@ -158,6 +163,49 @@ const DOCUMENTATION_NAV: NavGroup[] = [
   },
 ];
 
+/**
+ * Whoever runs the documentation desk: the officers' own screens, plus the two
+ * they run the desk with.
+ *
+ * Built from the officers' nav rather than the counsellors', because a team
+ * leader is at the head office. Falling through to a branch counsellor's nav is
+ * how they came to be offered a wallet, a branch's enquiries and program
+ * options, none of which open to them.
+ */
+const TEAM_LEAD_NAV: NavGroup[] = [
+  {
+    title: "The desk",
+    items: [
+      { href: "/dashboard", label: "The desk", icon: "dashboard" },
+      { href: "/documentation", label: "Documentation queue", icon: "applications" },
+      { href: "/admin/queue", label: "Work queue", icon: "queue" },
+      { href: "/applications", label: "Applications", icon: "applications" },
+      { href: "/students", label: "Students", icon: "students" },
+      { href: "/admin/services", label: "Services", icon: "services" },
+    ],
+  },
+  {
+    title: "What the desk works to",
+    items: [
+      { href: "/admin/documents", label: "Documents and requirements", icon: "applications" },
+      { href: "/search", label: "Search programs", icon: "search" },
+      { href: "/universities", label: "Universities", icon: "universities" },
+      { href: "/deadlines", label: "Deadlines", icon: "deadlines" },
+      { href: "/learning", label: "Learning resources", icon: "learning" },
+      { href: "/events", label: "Events", icon: "events" },
+    ],
+  },
+];
+
+/**
+ * A counsellor at the head office rather than at a branch, so the branch's own
+ * screens come out: no wallet, no commission, no branch enquiries, and no
+ * program options, which are requested by a branch of the desk.
+ */
+const DESK_COUNSELLOR_NAV: NavGroup[] = partnerNav("My desk")
+  .filter((g) => g.title !== "Money")
+  .map((g) => ({ ...g, items: g.items.filter((i) => !["/enquiries", "/program-options"].includes(i.href)) }));
+
 const MANAGEMENT_NAV: NavGroup[] = [
   {
     title: "Overview",
@@ -180,13 +228,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       ? ADMIN_NAV
       : user.role === "DOCUMENTATION"
         ? DOCUMENTATION_NAV
-        : user.role === "MANAGEMENT"
-          ? MANAGEMENT_NAV
-          : user.role === "PARTNER"
-            ? PARTNER_NAV
-            : (await commissionVisible(user))
-              ? COUNSELLOR_NAV
-              : COUNSELLOR_NAV.filter((g) => g.title !== "Money");
+        : user.role === "APPLICATION_TEAM_LEADER"
+          ? TEAM_LEAD_NAV
+          : user.role === "DESK_COUNSELLOR"
+            ? DESK_COUNSELLOR_NAV
+            : user.role === "MANAGEMENT"
+              ? MANAGEMENT_NAV
+              : user.role === "PARTNER"
+                ? PARTNER_NAV
+                : (await commissionVisible(user))
+                  ? COUNSELLOR_NAV
+                  : COUNSELLOR_NAV.filter((g) => g.title !== "Money");
 
   // The AI pages appear for branches only once the owner has switched them on.
   const ai = await aiConfig();

@@ -12,7 +12,9 @@ export const metadata = { title: "Help desk" };
 
 /** Partners see their branch's tickets; the Overseas team sees every branch, open ones first. */
 export default async function SupportPage({ searchParams }: { searchParams: Promise<{ status?: string; category?: string; subject?: string; body?: string }> }) {
-  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
+  // A desk counsellor is Medcity's own and works students across branches, so
+  // they raise and read tickets like the rest of the desk does.
+  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES, "DESK_COUNSELLOR"]);
   const staff = isStaff(user);
   const sp = await searchParams;
   const status = (TICKET_STATUSES as readonly string[]).includes(sp.status ?? "") ? (sp.status as TicketStatus) : undefined;

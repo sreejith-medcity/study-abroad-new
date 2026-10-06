@@ -475,6 +475,14 @@ update users set role = 'SUPER_ADMIN' where email = 'sreejith@miak.in';
 
 Run the two statements separately: Postgres will not let a new enum value be used in the same transaction that added it.
 
+## Every link opens for whoever is shown it
+
+A role is never given a link that refuses it. Being shown a door and then turned
+away by it is the worst of both: the person cannot tell whether they are
+allowed, and nobody told them. `tests/browser/nav.mjs` signs in as all thirteen
+roles, walks every link in that role's own sidebar, and fails on a refusal, a
+404 or a redirect somewhere else. Run it after touching a nav or a page guard.
+
 ## Roles
 
 Set from **Partners and people**, along with a free-text job title ("UK desk", "Germany documentation") that shows beside the person's name everywhere.
