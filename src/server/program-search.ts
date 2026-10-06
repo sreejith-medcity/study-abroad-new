@@ -1,4 +1,4 @@
-import { and, eq, ilike, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, eq, ilike, lte, or, sql, type AnyColumn, type SQL } from "drizzle-orm";
 import { schema } from "@/db";
 import type { EligibilityInput } from "@/lib/eligibility";
 import { PROGRAM_TAGS, SEASONS, type ProgramTag } from "@/lib/program-tags";
@@ -123,6 +123,19 @@ export function adhocStudent(f: Record<string, string>): (EligibilityInput & { l
 export const AE_KEYS = ["ae_ielts", "ae_pte", "ae_toefl", "ae_duolingo", "ae_gre", "ae_gmat", "ae_12", "ae_ug", "ae_backlogs", "ae_gap"] as const;
 
 /**
+ * One currency column as rupees, at the platform's indicative rates.
+ *
+ * Null where no rate is set for that currency, and the caller decides what an
+ * unknown means: in a filter it keeps the row, in an order it sorts last.
+ * Never a guess, because a guessed rate reads exactly like a real one.
+ */
+export function rateOf(currency: SQL | AnyColumn, rates: Record<string, number>): SQL {
+  const known = Object.entries(rates).filter(([k]) => /^[A-Z]{3}$/.test(k));
+  if (!known.length) return sql`null::numeric`;
+  return sql`(case ${currency} ${sql.join(known.map(([k, v]) => sql`when ${k} then ${v}::numeric`), sql` `)} end)`;
+}
+
+/**
  * A yearly budget in rupees, against fees in each destination's currency at
  * the platform's indicative rates. A per-year fee is compared directly. A
  * whole-course fee is only used to rule a program out when its average year
@@ -130,8 +143,7 @@ export const AE_KEYS = ["ae_ielts", "ae_pte", "ae_toefl", "ae_duolingo", "ae_gre
  * with no fee on record, or in a currency with no rate, stay in the list.
  */
 export function budgetWhere(budgetInr: number, rates: Record<string, number>): SQL {
-  const known = Object.entries(rates).filter(([k]) => /^[A-Z]{3}$/.test(k));
-  const rate = sql`(case ${c.currency} ${sql.join(known.map(([k, v]) => sql`when ${k} then ${v}::numeric`), sql` `)} end)`;
+  const rate = rateOf(c.currency, rates);
   return sql`(case
     when ${rate} is null then true
     when ${p.tuitionPerYear} is not null then ${p.tuitionPerYear} * ${rate} <= ${budgetInr}::numeric

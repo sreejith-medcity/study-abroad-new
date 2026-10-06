@@ -13,7 +13,8 @@ import { nextDeadlines } from "@/server/deadlines";
 import { activeRules, partnerShareJoins } from "@/server/commission-estimate";
 import { AE_KEYS, LEVELS, QUICK, adhocStudent, listOf, readSearch, searchConds, tagCond } from "@/server/program-search";
 import { PROGRAM_TAGS, SEASON_LABEL, TAG_KEYS } from "@/lib/program-tags";
-import { liveVendors, routeChips } from "@/server/vendors";
+import { liveVendors, routeChips, routeSearchCount, routeSearchRows } from "@/server/vendors";
+import { routeApplicationFee, routeCommission, routeOfferTat } from "@/lib/vendors";
 import { RouteChips } from "@/components/route-chips";
 import { partnerEstimate, pickRule } from "@/lib/money";
 import { rankLabels } from "@/lib/rankings";
@@ -37,7 +38,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     if (f.sort === "commission") delete f.sort;
   }
   const page = Math.max(1, Number(f.page ?? 1));
-  const view = f.view === "universities" ? "universities" : "programs";
+  const view = f.view === "universities" ? "universities" : f.view === "routes" ? "routes" : "programs";
   const { programs: p, universities: u, countries: c, students: s } = schema;
 
   const rates = fxRates(await getSettings());
@@ -188,8 +189,15 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           .offset((page - 1) * PAGE)
       : [];
 
-  const hasNext = view === "programs" ? rows.length > PAGE : uniRows.length > PAGE;
+  // One line per road to a course, for comparing two aggregators on the same
+  // course rather than hovering over chips to find the difference.
+  const vendorsOn = listOf(f.vendor);
+  const routeRows = view === "routes" ? await routeSearchRows(where, { rates, sort: f.sort, limit: PAGE + 1, offset: (page - 1) * PAGE, vendorIds: vendorsOn }) : [];
+  const roadCount = await routeSearchCount(where, vendorsOn);
+
+  const hasNext = view === "programs" ? rows.length > PAGE : view === "routes" ? routeRows.length > PAGE : uniRows.length > PAGE;
   const list = rows.slice(0, PAGE);
+  const roads = routeRows.slice(0, PAGE);
   const unis = uniRows.slice(0, PAGE).map((r) => ({ ...r, intakes: Array.from({ length: 12 }, (_, i) => i + 1).filter((m) => (r.intakeMask >> m) & 1) }));
   const next = await nextDeadlines(list.map((r) => r.id));
   const [vendors, routes] = await Promise.all([liveVendors(), routeChips(list.map((r) => ({ id: r.id, tuitionPerYear: r.tuition, tuitionTotal: r.tuitionTotal, applicationFee: r.applicationFee, offerTatDays: null, currency: r.currency })))]);
@@ -320,8 +328,13 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           <Select name="sort" aria-label="Sort" defaultValue={f.sort ?? ""}>
             <option value="">Sort by country and university</option>
             <option value="name">Sort by name</option>
-            {view === "programs" && <option value="fee">Lowest fee first</option>}
-            {view === "programs" && showCommission && <option value="commission">Highest commission first</option>}
+            {view !== "universities" && <option value="fee">Lowest fee first</option>}
+            {/* Two different numbers, so two different names: the programs view can
+                only order by the share rules give a partner, while the routes view
+                orders by what the road itself pays Medcity. */}
+            {view === "programs" && showCommission && <option value="commission">Highest partner share first</option>}
+            {view === "routes" && showCommission && <option value="commission">Highest commission first</option>}
+            {view === "routes" && <option value="tat">Fastest offer first</option>}
             <option value="rank">Best university ranking first</option>
           </Select>
           <Select name="student" aria-label="Check against student" defaultValue={f.student ?? ""}>
@@ -449,6 +462,9 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           <Link href={`/search?${qs({ view: undefined })}`} aria-current={view === "programs" ? "page" : undefined} className={cn("rounded-md px-3 py-1", view === "programs" ? "bg-brand-600 text-white" : "text-ink-soft hover:text-brand-700")}>
             Programs ({total.toLocaleString("en-IN")})
           </Link>
+          <Link href={`/search?${qs({ view: "routes" })}`} aria-current={view === "routes" ? "page" : undefined} className={cn("rounded-md px-3 py-1", view === "routes" ? "bg-brand-600 text-white" : "text-ink-soft hover:text-brand-700")}>
+            Routes ({roadCount.total.toLocaleString("en-IN")})
+          </Link>
           <Link href={`/search?${qs({ view: "universities" })}`} aria-current={view === "universities" ? "page" : undefined} className={cn("rounded-md px-3 py-1", view === "universities" ? "bg-brand-600 text-white" : "text-ink-soft hover:text-brand-700")}>
             Universities ({counts.unis.toLocaleString("en-IN")})
           </Link>
@@ -465,7 +481,110 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         )}
       </div>
 
-      {view === "universities" ? (
+      {view === "routes" ? (
+        <Card>
+          <p className="border-b border-line px-4 py-2.5 text-[13px] text-muted">
+            One line per road, so two aggregators on the same course can be read side by side. Only live routes through live vendors are here; the route
+            filter&rsquo;s &ldquo;No route recorded&rdquo; setting finds the courses that have none.
+          </p>
+          {roads.length === 0 ? (
+            <EmptyState icon={<IconSearch />} title="No routes match these filters">
+              Either nothing matches, or the courses that match have no route recorded yet. Routes are recorded on the course, under Admin.
+            </EmptyState>
+          ) : (
+            <Table tableClassName="min-w-[1180px]">
+              <thead>
+                <tr>
+                  <Th>Program</Th>
+                  <Th>University</Th>
+                  <Th>Route</Th>
+                  <Th>Tuition</Th>
+                  {showCommission && <Th>This route pays</Th>}
+                  <Th>Offer in</Th>
+                  <Th>Intakes</Th>
+                  <Th><span className="sr-only">Apply</span></Th>
+                </tr>
+              </thead>
+              <tbody>
+                {roads.map((r) => {
+                  const money = { tuitionPerYear: r.tuitionPerYear, tuitionTotal: r.tuitionTotal, applicationFee: r.applicationFee, offerTatDays: r.offerTatDays, currency: r.currency };
+                  const pays = routeCommission(r.route, money);
+                  const tat = routeOfferTat(r.route, money);
+                  const appFee = routeApplicationFee(r.route, money);
+                  return (
+                    <tr key={`${r.programId}-${r.vendorId}`} className="hover:bg-surface-2/60">
+                      <Td>
+                        <Link prefetch={false} href={`/programs/${r.programId}${student ? `?student=${student.id}` : ""}`} className="font-medium text-ink hover:text-brand-700 hover:underline">{r.name}</Link>
+                        <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
+                          <span>{LEVEL_LABEL[r.level] ?? r.level}</span>
+                          {r.studyArea && <span>· {r.studyArea}</span>}
+                          {r.durationMonths && <span>· {r.durationMonths} months</span>}
+                          {r.pathway !== "DEGREE" && <Chip tone="brand">{r.pathway === "AUSBILDUNG" ? "Ausbildung" : "Nursing"}</Chip>}
+                        </p>
+                      </Td>
+                      <Td>
+                        <Link prefetch={false} href={`/universities/${r.universityId}`} className="hover:text-brand-700 hover:underline">{r.university}</Link>
+                        <p className="flex items-center gap-1 text-xs text-muted">
+                          <IconGlobe className="size-3.5" /> {r.city ? `${r.city}, ` : ""}{r.country}
+                        </p>
+                        {rankLabels(r).length > 0 && <p className="text-xs font-medium text-ink-soft">{rankLabels(r).join(" · ")}</p>}
+                      </Td>
+                      <Td className="whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium text-white" style={{ backgroundColor: r.colour }}>
+                          {r.code}
+                        </span>
+                        <span className="ml-1.5 text-[13px]">{r.vendor}</span>
+                        {r.isDirect && <p className="mt-0.5"><Chip tone="ok">Our own agreement</Chip></p>}
+                        {r.route.vendorCourseCode && <p className="mt-0.5 font-mono text-xs text-muted">{r.route.vendorCourseCode}</p>}
+                        {r.route.interviewRequired && <p className="mt-0.5 text-xs text-muted">Interview in this route</p>}
+                      </Td>
+                      <Td className="whitespace-nowrap tabular">
+                        {r.tuitionPerYear == null && r.tuitionTotal == null ? <span className="text-muted">Not recorded</span> : tuitionText(r.tuitionPerYear, r.tuitionTotal, r.currency)}
+                        {inrApprox(r.tuitionPerYear ?? r.tuitionTotal, r.currency, rates) && <span className="block text-xs text-muted">{inrApprox(r.tuitionPerYear ?? r.tuitionTotal, r.currency, rates)}</span>}
+                        <p className="text-xs text-muted">
+                          {appFee == null ? "App. fee not recorded" : appFee > 0 ? `App. fee ${fmtMoney(appFee, r.currency)}` : "No application fee"}
+                        </p>
+                      </Td>
+                      {showCommission && (
+                        <Td className="whitespace-nowrap tabular">
+                          {/* What this road pays, never a figure derived from one we do
+                              not have: a percentage of a whole-course fee would invent
+                              a yearly tuition the university never published. */}
+                          {pays.known ? (
+                            <>
+                              <span className="font-medium text-emerald-700">{fmtMoney(pays.amount, pays.currency)}</span>
+                              {inrApprox(pays.amount, pays.currency, rates) && <span className="block text-xs text-muted">{inrApprox(pays.amount, pays.currency, rates)}</span>}
+                            </>
+                          ) : (
+                            <span className="text-muted">Not recorded</span>
+                          )}
+                          <p className="max-w-[12rem] text-xs text-muted">{pays.known ? pays.basis : pays.reason}</p>
+                        </Td>
+                      )}
+                      <Td className="whitespace-nowrap text-[13px] tabular">
+                        {tat == null ? <span className="text-muted">Not recorded</span> : `${tat} day${tat === 1 ? "" : "s"}`}
+                        {r.route.offerTatDays == null && r.offerTatDays != null && <p className="text-xs text-muted">The course&rsquo;s own figure</p>}
+                      </Td>
+                      <Td className={cn("whitespace-nowrap text-[13px]", !r.intakeMonths.length && "text-muted")}>
+                        {intakesText(r.intakeMonths)}
+                        {r.feeWaiver && <p className="text-xs font-medium text-emerald-700">Fee waiver</p>}
+                      </Td>
+                      <Td>
+                        {student ? (
+                          <LinkButton size="sm" variant="secondary" href={`/students/${student.id}/applications?tab=apply&program=${r.programId}`}>Apply</LinkButton>
+                        ) : (
+                          <Link prefetch={false} href={`/programs/${r.programId}`} className="text-[13px] font-medium text-brand-600 hover:underline">Open</Link>
+                        )}
+                      </Td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </Table>
+          )}
+          {(page > 1 || hasNext) && pager(roads.length, roadCount.total)}
+        </Card>
+      ) : view === "universities" ? (
         <Card>
           {unis.length === 0 ? (
             <EmptyState icon={<IconSearch />} title="No universities match these filters">Try removing a quick filter, or widen the destination and level.</EmptyState>
@@ -561,7 +680,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                           {r.workRightsNote && <span className="ml-1.5 text-xs text-muted">{r.workRightsNote}</span>}
                         </p>
                       )}
-                      <p className="mt-1"><RouteChips routes={routes.get(r.id)} /></p>
+                      <p className="mt-1"><RouteChips routes={routes.get(r.id)} showCommission={showCommission} money={fmtMoney} /></p>
                       {r.tags.length > 0 && (
                         <p className="mt-1 flex flex-wrap gap-1">
                           {r.tags.filter((t) => t in PROGRAM_TAGS).map((t) => <Chip key={t} tone="info">{PROGRAM_TAGS[t as keyof typeof PROGRAM_TAGS]}</Chip>)}

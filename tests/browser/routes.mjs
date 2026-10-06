@@ -86,6 +86,43 @@ text = await go(ap, "/search?vendor=none");
 check(n(text) === noRoute, `search: courses with no route at all (${n(text)} of ${noRoute})`);
 check(noRoute + kcCount <= live * 2, "search: the counts are within the catalogue");
 
+// --- One line per road, which is how two aggregators on one course get compared.
+const roads = Number(sql("select count(*) from programs p join program_routes r on r.program_id = p.id join vendors v on v.id = r.vendor_id where p.status='LIVE' and r.active and v.active"));
+text = await go(ap, "/search?view=routes");
+check(/One line per road/.test(text), "routes view: the screen says what it is showing");
+check(new RegExp(`Routes \\(${roads.toLocaleString("en-IN")}\\)`).test(text), `routes view: the tab counts the roads, not the courses (${roads})`);
+check(/THIS ROUTE PAYS|This route pays/i.test(text), "routes view: what the road pays is a column of its own");
+check(/OFFER IN|Offer in/i.test(text), "routes view: so is how long their offers take");
+
+// Ordered by what the road pays Medcity, in rupees, so a cheaper currency does
+// not win the sort. Read within one vendor, because our own agreements come
+// first whatever the sort and that would break the run at the boundary.
+await go(ap, `/search?view=routes&sort=commission&vendor=${kcId}`);
+const cells = await ap.locator("table tbody tr td:nth-child(5)").allInnerTexts();
+const inr = cells.map((t) => {
+  const m = t.match(/≈ ₹([\d.]+) (lakh|crore)/);
+  return m ? Number(m[1]) * (m[2] === "crore" ? 100 : 1) : null;
+});
+const known = inr.filter((x) => x !== null);
+check(known.length > 1, `routes view: the rupee figure is on the rows (${known.length} of ${cells.length})`);
+check(known.every((x, i) => i === 0 || known[i - 1] >= x), `routes view: ordered by what the road pays, in rupees (${known.slice(0, 5).join(" ")})`);
+// An unknown is not a maximum: a route with no rate recorded sorts last.
+check(inr.indexOf(null) === -1 || inr.slice(inr.indexOf(null)).every((x) => x === null), "routes view: a route with no rate recorded sorts last, never first");
+text = await go(ap, "/search?view=routes&sort=commission");
+check(/Our own agreement/.test(text), "routes view: our own agreement is marked, not merely sorted first");
+
+// The two sorts are not given the same name, because they are not the same number.
+text = await go(ap, "/search");
+check(/Highest partner share first/.test(text), "programs view: the commission sort is named for the number it uses");
+text = await go(ap, "/search?view=routes");
+check(/Highest commission first/.test(text), "routes view: and this one for the route's own figure");
+
+// A documentation user sees the roads but never what they pay.
+const docs = await signIn("documentation@medcityoverseas.test", "10.120.1.9");
+text = await go(docs.page, "/search?view=routes");
+check(/One line per road/.test(text), "routes view: the documentation desk can read it");
+check(!/This route pays/i.test(text), "routes view: but is not shown what any road pays");
+
 // --- Pausing a vendor takes its routes out of the reckoning.
 await go(ap, "/admin/vendors");
 const soId = sql("select id from vendors where code = 'SO'");
@@ -175,7 +212,7 @@ await student.page.waitForURL(/\/portal/, { timeout: 15000 }).catch(() => {});
 text = await student.page.locator("body").innerText();
 check(!/KC Overseas|StudentOps360|Medcity Direct/.test(text), "student: the portal never names the vendor");
 
-for (const [who, e] of [["team", admin.errors], ["partner", partner.errors], ["counsellor", counsellor.errors]]) check(e.length === 0, `${who}: no page errors or 500s ${e.slice(0, 3).join(" | ")}`);
+for (const [who, e] of [["team", admin.errors], ["partner", partner.errors], ["counsellor", counsellor.errors], ["documentation", docs.errors]]) check(e.length === 0, `${who}: no page errors or 500s ${e.slice(0, 3).join(" | ")}`);
 await browser.close();
 if (fails.length) { console.log(`\n${fails.length} failed`); process.exit(1); }
 console.log("\nall passed");
