@@ -483,6 +483,31 @@ A sub-agent is not a role. It is an organisation type: its people hold the same 
 
 Who may hand out which role: a super admin can set any role. An ops manager can set every role except super admin. An Overseas admin can add partner staff but not Medcity Overseas accounts. A student's and a parent's sign-in are not roles anybody is promoted into: both are created from that student's own file, against one student, and nowhere else.
 
+## Queued, not built
+
+**Application team leader.** A role above the documentation team: one person who
+runs that desk rather than working a queue beside it. Not started. When it is
+picked up, these are the questions it turns on, and they are Sree's to answer,
+not ours to assume:
+
+- Whether a team leader works files themselves as well as running the desk, or
+  only runs it. That decides whether the role inherits the documentation team's
+  own capabilities or sits beside them.
+- What they get that a documentation user does not: the queue across every
+  officer rather than their own, reassigning a file from one officer to another,
+  and the desk's standing (what is ageing, who is carrying how much) are the
+  obvious three.
+- Whether they can let a gate through, which today is an admin's doing with a
+  reason recorded.
+- Whether "the documentation team" they run means everyone, or only the officers
+  in their own branch.
+
+The ground is already laid: the role goes in the role enum, the capabilities
+matrix (**Settings, Access**) decides what it may do without new code at every
+site, and `src/server/scope.ts` decides whose students it sees. Expect one SQL
+part for the enum value, defaults in `src/lib/capabilities.ts`, and a line in
+the Roles table below.
+
 ## Next
 
 Everything in the wireframe is built. What is left is other people's work and
