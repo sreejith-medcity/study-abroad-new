@@ -146,7 +146,8 @@ export async function getApplicationForUser(user: SessionUser, id: string) {
   const app = await db.query.applications.findFirst({ where: eq(a.id, id) });
   if (!app) notFound();
   if (!isStaff(user) && app.orgId !== user.orgId) notFound();
-  const student = await db.query.students.findFirst({ where: eq(s.id, app.studentId), columns: { id: true, orgId: true, assignedToId: true } });
+  // createdById included: whoever registered the student keeps their file.
+  const student = await db.query.students.findFirst({ where: eq(s.id, app.studentId), columns: { id: true, orgId: true, assignedToId: true, createdById: true } });
   if (!student || !(await mayOpenStudent(user, student))) notFound();
   return app;
 }

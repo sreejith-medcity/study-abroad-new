@@ -214,6 +214,29 @@ async function signIn(email, ip, password = "Password@123") {
   const regText = await page.locator("main").innerText();
   /branch/i.test(regText) ? ok("documentation: and they are asked which branch the student belongs to") : bad("documentation: no branch picker for a desk user");
 
+  // The whole round trip, because the two halves passing separately is exactly
+  // how this was shipped broken: the desk could register a student and then
+  // could not open the one it had just registered.
+  const branch = sql("select id from organizations where type <> 'HQ' and active limit 1");
+  await page.fill('input[name="firstName"]', "Walkin");
+  await page.fill('input[name="lastName"]', "Student");
+  await page.fill('input[name="phone"]', "+91 98470 55512");
+  await page.selectOption('select[name="orgId"]', branch);
+  await page.locator('input[name="consent"]').check();
+  await page.getByRole("button", { name: /Create student/i }).click();
+  await page.waitForURL(/\/students\/[^/]+\//, { timeout: 20000 }).catch(() => {});
+  const made = sql("select coalesce((select id from students where first_name = 'Walkin' order by created_at desc limit 1), '')");
+  made ? ok("documentation: the student is created") : bad("documentation: the student was not created");
+  if (made) {
+    sql(`update students set assigned_to_id = null where id = '${made}'`);
+    await page.goto(`${BASE}/students/${made}`);
+    await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
+    const back = await page.locator("body").innerText();
+    !/404|could not be found/i.test(back)
+      ? ok("documentation: and opening it again works, assigned to nobody or not")
+      : bad("documentation: they registered a student and then got a 404 on it");
+  }
+
   // Management reads and changes nothing, so it keeps neither the button nor the screen.
   await page.goto(`${BASE}/students`);
   await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});

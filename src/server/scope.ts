@@ -46,15 +46,21 @@ export async function ownApplicationsOnly(user: SessionUser): Promise<SQL | unde
 }
 
 /**
- * A student is theirs if they counsel them, if they are the officer on their
- * file, or if they have checked a document on it.
+ * A student is theirs if they registered them, if they counsel them, if they
+ * are the officer on their file, or if they have checked a document on it.
  *
- * The last of those is what makes the documentation queue work: somebody claims
+ * The document one is what makes the documentation queue work: somebody claims
  * a document from the pool and the file opens to them, rather than the queue
  * showing work nobody can reach.
+ *
+ * The first is what stops the desk losing a walk-in the moment it is saved.
+ * Somebody at the head office registers a student into a branch, cannot assign
+ * themselves because the counsellor has to belong to that branch, and would
+ * otherwise watch the student they just typed in turn into a 404.
  */
 function theirs(user: SessionUser, includeUnassigned: boolean): SQL {
   return or(
+    eq(schema.students.createdById, user.id),
     // A student nobody has taken on is nobody else's either, and a student no
     // counsellor can open is a student nobody picks up. Inside their own branch
     // only: the desk roles are bounded by what is assigned to them, not by this.
@@ -91,9 +97,10 @@ export async function ownStudentsOnly(user: SessionUser): Promise<SQL | undefine
 }
 
 /** Whether this one student is theirs to open, for the places that hold a row already. */
-export async function mayOpenStudent(user: SessionUser, student: { orgId: string; assignedToId: string | null; id: string }) {
+export async function mayOpenStudent(user: SessionUser, student: { orgId: string; assignedToId: string | null; id: string; createdById?: string | null }) {
   if (!isStaff(user) && student.orgId !== user.orgId) return false;
   if (await can(user, "SEE_EVERY_STUDENT")) return true;
+  if (student.createdById === user.id) return true;
   if (student.assignedToId === user.id) return true;
   if (student.assignedToId === null && !isStaff(user)) return true;
   const own = await db.query.applications.findFirst({

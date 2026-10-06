@@ -378,10 +378,14 @@ means a counsellor, a trainee and a sub-agent's counsellor see their own
 students, and the documentation team sees the files it has been given. A branch
 head, a senior counsellor and the desk roles see everything in their scope.
 
-Two things keep this workable. A student nobody has taken on is visible to their
-own branch, because a student no counsellor can open is a student nobody picks
-up. And the documentation queue stays a pool: claiming a document from it is
-what makes that file yours, so the queue is never full of work nobody can reach.
+Three things keep this workable. Whoever registered a student keeps them,
+whatever else is true: somebody at the head office registering a walk-in cannot
+assign themselves, because the counsellor has to belong to the student's branch,
+and without this they would watch the student they just typed in turn into a
+404. A student nobody has taken on is visible to their own branch, because a
+student no counsellor can open is a student nobody picks up. And the
+documentation queue stays a pool: claiming a document from it is what makes that
+file yours, so the queue is never full of work nobody can reach.
 
 If it proves too tight, it is a tick on "Who may do what" rather than a deploy.
 
