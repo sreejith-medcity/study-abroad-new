@@ -228,7 +228,9 @@ check(sql(`select count(*) from audit_logs where action = 'income.write_off' and
 const owner = sql("select org_id from users where email = 'kottayam@medcity.test'");
 sql(`update organizations set counsellors_see_commission = false where id = '${owner}'`);
 const counsellor = await signIn("uk.docs@medcity.test", "10.180.1.3");
-const theirs = sql(`select id from students where org_id = '${owner}' limit 1`);
+// One of this counsellor's own: a counsellor sees their own students only,
+// so any student at the branch would be a 404 rather than a refusal.
+const theirs = sql(`select id from students where org_id = '${owner}' and assigned_to_id = (select id from users where email = 'uk.docs@medcity.test') limit 1`);
 text = await go(counsellor.page, `/students/${theirs}/income`);
 check(/Not for counsellors at this branch/.test(text), "roles: the income sheet follows the owner's switch, not a second one");
 sql(`update organizations set counsellors_see_commission = true where id = '${owner}'`);

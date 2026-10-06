@@ -197,23 +197,51 @@ await page.screenshot({ path: `${OUT}/03-work-rights.png`, fullPage: true });
     ? ok("and every one of them sorts above the courses that go through a vendor")
     : bad(`a vendor-only course at row ${firstWithout} sits above one of ours at row ${lastWithOurs}`);
 
-  // The same must hold when the counsellor sorts by something else.
-  for (const sort of ["rank", "fee", "name"]) {
-    await page.goto(`${BASE}/search?sort=${sort}`);
-    await settle(page);
-    const r2 = page.locator("main tbody tr");
-    const n = Math.min(await r2.count(), 12);
-    let without = -1;
-    let withOurs = -1;
-    for (let i = 0; i < n; i++) {
-      const t = await r2.nth(i).innerText();
-      if (/\bours\b/i.test(t)) withOurs = i;
-      else if (without === -1) without = i;
+  // A sort the counsellor asked for is obeyed, and ours stay marked.
+  //
+  // They used to be ordered first whatever the sort, which made "Best
+  // university ranking first" put an unranked direct tie-up above a university
+  // ranked 501. A control that does not do what it says is worse than no
+  // control, so the ordering gives way and the chip carries the meaning. Read
+  // through the route filter, because in a catalogue of this size our own
+  // handful is nowhere near the top of a ranking.
+  await page.goto(`${BASE}/search`);
+  await settle(page);
+  const direct = await page
+    .locator('[data-testid="vendor-picker"] input[type="checkbox"]')
+    .evaluateAll((els) => {
+      const own = els.find((e) => /MD|direct/i.test(e.closest("label")?.textContent ?? ""));
+      return own ? own.getAttribute("value") : "";
+    })
+    .catch(() => "");
+  if (direct) {
+    for (const sort of ["rank", "fee", "name"]) {
+      await page.goto(`${BASE}/search?sort=${sort}&vendor=${direct}`);
+      await settle(page);
+      const r2 = page.locator("main tbody tr");
+      const n = Math.min(await r2.count(), 8);
+      let marked = 0;
+      for (let i = 0; i < n; i++) if (/\bours\b/i.test(await r2.nth(i).innerText())) marked += 1;
+      marked === n && n > 0
+        ? ok(`sorted by ${sort}, every one of ours is still marked as ours (${n})`)
+        : bad(`sorted by ${sort}, ${n - marked} of ${n} of our own rows lost the mark`);
     }
-    without === -1 || withOurs < without
-      ? ok(`sorted by ${sort}, ours still come first`)
-      : bad(`sorted by ${sort}, a vendor-only course outranks one of ours`);
+  } else {
+    bad("no direct vendor in the seed, so the mark could not be checked under a sort");
   }
+
+  // And the sort itself is honoured: lowest fee first means lowest fee first.
+  await page.goto(`${BASE}/search?sort=fee&country=GB`);
+  await settle(page);
+  const fees = [];
+  const feeRows = page.locator("main tbody tr");
+  for (let i = 0; i < Math.min(await feeRows.count(), 8); i++) {
+    const m = (await feeRows.nth(i).innerText()).match(/([\d,]+) \/ yr/);
+    if (m) fees.push(Number(m[1].replace(/,/g, "")));
+  }
+  fees.length > 1 && fees.every((f, i) => i === 0 || fees[i - 1] <= f)
+    ? ok(`sorted by fee, the cheapest really is first (${fees.slice(0, 4).join(", ")})`)
+    : bad(`sorted by fee, the order is ${fees.join(", ")}`);
   await page.goto(`${BASE}/search`);
   await settle(page);
 }
