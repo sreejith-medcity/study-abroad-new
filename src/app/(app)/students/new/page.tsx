@@ -1,7 +1,9 @@
 import { and, asc, eq, ne } from "drizzle-orm";
 import { db, schema } from "@/db";
+import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { ADMIN_ROLES, PARTNER_ROLES, isStaff } from "@/lib/permissions";
+import { APP_ROLES, isStaff } from "@/lib/permissions";
+import { can } from "@/server/capabilities";
 import { orgUsers } from "@/server/queries";
 import { Alert, Card, PageHeader } from "@/components/ui";
 import { NewStudentForm } from "./form";
@@ -19,7 +21,11 @@ export const metadata = { title: "Register student" };
  * the student, and commission is worked out per branch.
  */
 export default async function NewStudentPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const user = await requireUser([...PARTNER_ROLES, ...ADMIN_ROLES]);
+  const user = await requireUser([...APP_ROLES]);
+  // Who may register is set on the "Who may do what" screen, not fixed here:
+  // the Overseas desk registers walk-ins at Medcity and used to be shown the
+  // button and then refused by it.
+  if (!(await can(user, "REGISTER_STUDENT"))) redirect("/forbidden");
   const sp = await searchParams;
   const one = (k: string) => {
     const v = sp[k];

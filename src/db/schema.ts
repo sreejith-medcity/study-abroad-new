@@ -46,6 +46,14 @@ export const role = pgEnum("role", [
   "SENIOR_COUNSELLOR",
   "TRAINEE_COUNSELLOR",
   "SUB_AGENT_COUNSELLOR",
+  /**
+   * Whoever runs the documentation desk rather than working a queue beside it.
+   * They still work files themselves, because at this size the person running
+   * the desk is also its most experienced checker; what they have on top is the
+   * whole desk's queue, the standing of it, moving a file from one officer to
+   * another, what the desk chases, and letting a stage through with a reason.
+   */
+  "APPLICATION_TEAM_LEADER",
 ]);
 export const pathway = pgEnum("pathway", ["DEGREE", "AUSBILDUNG", "NURSING"]);
 export const studyLevel = pgEnum("study_level", [

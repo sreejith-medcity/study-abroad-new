@@ -50,6 +50,7 @@ async function main() {
   const officerNurse = await u("Divya Pillai", "nursing.desk@medcityoverseas.test", "ADMIN", hq.id, "Nursing Desk", "+91 90000 00003");
   await u("Meera Thomas", "ops@medcityoverseas.test", "OPS_MANAGER", hq.id, "Operations", "+91 90000 00004");
   const docsTeam = await u("Nithin Jose", "documentation@medcityoverseas.test", "DOCUMENTATION", hq.id, "Documentation");
+  await u("Jeslin Varghese", "teamlead@medcityoverseas.test", "APPLICATION_TEAM_LEADER", hq.id, "Documentation lead", "+91 90000 00005");
   await u("Management View", "management@medcityoverseas.test", "MANAGEMENT", hq.id);
   await u("Kottayam Branch Head", "kottayam@medcity.test", "PARTNER", kottayam.id);
   const ukDocs = await u("UK Documentation", "uk.docs@medcity.test", "COUNSELLOR", kottayam.id, "UK Documentation");
@@ -1070,6 +1071,7 @@ async function main() {
   console.log("  germany.desk@medcityoverseas.test Medcity Overseas admin (Germany desk)");
   console.log("  ops@medcityoverseas.test          Ops manager (desk + partners + accounts)");
   console.log("  documentation@medcityoverseas.test Documentation team (files, no status changes)");
+  console.log("  teamlead@medcityoverseas.test     Application team leader (runs the documentation desk)");
   console.log("  management@medcityoverseas.test  Management (read-only)");
   console.log("  kottayam@medcity.test             Partner owner, Medcity Kottayam");
   console.log("  uk.docs@medcity.test              Counsellor, Medcity Kottayam");

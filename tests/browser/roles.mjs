@@ -196,6 +196,84 @@ async function signIn(email, ip, password = "Password@123") {
   await ctx.close();
 }
 
+// --- The documentation desk registers students. The button was there and the
+// screen behind it refused them, which is the worst of both.
+{
+  const ctx = await browser.newContext({ viewport: { width: 1500, height: 1000 }, extraHTTPHeaders: { "x-forwarded-for": "10.210.2.1" } });
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(String(e)));
+  await page.goto(`${BASE}/login`);
+  await page.fill('input[name="email"]', "documentation@medcityoverseas.test");
+  await page.fill('input[name="password"]', "Password@123");
+  await page.click('button[type="submit"]');
+  await page.waitForURL((u) => !String(u).includes("/login"), { timeout: 20000 }).catch(() => {});
+  await page.goto(`${BASE}/students/new`);
+  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
+  page.url().includes("/students/new") ? ok("documentation: the register screen opens for them") : bad(`documentation: turned away from registering (${page.url()})`);
+  const regText = await page.locator("main").innerText();
+  /branch/i.test(regText) ? ok("documentation: and they are asked which branch the student belongs to") : bad("documentation: no branch picker for a desk user");
+
+  // Management reads and changes nothing, so it keeps neither the button nor the screen.
+  await page.goto(`${BASE}/students`);
+  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
+  (await page.locator("main").innerText()).includes("Register student") ? ok("documentation: the button is on the students screen too") : bad("documentation: no register button");
+  errors.length === 0 ? ok("documentation: no client errors registering") : bad("errors: " + errors.slice(0, 2).join(" | "));
+  await ctx.close();
+}
+
+// --- The application team leader: the desk, and what runs it.
+{
+  const ctx = await browser.newContext({ viewport: { width: 1500, height: 1000 }, extraHTTPHeaders: { "x-forwarded-for": "10.210.2.2" } });
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(String(e)));
+  page.on("response", (r) => { if (r.status() >= 500) errors.push(`${r.status()} ${r.url()}`); });
+  await page.goto(`${BASE}/login`);
+  await page.fill('input[name="email"]', "teamlead@medcityoverseas.test");
+  await page.fill('input[name="password"]', "Password@123");
+  await page.click('button[type="submit"]');
+  await page.waitForURL((u) => !String(u).includes("/login"), { timeout: 20000 }).catch(() => {});
+  await page.goto(`${BASE}/dashboard`);
+  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
+  const lead = await page.locator("main").innerText();
+  /The documentation desk/i.test(lead) ? ok("team leader: their dashboard is the desk, not the applications board") : bad(`team leader: wrong dashboard (${lead.slice(0, 80).replace(/\n/g, " ")})`);
+  /Who is carrying what/i.test(lead) ? ok("team leader: it says who is carrying what") : bad("team leader: no standing table");
+  !/Commission|Invoices raised/i.test(lead) ? ok("team leader: running the desk is not running the money") : bad("team leader: money on the desk dashboard");
+  await page.screenshot({ path: `${OUT}/05-team-leader.png`, fullPage: true });
+
+  await page.goto(`${BASE}/documentation`);
+  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
+  page.url().includes("/documentation") ? ok("team leader: they work the queue like anybody else") : bad("team leader: turned away from the queue");
+
+  // What the desk chases is theirs to set; the money is not.
+  await page.goto(`${BASE}/admin/documents`);
+  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
+  page.url().includes("/admin/documents") ? ok("team leader: they set what the desk chases") : bad(`team leader: refused the requirements screen (${page.url()})`);
+  await page.goto(`${BASE}/admin/invoices`);
+  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
+  !page.url().includes("/admin/invoices") ? ok("team leader: and are kept out of the invoices") : bad("team leader: reached the invoice screens");
+
+  // An officer does not get the lead's screens.
+  const off = await browser.newContext({ viewport: { width: 1400, height: 900 }, extraHTTPHeaders: { "x-forwarded-for": "10.210.2.3" } });
+  const op = await off.newPage();
+  await op.goto(`${BASE}/login`);
+  await op.fill('input[name="email"]', "documentation@medcityoverseas.test");
+  await op.fill('input[name="password"]', "Password@123");
+  await op.click('button[type="submit"]');
+  await op.waitForURL((u) => !String(u).includes("/login"), { timeout: 20000 }).catch(() => {});
+  await op.goto(`${BASE}/admin/documents`);
+  await op.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
+  !op.url().includes("/admin/documents") ? ok("officer: an officer does not set what the desk chases") : bad("officer: reached the requirements screen");
+  await op.goto(`${BASE}/dashboard`);
+  await op.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
+  !/Who is carrying what/i.test(await op.locator("main").innerText()) ? ok("officer: and does not see who is carrying what") : bad("officer: given the desk standing");
+  await off.close();
+
+  errors.length === 0 ? ok("team leader: no client errors") : bad("errors: " + errors.slice(0, 2).join(" | "));
+  await ctx.close();
+}
+
 await browser.close();
 console.log(fails.length ? `\n${fails.length} FAILURES` : "\nall checks passed");
 process.exit(fails.length ? 1 : 0);

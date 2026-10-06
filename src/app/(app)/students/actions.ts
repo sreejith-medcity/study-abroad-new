@@ -9,7 +9,8 @@ import { db, schema } from "@/db";
 import { hashPassword, requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { phoneKey } from "@/lib/phone";
-import { ADMIN_ROLES, PARTNER_ROLES, isAdmin, isCounsellor, isStaff } from "@/lib/permissions";
+import { ADMIN_ROLES, APP_ROLES, PARTNER_ROLES, isAdmin, isCounsellor, isStaff } from "@/lib/permissions";
+import { can } from "@/server/capabilities";
 import { adminIds, notifyUsers, partnerRecipients } from "@/server/notify";
 import { getStudentForUser } from "@/server/queries";
 import { tryMintStudentId } from "@/server/medcity-id";
@@ -39,7 +40,8 @@ const newStudent = z.object({
 });
 
 export async function createStudentAction(_: FormState, formData: FormData): Promise<FormState> {
-  const user = await requireUser([...PARTNER_ROLES, ...ADMIN_ROLES]);
+  const user = await requireUser([...APP_ROLES]);
+  if (!(await can(user, "REGISTER_STUDENT"))) return { error: "You are not set up to register students. Ask an admin on the Access screen." };
   const parsed = newStudent.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Check the highlighted fields." };
   const d = parsed.data;

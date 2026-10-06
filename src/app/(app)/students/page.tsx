@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { and, asc, desc, eq, gte, ilike, lte, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
+import { can } from "@/server/capabilities";
 import { requireUser } from "@/lib/auth";
 import { APP_ROLES, isAdmin, isStaff } from "@/lib/permissions";
 import { fmtDate, fullName } from "@/lib/format";
@@ -73,6 +74,9 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
   const countries = await db.select().from(schema.countries).orderBy(asc(schema.countries.name));
   const orgs = staff ? await db.select().from(schema.organizations).where(sql`type <> 'HQ'`).orderBy(asc(schema.organizations.name)) : [];
   const canWrite = user.role !== "MANAGEMENT";
+  // Shown only to somebody the screen will actually let through: being offered
+  // a button and then refused by it is how this was reported in the first place.
+  const canRegister = await can(user, "REGISTER_STUDENT");
   // A filtered search that finds nothing needs a different answer from an empty branch.
   const filtered = Object.keys(f).some((k) => k !== "view" && f[k]);
 
@@ -84,7 +88,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
         actions={
           <>
             <LinkButton variant="secondary" href={archived ? "/students" : "/students?view=archived"}>{archived ? "Active students" : "Archived students"}</LinkButton>
-            {canWrite && <LinkButton href="/students/new"><IconPlus className="size-4" /> Register student</LinkButton>}
+            {canRegister && <LinkButton href="/students/new"><IconPlus className="size-4" /> Register student</LinkButton>}
           </>
         }
       />
@@ -132,7 +136,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                 <LinkButton variant="secondary" href={archived ? "/students?view=archived" : "/students"}>
                   Clear the filters
                 </LinkButton>
-              ) : !archived && canWrite ? (
+              ) : !archived && canRegister ? (
                 <LinkButton href="/students/new">
                   <IconPlus className="size-4" /> Register {staff ? "a student" : "your first student"}
                 </LinkButton>

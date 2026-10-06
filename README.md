@@ -472,7 +472,8 @@ Set from **Partners and people**, along with a free-text job title ("UK desk", "
 | Super admin | Everything | Everything below, plus creating other super admins and reading the audit log |
 | Ops manager | Everything | Everything an Overseas admin can, plus adding and deactivating staff, changing roles and resetting passwords. No audit log, and cannot hand out super admin |
 | Overseas admin | Everything | Process applications: statuses, work queue, programs, status flows, partners, commission, documents |
-| Documentation team | Every student and application | Documents, the pre-submission check, asking partners for items, and both comment channels. No status changes, no commission, no accounts, no reports |
+| Documentation team | Every student and application | Documents, the pre-submission check, asking partners for items, registering a student, and both comment channels. No status changes, no commission, no accounts, no reports |
+| Application team leader | Every student and application | Everything the documentation team can, plus the whole desk's queue rather than their own, moving a file from one officer to another, setting what the desk chases, and letting a stage through with a reason. Their dashboard is the desk's standing, not the applications board |
 | Management | Everything | Read only: dashboards, applications, students, commission and insights |
 | Branch head | Own organisation | Register students, apply, upload documents, answer requests, run the branch team, wallet and payouts |
 | Counsellor | Own organisation | Same as a branch head, without full passport numbers, the team view or the wallet |
@@ -485,28 +486,11 @@ Who may hand out which role: a super admin can set any role. An ops manager can 
 
 ## Queued, not built
 
-**Application team leader.** A role above the documentation team: one person who
-runs that desk rather than working a queue beside it. Not started. When it is
-picked up, these are the questions it turns on, and they are Sree's to answer,
-not ours to assume:
-
-- Whether a team leader works files themselves as well as running the desk, or
-  only runs it. That decides whether the role inherits the documentation team's
-  own capabilities or sits beside them.
-- What they get that a documentation user does not: the queue across every
-  officer rather than their own, reassigning a file from one officer to another,
-  and the desk's standing (what is ageing, who is carrying how much) are the
-  obvious three.
-- Whether they can let a gate through, which today is an admin's doing with a
-  reason recorded.
-- Whether "the documentation team" they run means everyone, or only the officers
-  in their own branch.
-
-The ground is already laid: the role goes in the role enum, the capabilities
-matrix (**Settings, Access**) decides what it may do without new code at every
-site, and `src/server/scope.ts` decides whose students it sees. Expect one SQL
-part for the enum value, defaults in `src/lib/capabilities.ts`, and a line in
-the Roles table below.
+**A finance role.** There is none. Everybody who touches invoices today is an
+Overseas admin or an ops manager, using the same login they use for everything
+else, which is why "everyone except the finance team" could not be expressed
+when it was asked for. A finance role would hold the invoice queue, credit
+notes, the ageing report and the Monday read, and nothing else. Not started.
 
 ## Next
 

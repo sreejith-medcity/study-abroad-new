@@ -3,13 +3,13 @@ import type { PgColumn } from "drizzle-orm/pg-core";
 import type { SessionUser } from "./auth";
 
 /** Roles that work inside Medcity Overseas rather than at a partner. */
-export const STAFF_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "MANAGEMENT", "DESK_COUNSELLOR"] as const;
+export const STAFF_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "APPLICATION_TEAM_LEADER", "MANAGEMENT", "DESK_COUNSELLOR"] as const;
 /** Roles that process applications: status changes, programs, partners, money. */
 export const ADMIN_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN"] as const;
 /** Everyone who reads the numbers: admins and management, but not the documentation team. */
 export const REPORTING_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "MANAGEMENT"] as const;
 /** Admins plus the documentation team, who work the same files without moving them. */
-export const PROCESSING_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION"] as const;
+export const PROCESSING_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "APPLICATION_TEAM_LEADER"] as const;
 /**
  * Everybody who works inside one organisation rather than at the desk: a branch
  * or a sub-agent firm. Every screen that scopes by organisation reads this, so a
@@ -34,6 +34,7 @@ export const APP_ROLES = [
   "OPS_MANAGER",
   "ADMIN",
   "DOCUMENTATION",
+  "APPLICATION_TEAM_LEADER",
   "MANAGEMENT",
   "PARTNER",
   "COUNSELLOR",
@@ -49,6 +50,7 @@ export const ROLE_LABEL: Record<string, string> = {
   OPS_MANAGER: "Ops manager",
   ADMIN: "Overseas admin",
   DOCUMENTATION: "Documentation team",
+  APPLICATION_TEAM_LEADER: "Application team leader",
   MANAGEMENT: "Management",
   PARTNER: "Branch head",
   COUNSELLOR: "Counsellor",
@@ -66,6 +68,7 @@ export const ROLE_BLURB: Record<string, string> = {
   OPS_MANAGER: "Runs the desk: everything an admin does, plus partners, commission and staff accounts",
   ADMIN: "Processes applications: statuses, work queue, programs, partners and documents",
   DOCUMENTATION: "Works the files: documents, the pre-submission check and messages, without moving statuses",
+  APPLICATION_TEAM_LEADER: "Runs the documentation desk and works files on it: the whole queue, who is carrying what, and moving a file between officers",
   MANAGEMENT: "Reads everything, changes nothing",
   PARTNER: "Runs a branch or sub-agent: their own students, applications, team and wallet",
   COUNSELLOR: "Works their own students inside one branch",
@@ -78,7 +81,7 @@ export const ROLE_BLURB: Record<string, string> = {
 };
 
 /** Roles that belong to Medcity Overseas itself rather than to a partner. */
-export const HQ_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "MANAGEMENT", "DESK_COUNSELLOR"] as const;
+export const HQ_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "APPLICATION_TEAM_LEADER", "MANAGEMENT", "DESK_COUNSELLOR"] as const;
 
 /**
  * The family: a student and the parents who read that student's file. Neither
@@ -105,9 +108,18 @@ export function isAdmin(user: SessionUser) {
   return (ADMIN_ROLES as readonly string[]).includes(user.role);
 }
 
-/** The documentation team: the same files as an admin, but read-only on status. */
+/**
+ * The documentation desk: the officers and whoever runs them.
+ *
+ * Both work the same files on the same terms, so every screen that asks "is
+ * this the documentation desk" means both. What the leader has on top is asked
+ * for by capability, not by this.
+ */
+export const DOCUMENTATION_ROLES = ["DOCUMENTATION", "APPLICATION_TEAM_LEADER"] as const;
+
+/** The documentation desk: the same files as an admin, but read-only on status. */
 export function isDocumentationTeam(user: SessionUser) {
-  return user.role === "DOCUMENTATION";
+  return (DOCUMENTATION_ROLES as readonly string[]).includes(user.role);
 }
 
 /** Can open a student file and work its documents, checks and messages. */

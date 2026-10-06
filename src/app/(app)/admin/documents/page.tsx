@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { asc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
+import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
+import { can } from "@/server/capabilities";
 import { PROCESSING_ROLES } from "@/lib/permissions";
 import { listRequirements } from "@/server/documentation";
 import { OWED_BY_LABEL, SOURCE_LABEL, STAGES, stageLabel } from "@/lib/journey";
@@ -23,7 +25,10 @@ const TABS = [
  * uses when a document goes back.
  */
 export default async function DocumentsAdminPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
-  await requireUser([...PROCESSING_ROLES]);
+  // The desk works to this list; who may change it is a separate question, and
+  // one Medcity sets rather than the code.
+  const user = await requireUser([...PROCESSING_ROLES]);
+  if (!(await can(user, "SET_DOCUMENT_RULES"))) redirect("/forbidden");
   const { tab = "requirements" } = await searchParams;
   const types = await db.select().from(schema.documentTypes).orderBy(asc(schema.documentTypes.sortOrder));
   const withSample = types.filter((t) => t.sampleStorageKey).length;

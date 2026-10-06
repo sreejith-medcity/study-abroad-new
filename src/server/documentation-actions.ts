@@ -6,7 +6,7 @@ import { z } from "zod";
 import { db, schema } from "@/db";
 import { requireUser, type SessionUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { ADMIN_ROLES, DECIDE_REFUSAL, OWN_UPLOAD_REFUSAL, PARTNER_ROLES, PROCESSING_ROLES, isAdmin, isStaff, mayAcceptUpload, mayDecideDocuments } from "@/lib/permissions";
+import { ADMIN_ROLES, DECIDE_REFUSAL, OWN_UPLOAD_REFUSAL, PARTNER_ROLES, PROCESSING_ROLES, isStaff, mayAcceptUpload, mayDecideDocuments } from "@/lib/permissions";
 import { can } from "@/server/capabilities";
 import { claimHeld, CLAIM_MINUTES, stageLabel, validUntil, waiveRefusal } from "@/lib/journey";
 import { getStudentForUser } from "@/server/queries";
@@ -350,7 +350,10 @@ export async function setStageAction(_: FormState, fd: FormData): Promise<FormSt
     // does not know, not for what Medcity has said may never be let through.
     const refusal = waiveRefusal(leaving);
     if (refusal) return { error: refusal };
-    if (!isAdmin(user)) {
+    // Who may let one through is Medcity's to set: an admin by default, and
+    // whoever runs the documentation desk, because a file sitting three days
+    // waiting for an admin to agree with the desk helps nobody.
+    if (!(await can(user, "OVERRIDE_GATE"))) {
       return { error: `${stageLabel(student.journeyStage)} is not clear yet. Still needed: ${leaving.missing.map((m) => m.label).join(", ")}.` };
     }
     if (!reason) {
@@ -649,4 +652,47 @@ export async function runRemindersAction(_: FormState, fd: FormData): Promise<Fo
     run.tasksRaised ? `${run.tasksRaised} task${run.tasksRaised === 1 ? "" : "s"} put on a desk` : null,
   ].filter(Boolean);
   return { ok: said.length ? said.join(", ") + "." : "Nothing needed chasing." };
+}
+
+// ---------- Running the desk ----------
+
+/**
+ * Moves a document from the officer holding it to another, or back to the pool.
+ *
+ * A claim is meant to be short: it stops two people checking the same file at
+ * once. But somebody goes home, or goes on leave, and the file sits held by a
+ * name rather than worked by a person. Whoever runs the desk can move it, and
+ * the move is on the record with both names, because quietly taking work off
+ * somebody is how a desk stops trusting its own queue.
+ */
+export async function reassignItemAction(_: FormState, fd: FormData): Promise<FormState> {
+  const user = await requireUser([...PROCESSING_ROLES]);
+  if (!(await can(user, "REASSIGN_DOCUMENTS"))) return { error: "Only whoever runs the documentation desk can move a file to another officer." };
+  const itemId = String(fd.get("itemId") ?? "");
+  const toId = String(fd.get("toId") ?? "");
+  const item = await db.query.checklistItems.findFirst({
+    where: eq(ci.id, itemId),
+    with: { claimedBy: { columns: { id: true, name: true, deskLabel: true } }, type: { columns: { label: true } } },
+  });
+  if (!item) return { error: "That row is gone." };
+
+  if (!toId) {
+    await db.update(ci).set({ claimedById: null, claimedAt: null, updatedAt: new Date() }).where(eq(ci.id, itemId));
+    await audit(user.id, "checklist.reassign", "student", item.studentId, { item: itemId, from: item.claimedBy?.name ?? null, to: null });
+    revalidatePath("/documentation");
+    return { ok: `Back in the pool for anyone to pick up${item.claimedBy ? `, off ${item.claimedBy.deskLabel ?? item.claimedBy.name}` : ""}.` };
+  }
+
+  const to = await db.query.users.findFirst({ where: and(eq(schema.users.id, toId), eq(schema.users.active, true)), columns: { id: true, name: true, deskLabel: true, role: true } });
+  if (!to) return { error: "That person is no longer on the desk." };
+  if (!isStaff({ ...user, role: to.role } as SessionUser)) return { error: "A document can only be moved to somebody on the Overseas desk." };
+  await db.update(ci).set({ claimedById: to.id, claimedAt: new Date(), updatedAt: new Date() }).where(eq(ci.id, itemId));
+  await audit(user.id, "checklist.reassign", "student", item.studentId, {
+    item: itemId,
+    document: item.type?.label ?? null,
+    from: item.claimedBy?.name ?? null,
+    to: to.name,
+  });
+  revalidatePath("/documentation");
+  return { ok: `${item.type?.label ?? "That document"} is now ${to.deskLabel ?? to.name}'s.` };
 }

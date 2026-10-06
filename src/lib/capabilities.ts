@@ -25,6 +25,11 @@ export const CAPABILITIES = [
   "SUBMIT_APPLICATION",
   "MESSAGE_STUDENT",
   "SEE_EVERY_STUDENT",
+  "RUN_DOCUMENTATION_DESK",
+  "REASSIGN_DOCUMENTS",
+  "SET_DOCUMENT_RULES",
+  "OVERRIDE_GATE",
+  "REGISTER_STUDENT",
 ] as const;
 
 export type Capability = (typeof CAPABILITIES)[number];
@@ -41,6 +46,7 @@ export const SHORT_ROLE: Record<string, string> = {
   OPS_MANAGER: "Ops",
   ADMIN: "Admin",
   DOCUMENTATION: "Docs",
+  APPLICATION_TEAM_LEADER: "Team lead",
   MANAGEMENT: "Mgmt",
   PARTNER: "Branch head",
   COUNSELLOR: "Counsellor",
@@ -60,6 +66,11 @@ export const CAPABILITY_LABEL: Record<Capability, string> = {
   SUBMIT_APPLICATION: "Create an application",
   MESSAGE_STUDENT: "Message a student",
   SEE_EVERY_STUDENT: "See every student, not only their own",
+  RUN_DOCUMENTATION_DESK: "See the whole desk, not only their own files",
+  REASSIGN_DOCUMENTS: "Move a file to another officer",
+  SET_DOCUMENT_RULES: "Set what the desk chases",
+  OVERRIDE_GATE: "Let a stage through with a reason",
+  REGISTER_STUDENT: "Register a student",
 };
 
 export const CAPABILITY_MEANS: Record<Capability, string> = {
@@ -74,6 +85,14 @@ export const CAPABILITY_MEANS: Record<Capability, string> = {
   MESSAGE_STUDENT: "Writing to the student, on WhatsApp or in the portal. Reading what was said is not affected.",
   SEE_EVERY_STUDENT:
     "Without this, somebody sees only the students assigned to them: the ones they counsel, or the applications they are the officer on. The branch or the desk they belong to still bounds it either way.",
+  RUN_DOCUMENTATION_DESK:
+    "Every officer's queue rather than their own and the unclaimed pool, and the standing beside it: who is carrying how much, what is oldest, what is overdue.",
+  REASSIGN_DOCUMENTS: "Taking a document off the officer who claimed it and giving it to another, with the move recorded on the file.",
+  SET_DOCUMENT_RULES: "Which documents are required at which stage, per destination, and how long each stays acceptable.",
+  OVERRIDE_GATE:
+    "Moving a student on while something required is still missing. The reason is required, it is on the file and in the audit log, and what Medcity has said may never be waived is still refused.",
+  REGISTER_STUDENT:
+    "Putting a new student on the system. A branch registers into itself; anybody at the Overseas desk has to say which branch the student belongs to, because a student on the head office belongs to nobody.",
 };
 
 /**
@@ -84,17 +103,34 @@ export const CAPABILITY_MEANS: Record<Capability, string> = {
  */
 export const DEFAULTS: Record<Capability, AppRole[]> = {
   SEE_MONEY: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "MANAGEMENT", "PARTNER", "COUNSELLOR", "SENIOR_COUNSELLOR", "DESK_COUNSELLOR"],
-  DECIDE_DOCUMENTS: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION"],
+  DECIDE_DOCUMENTS: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "APPLICATION_TEAM_LEADER"],
   READ_INVOICES: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "MANAGEMENT", "PARTNER"],
   RAISE_INVOICES: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN"],
-  SEE_FULL_PASSPORT: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "PARTNER"],
+  SEE_FULL_PASSPORT: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "APPLICATION_TEAM_LEADER", "PARTNER"],
   VIEW_AUDIT_LOG: ["SUPER_ADMIN"],
   SUBMIT_APPLICATION: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "PARTNER", "COUNSELLOR", "SENIOR_COUNSELLOR", "DESK_COUNSELLOR", "SUB_AGENT_COUNSELLOR"],
-  MESSAGE_STUDENT: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "PARTNER", "COUNSELLOR", "SENIOR_COUNSELLOR", "DESK_COUNSELLOR"],
+  MESSAGE_STUDENT: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "APPLICATION_TEAM_LEADER", "PARTNER", "COUNSELLOR", "SENIOR_COUNSELLOR", "DESK_COUNSELLOR"],
   // A counsellor works their own students; a branch head and a senior counsellor
   // work the branch's. The documentation team sees the files they were given,
   // which is what "assigned" means for them: the applications they are on.
-  SEE_EVERY_STUDENT: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "MANAGEMENT", "PARTNER", "SENIOR_COUNSELLOR", "DESK_COUNSELLOR"],
+  SEE_EVERY_STUDENT: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "MANAGEMENT", "PARTNER", "SENIOR_COUNSELLOR", "DESK_COUNSELLOR", "APPLICATION_TEAM_LEADER"],
+  // Running the desk is the whole point of the team leader. An admin and an ops
+  // manager have always seen every file, so they keep it; nobody else gains it.
+  RUN_DOCUMENTATION_DESK: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "APPLICATION_TEAM_LEADER"],
+  REASSIGN_DOCUMENTS: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "APPLICATION_TEAM_LEADER"],
+  SET_DOCUMENT_RULES: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "APPLICATION_TEAM_LEADER"],
+  // Letting a gate through was an admin's doing. The team leader is added
+  // because the desk waiting on an admin for a routine call is how a file sits
+  // for three days over a document somebody has already seen.
+  OVERRIDE_GATE: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "APPLICATION_TEAM_LEADER"],
+  // The one default here that is not what the portal did before: the
+  // documentation desk could see the Register button and was refused when it
+  // pressed it, because registering was a branch's job and an admin's.
+  //
+  // Everybody who acts in the portal can register a student. Management is the
+  // only role left out, because it reads everything and changes nothing by
+  // definition; a finance role, when there is one, is the other.
+  REGISTER_STUDENT: APP_ROLES.filter((r) => r !== "MANAGEMENT" && r !== "SUPER_ADMIN"),
 };
 
 /** A capability nobody may take off a super admin, whatever the matrix says. */

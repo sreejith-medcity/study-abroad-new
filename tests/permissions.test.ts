@@ -104,8 +104,12 @@ test("super admin inherits everything an admin can do", () => {
   }
   assert.deepEqual([...ADMIN_ROLES], ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN"]);
   // The desk counsellor is staff too: they sit at Medcity Overseas and see
-  // across branches, which is what staff means here.
-  assert.deepEqual([...STAFF_ROLES], ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "MANAGEMENT", "DESK_COUNSELLOR"]);
+  // across branches, which is what staff means here. So is whoever runs the
+  // documentation desk.
+  assert.deepEqual(
+    [...STAFF_ROLES],
+    ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "APPLICATION_TEAM_LEADER", "MANAGEMENT", "DESK_COUNSELLOR"],
+  );
 });
 
 test("management reads but never writes, and partners stay scoped to their own org", () => {
@@ -198,4 +202,14 @@ test("a counsellor of any level is who a student they take on belongs to", () =>
   for (const role of ["PARTNER", "ADMIN", "DOCUMENTATION", "MANAGEMENT", "STUDENT"]) {
     assert.equal(isCounsellor(role), false, `${role} is not a counsellor`);
   }
+});
+
+test("the application team leader runs the desk and works it", () => {
+  const lead = as("APPLICATION_TEAM_LEADER");
+  assert.ok(isStaff(lead), "they sit at Medcity Overseas, not at a branch");
+  assert.ok(!isAdmin(lead), "but they do not process applications or move statuses");
+  assert.ok(isDocumentationTeam(lead), "they work files on the same terms as an officer");
+  assert.ok(isDocumentationTeam(as("DOCUMENTATION")), "and so does an officer");
+  assert.equal(orgScope(lead, schema.students.orgId), undefined, "one desk across every branch");
+  assert.ok(!(REPORTING_ROLES as readonly string[]).includes("APPLICATION_TEAM_LEADER"), "they are not a reporting role");
 });

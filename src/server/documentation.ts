@@ -1,10 +1,10 @@
 import "server-only";
-import { and, asc, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { gate, standing, stageRank, validUntil, type Gate, type GateItem, visaFirstOrder } from "@/lib/journey";
+import { CLAIM_MINUTES, gate, standing, stageRank, validUntil, type Gate, type GateItem, visaFirstOrder } from "@/lib/journey";
 import { courseStartFor, intakeStart, requirementsFor, studentContext, syncChecklist, type Requirement, type StudentContext } from "@/db/documentation-sync";
 import type { ChecklistState, JourneyStage, RequirementSource } from "@/db/schema";
-import { PARTNER_ROLES } from "@/lib/permissions";
+import { DOCUMENTATION_ROLES, PARTNER_ROLES } from "@/lib/permissions";
 
 const { checklistItems: ci, checklistFiles: cf, documentRequirements: dr, documentTypes: dt, students: st, applications: ap, programs: pg, universities: un, programRoutes: pr, vendors: vn, organizations: og } = schema;
 
@@ -404,4 +404,93 @@ export async function branchChecked(limit = 60): Promise<BranchChecked[]> {
     .where(and(inArray(decider.role, [...PARTNER_ROLES]), isNotNull(ci.decidedAt)))
     .orderBy(desc(ci.decidedAt))
     .limit(limit);
+}
+
+/* ---------------- Running the desk ---------------- */
+
+export type OfficerStanding = {
+  id: string;
+  name: string;
+  deskLabel: string | null;
+  role: string;
+  /** Claimed and still open: what this officer is carrying right now. */
+  carrying: number;
+  /** The longest anything has sat claimed by them, in hours. */
+  oldestHours: number | null;
+  /** Claimed longer than the claim is meant to last, which is a file somebody walked away from. */
+  stale: number;
+  /** Past the date it was asked for by. */
+  overdue: number;
+  decidedWeek: number;
+  acceptedWeek: number;
+  sentBackWeek: number;
+};
+
+/**
+ * How the documentation desk stands, per officer.
+ *
+ * For whoever runs the desk rather than works a queue beside it. Carrying and
+ * oldest are the two that matter day to day: a queue with nothing waiting can
+ * still be a desk where one person is holding eleven files and another two.
+ *
+ * Decided counts the last seven days rather than all time, because a figure
+ * that only ever goes up is not a figure anybody manages by.
+ */
+export async function deskStanding(): Promise<OfficerStanding[]> {
+  const u = schema.users;
+  const week = sql`now() - interval '7 days'`;
+  const rows = await db
+    .select({
+      id: u.id,
+      name: u.name,
+      deskLabel: u.deskLabel,
+      role: u.role,
+      carrying: sql<number>`count(*) filter (where ${ci.claimedById} = ${u.id} and ${ci.state} in ('UPLOADED','IN_REVIEW'))`.mapWith(Number),
+      oldestHours: sql<number | null>`max(extract(epoch from (now() - ${ci.claimedAt})) / 3600) filter (where ${ci.claimedById} = ${u.id} and ${ci.state} in ('UPLOADED','IN_REVIEW'))`.mapWith(
+        Number,
+      ),
+      stale: sql<number>`count(*) filter (where ${ci.claimedById} = ${u.id} and ${ci.state} in ('UPLOADED','IN_REVIEW') and ${ci.claimedAt} < now() - interval '${sql.raw(String(CLAIM_MINUTES))} minutes')`.mapWith(
+        Number,
+      ),
+      overdue: sql<number>`count(*) filter (where ${ci.claimedById} = ${u.id} and ${ci.state} in ('UPLOADED','IN_REVIEW') and ${ci.dueOn} is not null and ${ci.dueOn} < current_date)`.mapWith(
+        Number,
+      ),
+      decidedWeek: sql<number>`count(*) filter (where ${ci.decidedById} = ${u.id} and ${ci.decidedAt} >= ${week})`.mapWith(Number),
+      acceptedWeek: sql<number>`count(*) filter (where ${ci.decidedById} = ${u.id} and ${ci.decidedAt} >= ${week} and ${ci.state} = 'ACCEPTED')`.mapWith(Number),
+      sentBackWeek: sql<number>`count(*) filter (where ${ci.decidedById} = ${u.id} and ${ci.decidedAt} >= ${week} and ${ci.state} = 'REJECTED')`.mapWith(Number),
+    })
+    .from(u)
+    .leftJoin(ci, or(eq(ci.claimedById, u.id), eq(ci.decidedById, u.id)))
+    .where(and(eq(u.active, true), inArray(u.role, [...DOCUMENTATION_ROLES, "ADMIN", "OPS_MANAGER"])))
+    .groupBy(u.id, u.name, u.deskLabel, u.role)
+    .orderBy(desc(sql`count(*) filter (where ${ci.claimedById} = ${u.id} and ${ci.state} in ('UPLOADED','IN_REVIEW'))`), asc(u.name));
+  // Somebody with nothing in hand and nothing decided this week is not on the
+  // desk at all, whatever their role says, so they are left off rather than
+  // padding the table with zeroes.
+  return rows
+    .filter((r) => r.carrying > 0 || r.decidedWeek > 0)
+    .map((r) => ({ ...r, oldestHours: r.oldestHours == null ? null : Math.round(r.oldestHours) }));
+}
+
+/** What is waiting on nobody: the pool, which is the first thing a leader looks at. */
+export async function deskPool() {
+  const [row] = await db
+    .select({
+      waiting: sql<number>`count(*) filter (where ${ci.claimedById} is null)`.mapWith(Number),
+      overdue: sql<number>`count(*) filter (where ${ci.claimedById} is null and ${ci.dueOn} is not null and ${ci.dueOn} < current_date)`.mapWith(Number),
+      oldestHours: sql<number | null>`max(extract(epoch from (now() - ${ci.updatedAt})) / 3600) filter (where ${ci.claimedById} is null)`.mapWith(Number),
+    })
+    .from(ci)
+    .where(inArray(ci.state, ["UPLOADED", "IN_REVIEW"] as const));
+  return { ...row, oldestHours: row?.oldestHours == null ? null : Math.round(row.oldestHours) };
+}
+
+/** Who a file can be moved to: the desk's own people, for the reassign control. */
+export async function deskOfficers() {
+  const u = schema.users;
+  return db
+    .select({ id: u.id, name: u.name, deskLabel: u.deskLabel, role: u.role })
+    .from(u)
+    .where(and(eq(u.active, true), inArray(u.role, [...DOCUMENTATION_ROLES])))
+    .orderBy(asc(u.name));
 }

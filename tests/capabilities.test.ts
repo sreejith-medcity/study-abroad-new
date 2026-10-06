@@ -69,3 +69,31 @@ test("a moved box is marked as moved, and one in its place is not", () => {
   assert.equal(isChanged("DOCUMENTATION", "SEE_MONEY", false), false);
   assert.equal(isChanged("ADMIN", "RAISE_INVOICES", true), false);
 });
+
+test("the application team leader gets what runs a desk, and nobody else gains it", () => {
+  const lead = "APPLICATION_TEAM_LEADER";
+  for (const cap of ["RUN_DOCUMENTATION_DESK", "REASSIGN_DOCUMENTS", "SET_DOCUMENT_RULES", "OVERRIDE_GATE"] as const) {
+    assert.equal(roleCan(lead, cap), true, `${cap} is theirs`);
+    assert.equal(roleCan("DOCUMENTATION", cap), false, `${cap} is not an officer's`);
+    assert.equal(roleCan("PARTNER", cap), false, `${cap} is not a branch's`);
+    assert.equal(roleCan("MANAGEMENT", cap), false, `${cap} is not management's`);
+    // An admin had all four before this role existed, and keeps them.
+    assert.equal(roleCan("ADMIN", cap), true, `${cap} was an admin's and stays one`);
+  }
+  // They also work files, on the same terms as the officers they run.
+  for (const cap of ["DECIDE_DOCUMENTS", "SEE_FULL_PASSPORT", "MESSAGE_STUDENT", "SEE_EVERY_STUDENT"] as const) {
+    assert.equal(roleCan(lead, cap), true, `${cap} is theirs too`);
+  }
+  assert.equal(roleCan(lead, "RAISE_INVOICES"), false, "running the desk is not running the money");
+  assert.equal(roleCan(lead, "VIEW_AUDIT_LOG"), false);
+});
+
+test("everybody who acts can register a student; management, which changes nothing, cannot", () => {
+  for (const role of ["ADMIN", "OPS_MANAGER", "DOCUMENTATION", "APPLICATION_TEAM_LEADER", "PARTNER", "COUNSELLOR", "TRAINEE_COUNSELLOR", "DESK_COUNSELLOR"] as const) {
+    assert.equal(roleCan(role, "REGISTER_STUDENT"), true, `${role} registers students`);
+  }
+  assert.equal(roleCan("MANAGEMENT", "REGISTER_STUDENT"), false, "management reads and changes nothing");
+  assert.equal(roleCan("SUPER_ADMIN", "REGISTER_STUDENT"), true, "a super admin is never refused anything");
+  // And it is a tick like any other, so Medcity can take it off a role.
+  assert.equal(roleCan("DOCUMENTATION", "REGISTER_STUDENT", [{ role: "DOCUMENTATION", capability: "REGISTER_STUDENT", allowed: false }]), false);
+});

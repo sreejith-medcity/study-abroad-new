@@ -414,6 +414,13 @@
       "when": 1791267726560,
       "tag": "0058_credit_notes",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1791272826280,
+      "tag": "0059_application_team_leader",
+      "breakpoints": true
     }
   ]
 }

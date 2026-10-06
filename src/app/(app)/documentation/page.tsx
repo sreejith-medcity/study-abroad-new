@@ -4,11 +4,13 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fmtDate } from "@/lib/format";
 import { isAdmin, PROCESSING_ROLES } from "@/lib/permissions";
-import { activeRejectionReasons, branchChecked, documentationQueue, queueCounts } from "@/server/documentation";
+import { activeRejectionReasons, branchChecked, deskOfficers, documentationQueue, queueCounts } from "@/server/documentation";
+import { can } from "@/server/capabilities";
 import { claimHeld, CLAIM_MINUTES, STAGES, stageLabel } from "@/lib/journey";
 import { Card, CardHeader, Chip, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
 import { ItemActions } from "../students/[id]/documentation/client";
 import { RunReminders } from "./chase";
+import { Reassign } from "./reassign";
 import type { JourneyStage } from "@/db/schema";
 
 export const metadata = { title: "Documentation queue" };
@@ -34,13 +36,15 @@ export default async function DocumentationQueuePage({
   const sp = await searchParams;
   const sort = sp.sort === "VISA_FIRST" ? "VISA_FIRST" : "OLDEST";
   const branchView = sp.view === "branch";
-  const [rows, counts, reasons, branches, vendors, checkedByBranches] = await Promise.all([
+  const canReassign = await can(user, "REASSIGN_DOCUMENTS");
+  const [rows, counts, reasons, branches, vendors, checkedByBranches, officers] = await Promise.all([
     documentationQueue({ branch: sp.branch, stage: sp.stage as JourneyStage | undefined, vendor: sp.vendor, sort, mine: sp.mine }, user.id),
     queueCounts(user.id),
     activeRejectionReasons(),
     db.select({ id: schema.organizations.id, name: schema.organizations.name }).from(schema.organizations).orderBy(asc(schema.organizations.name)),
     db.select({ id: schema.vendors.id, name: schema.vendors.name, code: schema.vendors.code, colour: schema.vendors.colour }).from(schema.vendors).where(eq(schema.vendors.active, true)).orderBy(asc(schema.vendors.name)),
     branchChecked(),
+    canReassign ? deskOfficers() : Promise.resolve([]),
   ]);
 
   const href = (next: Record<string, string | undefined>) => {
@@ -174,6 +178,11 @@ export default async function DocumentationQueuePage({
                       <Chip tone="info">{r.claimedById === user.id ? `You, for ${CLAIM_MINUTES} min` : (r.claimedByName ?? "Claimed")}</Chip>
                     ) : (
                       <span className="text-muted">Unclaimed</span>
+                    )}
+                    {/* Somebody opened it and went home: whoever runs the desk
+                        can move it rather than wait for the claim to lapse. */}
+                    {canReassign && r.claimedById && r.claimedById !== user.id && (
+                      <Reassign itemId={r.id} holder={r.claimedByName ?? null} officers={officers.filter((o) => o.id !== r.claimedById)} />
                     )}
                   </Td>
                   <Td>
