@@ -7,7 +7,7 @@ import { z } from "zod";
 import { db, schema } from "@/db";
 import { hashPassword, requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { PARTNER_ROLES, PROCESSING_ROLES } from "@/lib/permissions";
+import { PARTNER_ROLES, PROCESSING_ROLES, STUDENT_WORK_ROLES } from "@/lib/permissions";
 import { isLocale } from "@/lib/i18n";
 import { accessSummary, guardianAddedMessage } from "@/lib/family";
 import { getStudentForUser } from "@/server/queries";
@@ -68,7 +68,7 @@ async function tellStudent(
 }
 
 export async function addGuardianAction(_: FormState, formData: FormData): Promise<FormState> {
-  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
+  const user = await requireUser([...STUDENT_WORK_ROLES]);
   const parsed = guardian.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Check the highlighted fields." };
   const d = parsed.data;
@@ -127,7 +127,7 @@ export async function addGuardianAction(_: FormState, formData: FormData): Promi
  * is out on their next click, not at the end of the day.
  */
 export async function revokeGuardianAction(formData: FormData) {
-  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
+  const user = await requireUser([...STUDENT_WORK_ROLES]);
   const guardianId = String(formData.get("guardianId"));
   const row = await db.query.studentGuardians.findFirst({ where: eq(schema.studentGuardians.id, guardianId) });
   if (!row) return;
@@ -145,7 +145,7 @@ export async function revokeGuardianAction(formData: FormData) {
 
 /** Switches the fees on or off for one guardian, without touching their sign-in. */
 export async function setGuardianMoneyAction(formData: FormData) {
-  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
+  const user = await requireUser([...STUDENT_WORK_ROLES]);
   const guardianId = String(formData.get("guardianId"));
   const seesMoney = String(formData.get("seesMoney")) === "true";
   const row = await db.query.studentGuardians.findFirst({ where: and(eq(schema.studentGuardians.id, guardianId), isNull(schema.studentGuardians.revokedAt)) });
@@ -158,7 +158,7 @@ export async function setGuardianMoneyAction(formData: FormData) {
 
 /** A new one-time password, for a parent who has lost theirs. */
 export async function resetGuardianPasswordAction(_: FormState, formData: FormData): Promise<FormState> {
-  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
+  const user = await requireUser([...STUDENT_WORK_ROLES]);
   const guardianId = String(formData.get("guardianId"));
   const row = await db.query.studentGuardians.findFirst({ where: and(eq(schema.studentGuardians.id, guardianId), isNull(schema.studentGuardians.revokedAt)) });
   if (!row) return { error: "That family sign-in is no longer active." };

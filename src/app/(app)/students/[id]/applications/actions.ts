@@ -14,7 +14,7 @@ import { audit } from "@/lib/audit";
 import { nextAckNo } from "@/lib/ack";
 import { summarise } from "@/lib/checks";
 import { intakeLabel } from "@/lib/format";
-import { ADMIN_ROLES, PARTNER_ROLES, PROCESSING_ROLES, isAdmin, isStaff } from "@/lib/permissions";
+import { ADMIN_ROLES, PARTNER_ROLES, PROCESSING_ROLES, isAdmin, isStaff, STUDENT_WORK_ROLES } from "@/lib/permissions";
 import { changeStatus, checkApplication, StatusChangeError } from "@/server/applications";
 import { adminIds, notifyUsers, partnerRecipients } from "@/server/notify";
 import { getApplicationForUser, getStudentForUser } from "@/server/queries";
@@ -156,7 +156,7 @@ export async function changeStatusAction(_: FormState, formData: FormData): Prom
 }
 
 export async function addCommentAction(_: FormState, formData: FormData): Promise<FormState> {
-  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
+  const user = await requireUser([...STUDENT_WORK_ROLES]);
   const applicationId = String(formData.get("applicationId"));
   const channel = formData.get("channel") === "STUDENT" ? "STUDENT" : "TEAM";
   const body = String(formData.get("body") ?? "").trim();
@@ -241,7 +241,7 @@ export async function askPartnerAction(formData: FormData) {
 }
 
 export async function setDocumentTypeAction(formData: FormData) {
-  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
+  const user = await requireUser([...STUDENT_WORK_ROLES]);
   const documentId = String(formData.get("documentId"));
   const typeCode = String(formData.get("typeCode"));
   const doc = await db.query.documents.findFirst({ where: eq(schema.documents.id, documentId) });
@@ -298,7 +298,7 @@ export async function addDeadlineAction(_: FormState, fd: FormData): Promise<For
 
 /** Either side can tick a milestone off; the team can also remove one. */
 export async function setDeadlineDoneAction(fd: FormData) {
-  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
+  const user = await requireUser([...STUDENT_WORK_ROLES]);
   const d = await db.query.applicationDeadlines.findFirst({ where: eq(schema.applicationDeadlines.id, String(fd.get("id") ?? "")) });
   if (!d) return;
   const app = await getApplicationForUser(user, d.applicationId);
@@ -314,7 +314,7 @@ export async function setDeadlineDoneAction(fd: FormData) {
 
 /** Branch's own ordering of its applications: which to chase first. */
 export async function setPriorityAction(fd: FormData) {
-  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
+  const user = await requireUser([...STUDENT_WORK_ROLES]);
   const priority = String(fd.get("priority") ?? "");
   if (!(schema.applicationPriority.enumValues as readonly string[]).includes(priority)) return;
   const app = await getApplicationForUser(user, String(fd.get("applicationId") ?? ""));

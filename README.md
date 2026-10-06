@@ -506,7 +506,7 @@ Set from **Partners and people**, along with a free-text job title ("UK desk", "
 | Senior counsellor | Own organisation | The branch's students rather than their own, with the branch's numbers. No wallet, no seats, no team: that is the branch head's job |
 | Trainee counsellor | Own students | Builds the file; somebody else sends it. Their dashboard carries what they have built and cannot submit, so it is chased rather than waited on |
 | Sub-agent counsellor | Own organisation | Works inside a sub-agent firm. Their dashboard carries what the firm has referred and earned, because that is how they are paid |
-| Overseas desk counsellor | Their own students, every branch | Advises from the head office rather than a branch, so their dashboard is their own students with the branch named on each, and none of a branch's wallet, seats or tier |
+| Overseas desk counsellor | Their own students, every branch | Advises from the head office rather than a branch, so their dashboard is their own students with the branch named on each, and none of a branch's wallet, seats or tier. They work a student's file like any counsellor |
 | Student | Their own file | The student portal only |
 | Parent or guardian | One student's file | The family view only: read the journey, what is outstanding and the dates. Changes nothing, and never opens a file |
 

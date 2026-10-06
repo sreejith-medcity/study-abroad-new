@@ -9,7 +9,7 @@ import { db, schema } from "@/db";
 import { hashPassword, requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { phoneKey } from "@/lib/phone";
-import { ADMIN_ROLES, APP_ROLES, PARTNER_ROLES, PROCESSING_ROLES, isAdmin, isCounsellor, isStaff } from "@/lib/permissions";
+import { ADMIN_ROLES, APP_ROLES, PARTNER_ROLES, PROCESSING_ROLES, isAdmin, isCounsellor, isStaff, STUDENT_WORK_ROLES } from "@/lib/permissions";
 import { can } from "@/server/capabilities";
 import { adminIds, notifyUsers, partnerRecipients } from "@/server/notify";
 import { getStudentForUser } from "@/server/queries";
@@ -187,7 +187,7 @@ export async function archiveStudentAction(formData: FormData) {
  * forbidden screen on save: the screen said yes and the button said no.
  */
 async function editableStudent(studentId: string) {
-  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
+  const user = await requireUser([...STUDENT_WORK_ROLES]);
   const student = await getStudentForUser(user, studentId);
   if (student.profileLocked && !isAdmin(user)) {
     return { user, student, locked: true as const };
@@ -416,7 +416,7 @@ function portalPassword() {
 export async function invitePortalAction(_: FormState, formData: FormData): Promise<FormState> {
   // The desk is who asks a student for documents through the portal, so the desk
   // is who needs to be able to let them into it.
-  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
+  const user = await requireUser([...STUDENT_WORK_ROLES]);
   const studentId = String(formData.get("studentId"));
   const student = await getStudentForUser(user, studentId);
   if (!student.email) return { error: "Add an email address to the student's profile first." };
@@ -457,7 +457,7 @@ export async function invitePortalAction(_: FormState, formData: FormData): Prom
 }
 
 export async function togglePortalAccessAction(formData: FormData) {
-  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
+  const user = await requireUser([...STUDENT_WORK_ROLES]);
   const studentId = String(formData.get("studentId"));
   await getStudentForUser(user, studentId);
   const account = await db.query.users.findFirst({ where: and(eq(schema.users.studentId, studentId), eq(schema.users.role, "STUDENT")) });

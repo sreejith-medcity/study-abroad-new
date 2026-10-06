@@ -18,6 +18,18 @@ export const PROCESSING_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMEN
 export const PARTNER_ROLES = ["PARTNER", "COUNSELLOR", "SENIOR_COUNSELLOR", "TRAINEE_COUNSELLOR", "SUB_AGENT_COUNSELLOR"] as const;
 
 /**
+ * Everybody who works a student's own file: the branch that registered them, the
+ * Overseas desk that processes them, and the desk's own counsellors.
+ *
+ * A desk counsellor advises students across every branch but belongs to none, so
+ * they fell outside both of the groups this used to be written as, and could
+ * open a student and change nothing on them: not the profile, not the stage, not
+ * a comment, not a service request. One group, so the next role added lands in
+ * one place rather than forty.
+ */
+export const STUDENT_WORK_ROLES = ["PARTNER", "COUNSELLOR", "SENIOR_COUNSELLOR", "TRAINEE_COUNSELLOR", "SUB_AGENT_COUNSELLOR", "SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "APPLICATION_TEAM_LEADER", "DESK_COUNSELLOR"] as const;
+
+/**
  * The roles that advise students, wherever they sit. A student created by one
  * of these is assigned to them by default, because they are the person the
  * student will ring.
