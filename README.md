@@ -475,13 +475,19 @@ update users set role = 'SUPER_ADMIN' where email = 'sreejith@miak.in';
 
 Run the two statements separately: Postgres will not let a new enum value be used in the same transaction that added it.
 
-## Every link opens for whoever is shown it
+## Every link and every button belongs to whoever is shown it
 
-A role is never given a link that refuses it. Being shown a door and then turned
-away by it is the worst of both: the person cannot tell whether they are
-allowed, and nobody told them. `tests/browser/nav.mjs` signs in as all thirteen
-roles, walks every link in that role's own sidebar, and fails on a refusal, a
-404 or a redirect somewhere else. Run it after touching a nav or a page guard.
+A role is never given a control that refuses it. Being shown a door and then
+turned away by it is the worst of both: the person cannot tell whether they are
+allowed, nobody told them, and with a form they have already typed their work
+into it.
+
+Two suites hold this. `tests/browser/nav.mjs` signs in as all thirteen roles and
+presses every link in that role's own sidebar. `tests/browser/buttons.mjs` opens
+the screens each role works on and presses the submit button of every form on
+them, including the ones a locked profile would otherwise hide. Both fail on a
+refusal, a 404 or a redirect somewhere else. Run them after touching a
+navigation, a page guard or an action's role list.
 
 ## Roles
 
