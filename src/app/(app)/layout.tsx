@@ -206,6 +206,35 @@ const DESK_COUNSELLOR_NAV: NavGroup[] = partnerNav("My desk")
   .filter((g) => g.title !== "Money")
   .map((g) => ({ ...g, items: g.items.filter((i) => !["/enquiries", "/program-options"].includes(i.href)) }));
 
+/**
+ * Finance: the money, and nothing that is not the money.
+ *
+ * No students, no applications, no documents and no catalogue. Everything here
+ * is a screen about what is owed, what has been invoiced and what came in,
+ * which is the whole of the job.
+ */
+const FINANCE_NAV: NavGroup[] = [
+  {
+    title: "Money",
+    items: [
+      { href: "/dashboard", label: "The money", icon: "dashboard" },
+      { href: "/admin/invoices", label: "Invoices", icon: "commission" },
+      { href: "/admin/income", label: "Income", icon: "insights" },
+      { href: "/admin/commission", label: "Commission", icon: "commission" },
+      { href: "/admin/payments", label: "Online payments", icon: "wallet" },
+    ],
+  },
+  {
+    title: "Who it is with",
+    items: [
+      // Vendors and routes carry the commission terms, which are an admin's to
+      // set; finance reads what a route pays through the invoice queue.
+      { href: "/admin/billing", label: "Billing companies", icon: "partners" },
+      { href: "/learning", label: "Learning resources", icon: "learning" },
+    ],
+  },
+];
+
 const MANAGEMENT_NAV: NavGroup[] = [
   {
     title: "Overview",
@@ -230,6 +259,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         ? DOCUMENTATION_NAV
         : user.role === "APPLICATION_TEAM_LEADER"
           ? TEAM_LEAD_NAV
+          : user.role === "FINANCE"
+            ? FINANCE_NAV
           : user.role === "DESK_COUNSELLOR"
             ? DESK_COUNSELLOR_NAV
             : user.role === "MANAGEMENT"

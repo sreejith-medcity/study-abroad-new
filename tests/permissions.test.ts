@@ -5,6 +5,7 @@ import {
   APP_ROLES,
   canChangeStatus,
   canManageUsers,
+  worksStudentFiles,
   canResetPasswords,
   canSeeFullPassport,
   canManageMoney,
@@ -108,7 +109,7 @@ test("super admin inherits everything an admin can do", () => {
   // documentation desk.
   assert.deepEqual(
     [...STAFF_ROLES],
-    ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "APPLICATION_TEAM_LEADER", "MANAGEMENT", "DESK_COUNSELLOR"],
+    ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "APPLICATION_TEAM_LEADER", "FINANCE", "MANAGEMENT", "DESK_COUNSELLOR"],
   );
 });
 
@@ -212,4 +213,24 @@ test("the application team leader runs the desk and works it", () => {
   assert.ok(isDocumentationTeam(as("DOCUMENTATION")), "and so does an officer");
   assert.equal(orgScope(lead, schema.students.orgId), undefined, "one desk across every branch");
   assert.ok(!(REPORTING_ROLES as readonly string[]).includes("APPLICATION_TEAM_LEADER"), "they are not a reporting role");
+});
+
+test("finance is Medcity's own, reads the numbers, and processes nothing", () => {
+  const fin = as("FINANCE");
+  assert.ok(isStaff(fin), "they sit at Medcity Overseas");
+  assert.ok(!isAdmin(fin), "but they do not process applications");
+  assert.ok(!canChangeStatus(fin), "and never move a status");
+  assert.ok(!isDocumentationTeam(fin), "nor work the documentation desk");
+  assert.ok((REPORTING_ROLES as readonly string[]).includes("FINANCE"), "they read the money reports");
+  assert.equal(orgScope(fin, schema.students.orgId), undefined, "the money is across every branch");
+});
+
+test("who may type into a student's file, and who only reads it", () => {
+  for (const role of ["PARTNER", "COUNSELLOR", "SENIOR_COUNSELLOR", "TRAINEE_COUNSELLOR", "SUB_AGENT_COUNSELLOR", "DOCUMENTATION", "APPLICATION_TEAM_LEADER", "DESK_COUNSELLOR", "ADMIN", "OPS_MANAGER", "SUPER_ADMIN"] as const) {
+    assert.ok(worksStudentFiles(as(role)), `${role} works a student's file`);
+  }
+  // Both read a file and change nothing on it, so neither should be shown a
+  // control the server will refuse.
+  assert.ok(!worksStudentFiles(as("MANAGEMENT")), "management reads for oversight");
+  assert.ok(!worksStudentFiles(as("FINANCE")), "finance reads to reconcile");
 });

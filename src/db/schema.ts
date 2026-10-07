@@ -54,6 +54,13 @@ export const role = pgEnum("role", [
    * another, what the desk chases, and letting a stage through with a reason.
    */
   "APPLICATION_TEAM_LEADER",
+  /**
+   * Finance. The invoice queue, the invoices themselves, credit notes, the
+   * ageing report and what came in: the money side, and nothing else. They do
+   * not register students, move applications or work documents, which is why
+   * "everyone except the finance team" could not be said before this existed.
+   */
+  "FINANCE",
 ]);
 export const pathway = pgEnum("pathway", ["DEGREE", "AUSBILDUNG", "NURSING"]);
 export const studyLevel = pgEnum("study_level", [

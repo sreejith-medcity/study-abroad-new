@@ -97,3 +97,20 @@ test("everybody who acts can register a student; management, which changes nothi
   // And it is a tick like any other, so Medcity can take it off a role.
   assert.equal(roleCan("DOCUMENTATION", "REGISTER_STUDENT", [{ role: "DOCUMENTATION", capability: "REGISTER_STUDENT", allowed: false }]), false);
 });
+
+test("finance holds the money and none of the files", () => {
+  const fin = "FINANCE";
+  for (const cap of ["SEE_MONEY", "READ_INVOICES", "RAISE_INVOICES"] as const) {
+    assert.equal(roleCan(fin, cap), true, `${cap} is theirs`);
+  }
+  // Asked for in these words: everyone can register a student except finance.
+  assert.equal(roleCan(fin, "REGISTER_STUDENT"), false, "finance does not start a student file");
+  assert.equal(roleCan("MANAGEMENT", "REGISTER_STUDENT"), false, "nor does management");
+  assert.equal(roleCan("DOCUMENTATION", "REGISTER_STUDENT"), true, "the desk still does");
+  for (const cap of ["DECIDE_DOCUMENTS", "RUN_DOCUMENTATION_DESK", "REASSIGN_DOCUMENTS", "SET_DOCUMENT_RULES", "OVERRIDE_GATE", "SUBMIT_APPLICATION", "MESSAGE_STUDENT"] as const) {
+    assert.equal(roleCan(fin, cap), false, `${cap} is not finance's job`);
+  }
+  // An invoice names students, so the lines on it are readable.
+  assert.equal(roleCan(fin, "SEE_EVERY_STUDENT"), true);
+  assert.equal(roleCan(fin, "VIEW_AUDIT_LOG"), false);
+});

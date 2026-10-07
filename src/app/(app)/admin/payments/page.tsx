@@ -7,7 +7,10 @@ import { Card, EmptyState, PageHeader } from "@/components/ui";
 export const metadata = { title: "Online payments" };
 
 export default async function AdminPaymentsPage() {
-  await requireUser([...ADMIN_ROLES]);
+  // Money that has come in from students, so finance reads it alongside the
+  // vendor side. Turning the gateway on or off stays an admin's doing, on the
+  // settings screen rather than this one.
+  await requireUser([...ADMIN_ROLES, "FINANCE"]);
   const rows = await paymentList(undefined, 200);
   return (
     <>

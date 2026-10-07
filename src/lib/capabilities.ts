@@ -47,6 +47,7 @@ export const SHORT_ROLE: Record<string, string> = {
   ADMIN: "Admin",
   DOCUMENTATION: "Docs",
   APPLICATION_TEAM_LEADER: "Team lead",
+  FINANCE: "Finance",
   MANAGEMENT: "Mgmt",
   PARTNER: "Branch head",
   COUNSELLOR: "Counsellor",
@@ -102,10 +103,10 @@ export const CAPABILITY_MEANS: Record<Capability, string> = {
  * it is the rule below.
  */
 export const DEFAULTS: Record<Capability, AppRole[]> = {
-  SEE_MONEY: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "MANAGEMENT", "PARTNER", "COUNSELLOR", "SENIOR_COUNSELLOR", "DESK_COUNSELLOR"],
+  SEE_MONEY: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "FINANCE", "MANAGEMENT", "PARTNER", "COUNSELLOR", "SENIOR_COUNSELLOR", "DESK_COUNSELLOR"],
   DECIDE_DOCUMENTS: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "APPLICATION_TEAM_LEADER"],
-  READ_INVOICES: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "MANAGEMENT", "PARTNER"],
-  RAISE_INVOICES: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN"],
+  READ_INVOICES: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "FINANCE", "MANAGEMENT", "PARTNER"],
+  RAISE_INVOICES: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "FINANCE"],
   SEE_FULL_PASSPORT: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "APPLICATION_TEAM_LEADER", "PARTNER"],
   VIEW_AUDIT_LOG: ["SUPER_ADMIN"],
   SUBMIT_APPLICATION: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "PARTNER", "COUNSELLOR", "SENIOR_COUNSELLOR", "DESK_COUNSELLOR", "SUB_AGENT_COUNSELLOR"],
@@ -113,7 +114,7 @@ export const DEFAULTS: Record<Capability, AppRole[]> = {
   // A counsellor works their own students; a branch head and a senior counsellor
   // work the branch's. The documentation team sees the files they were given,
   // which is what "assigned" means for them: the applications they are on.
-  SEE_EVERY_STUDENT: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "MANAGEMENT", "PARTNER", "SENIOR_COUNSELLOR", "DESK_COUNSELLOR", "APPLICATION_TEAM_LEADER"],
+  SEE_EVERY_STUDENT: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "MANAGEMENT", "PARTNER", "SENIOR_COUNSELLOR", "DESK_COUNSELLOR", "APPLICATION_TEAM_LEADER", "FINANCE"],
   // Running the desk is the whole point of the team leader. An admin and an ops
   // manager have always seen every file, so they keep it; nobody else gains it.
   RUN_DOCUMENTATION_DESK: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "APPLICATION_TEAM_LEADER"],
@@ -127,10 +128,11 @@ export const DEFAULTS: Record<Capability, AppRole[]> = {
   // documentation desk could see the Register button and was refused when it
   // pressed it, because registering was a branch's job and an admin's.
   //
-  // Everybody who acts in the portal can register a student. Management is the
-  // only role left out, because it reads everything and changes nothing by
-  // definition; a finance role, when there is one, is the other.
-  REGISTER_STUDENT: APP_ROLES.filter((r) => r !== "MANAGEMENT" && r !== "SUPER_ADMIN"),
+  // Everybody who acts in the portal can register a student, except the two
+  // roles that have no business starting one: management, which reads
+  // everything and changes nothing, and finance, which holds the money and not
+  // the files. Asked for in exactly those words.
+  REGISTER_STUDENT: APP_ROLES.filter((r) => !["MANAGEMENT", "FINANCE", "SUPER_ADMIN"].includes(r)),
 };
 
 /** A capability nobody may take off a super admin, whatever the matrix says. */

@@ -3,11 +3,11 @@ import type { PgColumn } from "drizzle-orm/pg-core";
 import type { SessionUser } from "./auth";
 
 /** Roles that work inside Medcity Overseas rather than at a partner. */
-export const STAFF_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "APPLICATION_TEAM_LEADER", "MANAGEMENT", "DESK_COUNSELLOR"] as const;
+export const STAFF_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "APPLICATION_TEAM_LEADER", "FINANCE", "MANAGEMENT", "DESK_COUNSELLOR"] as const;
 /** Roles that process applications: status changes, programs, partners, money. */
 export const ADMIN_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN"] as const;
 /** Everyone who reads the numbers: admins and management, but not the documentation team. */
-export const REPORTING_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "MANAGEMENT"] as const;
+export const REPORTING_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "MANAGEMENT", "FINANCE"] as const;
 /** Admins plus the documentation team, who work the same files without moving them. */
 export const PROCESSING_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "APPLICATION_TEAM_LEADER"] as const;
 /**
@@ -30,6 +30,19 @@ export const PARTNER_ROLES = ["PARTNER", "COUNSELLOR", "SENIOR_COUNSELLOR", "TRA
 export const STUDENT_WORK_ROLES = ["PARTNER", "COUNSELLOR", "SENIOR_COUNSELLOR", "TRAINEE_COUNSELLOR", "SUB_AGENT_COUNSELLOR", "SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "APPLICATION_TEAM_LEADER", "DESK_COUNSELLOR"] as const;
 
 /**
+ * May this user type into a student's file, or only read it?
+ *
+ * Management reads a file for oversight and finance reads it to reconcile a
+ * commission, and neither changes anything on it. The screens asked this by
+ * naming MANAGEMENT, which is how finance arrived and was shown a Save button
+ * the server then refused: the same bug as a sidebar link to the forbidden
+ * screen, and worse, because somebody has already typed into it.
+ */
+export function worksStudentFiles(user: SessionUser) {
+  return (STUDENT_WORK_ROLES as readonly string[]).includes(user.role);
+}
+
+/**
  * The roles that advise students, wherever they sit. A student created by one
  * of these is assigned to them by default, because they are the person the
  * student will ring.
@@ -47,6 +60,7 @@ export const APP_ROLES = [
   "ADMIN",
   "DOCUMENTATION",
   "APPLICATION_TEAM_LEADER",
+  "FINANCE",
   "MANAGEMENT",
   "PARTNER",
   "COUNSELLOR",
@@ -63,6 +77,7 @@ export const ROLE_LABEL: Record<string, string> = {
   ADMIN: "Overseas admin",
   DOCUMENTATION: "Documentation team",
   APPLICATION_TEAM_LEADER: "Application team leader",
+  FINANCE: "Finance",
   MANAGEMENT: "Management",
   PARTNER: "Branch head",
   COUNSELLOR: "Counsellor",
@@ -81,6 +96,7 @@ export const ROLE_BLURB: Record<string, string> = {
   ADMIN: "Processes applications: statuses, work queue, programs, partners and documents",
   DOCUMENTATION: "Works the files: documents, the pre-submission check and messages, without moving statuses",
   APPLICATION_TEAM_LEADER: "Runs the documentation desk and works files on it: the whole queue, who is carrying what, and moving a file between officers",
+  FINANCE: "The money: what can be invoiced, what has been, credit notes, what is late and what came in. No students, no applications, no documents",
   MANAGEMENT: "Reads everything, changes nothing",
   PARTNER: "Runs a branch or sub-agent: their own students, applications, team and wallet",
   COUNSELLOR: "Works their own students inside one branch",
@@ -93,7 +109,7 @@ export const ROLE_BLURB: Record<string, string> = {
 };
 
 /** Roles that belong to Medcity Overseas itself rather than to a partner. */
-export const HQ_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "APPLICATION_TEAM_LEADER", "MANAGEMENT", "DESK_COUNSELLOR"] as const;
+export const HQ_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "APPLICATION_TEAM_LEADER", "FINANCE", "MANAGEMENT", "DESK_COUNSELLOR"] as const;
 
 /**
  * The family: a student and the parents who read that student's file. Neither

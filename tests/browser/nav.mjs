@@ -20,6 +20,7 @@ const ROLES = [
   ["ops@medcityoverseas.test", "ops manager"],
   ["documentation@medcityoverseas.test", "documentation"],
   ["teamlead@medcityoverseas.test", "application team leader"],
+  ["finance@medcityoverseas.test", "finance"],
   ["management@medcityoverseas.test", "management"],
   ["desk.counsellor@medcityoverseas.test", "desk counsellor"],
   ["kottayam@medcity.test", "branch head"],

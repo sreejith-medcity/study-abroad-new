@@ -4,6 +4,7 @@ import { readFilters } from "@/server/queries";
 import AdminDashboard from "./admin";
 import DeskCounsellorDashboard from "./desk-counsellor";
 import DeskLeadDashboard from "./desk-lead";
+import FinanceDashboard from "./finance";
 import ManagementDashboard from "./management";
 import PartnerDashboard from "./partner";
 import SuperAdminDashboard from "./super-admin";
@@ -42,6 +43,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   // Whoever runs the documentation desk gets the desk, not the applications
   // board: how the work is spread is the question a queue cannot answer.
   if (user.role === "APPLICATION_TEAM_LEADER") return <DeskLeadDashboard user={user} />;
+  // Finance answers for the money and nothing else, so that is the whole screen.
+  if (user.role === "FINANCE") return <FinanceDashboard user={user} />;
   // The documentation team sees the same desk without the money lines.
   if (user.role === "DOCUMENTATION") return <AdminDashboard user={user} f={f} showMoney={false} />;
   if (user.role === "MANAGEMENT") return <ManagementDashboard user={user} f={f} />;
