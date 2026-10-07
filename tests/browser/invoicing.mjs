@@ -251,15 +251,32 @@ if (older) {
   const lineState = sql(`select state || '|' || coalesce(written_off_reason, '') from income_lines where id = (select income_line_id from vendor_invoice_lines where id = '${onlyLine}')`);
   check(lineState.startsWith("WRITTEN_OFF"), `credit note: the student's income line is written back (${lineState.slice(0, 40)})`);
   check(lineState.includes(cn), "credit note: with the credit note's number on it, so the reason is on their own file");
-  // Credited in full is settled, so it stops being chased. Nothing was received,
-  // so the bank still reconciles against nought.
-  check((await waitSql(`select state from vendor_invoices where id = '${older}'`, "PAID")) === "PAID", "credit note: an invoice credited in full is settled, not left on the ageing report");
+  // One student off a two-student invoice is a part credit, so the rest is
+  // still chased, and nothing was received either way.
+  const total = Number(sql(`select total from vendor_invoices where id = '${older}'`));
+  const expected = Number(sql(`select amount from credit_notes where invoice_id = '${older}'`)) >= total ? "PAID" : "PART_PAID";
+  check((await waitSql(`select state from vendor_invoices where id = '${older}'`, expected)) === expected, `credit note: a part-credited invoice is ${expected === "PAID" ? "settled" : "still part owed"}`);
   check(sql(`select received_amount from vendor_invoices where id = '${older}'`) === "0", "credit note: and no money is pretended to have arrived");
 
   text = await go(ap, `/admin/invoices/${older}`);
   check(/Credited back/.test(text), "credit note: the invoice shows what was credited");
   check(/What it is now worth/.test(text), "credit note: and what it is now worth, beside what it was raised for");
   check(/deferred to the next intake/.test(text), "credit note: the reason is on the invoice");
+
+  // The rest of it comes off too, and the student already credited is not
+  // offered a second time.
+  const rest = sql(`select string_agg(id, ',') from vendor_invoice_lines where invoice_id = '${older}' and id not in (select invoice_line_id from credit_note_lines)`);
+  if (rest) {
+    check(await openModal(ap, "Credit part of it"), "credit note: the form opens again for the rest of the invoice");
+    check((await ap.locator(`input[name="line"][value="${onlyLine}"]`).count()) === 0, "credit note: the student already credited is not offered a second time");
+    for (const line of rest.split(",")) await ap.locator(`input[name="line"][value="${line}"]`).click();
+    await ap.locator('textarea[name="reason"]').first().fill("The remaining student withdrew before the course began; the vendor agrees nothing is payable on this invoice.");
+    await ap.getByRole("button", { name: "Raise the credit note" }).last().click();
+    check((await waitSql(`select count(*) from credit_notes where invoice_id = '${older}'`, "2")) === "2", "credit note: the second note is recorded");
+  }
+  // Credited in full is settled, so it stops being chased.
+  check((await waitSql(`select state from vendor_invoices where id = '${older}'`, "PAID")) === "PAID", "credit note: an invoice credited in full is settled, not left on the ageing report");
+  check(sql(`select received_amount from vendor_invoices where id = '${older}'`) === "0", "credit note: and still no money is pretended to have arrived");
 
   // The ageing report downloads, and carries the credited column.
   const csv = await ap.request.get(`${BASE}/api/invoices/ageing-export`);

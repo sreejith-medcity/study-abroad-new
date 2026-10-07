@@ -7,7 +7,7 @@ import { z } from "zod";
 import { db, schema } from "@/db";
 import { hashPassword, requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { PARTNER_ROLES, PROCESSING_ROLES, STUDENT_WORK_ROLES } from "@/lib/permissions";
+import { STUDENT_WORK_ROLES } from "@/lib/permissions";
 import { isLocale } from "@/lib/i18n";
 import { accessSummary, guardianAddedMessage } from "@/lib/family";
 import { getStudentForUser } from "@/server/queries";

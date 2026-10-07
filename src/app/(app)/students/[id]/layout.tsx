@@ -3,9 +3,9 @@ import { and, count, eq, ilike, notInArray } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fullName } from "@/lib/format";
-import { APP_ROLES, isStaff } from "@/lib/permissions";
+import { APP_ROLES, isStaff, worksStudentFiles } from "@/lib/permissions";
 import { getStudentForUser } from "@/server/queries";
-import { Button, Card, Chip } from "@/components/ui";
+import { Alert, Button, Card, Chip } from "@/components/ui";
 import { StepTabs } from "@/components/tabs";
 import { LogContact } from "@/components/crm-forms";
 import { profileCompleteness } from "@/lib/checks";
@@ -19,6 +19,9 @@ export default async function StudentLayout({ children, params }: { children: Re
   const { id } = await params;
   const user = await requireUser([...APP_ROLES]);
   const student = await getStudentForUser(user, id);
+  // Read it or work it: everything below asks this once, rather than each
+  // screen naming the roles it thinks are read-only.
+  const canWork = worksStudentFiles(user);
   const [{ apps }] = await db.select({ apps: count() }).from(schema.applications).where(eq(schema.applications.studentId, id));
   const [{ docs }] = await db.select({ docs: count() }).from(schema.documents).where(eq(schema.documents.studentId, id));
   // The documentation tab counts what is still owed, not what is on the list:
@@ -55,7 +58,7 @@ export default async function StudentLayout({ children, params }: { children: Re
           </div>
           {student.medcityId ? (
             <p className="mt-1 font-mono text-[13px] font-medium tracking-tight text-brand-700">{student.medcityId}</p>
-          ) : user.role === "MANAGEMENT" ? (
+          ) : !canWork ? (
             <p className="mt-1 text-[13px] text-muted">No Medcity ID yet</p>
           ) : (
             <form action={assignStudentIdAction} className="mt-1 flex items-center gap-2" data-print="hide">
@@ -72,7 +75,7 @@ export default async function StudentLayout({ children, params }: { children: Re
           <Link href={`/program-options/new?student=${id}`} data-print="hide" className="ml-3 mt-2 inline-block text-[13px] font-medium text-brand-600 hover:underline">
             Ask the team for options
           </Link>
-          {user.role !== "MANAGEMENT" && (
+          {canWork && (
             <div className="mt-3 flex flex-wrap gap-2" data-print="hide">
               <LogContact studentId={id} studentName={student.firstName} />
             </div>
@@ -99,7 +102,21 @@ export default async function StudentLayout({ children, params }: { children: Re
           </div>
         </Card>
       </div>
-      {children}
+      {canWork ? (
+        children
+      ) : (
+        <>
+          <Alert tone="info" title="You are reading this file, not working on it">
+            Your role opens a student so the figures, the stage and the history can be checked. Changing what is on the file belongs to the branch counsellor
+            and the documentation desk, so the controls below are shown as they stand and cannot be used.
+          </Alert>
+          {/* Disabled at the top rather than screen by screen: a control the
+              server will refuse should never be pressable. */}
+          <fieldset disabled className="mt-4 w-full min-w-0 border-0 p-0">
+            {children}
+          </fieldset>
+        </>
+      )}
     </div>
   );
 }

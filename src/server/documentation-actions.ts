@@ -6,7 +6,7 @@ import { z } from "zod";
 import { db, schema } from "@/db";
 import { requireUser, type SessionUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { ADMIN_ROLES, DECIDE_REFUSAL, OWN_UPLOAD_REFUSAL, PARTNER_ROLES, PROCESSING_ROLES, isStaff, mayAcceptUpload, mayDecideDocuments, STUDENT_WORK_ROLES } from "@/lib/permissions";
+import { ADMIN_ROLES, DECIDE_REFUSAL, OWN_UPLOAD_REFUSAL, PROCESSING_ROLES, isStaff, mayAcceptUpload, mayDecideDocuments, STUDENT_WORK_ROLES } from "@/lib/permissions";
 import { can } from "@/server/capabilities";
 import { claimHeld, CLAIM_MINUTES, stageLabel, validUntil, waiveRefusal } from "@/lib/journey";
 import { getStudentForUser } from "@/server/queries";

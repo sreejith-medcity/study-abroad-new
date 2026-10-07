@@ -36,6 +36,8 @@ const WHO = [
   ["ops@medcityoverseas.test", "ops manager", docsStudent],
   ["documentation@medcityoverseas.test", "documentation", docsStudent],
   ["teamlead@medcityoverseas.test", "application team leader", docsStudent],
+  ["finance@medcityoverseas.test", "finance", docsStudent],
+  ["management@medcityoverseas.test", "management", docsStudent],
   ["desk.counsellor@medcityoverseas.test", "desk counsellor", deskStudent],
   ["kottayam@medcity.test", "branch head", branchStudent],
   ["uk.docs@medcity.test", "counsellor", branchStudent],

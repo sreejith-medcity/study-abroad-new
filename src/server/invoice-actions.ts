@@ -355,6 +355,15 @@ export async function creditInvoiceAction(_: FormState, fd: FormData): Promise<F
   const lineIds = fd.getAll("line").map(String).filter(Boolean);
   const covered = invoice.lines.filter((l) => lineIds.includes(l.id));
   if (lineIds.length && covered.length !== lineIds.length) return { error: "One of those students is no longer on this invoice. Open it again." };
+  // Guarded here as well as on the screen: a second credit note for the same
+  // placement credits it twice and overwrites the first note's reason on the
+  // student's own income line.
+  const alreadyCredited = new Set(invoice.creditNotes.flatMap((n) => n.lines.map((l) => l.invoiceLineId)));
+  const twice = covered.filter((l) => alreadyCredited.has(l.id));
+  if (twice.length)
+    return {
+      error: `${twice.length === 1 ? "That student" : "One of those students"} is already on a credit note against this invoice. Open the note that covers them instead of raising a second one.`,
+    };
 
   // The lines decide the amount when any are named, because a credit that does
   // not add up to the students it names is the thing an argument starts over.

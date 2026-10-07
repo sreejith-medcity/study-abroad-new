@@ -35,6 +35,10 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
   const canWork = user.role === "ADMIN" || user.role === "OPS_MANAGER" || user.role === "SUPER_ADMIN";
   const company = invoice.billingCompany;
   const settled = invoice.state === "PAID" || invoice.state === "WRITTEN_OFF";
+  // A student's line that is already on a credit note is not offered again: two
+  // credit notes for the same placement is a double credit, and writing the
+  // income line back twice loses the first note's reason.
+  const creditedLines = new Set(invoice.creditNotes.flatMap((n) => n.lines.map((l) => l.invoiceLineId)));
 
   return (
     <>
@@ -67,7 +71,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
             invoiceId={invoice.id}
             currency={invoice.currency}
             outstanding={invoice.money.outstanding}
-            lines={invoice.lines.map((l) => ({ id: l.id, amount: l.amount, description: l.description }))}
+            lines={invoice.lines.filter((l) => !creditedLines.has(l.id)).map((l) => ({ id: l.id, amount: l.amount, description: l.description }))}
           />
         )}
         {isSuperAdmin(user) && invoice.state !== "WRITTEN_OFF" && invoice.state !== "PAID" && <WriteOffInvoice invoiceId={invoice.id} />}

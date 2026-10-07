@@ -8,7 +8,7 @@ import { audit } from "@/lib/audit";
 import { SHORTLIST_LIMIT } from "@/lib/catalogue";
 import type { FormState } from "@/lib/form-state";
 import { EDUCATION_LEVELS, MAX_CHOICES, newRequestNo } from "@/lib/options";
-import { PARTNER_ROLES, PROCESSING_ROLES, isStaff, STUDENT_WORK_ROLES } from "@/lib/permissions";
+import { PROCESSING_ROLES, isStaff, STUDENT_WORK_ROLES } from "@/lib/permissions";
 import { adminIds, notifyUsers } from "@/server/notify";
 import { optionRequestForUser } from "@/server/option-access";
 import { getStudentForUser } from "@/server/queries";

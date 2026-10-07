@@ -9,7 +9,7 @@ import { audit } from "@/lib/audit";
 import { expectedFromRate, INCOME_FOR_SERVICE } from "@/lib/income";
 import { ratesForOrg } from "@/server/income";
 import type { FormState } from "@/lib/form-state";
-import { PARTNER_ROLES, PROCESSING_ROLES, STUDENT_WORK_ROLES } from "@/lib/permissions";
+import { PROCESSING_ROLES, STUDENT_WORK_ROLES } from "@/lib/permissions";
 import { SERVICE_LABEL, SERVICE_STATUSES, SERVICE_TYPES, STATUS_LABEL } from "@/lib/services";
 import { adminIds, notifyUsers, partnerRecipients } from "@/server/notify";
 import { getStudentForUser } from "@/server/queries";

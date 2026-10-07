@@ -7,7 +7,7 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import type { FormState } from "@/lib/form-state";
-import { PARTNER_ROLES, PROCESSING_ROLES, isStaff, STUDENT_WORK_ROLES } from "@/lib/permissions";
+import { PROCESSING_ROLES, isStaff, STUDENT_WORK_ROLES } from "@/lib/permissions";
 import { ticketForUser } from "@/server/ticket-access";
 import { TICKET_CATEGORIES, TICKET_STATUSES, TICKET_STATUS_LABEL } from "@/lib/tickets";
 import { adminIds, notifyUsers } from "@/server/notify";
