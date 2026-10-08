@@ -16,36 +16,35 @@ import { useEffect, useState } from "react";
  * reloads itself once and carries on.
  */
 export function Crash({ error, reset }: { error: Error & { digest?: string }; reset?: () => void }) {
-  const stale = /ChunkLoadError|Loading chunk|Importing a module script failed|Failed to fetch dynamically imported module|error loading dynamically imported module/i.test(
-    `${error.name}: ${error.message}`,
-  );
+  // Both halves of the same thing: a deploy replaced the build while this
+  // screen was open. The first is a script the page asks for next and the
+  // server no longer has. The second is a form being saved against a server
+  // action from the old build, which is what the documentation desk hit.
+  const stale =
+    /ChunkLoadError|Loading chunk|Importing a module script failed|Failed to fetch dynamically imported module|error loading dynamically imported module/i.test(
+      `${error.name}: ${error.message}`,
+    ) || /Failed to find Server Action|Server Action .{0,80}was not found on the server/i.test(error.message ?? "");
   const [reloading, setReloading] = useState(stale);
 
   useEffect(() => {
     if (!stale) return;
-    // Once only: a reload loop on a genuinely broken build is worse than the
-    // crash, so the flag survives the reload and stops the second attempt.
-    let already = false;
+    // Reload once, then stop: a loop on a genuinely broken build is worse than
+    // the crash. Remembered by time rather than a flag, so the next deploy,
+    // weeks later in the same tab, is still recovered from.
+    const KEY = "portal-reloaded-after-deploy";
+    const QUIET_MS = 30_000;
+    let last = 0;
     try {
-      already = sessionStorage.getItem("portal-reloaded-after-deploy") === "1";
-      sessionStorage.setItem("portal-reloaded-after-deploy", "1");
+      last = Number(sessionStorage.getItem(KEY) ?? 0);
+      sessionStorage.setItem(KEY, String(Date.now()));
     } catch {
       // Private browsing, or storage turned off. Reload anyway.
     }
-    if (already) {
+    if (last && Date.now() - last < QUIET_MS) {
       setReloading(false);
       return;
     }
     window.location.reload();
-  }, [stale]);
-
-  useEffect(() => {
-    if (stale) return;
-    try {
-      sessionStorage.removeItem("portal-reloaded-after-deploy");
-    } catch {
-      // Nothing to clear.
-    }
   }, [stale]);
 
   if (reloading) {
@@ -58,9 +57,11 @@ export function Crash({ error, reset }: { error: Error & { digest?: string }; re
 
   return (
     <div className="mx-auto max-w-lg px-4 py-16">
-      <h1 className="text-lg font-semibold">This screen stopped working</h1>
+      <h1 className="text-lg font-semibold">{stale ? "The portal was updated while this was open" : "This screen stopped working"}</h1>
       <p className="mt-2 text-sm text-muted">
-        Nothing you typed has been sent, and nothing on the file has changed. Try it again, and if it keeps happening send us the two lines below.
+        {stale
+          ? "Nothing you typed has been sent, and nothing on the file has changed. Reload the page and do it again; it will go through on the new version."
+          : "Nothing you typed has been sent, and nothing on the file has changed. Try it again, and if it keeps happening send us the two lines below."}
       </p>
       <div className="mt-4 rounded-lg border border-line bg-surface-2/60 px-3.5 py-3 text-[13px]">
         <p className="break-words font-mono">{error.message || error.name || "No message was given."}</p>
