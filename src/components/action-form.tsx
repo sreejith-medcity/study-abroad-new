@@ -32,6 +32,13 @@ export function ActionForm({
 }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(action, {});
   const [dismissed, setDismissed] = useState(false);
+  // A complaint about what was typed stops being true the moment somebody
+  // starts retyping it. Left up, it reads as the form refusing good input: a
+  // contact row with the phone now filled in still showed "Give a phone number
+  // or an email" from the attempt before, under the very field that now had
+  // one. Cleared on the first keystroke, and shown again by whatever the next
+  // submit answers.
+  const [editedSince, setEditedSince] = useState(false);
   const ref = useRef<HTMLFormElement>(null);
   const router = useRouter();
   // The toast is raised before any navigation, because an action that both says
@@ -48,6 +55,11 @@ export function ActionForm({
   useEffect(() => {
     if (state.redirectTo) router.push(state.redirectTo);
   }, [state, router]);
+  // Every answer from the server is a fresh object, so the same error coming
+  // back a second time still puts itself back on the screen.
+  useEffect(() => {
+    setEditedSince(false);
+  }, [state]);
   // Submit through a transition instead of the form action prop, so React does not
   // clear what the user typed when the server returns a validation error.
   function onSubmit(e: FormEvent<HTMLFormElement>) {
@@ -57,10 +69,14 @@ export function ActionForm({
     if (submitter?.name) fd.set(submitter.name, submitter.value);
     startTransition(() => formAction(fd));
   }
+  const complaining = !editedSince;
+  const noteEdit = () => {
+    if (!editedSince && (state.error || state.fieldErrors)) setEditedSince(true);
+  };
   return (
-    <ErrorsContext.Provider value={state.fieldErrors ?? {}}>
-      <form ref={ref} onSubmit={onSubmit} className={cn("space-y-3", className)} noValidate>
-        {state.error && <Alert tone="bad">{state.error}</Alert>}
+    <ErrorsContext.Provider value={complaining ? state.fieldErrors ?? {} : {}}>
+      <form ref={ref} onSubmit={onSubmit} onInput={noteEdit} onChange={noteEdit} className={cn("space-y-3", className)} noValidate>
+        {state.error && complaining && <Alert tone="bad">{state.error}</Alert>}
         {state.ok && state.keep && !dismissed && <KeepAlert message={state.ok} onDismiss={() => setDismissed(true)} />}
         {children}
         {!hideSubmit && (
