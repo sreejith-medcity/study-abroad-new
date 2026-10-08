@@ -17,7 +17,7 @@ export const IMPORT_COLUMNS = [
 ] as const;
 
 const PATHWAYS = ["DEGREE", "AUSBILDUNG", "NURSING"] as const;
-const LEVELS = ["SCHOOL", "UG_DIPLOMA", "UG", "PG_DIPLOMA", "PG", "PHD", "VOCATIONAL", "REGISTRATION", "CERTIFICATE"] as const;
+const LEVELS = ["SCHOOL", "UG_DIPLOMA", "UG", "PG_DIPLOMA", "PG", "PHD", "TOP_UP", "VOCATIONAL", "REGISTRATION", "CERTIFICATE"] as const;
 const STATUSES = ["DRAFT", "LIVE", "ARCHIVED"] as const;
 const WORK_RIGHTS = ["UNKNOWN", "ELIGIBLE", "INELIGIBLE"] as const;
 

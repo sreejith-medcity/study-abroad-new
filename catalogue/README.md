@@ -6,7 +6,7 @@ list, TEQSA, NZQA, Hochschulkompass, BIBB, the Bundesagentur fuer Arbeit).
 No aggregator or agency source was used, and nothing here came from
 KC Overseas or coursefinder.ai.
 
-897 rows across fourteen destinations and 279 institutions, in the importer's
+944 rows across fourteen destinations, in the importer's
 own format, on a 23-column header. Everything lands as `DRAFT`, so it is
 reviewed on the Programs screen and published per country or per pathway with
 the bulk control there, which acts on every row matching the filters rather than
@@ -215,3 +215,35 @@ Fresenius, Freiburg, KIT, TUM.
 
 These are the obvious next targets for a third pass, or for a direct request
 to the institution.
+
+
+## PhD and nursing top-up, October 2026
+
+`phd-and-topup.csv` adds 47 courses the catalogue had none of: 33 doctorates
+and 14 nursing top-up degrees, across the United Kingdom, Ireland, Australia,
+Canada and New Zealand. Every row carries `program_url`, the institution page it
+was read from, and a one-line `entry_requirements` in the institution's own
+words.
+
+Only 21 of the 47 carry a tuition figure, and that is correct. A fee is
+recorded only where the page states one for a year, or states a total for a
+course of twelve months or less. Where a page gives a band (Manchester's five
+project-dependent PhD bands), a range (Canterbury, Toronto Metropolitan), a
+figure it never labels as annual (Nottingham, Southampton), or only a link to a
+central fees page (Edinburgh, Cardiff, most of the research degrees), the
+column is empty and the screen says "Not recorded". None of it is estimated.
+
+Two things worth knowing before publishing any of it:
+
+- The two Australian enrolled-nurse pathways (Australian Catholic University,
+  Western Sydney) require an **Australian** Diploma of Nursing and current
+  AHPRA registration as an enrolled nurse. They are open to international
+  applicants in principle and out of reach for most Indian applicants in
+  practice. The entry requirement says so on the row.
+- Three of the UK top-ups state that they do not by themselves lead to NMC
+  registration.
+
+New Zealand has no nursing top-up here, deliberately: the Nursing Council's own
+education page lists no post-registration bachelor's route, and internationally
+qualified nurses go through a Competence Assessment Programme, which is not a
+degree.
