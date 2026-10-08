@@ -7,7 +7,7 @@ import { getStudentForUser } from "@/server/queries";
 import { Card, Chip, cn } from "@/components/ui";
 import { deleteDocumentAction, shareDocumentAction } from "./actions";
 import { UploadForm } from "./upload";
-import { APP_ROLES, isAdmin } from "@/lib/permissions";
+import { APP_ROLES, isAdmin, issuesTeamDocuments, worksStudentFiles } from "@/lib/permissions";
 
 export const metadata = { title: "Documents" };
 
@@ -16,7 +16,11 @@ export default async function DocumentsPage({ params, searchParams }: { params: 
   const { tab } = await searchParams;
   const user = await requireUser([...APP_ROLES]);
   await getStudentForUser(user, id);
-  const canWrite = user.role !== "MANAGEMENT";
+  const canWrite = worksStudentFiles(user);
+  // The desk puts up what Medcity Overseas issues: the offer letter, the CAS or
+  // COE, the visa grant. It was an admin-only tab, which left the documentation
+  // team reading it and waiting for somebody else.
+  const canIssue = issuesTeamDocuments(user);
   const teamTab = tab === "team";
 
   const [types, docs, apps] = await Promise.all([
@@ -34,7 +38,7 @@ export default async function DocumentsPage({ params, searchParams }: { params: 
   const visibleTypes = types.filter((t) => (teamTab ? t.uploadedBy === "team" : t.uploadedBy !== "team"));
   const mandatory = visibleTypes.filter((t) => requiredBy.has(t.code));
   const additional = visibleTypes.filter((t) => !requiredBy.has(t.code) && docs.some((d) => d.typeCode === t.code));
-  const partnerTypes = types.filter((t) => t.uploadedBy !== "team" || isAdmin(user));
+  const partnerTypes = types.filter((t) => t.uploadedBy !== "team" || canIssue);
 
   const docsFor = (code: string) => docs.filter((d) => d.typeCode === code);
 
@@ -53,7 +57,7 @@ export default async function DocumentsPage({ params, searchParams }: { params: 
             {mandatory.length === 0 && <p className="text-muted">No applications yet, so nothing is mandatory. Upload documents below any time.</p>}
             <div className="space-y-3">
               {mandatory.map((t) => (
-                <DocTypeCard key={t.code} type={t} files={docsFor(t.code)} requiredFor={[...new Set(requiredBy.get(t.code))]} studentId={id} canWrite={canWrite} userId={user.id} role={user.role} canProcess={isAdmin(user)} />
+                <DocTypeCard key={t.code} type={t} files={docsFor(t.code)} requiredFor={[...new Set(requiredBy.get(t.code))]} studentId={id} canWrite={canWrite} userId={user.id} role={user.role} canProcess={isAdmin(user)} canIssue={canIssue} />
               ))}
             </div>
           </section>
@@ -62,10 +66,10 @@ export default async function DocumentsPage({ params, searchParams }: { params: 
         <section>
           <h2 className="mb-3 font-semibold text-brand-700">{teamTab ? "Issued by Medcity Overseas" : "Additional documents"}</h2>
           <div className="space-y-3">
-            {(teamTab ? visibleTypes.filter((t) => docsFor(t.code).length || isAdmin(user)) : additional).map((t) => (
-              <DocTypeCard key={t.code} type={t} files={docsFor(t.code)} studentId={id} canWrite={canWrite && (!teamTab || isAdmin(user))} userId={user.id} role={user.role} canProcess={isAdmin(user)} />
+            {(teamTab ? visibleTypes.filter((t) => docsFor(t.code).length || canIssue) : additional).map((t) => (
+              <DocTypeCard key={t.code} type={t} files={docsFor(t.code)} studentId={id} canWrite={canWrite && (!teamTab || canIssue)} userId={user.id} role={user.role} canProcess={isAdmin(user)} canIssue={canIssue} />
             ))}
-            {teamTab && !isAdmin(user) && !visibleTypes.some((t) => docsFor(t.code).length) && <p className="text-muted">Offer letters, CAS / COE and visa documents will appear here.</p>}
+            {teamTab && !canIssue && !visibleTypes.some((t) => docsFor(t.code).length) && <p className="text-muted">Offer letters, CAS / COE and visa documents will appear here.</p>}
           </div>
           {canWrite && !teamTab && (
             <div className="mt-4 rounded-md border border-dashed border-line p-3">
@@ -80,14 +84,19 @@ export default async function DocumentsPage({ params, searchParams }: { params: 
 }
 
 function DocTypeCard({
-  type, files, requiredFor, studentId, canWrite, userId, role, canProcess,
+  type, files, requiredFor, studentId, canWrite, userId, role, canProcess, canIssue,
 }: {
   type: { code: string; label: string; uploadedBy: string; guidance: string | null; sampleStorageKey: string | null };
   files: { id: string; fileName: string; createdAt: Date; uploadedById: string | null; sharedWithStudent: boolean; uploadedBy: { name: string; deskLabel: string | null; role: string } | null }[];
   requiredFor?: string[];
-  studentId: string; canWrite: boolean; userId: string; role: string; canProcess: boolean;
+  studentId: string; canWrite: boolean; userId: string; role: string; canProcess: boolean; canIssue: boolean;
 }) {
   const ok = files.length > 0;
+  // The same rule the action applies, so no cross is offered on a file this
+  // person cannot actually remove.
+  const mayRemove = (uploadedById: string | null) =>
+    canProcess ||
+    (type.uploadedBy === "team" ? canIssue : uploadedById === userId || role === "PARTNER");
   return (
     <div className={cn("rounded-md border border-l-4 p-3", ok ? "border-line border-l-emerald-600" : "border-dashed border-line border-l-red-500")}>
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -121,7 +130,7 @@ function DocTypeCard({
                 ) : (
                   f.sharedWithStudent && <span className="text-emerald-700">Shared with student</span>
                 ))}
-              {canWrite && (canProcess || role === "PARTNER" || f.uploadedById === userId) && (
+              {canWrite && mayRemove(f.uploadedById) && (
                 <form action={deleteDocumentAction}>
                   <input type="hidden" name="documentId" value={f.id} />
                   <button className="text-muted hover:text-red-600" aria-label={`Delete ${f.fileName}`}>✕</button>

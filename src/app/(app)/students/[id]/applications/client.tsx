@@ -8,44 +8,46 @@ import { dayText, daysUntil } from "@/lib/catalogue";
 import { addCommentAction, addDeadlineAction, changeStatusAction, createApplicationAction, saveOfferVisaAction } from "./actions";
 import { DEADLINE_LABEL, DEADLINE_TYPES } from "@/lib/deadline-types";
 
-type ProgramOption = {
-  id: string;
-  name: string;
-  university: string;
-  country: string;
-  pathway: "DEGREE" | "AUSBILDUNG" | "NURSING";
-  intakeMonths: number[];
-  shortlisted: boolean;
-  tuition: string;
-  requirements: string;
-  /** Last day to apply, keyed "yyyy-m" by intake. */
-  deadlines: Record<string, string>;
-  /** The roads this course can be applied down, live ones only. */
-  routes: { id: string; code: string; name: string; colour: string; commission: string | null }[];
-};
+import type { ProgramOption } from "@/server/apply-options";
+import { Combobox, type PickOption } from "@/components/combobox";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
+const asOption = (p: ProgramOption): PickOption => ({
+  id: p.id,
+  label: p.name,
+  sub: `${p.university}, ${p.country}${p.tuition ? ` · ${p.tuition}` : ""}`,
+  tag: p.shortlisted ? "Shortlisted" : undefined,
+  data: p,
+});
+
 export function ApplyForm({
   studentId,
-  programs,
+  initialPrograms,
+  countries,
+  defaultCountry,
+  defaultPathway,
   preselectProgramId,
-  limited,
+  canApply,
   gate,
 }: {
   studentId: string;
-  programs: ProgramOption[];
+  /** What the picker shows before anything is typed: the shortlist, and the course arrived with. */
+  initialPrograms: ProgramOption[];
+  countries: { code: string; name: string }[];
+  defaultCountry: string;
+  defaultPathway: string;
   preselectProgramId?: string;
-  /** True when more programs matched than were sent; the counsellor should narrow the search. */
-  limited: boolean;
+  /** False for a role that builds the file but does not start applications. */
+  canApply: boolean;
   /** What the profile stage is still short of, and whether this person may apply anyway. */
   gate?: { missing: string[]; canOverride: boolean; holds: boolean; locked?: string[] };
 }) {
   const [intake, setIntake] = useState("");
-  const [programId, setProgramId] = useState(programs.some((p) => p.id === preselectProgramId) ? preselectProgramId! : "");
-  const program = programs.find((p) => p.id === programId);
-  const picked = programs.filter((p) => p.shortlisted);
-  const others = programs.filter((p) => !p.shortlisted);
+  const [country, setCountry] = useState(defaultCountry);
+  const [pathway, setPathway] = useState(defaultPathway);
+  const preselected = initialPrograms.find((p) => p.id === preselectProgramId) ?? null;
+  const [program, setProgram] = useState<ProgramOption | null>(preselected);
 
   const intakes = useMemo(() => {
     if (!program) return [];
@@ -63,24 +65,52 @@ export function ApplyForm({
     return out.sort((a, b) => a.order - b.order);
   }, [program]);
 
-  const label = (p: ProgramOption) => `${p.name} · ${p.university}, ${p.country}`;
+  if (!canApply) {
+    return (
+      <div className="rounded-lg border border-line bg-surface-2/50 p-4 text-sm">
+        <p className="font-medium">Your role does not start applications</p>
+        <p className="mt-1 text-muted">
+          Build the file and collect the documents; whoever starts applications at your branch, or the Overseas desk, sends it from here.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <ActionForm action={createApplicationAction} submitLabel="Create application" pendingLabel="Creating…">
       <input type="hidden" name="studentId" value={studentId} />
-      <Field label="Program" htmlFor="programId" required hint={limited ? "Showing the first 50 matches. Search above to narrow the list." : programs.length ? undefined : "Nothing open for applications matches. Change the search above."}>
-        <Select id="programId" name="programId" value={programId} onChange={(e) => { setProgramId(e.target.value); setIntake(""); }}>
-          <option value="">Choose a program</option>
-          {picked.length > 0 && (
-            <optgroup label="Shortlisted">
-              {picked.map((p) => <option key={p.id} value={p.id}>{label(p)}</option>)}
-            </optgroup>
-          )}
-          {others.length > 0 && (
-            <optgroup label={picked.length ? "Search results" : "Programs"}>
-              {others.map((p) => <option key={p.id} value={p.id}>{label(p)}</option>)}
-            </optgroup>
-          )}
-        </Select>
+      <Field
+        label="Program"
+        htmlFor="programId"
+        required
+        hint="Type a course or a university. The student’s shortlist is at the top until you start typing."
+      >
+        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,170px)_minmax(0,190px)]">
+          <Combobox
+            name="programId"
+            label="Program"
+            endpoint="/api/pick/programs"
+            params={{ student: studentId, country, pathway }}
+            initial={initialPrograms.map(asOption)}
+            selected={preselected ? asOption(preselected) : null}
+            placeholder="Type a course or university"
+            emptyText="No open course matches that. Try fewer words, or clear the filters beside it."
+            onPick={(o) => {
+              setProgram((o?.data as ProgramOption | undefined) ?? null);
+              setIntake("");
+            }}
+          />
+          <Select aria-label="Country" value={country} onChange={(e) => setCountry(e.target.value)}>
+            <option value="">All countries</option>
+            {countries.map((x) => <option key={x.code} value={x.code}>{x.name}</option>)}
+          </Select>
+          <Select aria-label="Pathway" value={pathway} onChange={(e) => setPathway(e.target.value)}>
+            <option value="">All pathways</option>
+            <option value="DEGREE">University degree</option>
+            <option value="AUSBILDUNG">Ausbildung (Germany)</option>
+            <option value="NURSING">Nurse registration</option>
+          </Select>
+        </div>
         <FieldError name="programId" />
       </Field>
       {program && (

@@ -6,23 +6,28 @@ import { cn } from "./ui";
 
 export function StepTabs({ steps }: { steps: { href: string; label: string; done?: boolean }[] }) {
   const path = usePathname();
+  // Scrolls inside its own card rather than making the whole page wider: with
+  // seven steps the row outgrew the window, and a page that scrolls sideways
+  // takes the header and the sidebar off the screen with it.
   return (
-    <ol className="flex items-center gap-2" aria-label="Student file steps">
-      {steps.map((s, i) => {
-        const active = path.startsWith(s.href);
-        return (
-          <li key={s.href} className="flex flex-1 items-center gap-2 last:flex-none">
-            <Link href={s.href} aria-current={active ? "step" : undefined} className="flex items-center gap-2">
-              <span className={cn("grid size-8 place-items-center rounded-full border text-sm font-semibold", active ? "border-brand-600 bg-brand-600 text-white" : s.done ? "border-emerald-600 text-emerald-700" : "border-line bg-white text-muted")}>
-                {s.done && !active ? "✓" : i + 1}
-              </span>
-              <span className={cn("hidden sm:inline", active ? "font-semibold text-ink" : "text-muted")}>{s.label}</span>
-            </Link>
-            {i < steps.length - 1 && <span className="h-px flex-1 bg-line" aria-hidden="true" />}
-          </li>
-        );
-      })}
-    </ol>
+    <div className="thin-scroll -mx-1 w-full min-w-0 overflow-x-auto px-1 py-0.5">
+      <ol className="flex min-w-max items-center gap-2" aria-label="Student file steps">
+        {steps.map((s, i) => {
+          const active = path.startsWith(s.href);
+          return (
+            <li key={s.href} className="flex items-center gap-2">
+              <Link href={s.href} aria-current={active ? "step" : undefined} className="flex shrink-0 items-center gap-2">
+                <span className={cn("grid size-8 shrink-0 place-items-center rounded-full border text-sm font-semibold", active ? "border-brand-600 bg-brand-600 text-white" : s.done ? "border-emerald-600 text-emerald-700" : "border-line bg-white text-muted")}>
+                  {s.done && !active ? "✓" : i + 1}
+                </span>
+                <span className={cn("hidden whitespace-nowrap sm:inline", active ? "font-semibold text-ink" : "text-muted")}>{s.label}</span>
+              </Link>
+              {i < steps.length - 1 && <span className="h-px w-6 shrink-0 bg-line lg:w-10" aria-hidden="true" />}
+            </li>
+          );
+        })}
+      </ol>
+    </div>
   );
 }
 

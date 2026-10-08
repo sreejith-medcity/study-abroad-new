@@ -8,6 +8,7 @@ import { fmtMoney, fullName, MONTHS } from "@/lib/format";
 import { ADMIN_ROLES, APP_ROLES, PARTNER_ROLES, isStaff } from "@/lib/permissions";
 import { ShortlistButton } from "@/components/shortlist-button";
 import { CheckDropdown } from "@/components/check-dropdown";
+import { Combobox } from "@/components/combobox";
 import { fxRates, getSettings } from "@/server/settings";
 import { nextDeadlines } from "@/server/deadlines";
 import { activeRules, partnerShareJoins } from "@/server/commission-estimate";
@@ -219,12 +220,18 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     .groupBy(p.studyArea)
     .having(sql`count(*) >= 5`)
     .orderBy(asc(p.studyArea));
+  // The first few by name, only as something to show before anything is typed.
+  // The picker searches the rest on the server: this used to be the whole list,
+  // capped at three hundred, so a student past that could not be picked at all
+  // and, worse, arriving from their own file their name was not among the
+  // options, the browser fell back to the first one, and the next filter
+  // dropped them without saying so.
   const students = await db
-    .select({ id: s.id, firstName: s.firstName, lastName: s.lastName })
+    .select({ id: s.id, firstName: s.firstName, lastName: s.lastName, medcityId: s.medcityId, phone: s.phone })
     .from(s)
     .where(and(eq(s.archived, false), isStaff(user) ? undefined : eq(s.orgId, user.orgId)))
     .orderBy(asc(s.firstName))
-    .limit(300);
+    .limit(25);
 
 
   const canShortlist = ([...PARTNER_ROLES, ...ADMIN_ROLES] as readonly string[]).includes(user.role);
@@ -344,12 +351,15 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             {view === "routes" && <option value="tat">Fastest offer first</option>}
             <option value="rank">Best university ranking first</option>
           </Select>
-          <Select name="student" aria-label="Check against student" defaultValue={f.student ?? ""}>
-            <option value="">Check eligibility for…</option>
-            {students.map((x) => (
-              <option key={x.id} value={x.id}>{fullName(x)}</option>
-            ))}
-          </Select>
+          <Combobox
+            name="student"
+            label="Check against student"
+            endpoint="/api/pick/students"
+            placeholder="Check eligibility for…"
+            emptyText="No student matches that name, ID or number."
+            initial={students.map((x) => ({ id: x.id, label: fullName(x), sub: [x.medcityId, x.phone].filter(Boolean).join(" · ") }))}
+            selected={student ? { id: student.id, label: fullName(student), sub: [student.medcityId, student.phone].filter(Boolean).join(" · ") } : null}
+          />
           <div className="flex justify-end gap-2 sm:col-span-2 xl:col-span-4">
             <LinkButton href="/search" variant="quiet" size="sm">Clear all</LinkButton>
             <Button type="submit" size="sm">Search</Button>

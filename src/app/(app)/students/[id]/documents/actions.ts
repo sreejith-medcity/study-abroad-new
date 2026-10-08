@@ -7,7 +7,7 @@ import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { getStudentForUser } from "@/server/queries";
 import { deleteUpload, saveUpload, UploadError } from "@/server/storage";
-import { PARTNER_ROLES, PROCESSING_ROLES, isAdmin } from "@/lib/permissions";
+import { PARTNER_ROLES, PROCESSING_ROLES, isAdmin, issuesTeamDocuments } from "@/lib/permissions";
 import { attachUploadToChecklist } from "@/server/documentation";
 
 import type { FormState } from "@/lib/form-state";
@@ -22,7 +22,7 @@ export async function uploadDocumentAction(_: FormState, formData: FormData): Pr
 
   const type = await db.query.documentTypes.findFirst({ where: eq(schema.documentTypes.code, typeCode) });
   if (!type) return { error: "Choose a document type." };
-  if (type.uploadedBy === "team" && !isAdmin(user)) return { error: `${type.label} is uploaded by the Medcity Overseas team.` };
+  if (type.uploadedBy === "team" && !issuesTeamDocuments(user)) return { error: `${type.label} is put up by the Medcity Overseas desk.` };
   if (!(file instanceof File) || file.size === 0) return { error: "Choose a file to upload." };
 
   try {
@@ -46,7 +46,11 @@ export async function deleteDocumentAction(formData: FormData) {
   const doc = await db.query.documents.findFirst({ where: eq(schema.documents.id, documentId), with: { type: true } });
   if (!doc) return;
   await getStudentForUser(user, doc.studentId);
-  const allowed = isAdmin(user) || (doc.uploadedById === user.id && doc.type?.uploadedBy !== "team") || (user.role === "PARTNER" && doc.type?.uploadedBy !== "team");
+  const allowed =
+    isAdmin(user) ||
+    (doc.type?.uploadedBy === "team" && issuesTeamDocuments(user)) ||
+    (doc.uploadedById === user.id && doc.type?.uploadedBy !== "team") ||
+    (user.role === "PARTNER" && doc.type?.uploadedBy !== "team");
   if (!allowed) return;
   await db.delete(schema.documents).where(eq(schema.documents.id, documentId));
   await deleteUpload(doc.storageKey);

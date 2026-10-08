@@ -14,7 +14,7 @@ import { audit } from "@/lib/audit";
 import { nextAckNo } from "@/lib/ack";
 import { summarise } from "@/lib/checks";
 import { intakeLabel } from "@/lib/format";
-import { ADMIN_ROLES, PARTNER_ROLES, PROCESSING_ROLES, isAdmin, isStaff, STUDENT_WORK_ROLES } from "@/lib/permissions";
+import { ADMIN_ROLES, PROCESSING_ROLES, isAdmin, isStaff, STUDENT_WORK_ROLES } from "@/lib/permissions";
 import { changeStatus, checkApplication, StatusChangeError } from "@/server/applications";
 import { adminIds, notifyUsers, partnerRecipients } from "@/server/notify";
 import { getApplicationForUser, getStudentForUser } from "@/server/queries";
@@ -36,7 +36,10 @@ const createSchema = z.object({
 });
 
 export async function createApplicationAction(_: FormState, formData: FormData): Promise<FormState> {
-  const user = await requireUser([...PARTNER_ROLES, ...ADMIN_ROLES]);
+  // Everybody who works a student's file may reach this; which of them may
+  // actually start an application is the capability below, so a role that may
+  // not is told why instead of being shown the forbidden screen.
+  const user = await requireUser([...STUDENT_WORK_ROLES]);
   // A trainee builds the file; somebody else starts the application. Which roles
   // those are is on the "Who may do what" screen rather than written in here.
   if (!(await can(user, "SUBMIT_APPLICATION"))) {

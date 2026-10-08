@@ -186,6 +186,18 @@ export function canWorkFiles(user: SessionUser) {
 }
 
 /**
+ * Who puts up the documents Medcity Overseas itself issues: the offer letter,
+ * the CAS or COE, the visa grant.
+ *
+ * The desk is the one holding those files, so asking isAdmin() here left the
+ * documentation team looking at a tab they could read and not add to, and an
+ * offer letter waiting on somebody with a bigger role to be free.
+ */
+export function issuesTeamDocuments(user: SessionUser) {
+  return (PROCESSING_ROLES as readonly string[]).includes(user.role);
+}
+
+/**
  * Owns the platform itself. On top of everything an admin can do:
  * create and deactivate Medcity Overseas staff, change anyone's role,
  * reset passwords, and read the audit log.
