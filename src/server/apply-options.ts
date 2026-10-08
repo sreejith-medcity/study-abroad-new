@@ -13,6 +13,7 @@ export type ProgramOption = {
   university: string;
   country: string;
   pathway: "DEGREE" | "AUSBILDUNG" | "NURSING";
+  level: string;
   intakeMonths: number[];
   shortlisted: boolean;
   tuition: string;
@@ -34,12 +35,12 @@ export type ProgramOption = {
  */
 export async function applyOptions(
   user: SessionUser,
-  opts: { studentId: string; q?: string; country?: string; pathway?: string; preselectProgramId?: string; limit?: number },
+  opts: { studentId: string; q?: string; country?: string; pathway?: string; level?: string; preselectProgramId?: string; limit?: number },
 ): Promise<ProgramOption[]> {
   const { programs: p, universities: u, countries: c } = schema;
   const openable = eq(p.status, "LIVE");
   const columns = {
-    id: p.id, name: p.name, pathway: p.pathway, intakeMonths: p.intakeMonths, campus: p.campus,
+    id: p.id, name: p.name, pathway: p.pathway, level: p.level, intakeMonths: p.intakeMonths, campus: p.campus,
     tuitionPerYear: p.tuitionPerYear, tuitionTotal: p.tuitionTotal, applicationFee: p.applicationFee, offerTatDays: p.offerTatDays,
     minIelts: p.minIelts, minPte: p.minPte, minOetGrade: p.minOetGrade, minGermanLevel: p.minGermanLevel, maxBacklogs: p.maxBacklogs,
     moiAccepted: p.moiAccepted, minToefl: p.minToefl, minDuolingo: p.minDuolingo, minAcademicPercent: p.minAcademicPercent,
@@ -52,6 +53,7 @@ export async function applyOptions(
       .where(and(
         openable,
         opts.pathway ? eq(p.pathway, opts.pathway as schema.Pathway) : undefined,
+        opts.level ? eq(p.level, opts.level as schema.StudyLevel) : undefined,
         opts.country ? eq(c.code, opts.country) : undefined,
         q ? or(ilike(p.name, `%${q}%`), ilike(u.name, `%${q}%`)) : undefined,
       ))
@@ -65,10 +67,11 @@ export async function applyOptions(
   const shortlisted = new Set(picked.map((r) => r.id));
   // A search narrows the shortlist too, so typing never leaves a course on the
   // list that has nothing to do with what was typed.
-  const keep = q || opts.country || opts.pathway
+  const keep = q || opts.country || opts.pathway || opts.level
     ? picked.filter((r) =>
         (!q || `${r.name} ${r.university}`.toLowerCase().includes(q.toLowerCase())) &&
-        (!opts.pathway || r.pathway === opts.pathway),
+        (!opts.pathway || r.pathway === opts.pathway) &&
+        (!opts.level || r.level === opts.level),
       )
     : picked;
   const seen = new Set<string>();
@@ -94,6 +97,7 @@ export async function applyOptions(
     university: r.campus ? `${r.university} (${r.campus})` : r.university,
     country: r.country,
     pathway: r.pathway,
+    level: r.level,
     intakeMonths: r.intakeMonths,
     shortlisted: shortlisted.has(r.id),
     tuition: tuitionText(r.tuitionPerYear, r.tuitionTotal, r.currency),

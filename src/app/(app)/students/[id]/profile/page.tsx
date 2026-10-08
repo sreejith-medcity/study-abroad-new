@@ -17,7 +17,7 @@ import { AutofillPanel } from "./autofill";
 
 export const metadata = { title: "Student profile" };
 
-const LEVEL = { SCHOOL: "Std. 12th / school", UG_DIPLOMA: "Diploma", UG: "Bachelor's", PG_DIPLOMA: "PG diploma", PG: "Master's", PHD: "PhD", VOCATIONAL: "Vocational", REGISTRATION: "Registration", CERTIFICATE: "Certificate" } as const;
+const LEVEL = { SCHOOL: "Std. 12th / school", UG_DIPLOMA: "Diploma", UG: "Bachelor's", PG_DIPLOMA: "PG diploma", PG: "Master's", PHD: "PhD", TOP_UP: "Top-up degree", VOCATIONAL: "Vocational", REGISTRATION: "Registration", CERTIFICATE: "Certificate" } as const;
 
 export default async function ProfilePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ reveal?: string }> }) {
   const { id } = await params;

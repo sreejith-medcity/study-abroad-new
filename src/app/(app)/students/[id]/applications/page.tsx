@@ -28,7 +28,7 @@ import { can } from "@/server/capabilities";
 
 export const metadata = { title: "Applications" };
 
-export default async function StudentApplicationsPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ app?: string; tab?: string; ch?: string; program?: string; q?: string; country?: string; pw?: string }> }) {
+export default async function StudentApplicationsPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ app?: string; tab?: string; ch?: string; program?: string; q?: string; country?: string; pw?: string; level?: string }> }) {
   const { id } = await params;
   const sp = await searchParams;
   const user = await requireUser([...APP_ROLES]);
@@ -54,7 +54,7 @@ export default async function StudentApplicationsPage({ params, searchParams }: 
 
       {tab === "apply" ? (
         <div className="mx-auto max-w-2xl p-5">
-          {canWrite ? <ApplyPanel studentId={id} pathway={sp.pw ?? student.preferredPathway ?? ""} preselectProgramId={sp.program} country={sp.country ?? ""} /> : <EmptyState title="Read-only access" />}
+          {canWrite ? <ApplyPanel studentId={id} pathway={sp.pw ?? student.preferredPathway ?? ""} level={sp.level ?? student.preferredLevel ?? ""} preselectProgramId={sp.program} country={sp.country ?? ""} /> : <EmptyState title="Read-only access" />}
         </div>
       ) : selected ? (
         <div className="grid gap-4 p-4 lg:grid-cols-[320px_minmax(0,1fr)]">
@@ -104,10 +104,10 @@ function TabLink({ href, active, children }: { href: string; active: boolean; ch
  * should be there before a single key is pressed: the student's shortlist, and
  * the course they arrived with from the search screen.
  */
-async function ApplyPanel({ studentId, pathway, preselectProgramId, country }: { studentId: string; pathway: string; preselectProgramId?: string; country: string }) {
+async function ApplyPanel({ studentId, pathway, level, preselectProgramId, country }: { studentId: string; pathway: string; level: string; preselectProgramId?: string; country: string }) {
   const user = await requireUser([...APP_ROLES]);
   const [initialPrograms, countries] = await Promise.all([
-    applyOptions(user, { studentId, country, pathway, preselectProgramId, limit: 25 }),
+    applyOptions(user, { studentId, country, pathway, level, preselectProgramId, limit: 25 }),
     applyCountries(),
   ]);
   // What the profile stage is still short of, so the counsellor reads it before
@@ -124,6 +124,7 @@ async function ApplyPanel({ studentId, pathway, preselectProgramId, country }: {
         countries={countries}
         defaultCountry={country}
         defaultPathway={pathway}
+        defaultLevel={level}
         preselectProgramId={preselectProgramId}
         canApply={await can(user, "SUBMIT_APPLICATION")}
         gate={

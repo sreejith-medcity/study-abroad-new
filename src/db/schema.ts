@@ -70,6 +70,9 @@ export const studyLevel = pgEnum("study_level", [
   "PG_DIPLOMA",
   "PG",
   "PHD",
+  // A one-year degree that finishes a qualification already held: the BSc
+  // top-up a registered nurse takes abroad, chiefly.
+  "TOP_UP",
   "VOCATIONAL",
   "REGISTRATION",
   "CERTIFICATE",
@@ -586,6 +589,12 @@ export const students = pgTable(
     preferredLanguage: text("preferred_language").notNull().default("en"),
     preferredCountry: text("preferred_country"),
     preferredPathway: pathway("preferred_pathway"),
+    /**
+     * What they are aiming for inside that journey: a Master's, a PhD, a
+     * top-up, a diploma. The journey decides which steps the file follows;
+     * this decides which courses are worth showing them.
+     */
+    preferredLevel: studyLevel("preferred_level"),
 
     dateOfBirth: timestamp("date_of_birth", { mode: "date" }),
     gender: text("gender"),
@@ -3183,6 +3192,7 @@ export const enquiryNotesRelations = relations(enquiryNotes, ({ one }) => ({
 
 export type Role = (typeof role.enumValues)[number];
 export type Pathway = (typeof pathway.enumValues)[number];
+export type StudyLevel = (typeof studyLevel.enumValues)[number];
 export type StatusGroup = (typeof statusGroup.enumValues)[number];
 export type EnquiryStage = (typeof enquiryStage.enumValues)[number];
 export type EnquirySource = (typeof enquirySource.enumValues)[number];

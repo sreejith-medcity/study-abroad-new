@@ -36,6 +36,7 @@ export const LEVELS = [
   ["PG_DIPLOMA", "PG diploma"],
   ["UG_DIPLOMA", "Diploma"],
   ["PHD", "PhD"],
+  ["TOP_UP", "Top-up degree"],
   ["VOCATIONAL", "Vocational (Ausbildung)"],
   ["REGISTRATION", "Registration route"],
   ["CERTIFICATE", "Certificate"],

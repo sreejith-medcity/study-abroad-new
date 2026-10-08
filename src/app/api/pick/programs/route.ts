@@ -31,6 +31,7 @@ export async function GET(request: Request) {
     q: sp.get("q") ?? "",
     country: sp.get("country") ?? "",
     pathway: sp.get("pathway") ?? "",
+    level: sp.get("level") ?? "",
     limit: 25,
   });
   return NextResponse.json({

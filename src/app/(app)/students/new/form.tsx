@@ -3,6 +3,7 @@
 import { ActionForm, FieldError } from "@/components/action-form";
 import { SelectField, TextField } from "@/components/fields";
 import { createStudentAction } from "../actions";
+import { AIMS, aimOf } from "@/lib/aims";
 
 export type StudentPrefill = {
   firstName?: string;
@@ -11,6 +12,7 @@ export type StudentPrefill = {
   phone?: string;
   preferredCountry?: string;
   preferredPathway?: string;
+  preferredLevel?: string;
   enquiryId?: string;
   orgId?: string;
 };
@@ -56,11 +58,9 @@ export function NewStudentForm({
           <option value="">Not decided</option>
           {countries.map((c) => <option key={c}>{c}</option>)}
         </SelectField>
-        <SelectField label="Pathway" name="preferredPathway" defaultValue={prefill.preferredPathway ?? ""}>
+        <SelectField label="What they are aiming for" name="aim" defaultValue={aimOf(prefill.preferredPathway, prefill.preferredLevel)}>
           <option value="">Not decided</option>
-          <option value="DEGREE">University degree</option>
-          <option value="AUSBILDUNG">Ausbildung (Germany)</option>
-          <option value="NURSING">Nurse registration</option>
+          {AIMS.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
         </SelectField>
         {counsellors.length > 0 && (
           <SelectField label="Assign to" name="assignedToId" defaultValue="">

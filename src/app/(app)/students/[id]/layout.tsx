@@ -12,8 +12,8 @@ import { profileCompleteness } from "@/lib/checks";
 import { backgroundComplete } from "@/lib/background";
 import { commissionVisible } from "@/server/commission-visibility";
 import { assignStudentIdAction } from "@/server/id-actions";
+import { aimLabel } from "@/lib/aims";
 
-const PATHWAY_LABEL = { DEGREE: "Degree", AUSBILDUNG: "Ausbildung", NURSING: "Nurse registration" } as const;
 
 export default async function StudentLayout({ children, params }: { children: React.ReactNode; params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -42,7 +42,7 @@ export default async function StudentLayout({ children, params }: { children: Re
   const preferred = student.preferredCountry
     ? await db.query.countries.findFirst({ where: ilike(schema.countries.name, student.preferredCountry.trim()) })
     : undefined;
-  const findHref = `/search?${new URLSearchParams({ student: id, ...(preferred ? { country: preferred.code } : {}) })}`;
+  const findHref = `/search?${new URLSearchParams({ student: id, ...(preferred ? { country: preferred.code } : {}), ...(student.preferredLevel ? { level: student.preferredLevel } : {}) })}`;
 
   return (
     <div>
@@ -53,7 +53,7 @@ export default async function StudentLayout({ children, params }: { children: Re
         <Card className="p-4">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-lg font-semibold">{fullName(student)}</h1>
-            {student.preferredPathway && <Chip tone="info">{PATHWAY_LABEL[student.preferredPathway]}</Chip>}
+            {student.preferredPathway && <Chip tone="info">{aimLabel(student.preferredPathway, student.preferredLevel) ?? student.preferredPathway}</Chip>}
             {student.profileLocked && <Chip tone="warn">Profile locked</Chip>}
           </div>
           {student.medcityId ? (

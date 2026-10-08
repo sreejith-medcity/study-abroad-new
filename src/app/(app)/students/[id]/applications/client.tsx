@@ -10,6 +10,7 @@ import { DEADLINE_LABEL, DEADLINE_TYPES } from "@/lib/deadline-types";
 
 import type { ProgramOption } from "@/server/apply-options";
 import { Combobox, type PickOption } from "@/components/combobox";
+import { PICK_LEVELS as LEVELS } from "@/lib/aims";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -27,6 +28,7 @@ export function ApplyForm({
   countries,
   defaultCountry,
   defaultPathway,
+  defaultLevel,
   preselectProgramId,
   canApply,
   gate,
@@ -37,6 +39,8 @@ export function ApplyForm({
   countries: { code: string; name: string }[];
   defaultCountry: string;
   defaultPathway: string;
+  /** What the student is aiming for, so the first list is already the right shape. */
+  defaultLevel: string;
   preselectProgramId?: string;
   /** False for a role that builds the file but does not start applications. */
   canApply: boolean;
@@ -46,6 +50,7 @@ export function ApplyForm({
   const [intake, setIntake] = useState("");
   const [country, setCountry] = useState(defaultCountry);
   const [pathway, setPathway] = useState(defaultPathway);
+  const [level, setLevel] = useState(defaultLevel);
   const preselected = initialPrograms.find((p) => p.id === preselectProgramId) ?? null;
   const [program, setProgram] = useState<ProgramOption | null>(preselected);
 
@@ -85,12 +90,12 @@ export function ApplyForm({
         required
         hint="Type a course or a university. The student’s shortlist is at the top until you start typing."
       >
-        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,170px)_minmax(0,190px)]">
+        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,150px)_minmax(0,160px)_minmax(0,170px)]">
           <Combobox
             name="programId"
             label="Program"
             endpoint="/api/pick/programs"
-            params={{ student: studentId, country, pathway }}
+            params={{ student: studentId, country, pathway, level }}
             initial={initialPrograms.map(asOption)}
             selected={preselected ? asOption(preselected) : null}
             placeholder="Type a course or university"
@@ -103,6 +108,10 @@ export function ApplyForm({
           <Select aria-label="Country" value={country} onChange={(e) => setCountry(e.target.value)}>
             <option value="">All countries</option>
             {countries.map((x) => <option key={x.code} value={x.code}>{x.name}</option>)}
+          </Select>
+          <Select aria-label="Level" value={level} onChange={(e) => setLevel(e.target.value)}>
+            <option value="">Any level</option>
+            {LEVELS.map(([code, label]) => <option key={code} value={code}>{label}</option>)}
           </Select>
           <Select aria-label="Pathway" value={pathway} onChange={(e) => setPathway(e.target.value)}>
             <option value="">All pathways</option>

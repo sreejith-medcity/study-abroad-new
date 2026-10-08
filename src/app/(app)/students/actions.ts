@@ -11,6 +11,7 @@ import { audit } from "@/lib/audit";
 import { phoneKey } from "@/lib/phone";
 import { ADMIN_ROLES, APP_ROLES, PARTNER_ROLES, PROCESSING_ROLES, isAdmin, isCounsellor, isStaff, STUDENT_WORK_ROLES } from "@/lib/permissions";
 import { can } from "@/server/capabilities";
+import { readAim } from "@/lib/aims";
 import { adminIds, notifyUsers, partnerRecipients } from "@/server/notify";
 import { getStudentForUser } from "@/server/queries";
 import { tryMintStudentId } from "@/server/medcity-id";
@@ -35,6 +36,8 @@ const newStudent = z.object({
   phone: z.string().trim().regex(/^\+?[\d\s-]{8,16}$/, "Enter a valid mobile number with country code"),
   preferredCountry: optionalText,
   preferredPathway: z.enum(schema.pathway.enumValues).optional().or(z.literal("")).transform((v) => v || null),
+  /** The single question the form asks; the pair behind it is read from AIMS. */
+  aim: z.string().optional().transform((v) => v || ""),
   assignedToId: optionalText,
   consent: z.literal("on", { message: "The student's consent is required before saving their data" }),
 });
@@ -45,6 +48,7 @@ export async function createStudentAction(_: FormState, formData: FormData): Pro
   const parsed = newStudent.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Check the highlighted fields." };
   const d = parsed.data;
+  const aim = readAim(d.aim);
 
   // A branch registers into itself. The Overseas team has to say which branch,
   // because a student sitting on the head office belongs to nobody: every screen
@@ -93,7 +97,10 @@ export async function createStudentAction(_: FormState, formData: FormData): Pro
       email: d.email,
       phone: d.phone,
       preferredCountry: d.preferredCountry,
-      preferredPathway: d.preferredPathway,
+      // One question on the form, two columns here: the journey the file
+      // follows, and the level the courses are picked at.
+      preferredPathway: aim.pathway ?? d.preferredPathway,
+      preferredLevel: aim.level,
       consentAt: new Date(),
       consentText: CONSENT_TEXT,
       medcityId: await tryMintStudentId(orgId),

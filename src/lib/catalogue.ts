@@ -7,6 +7,7 @@ export const LEVEL_LABEL: Record<string, string> = {
   PG_DIPLOMA: "PG diploma",
   PG: "Master's",
   PHD: "PhD",
+  TOP_UP: "Top-up degree",
   VOCATIONAL: "Ausbildung",
   REGISTRATION: "Registration route",
   CERTIFICATE: "Certificate",
