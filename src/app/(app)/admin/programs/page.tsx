@@ -67,15 +67,20 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
           total > 0 ? (
             // Acts on exactly what the filters above have selected, so a country
             // or a pathway can be reviewed and published as one batch.
-            <form action={bulkStatusAction} className="flex flex-wrap items-center gap-2">
-              {PROGRAM_FILTER_KEYS.map((k) => <input key={k} type="hidden" name={k} value={f[k] ?? ""} />)}
-              <a href={`/api/programs/export?${new URLSearchParams(Object.entries(f).filter(([k, v]) => v && (PROGRAM_FILTER_KEYS as readonly string[]).includes(k)))}`} className="mr-2 text-[13px] font-medium text-brand-600 hover:underline">
-                Export CSV
-              </a>
-              <span className="text-[13px] text-muted">All {total} matching:</span>
-              <BulkStatusButtons total={total} />
-            </form>
-          ) : undefined
+            <div className="flex flex-wrap items-center gap-2">
+              <LinkButton href="/admin/programs/new" variant="secondary" size="sm">Add a course</LinkButton>
+              <form action={bulkStatusAction} className="flex flex-wrap items-center gap-2">
+                {PROGRAM_FILTER_KEYS.map((k) => <input key={k} type="hidden" name={k} value={f[k] ?? ""} />)}
+                <a href={`/api/programs/export?${new URLSearchParams(Object.entries(f).filter(([k, v]) => v && (PROGRAM_FILTER_KEYS as readonly string[]).includes(k)))}`} className="mr-2 text-[13px] font-medium text-brand-600 hover:underline">
+                  Export CSV
+                </a>
+                <span className="text-[13px] text-muted">All {total} matching:</span>
+                <BulkStatusButtons total={total} />
+              </form>
+            </div>
+          ) : (
+            <LinkButton href="/admin/programs/new" variant="secondary" size="sm">Add a course</LinkButton>
+          )
         }
       />
       {total > 0 && (

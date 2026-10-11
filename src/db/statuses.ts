@@ -69,6 +69,12 @@ export const DOCUMENT_TYPES = [
   { code: "MARKSHEET_12", label: "Std. 12th marksheet", labelMl: "പ്ലസ് ടു മാർക്ക് ഷീറ്റ്", uploadedBy: "partner", sortOrder: 30 },
   { code: "DEGREE_MARKSHEETS", label: "Bachelor's individual marksheets", labelMl: "ബിരുദ മാർക്ക് ഷീറ്റുകൾ", uploadedBy: "partner", sortOrder: 40 },
   { code: "DEGREE_CERTIFICATE", label: "Degree / provisional certificate", labelMl: "ബിരുദ / പ്രൊവിഷണൽ സർട്ടിഫിക്കറ്റ്", uploadedBy: "partner", sortOrder: 50 },
+  // A master's applicant has a master's transcript, and until these existed the
+  // only place to put one was "Other".
+  { code: "PG_MARKSHEETS", label: "Master's individual marksheets", labelMl: "ബിരുദാനന്തര ബിരുദ മാർക്ക് ഷീറ്റുകൾ", uploadedBy: "partner", sortOrder: 52 },
+  { code: "PG_CERTIFICATE", label: "Master's degree certificate", labelMl: "ബിരുദാനന്തര ബിരുദ സർട്ടിഫിക്കറ്റ്", uploadedBy: "partner", sortOrder: 54 },
+  { code: "DIPLOMA_CERTIFICATE", label: "Diploma certificate", labelMl: "ഡിപ്ലോമ സർട്ടിഫിക്കറ്റ്", uploadedBy: "partner", sortOrder: 56 },
+  { code: "DIPLOMA_MARKSHEETS", label: "Diploma marksheets", labelMl: "ഡിപ്ലോമ മാർക്ക് ഷീറ്റുകൾ", uploadedBy: "partner", sortOrder: 58 },
   { code: "ENGLISH_TEST", label: "English test report (IELTS / PTE / OET)", labelMl: "ഇംഗ്ലീഷ് പരീക്ഷാ റിപ്പോർട്ട് (IELTS / PTE / OET)", uploadedBy: "partner", sortOrder: 60 },
   { code: "GERMAN_CERTIFICATE", label: "German language certificate", labelMl: "ജർമൻ ഭാഷാ സർട്ടിഫിക്കറ്റ്", uploadedBy: "partner", sortOrder: 65 },
   { code: "SOP", label: "Statement of purpose", labelMl: "സ്റ്റേറ്റ്മെന്റ് ഓഫ് പർപ്പസ്", uploadedBy: "partner", sortOrder: 70 },
@@ -87,5 +93,5 @@ export const DOCUMENT_TYPES = [
   { code: "OFFER_LETTER", label: "Offer letter", labelMl: "ഓഫർ ലെറ്റർ", uploadedBy: "team", sortOrder: 200 },
   { code: "CAS_COE", label: "CAS / COE", labelMl: "CAS / COE", uploadedBy: "team", sortOrder: 210 },
   { code: "VISA", label: "Visa", labelMl: "വിസ", uploadedBy: "team", sortOrder: 220 },
-  { code: "OTHER", label: "Other", labelMl: "മറ്റുള്ളവ", uploadedBy: "partner", sortOrder: 999 },
+  { code: "OTHER", label: "Something else (say what it is)", labelMl: "മറ്റൊന്ന് (എന്താണെന്ന് എഴുതുക)", uploadedBy: "partner", sortOrder: 999 },
 ];

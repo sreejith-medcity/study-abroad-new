@@ -163,16 +163,50 @@ export function AcademicForm({ studentId, defaults = {}, idPrefix = "" }: { stud
 }
 
 export function TestForm({ studentId, defaults = {}, idPrefix = "" }: { studentId: string; defaults?: { test?: string | null; overall?: string | null; takenOn?: string | null }; idPrefix?: string }) {
+  const [state, setState] = useState("TAKEN");
+  const [test, setTest] = useState(defaults.test ?? "IELTS");
+  const taken = state === "TAKEN";
+  // The four sections matter for IELTS, PTE and TOEFL, where a university sets
+  // a minimum per section as often as it sets one overall. A grade or a CEFR
+  // level has no sections, so they are not asked for.
+  const sectioned = ["IELTS", "PTE", "TOEFL"].includes(test);
   return (
-    <ActionForm action={addTestAction} submitLabel="Add test score" resetOnSuccess submitVariant="secondary">
+    <ActionForm action={addTestAction} submitLabel={taken ? "Add test score" : "Record it as pending"} resetOnSuccess submitVariant="secondary">
       <input type="hidden" name="studentId" value={studentId} />
       <div className="grid gap-3 sm:grid-cols-3">
-        <SelectField id={`${idPrefix}test`} label="Test" name="test" defaultValue={defaults.test ?? "IELTS"} required>
+        <SelectField id={`${idPrefix}test`} label="Test" name="test" value={test} onChange={(e) => setTest(e.target.value)} required>
           <option>IELTS</option><option>PTE</option><option>OET</option><option value="TOEFL">TOEFL iBT</option><option value="DUOLINGO">Duolingo</option><option value="GERMAN">German (CEFR)</option><option>GRE</option><option>GMAT</option><option>SAT</option><option>ACT</option>
         </SelectField>
-        <TextField id={`${idPrefix}overall`} label="Overall score / grade" name="overall" required placeholder="6.5, B, B1" defaultValue={defaults.overall ?? ""} />
-        <TextField id={`${idPrefix}takenOn`} label="Test date" name="takenOn" type="date" defaultValue={defaults.takenOn ?? ""} />
+        <SelectField id={`${idPrefix}state`} label="Where it stands" name="state" value={state} onChange={(e) => setState(e.target.value)}>
+          <option value="TAKEN">Result is in</option>
+          <option value="BOOKED">Booked, waiting for the result</option>
+          <option value="NOT_TAKEN">Not taken yet</option>
+        </SelectField>
+        <TextField
+          id={`${idPrefix}takenOn`}
+          label={taken ? "Test date" : "Test date, if booked"}
+          name="takenOn"
+          type="date"
+          defaultValue={defaults.takenOn ?? ""}
+        />
       </div>
+      {taken ? (
+        <div className="grid gap-3 sm:grid-cols-5">
+          <TextField id={`${idPrefix}overall`} label="Overall score / grade" name="overall" required placeholder="6.5, B, B1" defaultValue={defaults.overall ?? ""} />
+          {sectioned && (
+            <>
+              <TextField id={`${idPrefix}listening`} label="Listening" name="listening" placeholder="6.5" />
+              <TextField id={`${idPrefix}reading`} label="Reading" name="reading" placeholder="6.0" />
+              <TextField id={`${idPrefix}writing`} label="Writing" name="writing" placeholder="6.0" />
+              <TextField id={`${idPrefix}speaking`} label="Speaking" name="speaking" placeholder="6.5" />
+            </>
+          )}
+        </div>
+      ) : (
+        <p className="text-[13px] text-muted">
+          No score is recorded, so nothing is counted towards a course&rsquo;s English requirement until the result is in. Nobody has to type a nought to get past this.
+        </p>
+      )}
     </ActionForm>
   );
 }

@@ -5,7 +5,8 @@ export type AcademicInput = { level: string; gradingSystem: string | null; score
 export type EligibilityInput = {
   backlogs: number | null;
   gapYears: number | null;
-  tests: { test: string; overall: string; isMock: boolean }[];
+  /** A test with no overall score has not been sat yet, so it proves nothing. */
+  tests: { test: string; overall: string | null; isMock: boolean }[];
   /** Left out, the academic minimum is not checked at all. */
   academics?: AcademicInput[];
 };
@@ -77,7 +78,9 @@ export function bestPercents(academics: AcademicInput[]) {
 }
 
 function best(tests: EligibilityInput["tests"], test: string, official: boolean) {
-  return tests.filter((t) => t.test === test && t.isMock === !official).map((t) => t.overall);
+  return tests
+    .filter((t) => t.test === test && t.isMock === !official && t.overall != null)
+    .map((t) => t.overall as string);
 }
 
 export function checkEligibility(student: EligibilityInput, program: EligibilityProgram): Eligibility {

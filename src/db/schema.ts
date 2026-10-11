@@ -672,7 +672,25 @@ export const testScores = pgTable("test_scores", {
     .notNull()
     .references(() => students.id, { onDelete: "cascade" }),
   test: text("test").notNull(), // IELTS | PTE | OET | TOEFL | GERMAN
-  overall: text("overall").notNull(),
+  /**
+   * Null while the test is booked or still to be sat.
+   *
+   * It used to be required, so a student who had not sat IELTS yet was
+   * recorded with a nought, which reads as a real and terrible score on every
+   * screen that checks eligibility.
+   */
+  overall: text("overall"),
+  /** TAKEN | BOOKED | NOT_TAKEN */
+  state: text("state").notNull().default("TAKEN"),
+  /**
+   * The four sections. A university sets a minimum per section as often as it
+   * sets one overall, and writing and speaking are the ones that fail people,
+   * so an overall score alone cannot answer whether a student qualifies.
+   */
+  listening: text("listening"),
+  reading: text("reading"),
+  writing: text("writing"),
+  speaking: text("speaking"),
   takenOn: timestamp("taken_on", { mode: "date" }),
   isMock: boolean("is_mock").notNull().default(false),
   source: text("source").notNull().default("manual"), // manual | lms
@@ -927,6 +945,8 @@ export const documents = pgTable("documents", {
   applicationId: text("application_id").references(() => applications.id),
   commentId: text("comment_id").references(() => comments.id),
   typeCode: text("type_code").references(() => documentTypes.code),
+  /** What this one is, when the type is "Something else" and only a person can say. */
+  label: text("label"),
   fileName: text("file_name").notNull(),
   storageKey: text("storage_key").notNull(),
   mimeType: text("mime_type").notNull(),

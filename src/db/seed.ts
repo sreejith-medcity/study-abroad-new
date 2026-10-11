@@ -106,6 +106,33 @@ async function main() {
       { code: "FI", name: "Finland", currency: "EUR" },
       { code: "PT", name: "Portugal", currency: "EUR" },
       { code: "ES", name: "Spain", currency: "EUR" },
+      // Added after the counselling team hit students they could not record at
+      // all: a destination missing from this list is missing from the
+      // registration form, so the student's own country could not be written
+      // down, let alone searched for.
+      { code: "AT", name: "Austria", currency: "EUR" },
+      { code: "MY", name: "Malaysia", currency: "MYR" },
+      { code: "PL", name: "Poland", currency: "PLN" },
+      { code: "CZ", name: "Czechia", currency: "CZK" },
+      { code: "HU", name: "Hungary", currency: "HUF" },
+      { code: "DK", name: "Denmark", currency: "DKK" },
+      { code: "NO", name: "Norway", currency: "NOK" },
+      { code: "BE", name: "Belgium", currency: "EUR" },
+      { code: "LU", name: "Luxembourg", currency: "EUR" },
+      { code: "GR", name: "Greece", currency: "EUR" },
+      { code: "CY", name: "Cyprus", currency: "EUR" },
+      { code: "LV", name: "Latvia", currency: "EUR" },
+      { code: "LT", name: "Lithuania", currency: "EUR" },
+      { code: "EE", name: "Estonia", currency: "EUR" },
+      { code: "GE", name: "Georgia", currency: "GEL" },
+      { code: "AE", name: "United Arab Emirates", currency: "AED" },
+      { code: "SG", name: "Singapore", currency: "SGD" },
+      { code: "JP", name: "Japan", currency: "JPY" },
+      { code: "KR", name: "South Korea", currency: "KRW" },
+      { code: "PH", name: "Philippines", currency: "PHP" },
+      { code: "MU", name: "Mauritius", currency: "MUR" },
+      { code: "AM", name: "Armenia", currency: "AMD" },
+      { code: "KZ", name: "Kazakhstan", currency: "KZT" },
     ].map((c) => (LIVING_FUNDS[c.code] ? { ...c, visaLivingFunds: LIVING_FUNDS[c.code].amount, visaLivingNote: LIVING_FUNDS[c.code].note, visaLivingSource: LIVING_FUNDS[c.code].source, visaLivingChecked: "2026-09-22" } : c)))
     .returning();
   const c = Object.fromEntries(countryRows.map((r) => [r.code, r.id]));

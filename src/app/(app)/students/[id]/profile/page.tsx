@@ -237,7 +237,28 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
         <h2 className="mb-3 font-semibold text-brand-700">Tests</h2>
         <RowList
           empty="No test scores added."
-          rows={tests.map((t) => ({ id: t.id, title: `${t.test === "GERMAN" ? "German" : t.test} ${t.overall}`, sub: `${t.isMock ? "Practice test from Medcity LMS" : "Official result"}${t.takenOn ? ` · ${fmtDate(t.takenOn)}` : ""}`, badge: t.isMock ? "Mock" : undefined }))}
+          rows={tests.map((t) => {
+            // The sections are the whole reason this is here: a university that
+            // wants 6.0 in writing is not answered by an overall 6.5.
+            const sections = [
+              t.listening && `L ${t.listening}`,
+              t.reading && `R ${t.reading}`,
+              t.writing && `W ${t.writing}`,
+              t.speaking && `S ${t.speaking}`,
+            ].filter(Boolean).join(" · ");
+            const waiting = t.state !== "TAKEN";
+            const name = t.test === "GERMAN" ? "German" : t.test;
+            return {
+              id: t.id,
+              title: waiting ? name : `${name} ${t.overall ?? ""}`.trim(),
+              sub: [
+                waiting ? (t.state === "BOOKED" ? "Booked, waiting for the result" : "Not taken yet") : t.isMock ? "Practice test from Medcity LMS" : "Official result",
+                sections || null,
+                t.takenOn ? fmtDate(t.takenOn) : null,
+              ].filter(Boolean).join(" · "),
+              badge: waiting ? "No score yet" : t.isMock ? "Mock" : undefined,
+            };
+          })}
           kind="test" studentId={id} canDelete={!readOnly}
         />
         {!readOnly && <div className="mt-4 border-t border-line pt-4"><TestForm studentId={id} /></div>}

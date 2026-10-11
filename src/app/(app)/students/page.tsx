@@ -80,6 +80,18 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
   // A filtered search that finds nothing needs a different answer from an empty branch.
   const filtered = Object.keys(f).some((k) => k !== "view" && f[k]);
 
+  // When a search finds nobody, the same search against the archive usually
+  // explains why: the branch is told the email is taken and then cannot find
+  // who has it, because an archived student is not in this list.
+  const alsoArchived =
+    !archived && (f.q || filtered)
+      ? (await db
+          .select({ n: sql<number>`count(*)::int` })
+          .from(s)
+          .where(and(...conds.filter((c) => c !== undefined), eq(s.archived, true))))[0]?.n ?? 0
+      : 0;
+
+
   return (
     <>
       <PageHeader
@@ -133,9 +145,15 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
             title={archived ? "No archived students" : filtered ? "No students match these filters" : "No students registered yet"}
             action={
               filtered ? (
-                <LinkButton variant="secondary" href={archived ? "/students?view=archived" : "/students"}>
-                  Clear the filters
-                </LinkButton>
+                alsoArchived > 0 ? (
+                  <LinkButton variant="secondary" href={`/students?view=archived${f.q ? `&q=${encodeURIComponent(f.q)}` : ""}`}>
+                    Look in the archived students
+                  </LinkButton>
+                ) : (
+                  <LinkButton variant="secondary" href={archived ? "/students?view=archived" : "/students"}>
+                    Clear the filters
+                  </LinkButton>
+                )
               ) : !archived && canRegister ? (
                 <LinkButton href="/students/new">
                   <IconPlus className="size-4" /> Register {staff ? "a student" : "your first student"}
@@ -146,7 +164,9 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
             {archived
               ? "Students you archive are kept here, and can be brought back at any time."
               : filtered
-                ? "Try a wider date range, or clear the filters and start again."
+                ? alsoArchived > 0
+                  ? `Nobody here matches, but ${alsoArchived} archived student${alsoArchived === 1 ? "" : "s"} do${alsoArchived === 1 ? "es" : ""}. An archived file still holds its email and number, which is why registering them again is refused.`
+                  : "Try a wider date range, or clear the filters and start again."
                 : "Every student your branch registers appears here, with what each application is waiting on."}
           </EmptyState>
         ) : (

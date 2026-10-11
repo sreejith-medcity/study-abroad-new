@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { FormatBar } from "@/components/format-bar";
 import { ActionForm, FieldError } from "@/components/action-form";
@@ -31,6 +32,7 @@ export function ApplyForm({
   defaultLevel,
   preselectProgramId,
   canApply,
+  canAddCourse,
   gate,
 }: {
   studentId: string;
@@ -44,6 +46,8 @@ export function ApplyForm({
   preselectProgramId?: string;
   /** False for a role that builds the file but does not start applications. */
   canApply: boolean;
+  /** True for the Overseas desk, who can put a missing course in the catalogue. */
+  canAddCourse: boolean;
   /** What the profile stage is still short of, and whether this person may apply anyway. */
   gate?: { missing: string[]; canOverride: boolean; holds: boolean; locked?: string[] };
 }) {
@@ -121,6 +125,17 @@ export function ApplyForm({
           </Select>
         </div>
         <FieldError name="programId" />
+        {/* The dead end the branch kept hitting: the course the student wants
+            is not in the catalogue and there was nothing to do about it. */}
+        <p className="mt-1 text-[13px] text-muted">
+          Not here?{" "}
+          {canAddCourse ? (
+            <Link href="/admin/programs/new" className="font-medium text-brand-700 hover:underline">Add the course to the catalogue</Link>
+          ) : (
+            <Link href={`/program-options/new?student=${studentId}`} className="font-medium text-brand-700 hover:underline">Ask the Overseas team for it</Link>
+          )}
+          , and the course or the university will be added for you.
+        </p>
       </Field>
       {program && (
         <div className="rounded-md border border-line bg-ground/60 p-3 text-sm">

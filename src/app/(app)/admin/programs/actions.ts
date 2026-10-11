@@ -7,7 +7,7 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { parseProgramCsv, type ImportError, type ImportRow } from "@/lib/program-import";
-import { ADMIN_ROLES } from "@/lib/permissions";
+import { ADMIN_ROLES, PROCESSING_ROLES } from "@/lib/permissions";
 import type { FormState } from "@/lib/form-state";
 import { programFilterWhere, readProgramFilters } from "@/server/program-filters";
 import { fetchCricosFiles, syncCricos } from "@/server/cricos-sync";
@@ -352,4 +352,94 @@ export async function bulkTagAction(formData: FormData) {
     .returning({ id: p.id });
   await audit(user.id, "programs.bulk_tag", "program", "*", { tag, op, count: changed.length, filters: f });
   revalidatePath("/admin/programs");
+}
+
+/**
+ * Adds one course the catalogue does not have.
+ *
+ * Until this existed there were two ways in: a CSV import, and editing a
+ * course that already existed. So a counsellor with a student set on Teesside,
+ * or on anything in aviation, was simply stuck, and Phase 2 stopped there.
+ *
+ * It asks for the little that identifies a course and nothing else. Everything
+ * else is filled in on the course's own screen afterwards, which already knows
+ * how to validate fees, intakes and English requirements, and the row starts as
+ * DRAFT so nothing reaches a counsellor's search until somebody has looked at
+ * it.
+ */
+export async function createProgramAction(_: FormState, fd: FormData): Promise<FormState> {
+  const user = await requireUser([...PROCESSING_ROLES]);
+  const errors: Record<string, string[]> = {};
+
+  const name = String(fd.get("name") ?? "").trim();
+  if (!name) errors.name = ["Enter the course name, as the institution writes it"];
+  const level = String(fd.get("level") ?? "") as (typeof LEVELS)[number];
+  if (!LEVELS.includes(level)) errors.level = ["Choose a level"];
+  const pathway = String(fd.get("pathway") ?? "") as (typeof PATHWAYS)[number];
+  if (!PATHWAYS.includes(pathway)) errors.pathway = ["Choose a pathway"];
+
+  // Either an existing university, or a new one with a country to put it in.
+  const universityId = String(fd.get("universityId") ?? "").trim();
+  const newUniversity = String(fd.get("newUniversity") ?? "").trim();
+  const countryCode = String(fd.get("countryCode") ?? "").trim();
+  const city = String(fd.get("city") ?? "").trim() || null;
+  if (!universityId && !newUniversity) errors.newUniversity = ["Pick the university, or type a new one"];
+  if (!universityId && newUniversity && !countryCode) errors.countryCode = ["Which country is it in?"];
+
+  const programUrl = (() => {
+    const u = String(fd.get("programUrl") ?? "").trim();
+    if (u && !/^https?:\/\//.test(u)) errors.programUrl = ["A full link, starting https://"];
+    return u || null;
+  })();
+  const durationMonths = optionalNumber(fd, "durationMonths", errors, { int: true, min: 1, max: 120 });
+  if (Object.keys(errors).length) return { error: "Check the highlighted fields.", fieldErrors: errors };
+
+  let uniId = universityId;
+  if (!uniId) {
+    const country = await db.query.countries.findFirst({ where: eq(schema.countries.code, countryCode) });
+    if (!country) return { error: "That country is not on the list.", fieldErrors: { countryCode: ["Unknown country"] } };
+    // Same name in the same country is the same university, so a second
+    // spelling of one already there joins it rather than forking it.
+    const existing = await db.query.universities.findFirst({
+      where: and(sql`lower(${schema.universities.name}) = ${newUniversity.toLowerCase()}`, eq(schema.universities.countryId, country.id)),
+    });
+    if (existing) {
+      uniId = existing.id;
+    } else {
+      const [made] = await db.insert(schema.universities).values({ name: newUniversity, city, countryId: country.id }).returning({ id: schema.universities.id });
+      uniId = made.id;
+      await audit(user.id, "university.create", "university", made.id, { name: newUniversity, country: country.name });
+    }
+  }
+
+  const clash = await db.query.programs.findFirst({ where: and(eq(schema.programs.name, name), eq(schema.programs.universityId, uniId)) });
+  if (clash) {
+    return {
+      error: "That university already has a course with this name. Open it rather than adding a second one.",
+      fieldErrors: { name: ["Already in the catalogue"] },
+      redirectTo: `/admin/programs/${clash.id}`,
+    };
+  }
+
+  const [program] = await db
+    .insert(schema.programs)
+    .values({
+      name,
+      universityId: uniId,
+      level,
+      pathway,
+      status: "DRAFT",
+      studyArea: String(fd.get("studyArea") ?? "").trim() || null,
+      campus: city,
+      durationMonths,
+      programUrl,
+      intakeMonths: [],
+      requiredDocs: [],
+      tags: [],
+    })
+    .returning({ id: schema.programs.id });
+  await audit(user.id, "program.create", "program", program.id, { name, level, pathway });
+  revalidatePath("/admin/programs");
+  revalidatePath("/search");
+  return { ok: `${name} added as a draft. Fill in the fees, intakes and requirements, then set it live.`, redirectTo: `/admin/programs/${program.id}` };
 }

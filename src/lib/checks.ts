@@ -19,7 +19,8 @@ export type CheckStudent = {
   backlogs: number | null;
   gapYears: number | null;
   academics: { level: string; gradingSystem?: string | null; score?: number | null }[];
-  tests: { test: string; overall: string; isMock: boolean }[];
+  /** A test with no overall score is booked or still to be sat, so it counts for nothing. */
+  tests: { test: string; overall: string | null; isMock: boolean }[];
   documentTypeCodes: string[];
   /** Left out, the background questions are not checked. */
   background?: BackgroundAnswers;
@@ -48,7 +49,7 @@ const CEFR = ["A1", "A2", "B1", "B2", "C1", "C2"];
 const OET = ["E", "D", "C", "C+", "B", "A"];
 
 function bestScore(tests: CheckStudent["tests"], test: string) {
-  return tests.filter((t) => t.test === test && !t.isMock).map((t) => t.overall);
+  return tests.filter((t) => t.test === test && !t.isMock && t.overall != null).map((t) => t.overall as string);
 }
 
 export function profileCompleteness(s: CheckStudent) {
@@ -56,7 +57,7 @@ export function profileCompleteness(s: CheckStudent) {
     personal: !!(s.dateOfBirth && s.gender && s.addressLine1 && s.city && s.passportNumber),
     academics: s.academics.length > 0,
     work: true, // optional section
-    tests: s.tests.some((t) => !t.isMock),
+    tests: s.tests.some((t) => !t.isMock && t.overall != null),
   };
 }
 

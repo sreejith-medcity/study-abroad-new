@@ -6,7 +6,7 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { summarise } from "@/lib/checks";
 import { fmtDate, fmtDateTime, fmtMoney, intakeLabel } from "@/lib/format";
-import { APP_ROLES, PARTNER_ROLES, isAdmin, isDocumentationTeam, isStaff } from "@/lib/permissions";
+import { APP_ROLES, PARTNER_ROLES, PROCESSING_ROLES, isAdmin, isDocumentationTeam, isStaff } from "@/lib/permissions";
 import { stageGate, studentChecklist, studentContext } from "@/server/documentation";
 import { canHandOver, OUTCOME_LABEL, SETTLES_IT, turnaroundText, vendorTurnaround } from "@/lib/desk";
 import { routeChoicesFor, updatesFor } from "@/server/desk";
@@ -127,6 +127,7 @@ async function ApplyPanel({ studentId, pathway, level, preselectProgramId, count
         defaultLevel={level}
         preselectProgramId={preselectProgramId}
         canApply={await can(user, "SUBMIT_APPLICATION")}
+        canAddCourse={(PROCESSING_ROLES as readonly string[]).includes(user.role)}
         gate={
           gate && gate.missing.length
             ? {

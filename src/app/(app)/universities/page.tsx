@@ -57,7 +57,7 @@ export default async function UniversitiesPage({ searchParams }: { searchParams:
     .innerJoin(p, and(eq(p.universityId, u.id), ...programConds))
     .where(and(...conds))
     .groupBy(u.id, c.name)
-    .orderBy(...(f.sort === "programs" ? [desc(live), asc(u.name)] : f.sort === "rank" ? [sql`${u.rankSort} asc nulls last`, asc(u.name)] : [asc(c.name), asc(u.name)]))
+    .orderBy(...(f.sort === "programs" ? [desc(live), asc(u.name)] : f.sort === "rank" ? [sql`${u.rankSort} asc nulls last`, asc(u.name)] : f.sort === "country" ? [asc(c.name), asc(u.name)] : [asc(u.name)]))
     .limit(PAGE + 1)
     .offset((page - 1) * PAGE);
   const hasNext = rows.length > PAGE;
@@ -104,7 +104,8 @@ export default async function UniversitiesPage({ searchParams }: { searchParams:
             <option value="private">Private only</option>
           </Select>
           <Select name="sort" aria-label="Sort" defaultValue={f.sort ?? ""}>
-            <option value="">Sort by country and name</option>
+            <option value="">Name, A to Z</option>
+            <option value="country">By country, then name</option>
             <option value="programs">Most programs first</option>
             <option value="rank">Best ranking first</option>
           </Select>

@@ -24,10 +24,13 @@ export async function uploadDocumentAction(_: FormState, formData: FormData): Pr
   if (!type) return { error: "Choose a document type." };
   if (type.uploadedBy === "team" && !issuesTeamDocuments(user)) return { error: `${type.label} is put up by the Medcity Overseas desk.` };
   if (!(file instanceof File) || file.size === 0) return { error: "Choose a file to upload." };
+  // "Something else" with no name is a file nobody can identify later.
+  const label = String(formData.get("label") ?? "").trim().slice(0, 120) || null;
+  if (typeCode === "OTHER" && !label) return { error: "Say what this document is, so the next person knows what they are looking at." };
 
   try {
     const saved = await saveUpload(file, `students/${studentId}`);
-    const [doc] = await db.insert(schema.documents).values({ studentId, typeCode, fileName: file.name, uploadedById: user.id, ...saved }).returning();
+    const [doc] = await db.insert(schema.documents).values({ studentId, typeCode, label, fileName: file.name, uploadedById: user.id, ...saved }).returning();
     await audit(user.id, "document.upload", "document", doc.id, { typeCode });
     // A file that answers something on the documentation list joins the team's
     // queue. Nobody, least of all the student, marks their own document good.
@@ -37,7 +40,7 @@ export async function uploadDocumentAction(_: FormState, formData: FormData): Pr
     throw e;
   }
   revalidatePath(`/students/${studentId}`, "layout");
-  return { ok: `${type.label} uploaded.` };
+  return { ok: `${label ?? type.label} uploaded.` };
 }
 
 export async function deleteDocumentAction(formData: FormData) {

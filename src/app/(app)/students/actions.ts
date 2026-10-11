@@ -67,9 +67,25 @@ export async function createStudentAction(_: FormState, formData: FormData): Pro
     if (!assignee || assignee.orgId !== orgId) return { error: "Pick a counsellor from this organisation." };
   }
 
+  /**
+   * Who already has it, and where they are.
+   *
+   * "A student with that email already exists" sent the branch hunting through
+   * a list that does not show archived students, so they could not find who it
+   * was and could not get past the screen. The name, the Medcity ID and the
+   * fact that the file is archived are the three things that end the hunt.
+   */
+  const says = (who: { firstName: string; lastName: string; medcityId: string | null; archived: boolean }, what: string) =>
+    `${who.firstName} ${who.lastName}${who.medcityId ? ` (${who.medcityId})` : ""} is already registered on ${what}.${
+      who.archived ? " That file is archived, which is why it is not in the student list; open Archived students to bring it back." : " Open them from the student list rather than registering them twice."
+    }`;
+
   if (d.email) {
-    const existing = await db.query.students.findFirst({ where: and(eq(schema.students.email, d.email), eq(schema.students.orgId, orgId)) });
-    if (existing) return { error: `A student with ${d.email} already exists.`, fieldErrors: { email: ["Already registered"] } };
+    const existing = await db.query.students.findFirst({
+      where: and(eq(schema.students.email, d.email), eq(schema.students.orgId, orgId)),
+      columns: { firstName: true, lastName: true, medcityId: true, archived: true },
+    });
+    if (existing) return { error: says(existing, d.email), fieldErrors: { email: ["Already registered"] } };
   }
   // Without an email, the number and the name together are the student, so the
   // same pair twice in one branch is the same person being registered again.
@@ -82,8 +98,9 @@ export async function createStudentAction(_: FormState, formData: FormData): Pro
         sql`lower(${schema.students.firstName}) = ${d.firstName.toLowerCase()}`,
         sql`lower(${schema.students.lastName}) = ${d.lastName.toLowerCase()}`,
       ),
+      columns: { firstName: true, lastName: true, medcityId: true, archived: true },
     });
-    if (sameNumber) return { error: `${d.firstName} ${d.lastName} is already registered on that number.`, fieldErrors: { phone: ["Already registered"] } };
+    if (sameNumber) return { error: says(sameNumber, "that number"), fieldErrors: { phone: ["Already registered"] } };
   }
 
   const [student] = await db
@@ -269,11 +286,26 @@ export async function addAcademicAction(_: FormState, formData: FormData): Promi
   return { ok: "Qualification added." };
 }
 
-const test = z.object({
-  test: z.enum(["IELTS", "PTE", "OET", "TOEFL", "DUOLINGO", "GERMAN", "GRE", "GMAT", "SAT", "ACT"]),
-  overall: z.string().trim().min(1, "Score is required").max(10),
-  takenOn: optionalDate,
-});
+const section = z.string().trim().max(10).optional().transform((v) => v || null);
+const test = z
+  .object({
+    test: z.enum(["IELTS", "PTE", "OET", "TOEFL", "DUOLINGO", "GERMAN", "GRE", "GMAT", "SAT", "ACT"]),
+    // Optional, because a test can be booked or still to be sat. It used to be
+    // required, so a student without a result was written down as a nought,
+    // which every eligibility check then read as a real and terrible score.
+    overall: z.string().trim().max(10).optional().transform((v) => v || null),
+    state: z.enum(["TAKEN", "BOOKED", "NOT_TAKEN"]).optional().transform((v) => v ?? "TAKEN"),
+    listening: section,
+    reading: section,
+    writing: section,
+    speaking: section,
+    takenOn: optionalDate,
+  })
+  .superRefine((t, ctx) => {
+    if (t.state === "TAKEN" && !t.overall) {
+      ctx.addIssue({ code: "custom", path: ["overall"], message: "Give the score, or say the test has not been taken yet" });
+    }
+  });
 
 export async function addTestAction(_: FormState, formData: FormData): Promise<FormState> {
   const studentId = String(formData.get("studentId"));
@@ -281,10 +313,21 @@ export async function addTestAction(_: FormState, formData: FormData): Promise<F
   if (locked) return { error: "Profile is locked. Use Request edit." };
   const parsed = test.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Check the highlighted fields." };
-  await db.insert(schema.testScores).values({ studentId, ...parsed.data });
+  // A result the student does not have yet is not a score, whatever was typed.
+  const d = parsed.data;
+  const waiting = d.state !== "TAKEN";
+  await db.insert(schema.testScores).values({
+    studentId,
+    ...d,
+    overall: waiting ? null : d.overall,
+    listening: waiting ? null : d.listening,
+    reading: waiting ? null : d.reading,
+    writing: waiting ? null : d.writing,
+    speaking: waiting ? null : d.speaking,
+  });
   await audit(user.id, "student.profile.update", "student", studentId, { section: "tests" });
   revalidatePath(`/students/${studentId}`, "layout");
-  return { ok: "Test score added." };
+  return { ok: waiting ? `${d.test} recorded as not taken yet.` : "Test score added." };
 }
 
 export async function saveBackgroundAction(_: FormState, formData: FormData): Promise<FormState> {

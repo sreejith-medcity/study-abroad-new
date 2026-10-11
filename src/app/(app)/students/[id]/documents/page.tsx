@@ -87,7 +87,7 @@ function DocTypeCard({
   type, files, requiredFor, studentId, canWrite, userId, role, canProcess, canIssue,
 }: {
   type: { code: string; label: string; uploadedBy: string; guidance: string | null; sampleStorageKey: string | null };
-  files: { id: string; fileName: string; createdAt: Date; uploadedById: string | null; sharedWithStudent: boolean; uploadedBy: { name: string; deskLabel: string | null; role: string } | null }[];
+  files: { id: string; fileName: string; label: string | null; createdAt: Date; uploadedById: string | null; sharedWithStudent: boolean; uploadedBy: { name: string; deskLabel: string | null; role: string } | null }[];
   requiredFor?: string[];
   studentId: string; canWrite: boolean; userId: string; role: string; canProcess: boolean; canIssue: boolean;
 }) {
@@ -117,7 +117,7 @@ function DocTypeCard({
         <ul className="mt-2 flex flex-wrap gap-2">
           {files.map((f) => (
             <li key={f.id} className="flex items-center gap-2 rounded bg-ground px-2 py-1 text-xs">
-              <a href={`/api/documents/${f.id}`} className="text-brand-600 hover:underline">📄 {f.fileName}</a>
+              <a href={`/api/documents/${f.id}`} className="text-brand-600 hover:underline">📄 {f.label ?? f.fileName}</a>
               <span className="text-muted">{fmtDateTime(f.createdAt)} · {f.uploadedBy?.role === "STUDENT" ? "From the student" : f.uploadedBy?.deskLabel ?? f.uploadedBy?.name ?? "Student"}</span>
               {f.uploadedBy?.role !== "STUDENT" &&
                 (canWrite ? (
