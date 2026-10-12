@@ -6,7 +6,7 @@ list, TEQSA, NZQA, Hochschulkompass, BIBB, the Bundesagentur fuer Arbeit).
 No aggregator or agency source was used, and nothing here came from
 KC Overseas or coursefinder.ai.
 
-944 rows across fourteen destinations, in the importer's
+1,010 rows across fourteen destinations, in the importer's
 own format, on a 23-column header. Everything lands as `DRAFT`, so it is
 reviewed on the Programs screen and published per country or per pathway with
 the bulk control there, which acts on every row matching the filters rather than
@@ -247,3 +247,30 @@ New Zealand has no nursing top-up here, deliberately: the Nursing Council's own
 education page lists no post-registration bachelor's route, and internationally
 qualified nurses go through a Competence Assessment Programme, which is not a
 degree.
+
+
+## Aviation, Teesside and University College Birmingham, October 2026
+
+`aviation-and-two-universities.csv` answers three things the counselling team
+reported missing: aviation courses, Teesside University and University College
+Birmingham. 66 rows, 43 in the United Kingdom, 6 in Ireland, 6 in Australia,
+5 in Canada, 4 in New Zealand and 2 in Germany. Every row carries
+`program_url` and a one-line `entry_requirements` read from that page.
+
+Thirty-three rows are the two universities the team named, across their real
+subject spread rather than aviation alone, so a counsellor searching either
+name finds a usable list. The other thirty-three are aviation: 26 under the
+`Aviation` study area and 9 under `Aerospace Engineering`, covering pilot
+training degrees, air transport management, aircraft engineering and airport
+operations.
+
+Fifty-three of the 66 carry a tuition figure. The thirteen blanks are pages
+that give a band, a total for a course longer than a year, or no figure at
+all, and they display "Not recorded" rather than a guess.
+
+One thing to tell a candidate before they get excited about a pilot degree:
+on the flying routes (Buckinghamshire New, SETU Pilot Studies, UNSW Flying,
+Massey Air Transport Pilot) **flight training is charged separately** and is
+the larger part of the cost. The row says so in its entry requirements.
+Massey's page quotes a single combined figure that is plainly not annual
+tuition, so that column is empty rather than misleading.
