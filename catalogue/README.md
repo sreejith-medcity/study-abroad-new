@@ -358,3 +358,60 @@ destination after these two:
 
 Australia is not in these files. CRICOS already carries all 21 of the
 Australian universities on the worklist, and 25,000 courses besides.
+
+
+## Malta, October 2026
+
+`malta.csv`, 178 courses at 10 institutions: MCAST 52, University of Malta 46,
+and 80 across the private sector (Global College Malta, Learn Key, IDEA
+College, STC Higher Education, GBS Malta, Malta Business School, Knights
+College, London School of Commerce Malta). Every row carries the institution's
+own page.
+
+**Fees: 65 of 178.** The two public institutions publish differently from each
+other and from the private colleges, which is why coverage is uneven rather
+than lazy:
+
+- University of Malta undergraduate pages print "Fee per academic year" for
+  non-EU students, so all 29 of those are recorded: 8,500 for business and
+  arts, 10,800 for science, health, IT and engineering, 26,000 for Medicine.
+- University of Malta postgraduate pages print a whole-course total instead,
+  and the year splits are uneven (one master's is 10,800 with the whole of it
+  in year one). Those are blank.
+- MCAST publishes only whole-course totals by level and duration, in a 2024/25
+  schedule. No per-year figure exists on their site, so every MCAST row is
+  blank. There is no newer schedule published.
+- The private colleges vary: Global College Malta, Learn Key, GBS and Knights
+  publish real per-year fees; STC shows three unlabelled prices side by side
+  and "contact us"; IDEA publishes only a part-time price that non-EU students
+  are not eligible for.
+
+**IELTS: 140 of 178, and these come from each institution's admissions page,
+not from the course pages.** Neither public institution states a score on any
+course page. University of Malta requires 6.0 overall for undergraduate and
+6.5 for postgraduate; MCAST requires 5.5 at levels 5 to 7. Those are the
+institutions' own published admission requirements, applied to their own
+courses. The MCAST figure comes from a 2024/25 FAQ, which is the most recent
+they publish.
+
+**Three rows were dropped, deliberately.** Malita International College's
+bachelor's and master's, because its MBA page sits on a URL that says
+bachelor-of-business-administration, its awards come from a United States body
+and are described only as "comparable to" a Maltese level rather than being
+MFHEA-accredited. And Learn Key's BBA, whose stated entry requirements are
+United States financial-aid wording (GED, ability-to-benefit exam) pasted onto
+a Maltese programme. None of them is safe to put in front of a visa applicant.
+
+**Four institutions that exist but are not here, and why:**
+
+- **American University of Malta** and the **Institute of Tourism Studies**:
+  both real and operating, both sites built so that no course or fee can be
+  read from them without a browser. Worth revisiting by hand.
+- **21 Academy**: licensed, with an MFHEA quality report, but its own website
+  did not respond at all. Check before relying on it.
+- **EIE Institute of Education**: no live website could be found. Treat it as
+  dormant until somebody produces one.
+
+University of Malta's course finder is JavaScript-driven and cannot be
+enumerated, so its 46 rows are a prioritised sample rather than its full
+catalogue. MCAST's coverage is near-complete for levels 5 to 7.
