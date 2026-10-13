@@ -319,3 +319,42 @@ English-taught programmes.
 
 That list is repeated in the code, in `src/lib/registry.ts`, and shown on the
 register card itself, so the reasoning survives whoever reads it next.
+
+
+## Austria and Sweden, October 2026
+
+`austria.csv` (193 rows, 10 institutions) and `sweden.csv` (328 rows, 11
+institutions) came from a worklist Medcity's own team had compiled of
+universities and course names worth covering. The worklist was used only to
+decide what to look up. Every row here was read off the institution's own page
+and carries that page's URL, the same rule as the rest of this folder.
+
+Both destinations had institutions on file and zero courses before this.
+
+What is missing, and why, because the pattern matters for every European
+destination after these two:
+
+- **Austrian tuition is blank on 180 of 193 rows.** Every public university
+  there charges non-EU students the same EUR 726.72 per semester, and not one
+  of TU Graz, TU Wien, Leoben, JKU, Innsbruck, BOKU or Univie states anywhere
+  that an academic year is two semesters. Doubling it would be arithmetic the
+  university did not do. The 13 rows that do carry a fee are MODUL Vienna, a
+  private university whose own page says "you can choose to pay for 2 semesters
+  (1 academic year)".
+- **Swedish tuition is blank on 256 of 328 rows.** Swedish universities publish
+  a first instalment and a whole-programme total, not a yearly figure. A fee is
+  recorded only where the programme runs 12 months, so the total is the year, or
+  where the university publishes a per-academic-year table that the programme
+  page matches (Jonkoping, University West). Karlstad and Dalarna state a
+  per-semester fee; those were doubled by the research pass and I put them back
+  to empty, for the same reason as Austria.
+- **IELTS is blank on most Swedish rows.** Sweden states its requirement as
+  "English 6", a Swedish upper-secondary level, not a test band. The wording is
+  kept in entry_requirements rather than converted into a score.
+- **No English-taught bachelor's exists** at TU Graz, University of Vienna,
+  Innsbruck, FH JOANNEUM or BOKU. Their own pages say so. Roughly thirty
+  bachelor's names on the worklist were German-taught and are therefore absent:
+  that is the worklist being wrong, not a gap here.
+
+Australia is not in these files. CRICOS already carries all 21 of the
+Australian universities on the worklist, and 25,000 courses besides.

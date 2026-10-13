@@ -76,7 +76,13 @@ export async function importProgramsAction(prev: ImportState, formData: FormData
         maxGapYears: r.maxGapYears, moiAccepted: r.moiAccepted, workRights: r.workRights, workRightsNote: r.workRightsNote,
         requiredDocs: r.requiredDocs, status: r.status, updatedAt: new Date(),
       };
-      const existing = await tx.query.programs.findFirst({ where: and(eq(schema.programs.name, r.program), eq(schema.programs.universityId, universityId)) });
+      // Level is part of the key: a university runs a bachelor's and a master's
+      // under one name often enough (Leoben's Circular Engineering, JKU's
+      // Artificial Intelligence) that matching on name alone silently
+      // overwrote one with the other.
+      const existing = await tx.query.programs.findFirst({
+        where: and(eq(schema.programs.name, r.program), eq(schema.programs.universityId, universityId), eq(schema.programs.level, r.level)),
+      });
       let programId: string;
       if (existing) {
         await tx.update(schema.programs).set(values).where(eq(schema.programs.id, existing.id));
@@ -252,15 +258,16 @@ export async function updateProgramAction(_: FormState, fd: FormData): Promise<F
   };
   if (Object.keys(errors).length) return { error: "Check the highlighted fields.", fieldErrors: errors };
 
-  // The import treats name plus university as the identity of a program, so two
-  // programs with the same name at one university would merge on the next import.
+  // The import treats name plus university plus level as the identity of a
+  // program, so two of those would merge on the next import. A bachelor's and
+  // a master's under one name are fine and common.
   const clash = await db.query.programs.findFirst({
-    where: and(eq(schema.programs.name, name), eq(schema.programs.universityId, current.universityId)),
+    where: and(eq(schema.programs.name, name), eq(schema.programs.universityId, current.universityId), eq(schema.programs.level, level)),
   });
   // Register rows are identified by their code instead (CRICOS lists the same
   // degree at several campuses under one name), so the rule only binds rows
   // without one.
-  if (clash && clash.id !== current.id && !current.externalCode && !clash.externalCode) return { error: "This university already has a program with that name.", fieldErrors: { name: ["Already used at this university"] } };
+  if (clash && clash.id !== current.id && !current.externalCode && !clash.externalCode) return { error: "This university already has a program with that name at that level.", fieldErrors: { name: ["Already used at this university"] } };
 
   const changed: Record<string, { from: unknown; to: unknown }> = {};
   for (const [k, v] of Object.entries(values)) {
@@ -414,10 +421,10 @@ export async function createProgramAction(_: FormState, fd: FormData): Promise<F
     }
   }
 
-  const clash = await db.query.programs.findFirst({ where: and(eq(schema.programs.name, name), eq(schema.programs.universityId, uniId)) });
+  const clash = await db.query.programs.findFirst({ where: and(eq(schema.programs.name, name), eq(schema.programs.universityId, uniId), eq(schema.programs.level, level)) });
   if (clash) {
     return {
-      error: "That university already has a course with this name. Open it rather than adding a second one.",
+      error: "That university already has a course with this name at this level. Open it rather than adding a second one.",
       fieldErrors: { name: ["Already in the catalogue"] },
       redirectTo: `/admin/programs/${clash.id}`,
     };

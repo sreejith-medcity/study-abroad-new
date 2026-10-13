@@ -34,7 +34,9 @@ async function main() {
         maxGapYears: r.maxGapYears, moiAccepted: r.moiAccepted, workRights: r.workRights,
         workRightsNote: r.workRightsNote, requiredDocs: r.requiredDocs, status: r.status, updatedAt: new Date(),
       };
-      const existing = await db.query.programs.findFirst({ where: and(eq(schema.programs.name, r.program), eq(schema.programs.universityId, uni.id)) });
+      const existing = await db.query.programs.findFirst({
+        where: and(eq(schema.programs.name, r.program), eq(schema.programs.universityId, uni.id), eq(schema.programs.level, r.level)),
+      });
       if (existing) { await db.update(schema.programs).set(values).where(eq(schema.programs.id, existing.id)); updated++; }
       else { await db.insert(schema.programs).values(values); created++; }
     }
