@@ -274,3 +274,48 @@ Massey Air Transport Pilot) **flight training is charged separately** and is
 the larger part of the cost. The row says so in its entry requirements.
 Massey's page quotes a single combined figure that is plainly not annual
 tuition, so that column is empty rather than misleading.
+
+
+## Public registers, and which ones may be used
+
+Checked October 2026, by reading each publisher's own licence rather than
+assuming. The finding that matters most: **no government anywhere publishes
+international tuition, English requirements and intake dates in bulk.** Not one
+of the 39 destinations. Australia's CRICOS is the single exception on fees, and
+only because it states the international tuition for the whole course. So a
+register fills in institutions and course names; the three columns a counsellor
+quotes to a student still come from the institution's own page, one at a time,
+and read "Not recorded" until they do.
+
+Loadable from the portal today:
+
+| Register | What it gives | Licence |
+|---|---|---|
+| Australia CRICOS | ~26,000 courses, 1,500 providers, with whole-course international tuition | CC BY 2.5 AU |
+| DEQAR | institutions across the European Higher Education Area, city and website | ODC PDDL, public domain |
+
+Researched, licence permits reuse, not yet built: UK Discover Uni (CC BY 4.0,
+undergraduate courses only), the UK Home Office register of licensed student
+sponsors (OGL), US IPEDS and College Scorecard (public domain), Ontario college
+programmes (OGL Ontario), Poland RAD-on (CC0), Norway DBH (NLOD), Italy MUR
+(public domain), Singapore data.gov.sg (Open Data Licence), Georgia's list of
+English-taught programmes.
+
+**Not to be used, whatever the pressure.** Each was checked and each forbids it:
+
+- Hochschulkompass (HRK): free for personal use only. Any other use, expressly
+  including commercial use and expressly including of individual parts, needs
+  the HRK foundation's permission.
+- DAAD International Programmes: all rights reserved. It is the only German
+  source holding fees, language and intakes together, which is exactly why it
+  is licensed the way it is.
+- ETER / EHESO: the licence forbids making the dataset or parts of it available
+  on an online support.
+- Studiekeuzedatabase (Netherlands): contract only, non-transferable and
+  non-sublicensable.
+- Malaysian Qualifications Register: no licence stated.
+- coursefinder.ai and KC Overseas: a partner's compiled database. Copying it
+  into this portal is off the table, through a partner login or otherwise.
+
+That list is repeated in the code, in `src/lib/registry.ts`, and shown on the
+register card itself, so the reasoning survives whoever reads it next.

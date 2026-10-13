@@ -11,6 +11,8 @@ import { ADMIN_ROLES, PROCESSING_ROLES } from "@/lib/permissions";
 import type { FormState } from "@/lib/form-state";
 import { programFilterWhere, readProgramFilters } from "@/server/program-filters";
 import { fetchCricosFiles, syncCricos } from "@/server/cricos-sync";
+import { fetchRegistry, syncRegistry } from "@/server/registry-sync";
+import { REGISTRY_SOURCES } from "@/lib/registry";
 
 export type ImportState = {
   error?: string;
@@ -442,4 +444,45 @@ export async function createProgramAction(_: FormState, fd: FormData): Promise<F
   revalidatePath("/admin/programs");
   revalidatePath("/search");
   return { ok: `${name} added as a draft. Fill in the fees, intakes and requirements, then set it live.`, redirectTo: `/admin/programs/${program.id}` };
+}
+
+/**
+ * Loads a public institution register.
+ *
+ * "Check" reports what a real run would change and writes nothing, which is
+ * how a register whose columns have moved is caught before it touches the
+ * catalogue rather than after.
+ */
+export async function syncRegistryAction(_: FormState, fd: FormData): Promise<FormState> {
+  const user = await requireUser([...ADMIN_ROLES]);
+  const key = String(fd.get("source") ?? "");
+  const src = REGISTRY_SOURCES[key];
+  if (!src) return { error: "Pick a register." };
+  const dryRun = fd.get("apply") !== "on";
+  const upload = fd.get("file");
+  const uploaded = upload instanceof File && upload.size > 0;
+
+  let raw: string;
+  try {
+    raw = uploaded ? await (upload as File).text() : await fetchRegistry(key);
+  } catch (e) {
+    return { error: `Could not get the register: ${(e as Error).message}. Download it from ${src.url} and upload it here instead.` };
+  }
+
+  try {
+    const r = await syncRegistry(key, raw, { dryRun });
+    if (!dryRun) await audit(user.id, "programs.registry_sync", "university", "*", { source: key, created: r.created, filled: r.filled, via: uploaded ? "upload" : "fetch" });
+    const n = (v: number) => v.toLocaleString("en-IN");
+    const skipped = r.unknownCountryRows
+      ? ` ${n(r.unknownCountryRows)} are in countries not on your destinations list and were left out${r.unknownCountries.length ? ` (${r.unknownCountries.slice(0, 6).map(([c, k]) => `${c} ${k}`).join(", ")}${r.unknownCountries.length > 6 ? ", and more" : ""})` : ""}.`
+      : "";
+    const head = dryRun ? "Checked, nothing written." : "Loaded.";
+    const verb = dryRun ? "would be added" : "added";
+    const fill = dryRun ? "would gain a city or website" : "gained a city or website";
+    return {
+      ok: `${head} ${n(r.parsed)} institutions read from ${r.source}. ${n(r.created)} ${verb}, ${n(r.filled)} already here ${fill}, ${n(r.alreadyThere - r.filled)} already complete.${skipped} Took ${r.seconds}s.`,
+    };
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
 }
