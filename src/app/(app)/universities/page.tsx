@@ -35,7 +35,13 @@ export default async function UniversitiesPage({ searchParams }: { searchParams:
   if (["200", "500", "1000"].includes(f.top)) conds.push(sql`${u.rankSort} <= ${Number(f.top)}`);
   if (f.scholarship) conds.push(sql`exists (select 1 from scholarships sc where sc.university_id = ${u.id} and sc.active and (sc.deadline is null or sc.deadline >= current_date))`);
 
+  // A left join, not an inner one: a university with no live course is still a
+  // university, and inner-joining hid every institution a register loaded until
+  // somebody added a course to it. Filtering by level is the one case where an
+  // institution without a matching course should drop out, so that filter keeps
+  // the stricter behaviour.
   const live = count(p.id);
+  const needsProgram = Boolean(f.level && (LEVELS as readonly string[]).includes(f.level));
   const rows = await db
     .select({
       id: u.id,
@@ -49,12 +55,14 @@ export default async function UniversitiesPage({ searchParams }: { searchParams:
       country: c.name,
       programs: live,
       eligible: sql<number>`count(*) filter (where ${p.workRights} = 'ELIGIBLE')`.mapWith(Number),
-      levels: sql<string[]>`array_agg(distinct ${p.level}::text)`,
+      // filter where not null: a left join gives {NULL} for a university that
+      // has no live course, and the chip row would render an empty pill.
+      levels: sql<string[]>`coalesce(array_agg(distinct ${p.level}::text) filter (where ${p.level} is not null), '{}')`,
       scholarships: sql<number>`(select count(*) from scholarships sc where sc.university_id = ${u.id} and sc.active and (sc.deadline is null or sc.deadline >= current_date))`.mapWith(Number),
     })
     .from(u)
     .innerJoin(c, eq(u.countryId, c.id))
-    .innerJoin(p, and(eq(p.universityId, u.id), ...programConds))
+    [needsProgram ? "innerJoin" : "leftJoin"](p, and(eq(p.universityId, u.id), ...programConds))
     .where(and(...conds))
     .groupBy(u.id, c.name)
     .orderBy(...(f.sort === "programs" ? [desc(live), asc(u.name)] : f.sort === "rank" ? [sql`${u.rankSort} asc nulls last`, asc(u.name)] : f.sort === "country" ? [asc(c.name), asc(u.name)] : [asc(u.name)]))
@@ -67,12 +75,16 @@ export default async function UniversitiesPage({ searchParams }: { searchParams:
     .select({ total: sql<number>`count(distinct ${u.id})`.mapWith(Number) })
     .from(u)
     .innerJoin(c, eq(u.countryId, c.id))
-    .innerJoin(p, and(eq(p.universityId, u.id), ...programConds))
+    [needsProgram ? "innerJoin" : "leftJoin"](p, and(eq(p.universityId, u.id), ...programConds))
     .where(and(...conds));
+  // Every destination we hold an institution for, not only those with a live
+  // course. This is the university list: a country with 80 universities and no
+  // courses yet belongs in it, and leaving it out read as "Medcity does not do
+  // Austria".
   const countries = await db
     .select({ code: c.code, name: c.name })
     .from(c)
-    .where(sql`exists (select 1 from ${u} join ${p} on ${p.universityId} = ${u.id} and ${p.status} = 'LIVE' where ${u.countryId} = ${c.id})`)
+    .where(sql`exists (select 1 from ${u} where ${u.countryId} = ${c.id})`)
     .orderBy(asc(c.name));
 
   const qs = (extra: Record<string, string | undefined>) => {

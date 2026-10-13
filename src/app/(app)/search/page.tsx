@@ -212,6 +212,19 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const rules = showCommission ? await activeRules() : [];
 
   const countries = await db.select().from(c).orderBy(asc(c.name));
+  // A destination can hold institutions and no courses at all: that is exactly
+  // what loading a public register leaves behind. "No programs match these
+  // filters" there reads as "Medcity does not do Austria", which is the wrong
+  // conclusion and the one a counsellor will draw.
+  const [emptyDestination] =
+    total === 0 && f.country
+      ? await db
+          .select({ name: c.name, unis: count() })
+          .from(u)
+          .innerJoin(c, eq(u.countryId, c.id))
+          .where(eq(c.code, f.country))
+          .groupBy(c.name)
+      : [];
   // Fields with a meaningful number of live programs, so the list stays usable.
   const fields = await db
     .select({ field: p.studyArea, n: count() })
@@ -649,9 +662,17 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           </p>
         )}
         {list.length === 0 ? (
-          <EmptyState icon={<IconSearch />} title="No programs match these filters">
-            Try removing a quick filter, or widen the destination and level.
-          </EmptyState>
+          emptyDestination && emptyDestination.unis > 0 ? (
+            <EmptyState icon={<IconSearch />} title={`No courses are recorded for ${emptyDestination.name} yet`}>
+              {emptyDestination.unis.toLocaleString("en-IN")} {emptyDestination.name} universit{emptyDestination.unis === 1 ? "y is" : "ies are"} on file.{" "}
+              <Link href={`/universities?country=${f.country}`} className="font-medium text-brand-600 hover:underline">See them</Link>, and ask the Overseas team
+              to add the course the student wants.
+            </EmptyState>
+          ) : (
+            <EmptyState icon={<IconSearch />} title="No programs match these filters">
+              Try removing a quick filter, or widen the destination and level.
+            </EmptyState>
+          )
         ) : (
           <Table tableClassName="min-w-[1120px]">
             <thead>
