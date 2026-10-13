@@ -1,4 +1,4 @@
-import { and, asc, eq, ilike, inArray, or } from "drizzle-orm";
+import { and, asc, countDistinct, eq, ilike, inArray, or } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { fmtMoney } from "@/lib/format";
@@ -126,14 +126,24 @@ export async function applyOptions(
   }));
 }
 
-/** The destinations with something open to apply to, for the picker's filter. */
+/**
+ * The destinations for the picker's filter: every country we have an
+ * institution on file for, with how many of its courses are open.
+ *
+ * It used to list only countries with an open course, which read as "Medcity
+ * does not do Austria" when the truth was "we have 80 Austrian universities
+ * and nobody has added a course yet". A counsellor needs to see the
+ * difference, so a country with nothing open is listed and labelled, and the
+ * "Not here?" line beside the picker is how the course gets added.
+ */
 export async function applyCountries() {
   const { programs: p, universities: u, countries: c } = schema;
-  return db
-    .selectDistinct({ code: c.code, name: c.name })
+  const rows = await db
+    .select({ code: c.code, name: c.name, live: countDistinct(p.id) })
     .from(c)
     .innerJoin(u, eq(u.countryId, c.id))
-    .innerJoin(p, eq(p.universityId, u.id))
-    .where(eq(p.status, "LIVE"))
+    .leftJoin(p, and(eq(p.universityId, u.id), eq(p.status, "LIVE")))
+    .groupBy(c.code, c.name)
     .orderBy(asc(c.name));
+  return rows.map((r) => ({ code: r.code, name: r.name, live: Number(r.live) }));
 }

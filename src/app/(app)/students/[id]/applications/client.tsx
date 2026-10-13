@@ -38,7 +38,7 @@ export function ApplyForm({
   studentId: string;
   /** What the picker shows before anything is typed: the shortlist, and the course arrived with. */
   initialPrograms: ProgramOption[];
-  countries: { code: string; name: string }[];
+  countries: { code: string; name: string; live: number }[];
   defaultCountry: string;
   defaultPathway: string;
   /** What the student is aiming for, so the first list is already the right shape. */
@@ -57,6 +57,9 @@ export function ApplyForm({
   const [level, setLevel] = useState(defaultLevel);
   const preselected = initialPrograms.find((p) => p.id === preselectProgramId) ?? null;
   const [program, setProgram] = useState<ProgramOption | null>(preselected);
+  // A destination with institutions on file but no courses yet. Saying so
+  // beats an empty picker that reads as though the search terms were wrong.
+  const emptyCountry = country ? (countries.find((c) => c.code === country && c.live === 0) ?? null) : null;
 
   const intakes = useMemo(() => {
     if (!program) return [];
@@ -103,7 +106,11 @@ export function ApplyForm({
             initial={initialPrograms.map(asOption)}
             selected={preselected ? asOption(preselected) : null}
             placeholder="Type a course or university"
-            emptyText="No open course matches that. Try fewer words, or clear the filters beside it."
+            emptyText={
+              emptyCountry
+                ? `No courses are recorded for ${emptyCountry.name} yet, though its universities are on file. Use the line below to have one added.`
+                : "No open course matches that. Try fewer words, or clear the filters beside it."
+            }
             onPick={(o) => {
               setProgram((o?.data as ProgramOption | undefined) ?? null);
               setIntake("");
@@ -111,7 +118,12 @@ export function ApplyForm({
           />
           <Select aria-label="Country" value={country} onChange={(e) => setCountry(e.target.value)}>
             <option value="">All countries</option>
-            {countries.map((x) => <option key={x.code} value={x.code}>{x.name}</option>)}
+            {countries.map((x) => (
+              <option key={x.code} value={x.code}>
+                {x.name}
+                {x.live === 0 ? " (no courses yet)" : ""}
+              </option>
+            ))}
           </Select>
           <Select aria-label="Level" value={level} onChange={(e) => setLevel(e.target.value)}>
             <option value="">Any level</option>
