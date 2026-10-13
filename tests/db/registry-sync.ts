@@ -36,19 +36,26 @@ async function main() {
     "2,A Brand New Institute,GB,Hull,https://brandnew.ac.uk,",
     // A destination that is not on the countries list.
     "3,Somewhere Else College,ZW,Harare,https://elsewhere.ac.zw,",
+    // The register qualifies the country, which an exact match would miss.
+    "5,Durham Qualified College,United Kingdom (England),Durham,https://dqc.ac.uk,",
+    "6,Liege Institute,Belgium (French Community),Liege,https://liege.be,",
+    "7,Valletta Institute,Malta,Valletta,https://valletta.mt,",
     "4,Closed Place,GB,Leeds,https://closed.ac.uk,2020-01-01",
     pad,
   ].join("\n");
 
   const dry = await syncRegistry("deqar", csv, { dryRun: true });
-  check("dry run plans the new ones", dry.created, 251);
+  check("dry run plans the new ones", dry.created, 254);
+  check("a qualified country name still resolves", dry.unknownCountries.map(([c]) => c).includes("United Kingdom (England)"), false);
+  check("a destination the register does not cover is named", dry.destinationsWithNothing.includes("Japan"), true);
+  check("a destination it does cover is not named", dry.destinationsWithNothing.includes("Malta"), false);
   check("dry run plans one fill", dry.filled, 1);
   check("dry run reports the country it cannot place", dry.unknownCountries, [["ZW", 1]]);
   const afterDry = await db.query.universities.findFirst({ where: and(eq(schema.universities.name, "A Brand New Institute"), eq(schema.universities.countryId, gb.id)) });
   check("dry run wrote nothing", afterDry ?? null, null);
 
   const run = await syncRegistry("deqar", csv, { dryRun: false });
-  check("the run creates what it planned", run.created, 251);
+  check("the run creates what it planned", run.created, 254);
 
   const fresh = await db.query.universities.findFirst({ where: and(eq(schema.universities.name, "A Brand New Institute"), eq(schema.universities.countryId, gb.id)) });
   check("a missing university is added", fresh?.city ?? null, "Hull");
@@ -57,6 +64,11 @@ async function main() {
   check("a verified city is not overwritten", kept?.city ?? null, "Middlesbrough");
   check("an empty website is filled", kept?.website ?? null, "https://tees.ac.uk");
   check("the name is left exactly as it was", kept?.name ?? null, "Teesside University");
+
+  const qualified = await db.query.universities.findFirst({ where: and(eq(schema.universities.name, "Durham Qualified College"), eq(schema.universities.countryId, gb.id)) });
+  check("United Kingdom (England) lands in the United Kingdom", qualified?.city ?? null, "Durham");
+  const mt = await db.query.universities.findFirst({ where: eq(schema.universities.name, "Valletta Institute") });
+  check("Malta is reachable", mt?.city ?? null, "Valletta");
 
   const stray = await db.query.universities.findFirst({ where: eq(schema.universities.name, "Somewhere Else College") });
   check("a country not on the list creates nothing", stray ?? null, null);

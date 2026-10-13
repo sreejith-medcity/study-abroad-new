@@ -476,11 +476,14 @@ export async function syncRegistryAction(_: FormState, fd: FormData): Promise<Fo
     const skipped = r.unknownCountryRows
       ? ` ${n(r.unknownCountryRows)} are in countries not on your destinations list and were left out${r.unknownCountries.length ? ` (${r.unknownCountries.slice(0, 6).map(([c, k]) => `${c} ${k}`).join(", ")}${r.unknownCountries.length > 6 ? ", and more" : ""})` : ""}.`
       : "";
+    const none = r.destinationsWithNothing.length
+      ? ` This register has nothing for ${r.destinationsWithNothing.length} of your destinations: ${r.destinationsWithNothing.slice(0, 10).join(", ")}${r.destinationsWithNothing.length > 10 ? ", and more" : ""}. Those need a different source.`
+      : "";
     const head = dryRun ? "Checked, nothing written." : "Loaded.";
     const verb = dryRun ? "would be added" : "added";
     const fill = dryRun ? "would gain a city or website" : "gained a city or website";
     return {
-      ok: `${head} ${n(r.parsed)} institutions read from ${r.source}. ${n(r.created)} ${verb}, ${n(r.filled)} already here ${fill}, ${n(r.alreadyThere - r.filled)} already complete.${skipped} Took ${r.seconds}s.`,
+      ok: `${head} ${n(r.parsed)} institutions read from ${r.source}. ${n(r.created)} ${verb}, ${n(r.filled)} already here ${fill}, ${n(r.alreadyThere - r.filled)} already complete.${skipped}${none} Took ${r.seconds}s.`,
     };
   } catch (e) {
     return { error: (e as Error).message };

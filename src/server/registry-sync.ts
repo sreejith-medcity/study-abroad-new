@@ -13,6 +13,8 @@ export type RegistrySyncResult = {
   /** Rows whose country is not one of the destinations, by country, biggest first. */
   unknownCountries: [string, number][];
   unknownCountryRows: number;
+  /** Destinations on the countries list this register had nothing at all for. */
+  destinationsWithNothing: string[];
   eligible: number;
   created: number;
   filled: number;
@@ -45,9 +47,28 @@ const ALIASES: Record<string, string> = {
   usa: "US",
   "russian federation": "RU",
   "slovak republic": "SK",
-  "united arab emirates (the)": "AE",
-  "philippines (the)": "PH",
+  "united arab emirates": "AE",
+  philippines: "PH",
 };
+
+/**
+ * Registers qualify a country name in ways an exact match misses: DEQAR writes
+ * "United Kingdom (England)" and "Belgium (French Community)", and others put
+ * the article or the sub-form after a comma. Each form is tried in turn, and a
+ * name that still does not resolve is reported rather than guessed at.
+ */
+function* countryForms(written: string): Generator<string> {
+  const t = written.trim();
+  yield t;
+  // "United Kingdom (England)" -> "United Kingdom"
+  const noParens = t.replace(/\s*\([^)]*\)\s*$/, "").trim();
+  if (noParens && noParens !== t) yield noParens;
+  // "Netherlands (the)" handled above; "Korea, Republic of" -> "Korea"
+  for (const base of [t, noParens]) {
+    const beforeComma = base.split(",")[0].trim();
+    if (beforeComma && beforeComma !== base) yield beforeComma;
+  }
+}
 
 export async function fetchRegistry(key: string) {
   const src = REGISTRY_SOURCES[key];
@@ -92,9 +113,12 @@ export async function syncRegistry(key: string, raw: string, opts: { dryRun: boo
   const byCode = new Map(countries.map((c) => [c.code.toUpperCase(), c.id]));
   const byName = new Map(countries.map((c) => [c.name.toLowerCase(), c.id]));
   const resolve = (written: string) => {
-    const t = written.trim();
-    const alias = ALIASES[t.toLowerCase()];
-    return byCode.get((alias ?? t).toUpperCase()) ?? byName.get(t.toLowerCase()) ?? null;
+    for (const form of countryForms(written)) {
+      const alias = ALIASES[form.toLowerCase()];
+      const hit = byCode.get((alias ?? form).toUpperCase()) ?? byName.get(form.toLowerCase());
+      if (hit) return hit;
+    }
+    return null;
   };
 
   const unknown = new Map<string, number>();
@@ -109,6 +133,13 @@ export async function syncRegistry(key: string, raw: string, opts: { dryRun: boo
   }
   const unknownCountries = [...unknown.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25);
   const unknownCountryRows = [...unknown.values()].reduce((a, b) => a + b, 0);
+  // Saying which destinations this register simply does not cover is the
+  // difference between "it is loaded" and a counsellor finding out the hard way.
+  const covered = new Set(eligible.map((e) => e.countryId));
+  const destinationsWithNothing = countries
+    .filter((c) => !covered.has(c.id))
+    .map((c) => c.name)
+    .sort();
 
   // ---- Match against what is already here, by name within the country ----
   const u = schema.universities;
@@ -154,6 +185,7 @@ export async function syncRegistry(key: string, raw: string, opts: { dryRun: boo
     ...base,
     unknownCountries,
     unknownCountryRows,
+    destinationsWithNothing,
     eligible: eligible.length,
     created: toCreate.length,
     filled: toFill.length,
