@@ -415,3 +415,77 @@ a Maltese programme. None of them is safe to put in front of a visa applicant.
 University of Malta's course finder is JavaScript-driven and cannot be
 enumerated, so its 46 rows are a prioritised sample rather than its full
 catalogue. MCAST's coverage is near-complete for levels 5 to 7.
+
+
+## Germany, the private sector, October 2026
+
+`germany3.csv`, 460 courses at 23 institutions, from the worklist Medcity's own
+team compiled. It brings German coverage to 590 courses at 83 institutions.
+Every row was read off the institution's own page.
+
+### The thing a counsellor must be told
+
+**70 of these 460 degrees are not awarded by the German institution teaching
+them.** Those rows begin their entry requirements with "Awarded by", naming who
+does award them, because it changes recognition and sometimes the visa route:
+
+- Berlin School of Business and Innovation awards nothing itself. Its degrees
+  come from the University for the Creative Arts, the University of Chichester,
+  the University of Roehampton or Concordia University Chicago.
+- EU Business School Munich: **no Munich award is a German state-recognised
+  degree.** Its own bachelor's and master's are awarded by Universitat de Vic in
+  Spain and labelled "titulo propio", a private award rather than a Spanish
+  state degree. Its BA (Hons) programmes are Dublin Business School degrees
+  awarded by Quality and Qualifications Ireland. A student finishing in Munich
+  holds a Spanish or Irish award, never a German one.
+- New European College's degrees are awarded by Wittenborg University in the
+  Netherlands.
+- Gisma is the exception among the private business schools: it is
+  state-recognised and awards its own degrees.
+
+### Fees: 248 of 460
+
+The pattern is the same everywhere and worth knowing before anyone asks why a
+cell is empty. A fee is recorded only where the institution publishes a figure
+for a year, or publishes a per-semester figure **and** states on its own pages
+how many semesters make the year:
+
+- Recorded this way: ISM, CBS, EBS bachelors, Constructor, PFH, New European
+  College, Stuttgart, and SRH from its own price list, which prints a Fee/Year
+  column (not simply semester times two: SRH builds in a 3 percent discount).
+- Left blank: accadis, which publishes only a monthly figure; FOM, EBS masters
+  and ISM's MBAs, which publish whole-course totals; Gisma's masters, priced per
+  ECTS track; BSBI's masters, a single unlabelled figure against an 18-month
+  course; EU Business School, priced per term.
+- **88 rows carry a fee that is discounted or a floor, and say so on the row.**
+  University of Europe publishes "From EUR X per year" with a current saving
+  offer. IU's yearly price already includes its programme discount plus 2
+  percent for paying yearly, and its undiscounted price is not published
+  anywhere. Both are real published numbers; neither is what every student pays.
+
+### German public universities
+
+Mostly free, and the rows say so rather than showing a zero. Saarland charges
+EUR 412.30 a semester in contributions and no tuition; Freie Universitaet
+EUR 376.80; Passau EUR 126.90; Worms EUR 153.50. **Baden-Wuerttemberg is the
+exception**: the University of Stuttgart charges non-EU students EUR 1,500 a
+semester, so its rows carry EUR 3,000 a year. TU Munich charges too, but its
+pages say only "4,000 or 6,000 euros" without saying which programme gets
+which, so those stay blank.
+
+### What is missing and why
+
+- **73 IU distance-learning courses were left out on purpose.** A distance
+  course cannot carry a German student visa, which is the entire point for a
+  candidate applying from India. They are real and can be added back if the
+  team wants them for students already in Germany.
+- IU publishes **no English requirement at all**: the language block on every
+  one of its pages renders as the placeholder word "add". So no IU row carries
+  an IELTS score.
+- TU Berlin and Humboldt block automated reading of much of their sites, so
+  both are thinly covered. Humboldt has three rows.
+- A large part of the worklist's IU and CBS names no longer exist on those
+  sites, and four BSBI courses say outright that they are closed to new
+  applications. Those are absent rather than skipped.
+- 35 worklist entries were one course taught at two campuses. They are one row
+  each, with the second campus named in the entry requirements.
