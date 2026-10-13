@@ -1,11 +1,11 @@
 import "server-only";
 import { DEADLINE_TYPES } from "@/lib/deadline-types";
-import { and, eq, gte, ilike, inArray, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, eq, gte, ilike, inArray, lte, or, sql, type SQL } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { mayOpenStudent } from "@/server/scope";
 import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
-import { PARTNER_ROLES, isStaff, orgScope } from "@/lib/permissions";
+import { PARTNER_ROLES, STUDENT_WORK_ROLES, isStaff, orgScope } from "@/lib/permissions";
 
 const { applications: a, students: s, programs: p, universities: u, countries: c, statusDefinitions: sd } = schema;
 
@@ -157,4 +157,34 @@ export async function orgUsers(orgId: string) {
     .select({ id: schema.users.id, name: schema.users.name, deskLabel: schema.users.deskLabel })
     .from(schema.users)
     .where(and(eq(schema.users.orgId, orgId), inArray(schema.users.role, [...PARTNER_ROLES]), eq(schema.users.active, true)));
+}
+
+/**
+ * Who a student may be handed to, for the assignment control on the student
+ * list.
+ *
+ * A branch can only hand a file to its own people, which is the rule that has
+ * always applied. An admin can hand it to the head office as well, because the
+ * documentation team and the Overseas desk are where a file actually goes once
+ * the branch has done its part, and before this there was no way to say so:
+ * the control was not even shown to them.
+ *
+ * Only roles that can work a student's file are offered. Assigning somebody who
+ * can only read it would hand the file to a dead end.
+ */
+export async function assignableFor(orgIds: string[], opts: { includeHeadOffice: boolean }) {
+  const u = schema.users;
+  const o = schema.organizations;
+  const where = opts.includeHeadOffice
+    ? or(orgIds.length ? inArray(u.orgId, orgIds) : undefined, eq(o.type, "HQ"))
+    : orgIds.length
+      ? inArray(u.orgId, orgIds)
+      : sql`false`;
+  const rows = await db
+    .select({ id: u.id, name: u.name, deskLabel: u.deskLabel, role: u.role, orgId: u.orgId, orgName: o.name, orgType: o.type })
+    .from(u)
+    .innerJoin(o, eq(o.id, u.orgId))
+    .where(and(eq(u.active, true), inArray(u.role, [...STUDENT_WORK_ROLES]), where))
+    .orderBy(asc(o.name), asc(u.name));
+  return rows.map((r) => ({ ...r, headOffice: r.orgType === "HQ" }));
 }

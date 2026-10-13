@@ -170,14 +170,32 @@ export async function createStudentAction(_: FormState, formData: FormData): Pro
   redirect(`/students/${student.id}/profile`);
 }
 
+/**
+ * Hands a student to somebody.
+ *
+ * A branch may only hand a file to its own people, which is the rule that has
+ * always applied here. An admin may also hand it to the head office, because
+ * the documentation team and the Overseas desk are where a file goes once the
+ * branch has done its part, and there was no way to say so before.
+ *
+ * Whoever receives it must be able to work a student's file. Handing it to
+ * somebody who can only read it would be handing it to a dead end.
+ */
 export async function reassignStudentAction(formData: FormData) {
   const user = await requireUser([...PARTNER_ROLES, ...ADMIN_ROLES]);
   const studentId = String(formData.get("studentId"));
   const assignedToId = String(formData.get("assignedToId") || "") || null;
   const student = await getStudentForUser(user, studentId);
   if (assignedToId) {
-    const assignee = await db.query.users.findFirst({ where: eq(schema.users.id, assignedToId) });
-    if (!assignee || assignee.orgId !== student.orgId) return;
+    const assignee = await db.query.users.findFirst({
+      where: eq(schema.users.id, assignedToId),
+      with: { org: { columns: { type: true } } },
+    });
+    if (!assignee || !assignee.active) return;
+    if (!(STUDENT_WORK_ROLES as readonly string[]).includes(assignee.role)) return;
+    const sameBranch = assignee.orgId === student.orgId;
+    const headOffice = assignee.org?.type === "HQ";
+    if (!sameBranch && !(headOffice && isStaff(user))) return;
   }
   await db.update(schema.students).set({ assignedToId, updatedAt: new Date() }).where(eq(schema.students.id, studentId));
   await audit(user.id, "student.reassign", "student", studentId, { from: student.assignedToId, to: assignedToId });

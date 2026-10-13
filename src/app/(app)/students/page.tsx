@@ -3,10 +3,10 @@ import { and, asc, desc, eq, gte, ilike, lte, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { can } from "@/server/capabilities";
 import { requireUser } from "@/lib/auth";
-import { APP_ROLES, isAdmin, isStaff } from "@/lib/permissions";
+import { APP_ROLES, ROLE_LABEL, isAdmin, isStaff } from "@/lib/permissions";
 import { fmtDate, fullName } from "@/lib/format";
 import { idSearchKey, looksLikeStudentId } from "@/lib/medcity-id";
-import { orgUsers, readFilters } from "@/server/queries";
+import { assignableFor, orgUsers, readFilters } from "@/server/queries";
 import { Button, Card, Chip, EmptyState, DateInput, Input, LinkButton, PageHeader, Select, Table, Td, Th, Toolbar } from "@/components/ui";
 import { IconPlus, IconStudents } from "@/components/icons";
 import { archiveStudentAction, reassignStudentAction } from "./actions";
@@ -70,7 +70,24 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
     .orderBy(desc(s.createdAt))
     .limit(200);
 
-  const counsellors = staff ? [] : await orgUsers(user.orgId);
+  // Who each student can be handed to. A branch sees its own people, as before.
+  // The head office sees the branch the student belongs to plus its own team,
+  // because the documentation desk is where a file goes next and admins were
+  // not shown this control at all until now.
+  const canAssign = user.role !== "MANAGEMENT" && (staff ? isAdmin(user) : true);
+  const assignable = canAssign
+    ? staff
+      ? await assignableFor([...new Set(rows.map((r) => r.orgId))], { includeHeadOffice: true })
+      : (await orgUsers(user.orgId)).map((c) => ({ ...c, orgId: user.orgId, orgName: "", role: "", headOffice: false }))
+    : [];
+  const branchPeople = new Map<string, typeof assignable>();
+  const headOfficePeople = assignable.filter((x) => x.headOffice);
+  for (const person of assignable) {
+    if (person.headOffice) continue;
+    const got = branchPeople.get(person.orgId);
+    if (got) got.push(person);
+    else branchPeople.set(person.orgId, [person]);
+  }
   const countries = await db.select().from(schema.countries).orderBy(asc(schema.countries.name));
   const orgs = staff ? await db.select().from(schema.organizations).where(sql`type <> 'HQ'`).orderBy(asc(schema.organizations.name)) : [];
   const canWrite = user.role !== "MANAGEMENT";
@@ -116,7 +133,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
           ) : (
             <Select name="assignedTo" aria-label="Assigned to" defaultValue={f.assignedTo ?? ""}>
               <option value="">Assigned to: anyone</option>
-              {counsellors.map((c) => <option key={c.id} value={c.id}>{c.deskLabel ?? c.name}</option>)}
+              {assignable.map((c) => <option key={c.id} value={c.id}>{c.deskLabel ?? c.name}</option>)}
             </Select>
           )}
           <DateInput label="Created from" name="from" defaultValue={f.from} />
@@ -178,7 +195,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                 <Th>Student name</Th>
                 <Th>Email</Th>
                 <Th>Phone</Th>
-                {!staff && <Th>Assigned to</Th>}
+                {canAssign && <Th>Assigned to</Th>}
                 <Th>Status</Th>
                 <Th><span className="sr-only">Actions</span></Th>
               </tr>
@@ -194,13 +211,34 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                   </Td>
                   <Td className="max-w-[16rem] truncate text-muted" title={r.email ?? undefined}>{r.email ?? <span className="text-muted">No email</span>}</Td>
                   <Td className="whitespace-nowrap tabular">{r.phone}</Td>
-                  {!staff && (
+                  {canAssign && (
                     <Td>
                       <form action={reassignStudentAction} className="flex gap-1">
                         <input type="hidden" name="studentId" value={r.id} />
                         <Select name="assignedToId" defaultValue={r.assignedToId ?? ""} aria-label={`Assign ${fullName(r)}`} className="min-w-36 py-1.5">
                           <option value="">Unassigned</option>
-                          {counsellors.map((c) => <option key={c.id} value={c.id}>{c.deskLabel ?? c.name}</option>)}
+                          {staff ? (
+                            <>
+                              {(branchPeople.get(r.orgId) ?? []).length > 0 && (
+                                <optgroup label={r.orgName}>
+                                  {(branchPeople.get(r.orgId) ?? []).map((c) => (
+                                    <option key={c.id} value={c.id}>{c.deskLabel ?? c.name}</option>
+                                  ))}
+                                </optgroup>
+                              )}
+                              {headOfficePeople.length > 0 && (
+                                <optgroup label="Head office">
+                                  {headOfficePeople.map((c) => (
+                                    <option key={c.id} value={c.id}>
+                                      {c.deskLabel ?? c.name} ({ROLE_LABEL[c.role as keyof typeof ROLE_LABEL] ?? c.role})
+                                    </option>
+                                  ))}
+                                </optgroup>
+                              )}
+                            </>
+                          ) : (
+                            assignable.map((c) => <option key={c.id} value={c.id}>{c.deskLabel ?? c.name}</option>)
+                          )}
                         </Select>
                         <Button variant="quiet" className="px-2 py-1" type="submit" aria-label="Save assignment">Save</Button>
                       </form>
