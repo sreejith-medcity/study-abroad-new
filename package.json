@@ -48,10 +48,15 @@
     "@types/react-dom": "^19",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
-    "eslint-config-next": "15.5.25",
+    "eslint-config-next": "15.5.27",
     "playwright": "^1.63.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.13",
     "typescript": "^5"
+  },
+  "overrides": {
+    "sharp": "^0.35.5",
+    "postcss": "^8.5.23",
+    "source-map-js": "^1.2.2"
   }
 }

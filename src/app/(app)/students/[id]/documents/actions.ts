@@ -37,7 +37,11 @@ export async function uploadDocumentAction(_: FormState, formData: FormData): Pr
     await attachUploadToChecklist(studentId, typeCode, doc.id, user.id);
   } catch (e) {
     if (e instanceof UploadError) return { error: e.message };
-    throw e;
+    // Anything else used to be rethrown, which killed the screen and told the
+    // counsellor nothing. An upload that fails is worth an answer they can act
+    // on; the cause goes to the server log for whoever reads it.
+    console.error("document upload failed", { studentId, typeCode, fileName: file.name, size: file.size }, e);
+    return { error: "The upload did not go through and nothing was saved. Try again, and if it keeps happening tell the Overseas desk which file and how big it is." };
   }
   revalidatePath(`/students/${studentId}`, "layout");
   return { ok: `${label ?? type.label} uploaded.` };

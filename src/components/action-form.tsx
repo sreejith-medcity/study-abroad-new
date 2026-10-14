@@ -20,6 +20,7 @@ export function ActionForm({
   resetOnSuccess = false,
   submitVariant = "primary",
   hideSubmit = false,
+  beforeSubmit,
 }: {
   action: Action;
   children: ReactNode;
@@ -29,9 +30,17 @@ export function ActionForm({
   resetOnSuccess?: boolean;
   submitVariant?: "primary" | "secondary";
   hideSubmit?: boolean;
+  /**
+   * A check run in the browser before anything is sent. Return a message to
+   * stop the submit and show it, or null to go ahead. For the things worth
+   * catching before a round trip: a file too big for the server to accept,
+   * which otherwise comes back as a dead screen rather than an answer.
+   */
+  beforeSubmit?: (fd: FormData) => string | null;
 }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(action, {});
   const [dismissed, setDismissed] = useState(false);
+  const [refused, setRefused] = useState<string | null>(null);
   // A complaint about what was typed stops being true the moment somebody
   // starts retyping it. Left up, it reads as the form refusing good input: a
   // contact row with the phone now filled in still showed "Give a phone number
@@ -67,16 +76,20 @@ export function ActionForm({
     const fd = new FormData(e.currentTarget);
     const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
     if (submitter?.name) fd.set(submitter.name, submitter.value);
+    const stop = beforeSubmit?.(fd) ?? null;
+    setRefused(stop);
+    if (stop) return;
     startTransition(() => formAction(fd));
   }
   const complaining = !editedSince;
   const noteEdit = () => {
+    if (refused) setRefused(null);
     if (!editedSince && (state.error || state.fieldErrors)) setEditedSince(true);
   };
   return (
     <ErrorsContext.Provider value={complaining ? state.fieldErrors ?? {} : {}}>
       <form ref={ref} onSubmit={onSubmit} onInput={noteEdit} onChange={noteEdit} className={cn("space-y-3", className)} noValidate>
-        {state.error && complaining && <Alert tone="bad">{state.error}</Alert>}
+        {(refused || (state.error && complaining)) && <Alert tone="bad">{refused ?? state.error}</Alert>}
         {state.ok && state.keep && !dismissed && <KeepAlert message={state.ok} onDismiss={() => setDismissed(true)} />}
         {children}
         {!hideSubmit && (
