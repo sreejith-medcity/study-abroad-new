@@ -489,3 +489,63 @@ which, so those stay blank.
   applications. Those are absent rather than skipped.
 - 35 worklist entries were one course taught at two campuses. They are one row
   each, with the second campus named in the entry requirements.
+
+
+## Malta nursing bridging, October 2026
+
+`malta-nursing.csv`. Six courses, the route an internationally qualified nurse
+takes to register in Malta. This was missed in the Malta pass because the
+research filtered to degrees, and a bridging certificate is not a degree. It is
+probably the most commercially important thing in this folder.
+
+**There are five approved providers, not one.** The Council for Nurses and
+Midwives lists MCAST, the University of Malta, IDEA Academy, Uniplural Academy
+and the European College of Innovation. Two corrections to how that list is
+usually repeated: APEX and Uniplural are the same body, apexacademy.eu
+redirects to unipluralacademy.com, so they are one provider and not two; and
+the Council's own summary sentence names only four, omitting ECI, while its
+provider entries list five. The entries are right.
+
+**The decisive number is the Council's, not the course's.** Registration needs
+IELTS Academic averaging 6.0, or OET with B in speaking and C+ in the other
+three. Every row leads with that, because the University of Malta admits at
+IELTS 5.5: a nurse can pass admission and still be refused registration. UM
+says so itself.
+
+**Two of the six publish a price a nurse in India can use.** ECI charges
+EUR 6,500 for the award plus a EUR 300 registration fee, and UM states
+EUR 5,400 as the whole-course total. IDEA publishes EUR 5,250 and EUR 6,000
+but footnotes both as applying to students "who reside in Malta at the time of
+applying", so neither is a price for an applicant from Kerala. Uniplural's
+figure contradicts a banner on the same page. MCAST publishes no fee at all.
+
+**Things to tell a counsellor before they quote any of this:**
+
+- **Uniplural is not enrolling.** Its own site says no new enrolments while an
+  audit runs, and its dates are to be announced. The row says so first thing.
+- **MCAST has no published way to apply.** No fee, no intake, no campus, no
+  English score, and the course is not in MCAST's catalogue: it is a bespoke
+  MG2i course reachable only through the Council's link. You have to ring them.
+- **IDEA has two courses and the Council links the wrong-looking one.** Only
+  the Certificate is titled a bridging course, but the Council's non-EU page
+  links the Diploma. Get written confirmation of which one they accept.
+- **La Vallette Institute advertises a nursing bridging course and is not on
+  the Council's list.** A student who finds it themselves may waste a year.
+- **ECI states plainly that completing its course does not guarantee the
+  Council will accept you.** That is true of all five.
+- **The Council does not deal with agencies.** Its own words: no information
+  will be divulged to third parties, including agencies. Medcity cannot chase
+  an application on a student's behalf.
+
+**The course can be applied for from India. Registration cannot be completed
+from India.** Uniplural prices a tier for applicants still abroad and UM's visa
+wording assumes an overseas applicant, so the course offer is obtainable from
+Kerala. But the Council's document list includes a residence permit with no
+"if applicable", its criteria require being legally entitled to work in Malta,
+and it holds a face-to-face proficiency interview at which original documents
+must be produced. The Council's pages never say whether that interview can
+happen before arrival. That gap is unresolved and should be put to the Council
+in writing rather than guessed at. Non-EU nurses get Temporary Registration as
+a first level nurse for 24 months, the Council fee is EUR 192.50 and
+non-refundable, and Primary Source Verification has been mandatory since
+1 January 2025.
