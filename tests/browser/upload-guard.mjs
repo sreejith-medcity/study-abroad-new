@@ -52,10 +52,14 @@ check(/11\.0 MB and the limit is 10 MB/.test(body), "it says how big the file is
 check(Number(sql(`select count(*) from documents where student_id = '${studentId}' and file_name = 'passport-scan.pdf'`)) === 0, "nothing was saved");
 
 // And a normal file still goes up, so the guard has not broken the thing itself.
+// Counted as a difference rather than an exact number: this suite is run again
+// and again against the same database, and an exact count fails on the second.
+const before = Number(sql(`select count(*) from documents where student_id = '${studentId}'`));
 await form.locator('input[type="file"][name="file"]').setInputFiles(small);
 await form.locator('button[type="submit"]').click();
 await page.waitForTimeout(2500);
-check(Number(sql(`select count(*) from documents where student_id = '${studentId}' and file_name = 'small.pdf'`)) === 1, "a normal file still uploads");
+const after = Number(sql(`select count(*) from documents where student_id = '${studentId}'`));
+check(after === before + 1, `a normal file still uploads (${before} to ${after})`);
 
 await browser.close();
 fs.rmSync(dir, { recursive: true, force: true });

@@ -7,6 +7,7 @@ import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { getStudentForUser } from "@/server/queries";
 import { deleteUpload, saveUpload, UploadError } from "@/server/storage";
+import { actionFailure } from "@/lib/action-failure";
 import { PARTNER_ROLES, PROCESSING_ROLES, isAdmin, issuesTeamDocuments } from "@/lib/permissions";
 import { attachUploadToChecklist } from "@/server/documentation";
 
@@ -14,9 +15,20 @@ import type { FormState } from "@/lib/form-state";
 export type { FormState };
 
 export async function uploadDocumentAction(_: FormState, formData: FormData): Promise<FormState> {
-  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
   const studentId = String(formData.get("studentId"));
   const typeCode = String(formData.get("typeCode") || "");
+  try {
+    return await upload(formData, studentId, typeCode);
+  } catch (e) {
+    // The whole action, not only the part that writes the file. A counsellor
+    // uploading a certificate got the dead screen and no idea why, and the
+    // throw turned out not to be where the handling was.
+    return actionFailure(e, "The upload", { studentId, typeCode });
+  }
+}
+
+async function upload(formData: FormData, studentId: string, typeCode: string): Promise<FormState> {
+  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
   const file = formData.get("file");
   await getStudentForUser(user, studentId);
 
@@ -37,11 +49,7 @@ export async function uploadDocumentAction(_: FormState, formData: FormData): Pr
     await attachUploadToChecklist(studentId, typeCode, doc.id, user.id);
   } catch (e) {
     if (e instanceof UploadError) return { error: e.message };
-    // Anything else used to be rethrown, which killed the screen and told the
-    // counsellor nothing. An upload that fails is worth an answer they can act
-    // on; the cause goes to the server log for whoever reads it.
-    console.error("document upload failed", { studentId, typeCode, fileName: file.name, size: file.size }, e);
-    return { error: "The upload did not go through and nothing was saved. Try again, and if it keeps happening tell the Overseas desk which file and how big it is." };
+    return actionFailure(e, "The upload", { studentId, typeCode, fileName: file.name, size: file.size });
   }
   revalidatePath(`/students/${studentId}`, "layout");
   return { ok: `${label ?? type.label} uploaded.` };
