@@ -3,10 +3,11 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fmtDate } from "@/lib/format";
 import { ADMIN_ROLES, HQ_ROLES, PARTNER_ROLES, ROLE_BLURB, ROLE_LABEL, canManageSuperAdmins, canManageUsers, canResetPasswords } from "@/lib/permissions";
-import { Button, Card, CardHeader, Chip, Input, PageHeader, Select, Alert } from "@/components/ui";
+import { Button, Card, Chip, Input, PageHeader, Select, Alert } from "@/components/ui";
 import { IconPartners } from "@/components/icons";
 import { toggleUserAction, updateOrgAction } from "./actions";
 import { AddUserForm, InvitePartnerForm, ResetPasswordForm, RoleForm, TitleForm } from "./forms";
+import { OrgFold, OrgList } from "./org-list";
 import { PublicFormPanel } from "./public-form-panel";
 
 export const metadata = { title: "Partners and people" };
@@ -70,69 +71,105 @@ export default async function PartnersPage() {
       )}
 
       <div className="mt-4 grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="space-y-4">
+        <OrgList count={orgs.length}>
           {orgs.map((o) => {
             const hq = o.type === "HQ";
             const seatsUsed = o.users.filter((u) => u.active && (PARTNER_ROLES as readonly string[]).includes(u.role)).length;
+            const stat = statFor(o.id);
+            const people = o.users.filter((u) => u.active).length;
+            const waiting = o.users.filter((u) => u.active && u.mustChangePassword).length;
+
+            // The summary line carries what the desk scans a branch for, so the
+            // common question is answered without opening anything.
+            const meta = (
+              hq
+                ? ["Medcity Overseas team", `${people} ${people === 1 ? "person" : "people"}`]
+                : [
+                    o.type === "BRANCH" ? "Branch" : "Sub-agent",
+                    o.city ?? null,
+                    o.tier,
+                    `${people} ${people === 1 ? "person" : "people"}`,
+                    `${seatsUsed} of ${o.counsellorSeats} seats`,
+                    `${stat?.students ?? 0} students`,
+                    `${stat?.apps ?? 0} applications`,
+                  ]
+            )
+              .filter(Boolean)
+              .join(" · ");
+
+            // Only a password nobody has used yet opens an organisation by
+            // itself: somebody cannot sign in until it is dealt with. The rest
+            // is said on the summary line and opened when the desk wants it.
+            const todo = [
+              waiting ? `${waiting} temporary ${waiting === 1 ? "password" : "passwords"}` : null,
+              !hq && seatsUsed > o.counsellorSeats ? "Over its seats" : null,
+              !hq && !o.idCode ? "No ID code" : null,
+              !hq && !o.relationshipManagerId ? "No relationship manager" : null,
+              !people ? "Nobody yet" : null,
+            ].filter(Boolean) as string[];
+
+            const haystack = [o.name, o.city, o.idCode, ...o.users.flatMap((u) => [u.name, u.email, u.deskLabel])]
+              .filter(Boolean)
+              .join(" ")
+              .toLowerCase();
+
             return (
-              <Card key={o.id}>
-                <CardHeader
-                  title={o.name}
-                  subtitle={
-                    hq
-                      ? "Medcity Overseas team"
-                      : `${o.type === "BRANCH" ? "Branch" : "Sub-agent"}${o.city ? ` · ${o.city}` : ""} · ${statFor(o.id)?.students ?? 0} students · ${statFor(o.id)?.apps ?? 0} applications`
-                  }
-                  action={
-                    !hq ? (
-                      <form action={updateOrgAction} className="flex flex-wrap items-end gap-2">
-                        <input type="hidden" name="orgId" value={o.id} />
-                        <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
-                          Tier
-                          <Select name="tier" defaultValue={o.tier} className="mt-1 w-28 py-1.5 text-[13px]">
-                            <option>SILVER</option>
-                            <option>GOLD</option>
-                            <option>ELITE</option>
-                            <option>PLATINUM</option>
-                          </Select>
-                        </label>
-                        <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
-                          Seats ({seatsUsed} used)
-                          <Input name="counsellorSeats" type="number" min={1} defaultValue={o.counsellorSeats} className="mt-1 w-20 py-1.5 text-[13px]" />
-                        </label>
-                        <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
-                          ID code
-                          <Input name="idCode" defaultValue={o.idCode ?? ""} maxLength={4} placeholder="KTM" className="mt-1 w-20 py-1.5 font-mono text-[13px] uppercase" />
-                        </label>
-                        <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
-                          Relationship manager
-                          <Select name="relationshipManagerId" defaultValue={o.relationshipManagerId ?? ""} className="mt-1 w-40 py-1.5 text-[13px]">
-                            <option value="">None</option>
-                            {admins.map((a) => (
-                              <option key={a.id} value={a.id}>{a.name}</option>
-                            ))}
-                          </Select>
-                        </label>
-                        <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">
-                          <input
-                            type="checkbox"
-                            name="checksOwnDocuments"
-                            value="1"
-                            defaultChecked={o.checksOwnDocuments}
-                            className="size-4 rounded border-line-strong accent-brand-600"
-                          />
-                          Checks its own documents
-                        </label>
-                        <Button variant="secondary" size="sm">Save</Button>
-                        <p className="w-full text-[11px] text-muted">
-                          The ID code is the branch&rsquo;s letters in every Medcity ID it mints. It can be changed until the first student carries it. A branch
-                          that checks its own documents does the first pass on its students; the desk reviews what it decided under &ldquo;Checked by a
-                          branch&rdquo; rather than checking all of it again.
-                        </p>
-                      </form>
-                    ) : undefined
-                  }
-                />
+              <OrgFold
+                key={o.id}
+                id={`org-${o.id}`}
+                title={o.name}
+                meta={meta}
+                attention={todo.join(" · ") || null}
+                defaultOpen={hq || waiting > 0}
+                haystack={haystack}
+              >
+                {!hq && (
+                  <form action={updateOrgAction} className="flex flex-wrap items-end gap-2 border-b border-line px-4 py-3">
+                    <input type="hidden" name="orgId" value={o.id} />
+                    <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                      Tier
+                      <Select name="tier" defaultValue={o.tier} className="mt-1 w-28 py-1.5 text-[13px]">
+                        <option>SILVER</option>
+                        <option>GOLD</option>
+                        <option>ELITE</option>
+                        <option>PLATINUM</option>
+                      </Select>
+                    </label>
+                    <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                      Seats ({seatsUsed} used)
+                      <Input name="counsellorSeats" type="number" min={1} defaultValue={o.counsellorSeats} className="mt-1 w-20 py-1.5 text-[13px]" />
+                    </label>
+                    <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                      ID code
+                      <Input name="idCode" defaultValue={o.idCode ?? ""} maxLength={4} placeholder="KTM" className="mt-1 w-20 py-1.5 font-mono text-[13px] uppercase" />
+                    </label>
+                    <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                      Relationship manager
+                      <Select name="relationshipManagerId" defaultValue={o.relationshipManagerId ?? ""} className="mt-1 w-40 py-1.5 text-[13px]">
+                        <option value="">None</option>
+                        {admins.map((a) => (
+                          <option key={a.id} value={a.id}>{a.name}</option>
+                        ))}
+                      </Select>
+                    </label>
+                    <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">
+                      <input
+                        type="checkbox"
+                        name="checksOwnDocuments"
+                        value="1"
+                        defaultChecked={o.checksOwnDocuments}
+                        className="size-4 rounded border-line-strong accent-brand-600"
+                      />
+                      Checks its own documents
+                    </label>
+                    <Button variant="secondary" size="sm">Save</Button>
+                    <p className="w-full text-[11px] text-muted">
+                      The ID code is the branch&rsquo;s letters in every Medcity ID it mints. It can be changed until the first student carries it. A branch
+                      that checks its own documents does the first pass on its students; the desk reviews what it decided under &ldquo;Checked by a
+                      branch&rdquo; rather than checking all of it again.
+                    </p>
+                  </form>
+                )}
                 <ul className="divide-y divide-line">
                   {o.users.map((u) => (
                     <li key={u.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
@@ -168,7 +205,7 @@ export default async function PartnersPage() {
                     orgName={o.name}
                     slug={o.publicSlug}
                     enabled={o.publicFormEnabled}
-                    enquiries={statFor(o.id)?.web_enquiries ?? 0}
+                    enquiries={stat?.web_enquiries ?? 0}
                   />
                 )}
                 {!hq && (studentLogins[o.id] ?? 0) > 0 && (
@@ -190,10 +227,10 @@ export default async function PartnersPage() {
                     />
                   </div>
                 </details>
-              </Card>
+              </OrgFold>
             );
           })}
-        </div>
+        </OrgList>
 
         <Card className="h-fit p-4">
           <h2 className="mb-1 flex items-center gap-2 font-display text-[15px] font-semibold">
