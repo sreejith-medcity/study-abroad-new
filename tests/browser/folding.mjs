@@ -14,7 +14,13 @@ const fails = [];
 const check = (cond, m) => (cond ? console.log("  ok  " + m) : (console.log("FAIL  " + m), fails.push(m)));
 
 const email = sql("select email from users where role = 'SUPER_ADMIN' and active limit 1");
-const studentId = sql("select id from students where not archived order by created_at desc limit 1");
+// A student with a filled-in file, not whichever one a test made last: an
+// empty file has nothing finished in it, so nothing would fold.
+const studentId = sql(`
+  select s.id from students s
+  where not s.archived
+  order by (select count(*) from academic_records a where a.student_id = s.id) desc, s.created_at desc
+  limit 1`);
 
 const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--no-first-run"] });
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, extraHTTPHeaders: { "x-forwarded-for": "10.250.4.4" } });

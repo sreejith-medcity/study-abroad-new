@@ -56,7 +56,16 @@ check(!counsellor.page.url().includes("/admin/audit"), "and cannot again once it
 // Taking money off a role reaches every money screen, not just one.
 // One of theirs: a counsellor sees their own students only, so any student
 // would not do.
-const student = sql("select id from students where not archived and assigned_to_id = (select id from users where email = 'uk.docs@medcity.test') limit 1");
+// Any earlier suite may have reassigned the seed's students, so put one back
+// on this counsellor rather than depending on what is left over.
+let student = sql("select id from students where not archived and assigned_to_id = (select id from users where email = 'uk.docs@medcity.test') limit 1");
+if (!student) {
+  student = sql(`
+    update students set assigned_to_id = (select id from users where email = 'uk.docs@medcity.test')
+    where id = (select s.id from students s where not s.archived
+                and s.org_id = (select org_id from users where email = 'uk.docs@medcity.test') limit 1)
+    returning id`);
+}
 check(/expected|income/i.test(await go(counsellor.page, `/students/${student}/income`)), "a counsellor sees the income sheet out of the box");
 sql("insert into role_permissions (id, role, capability, allowed, set_at) values (substr(md5(random()::text),1,20), 'COUNSELLOR', 'SEE_MONEY', false, now())");
 check(!/expected/i.test(await go(counsellor.page, `/students/${student}/income`)), "and stops when money is taken from the role");
