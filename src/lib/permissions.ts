@@ -112,6 +112,18 @@ export const ROLE_BLURB: Record<string, string> = {
 export const HQ_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "APPLICATION_TEAM_LEADER", "FINANCE", "MANAGEMENT", "DESK_COUNSELLOR"] as const;
 
 /**
+ * The roles a screen may offer, which must be the roles the server accepts.
+ *
+ * They live here, beside the lists they mirror, because they did not: the
+ * dropdown had its own hand-written copy that drifted, leaving out Application
+ * team leader and Finance. The server would have accepted either, but no
+ * screen could hand them out, so the team leader seat stayed empty and nobody
+ * could see why.
+ */
+export const HQ_ROLE_OPTIONS = [...HQ_ROLES] as const;
+export const PARTNER_ROLE_OPTIONS = [...PARTNER_ROLES] as const;
+
+/**
  * The family: a student and the parents who read that student's file. Neither
  * belongs anywhere in the staff app, and the two are gated together wherever
  * the question is "is this one of our people or one of theirs".

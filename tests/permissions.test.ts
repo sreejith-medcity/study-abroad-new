@@ -28,6 +28,8 @@ import {
   ROLE_BLURB,
   ROLE_LABEL,
   STAFF_ROLES,
+  HQ_ROLE_OPTIONS,
+  PARTNER_ROLE_OPTIONS,
 } from "../src/lib/permissions";
 import { schema } from "../src/db";
 import type { SessionUser } from "../src/lib/auth";
@@ -233,4 +235,20 @@ test("who may type into a student's file, and who only reads it", () => {
   // control the server will refuse.
   assert.ok(!worksStudentFiles(as("MANAGEMENT")), "management reads for oversight");
   assert.ok(!worksStudentFiles(as("FINANCE")), "finance reads to reconcile");
+});
+
+test("every role the server accepts is a role the screen can offer", () => {
+  // The two lists had drifted: Application team leader and Finance were in
+  // HQ_ROLES, so the action would have taken them, but the dropdown was a
+  // separate hand-written list that left them out. Nobody could be given
+  // either role, and the team leader seat sat empty because of it.
+  assert.deepEqual([...HQ_ROLE_OPTIONS].sort(), [...HQ_ROLES].sort());
+  assert.deepEqual([...PARTNER_ROLE_OPTIONS].sort(), [...PARTNER_ROLES].sort());
+});
+
+test("every role on offer says what it is and what it covers", () => {
+  for (const role of [...HQ_ROLES, ...PARTNER_ROLES]) {
+    assert.ok(ROLE_LABEL[role], `${role} has no label, so the dropdown would show the raw code`);
+    assert.ok(ROLE_BLURB[role], `${role} has no blurb, so somebody picks it without knowing what it does`);
+  }
 });

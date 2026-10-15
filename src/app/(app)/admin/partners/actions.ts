@@ -64,7 +64,9 @@ export async function addUserAction(_: FormState, formData: FormData): Promise<F
   const org = await db.query.organizations.findFirst({ where: eq(schema.organizations.id, d.orgId) });
   if (!org) return { error: "Organisation not found." };
   if (org.type === "HQ" && !(HQ_ROLES as readonly string[]).includes(d.role)) {
-    return { error: "Medcity Overseas users must be Super admin, Ops manager, Overseas admin, Documentation team or Management." };
+    // Built from the list rather than typed out, so it cannot say something
+    // different from what is actually allowed, which is what it used to do.
+    return { error: `A Medcity Overseas user is one of: ${HQ_ROLES.map((r) => ROLE_LABEL[r] ?? r).join(", ")}.` };
   }
   if (d.role === "SUPER_ADMIN" && !canManageSuperAdmins(user)) {
     return { error: "Only a super admin can create another super admin." };

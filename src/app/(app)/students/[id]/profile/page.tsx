@@ -7,6 +7,7 @@ import { fmtDate, fmtDateTime } from "@/lib/format";
 import { APP_ROLES, PARTNER_ROLES, canSeeFullPassport, isAdmin, maskPassport } from "@/lib/permissions";
 import { getStudentForUser } from "@/server/queries";
 import { Alert, Button, Card, Chip } from "@/components/ui";
+import { Section } from "@/components/section";
 import { deleteProfileRowAction, revealPassportAction, toggleLockAction, togglePortalAccessAction } from "../../actions";
 import { AcademicForm, BackgroundForm, ContactForm, PersonalForm, PortalInviteForm, RequestEditForm, TestForm, WorkForm } from "./forms";
 import { BACKGROUND_QUESTIONS, backgroundComplete } from "@/lib/background";
@@ -52,14 +53,27 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
   const showFull = (await can(user, "SEE_FULL_PASSPORT")) || reveal === "1";
   const passportDisplay = showFull ? student.passportNumber ?? "" : maskPassport(student.passportNumber);
 
+  // One source for the row at the top and for whether each part opens folded.
+  // A part that is done folds away; a part still wanting something stays open,
+  // so what is on screen is the work left rather than the whole file.
+  const state = {
+    personal: done.personal ? "Complete" : "Incomplete",
+    academics: done.academics ? "Complete" : "Incomplete",
+    work: work.length ? "Complete" : "Optional",
+    tests: done.tests ? "Complete" : "Incomplete",
+    background: backgroundComplete(student.background) ? "Complete" : "Incomplete",
+    contacts: contacts.length ? "Complete" : "Optional",
+  } as const;
   const sections = [
-    { href: "#personal", label: "Personal information", state: done.personal ? "Complete" : "Incomplete" },
-    { href: "#academics", label: "Academic qualifications", state: done.academics ? "Complete" : "Incomplete" },
-    { href: "#work", label: "Work experience", state: work.length ? "Complete" : "Optional" },
-    { href: "#tests", label: "Tests", state: done.tests ? "Complete" : "Incomplete" },
-    { href: "#background", label: "Background", state: backgroundComplete(student.background) ? "Complete" : "Incomplete" },
-    { href: "#contacts", label: "Contacts", state: contacts.length ? "Complete" : "Optional" },
+    { href: "#personal", label: "Personal information", state: state.personal },
+    { href: "#academics", label: "Academic qualifications", state: state.academics },
+    { href: "#work", label: "Work experience", state: state.work },
+    { href: "#tests", label: "Tests", state: state.tests },
+    { href: "#background", label: "Background", state: state.background },
+    { href: "#contacts", label: "Contacts", state: state.contacts },
   ];
+  // Optional and empty is nothing to look at either, so only Incomplete opens.
+  const wants = (v: (typeof state)[keyof typeof state]) => v === "Incomplete";
 
   return (
     <div className="space-y-5">
@@ -202,7 +216,7 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
         </Card>
       )}
 
-      <Card id="personal" className="scroll-mt-20 p-5">
+      <Section id="personal" title="Personal information" state={state.personal} defaultOpen={wants(state.personal)}>
         {!showFull && student.passportNumber && (
           <form action={revealPassportAction} className="mb-3 flex items-center justify-end gap-2 text-xs text-muted">
             <input type="hidden" name="studentId" value={id} />
@@ -211,30 +225,27 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
           </form>
         )}
         <PersonalForm student={pickProfile(student)} passportDisplay={passportDisplay} disabled={readOnly} />
-      </Card>
+      </Section>
 
-      <Card id="academics" className="scroll-mt-20 p-5">
-        <h2 className="mb-3 font-semibold text-brand-700">Academic qualifications</h2>
+      <Section id="academics" title="Academic qualifications" state={state.academics} defaultOpen={wants(state.academics)}>
         <RowList
           empty="No qualifications added yet."
           rows={academics.map((a) => ({ id: a.id, title: `${LEVEL[a.level]}: ${a.course ?? ""}`, sub: `${a.institution}${a.score != null ? ` · ${a.score}${a.gradingSystem === "percentage" ? "%" : ""}` : ""}${a.yearCompleted ? ` · ${a.yearCompleted}` : ""}` }))}
           kind="academic" studentId={id} canDelete={!readOnly}
         />
         {!readOnly && <div className="mt-4 border-t border-line pt-4"><AcademicForm studentId={id} /></div>}
-      </Card>
+      </Section>
 
-      <Card id="work" className="scroll-mt-20 p-5">
-        <h2 className="mb-3 font-semibold text-brand-700">Work experience <span className="text-xs font-normal text-muted">(optional)</span></h2>
+      <Section id="work" title={<>Work experience <span className="text-xs font-normal text-muted">(optional)</span></>} state={state.work} defaultOpen={wants(state.work)}>
         <RowList
           empty="No work experience added."
           rows={work.map((w) => ({ id: w.id, title: `${w.title}, ${w.employer}`, sub: `${fmtDate(w.startDate)} to ${w.endDate ? fmtDate(w.endDate) : "present"}` }))}
           kind="work" studentId={id} canDelete={!readOnly}
         />
         {!readOnly && <div className="mt-4 border-t border-line pt-4"><WorkForm studentId={id} /></div>}
-      </Card>
+      </Section>
 
-      <Card id="tests" className="scroll-mt-20 p-5">
-        <h2 className="mb-3 font-semibold text-brand-700">Tests</h2>
+      <Section id="tests" title="Tests" state={state.tests} defaultOpen={wants(state.tests)}>
         <RowList
           empty="No test scores added."
           rows={tests.map((t) => {
@@ -262,10 +273,9 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
           kind="test" studentId={id} canDelete={!readOnly}
         />
         {!readOnly && <div className="mt-4 border-t border-line pt-4"><TestForm studentId={id} /></div>}
-      </Card>
+      </Section>
 
-      <Card id="background" className="scroll-mt-20 p-5">
-        <h2 className="font-semibold text-brand-700">Background</h2>
+      <Section id="background" title="Background" state={state.background} defaultOpen={wants(state.background)}>
         <p className="mb-3 text-[13px] text-muted">Institutions and visa forms ask these of every applicant. Answer once here; a yes needs the details.</p>
         {readOnly ? (
           <ul className="space-y-2 text-sm">
@@ -282,17 +292,16 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
         ) : (
           <BackgroundForm studentId={id} answers={student.background} disabled={false} />
         )}
-      </Card>
+      </Section>
 
-      <Card id="contacts" className="scroll-mt-20 p-5">
-        <h2 className="mb-3 font-semibold text-brand-700">Important contacts <span className="text-xs font-normal text-muted">(parents, guardians, sponsor)</span></h2>
+      <Section id="contacts" title={<>Important contacts <span className="text-xs font-normal text-muted">(parents, guardians, sponsor)</span></>} state={state.contacts} defaultOpen={wants(state.contacts)}>
         <RowList
           empty="No contacts added."
           rows={contacts.map((c) => ({ id: c.id, title: `${c.name} (${c.relation})`, sub: [c.phone, c.email].filter(Boolean).join(" · "), badge: c.emergency ? "Emergency" : undefined }))}
           kind="contact" studentId={id} canDelete={!readOnly}
         />
         {!readOnly && <div className="mt-4 border-t border-line pt-4"><ContactForm studentId={id} /></div>}
-      </Card>
+      </Section>
     </div>
   );
 }

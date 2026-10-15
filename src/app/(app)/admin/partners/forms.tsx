@@ -1,11 +1,12 @@
 "use client";
 
+import { HQ_ROLE_OPTIONS, PARTNER_ROLE_OPTIONS } from "@/lib/permissions";
 import { useState } from "react";
 import { ActionForm } from "@/components/action-form";
 import { SelectField, TextField } from "@/components/fields";
 import { Button, Input, Select } from "@/components/ui";
 import { addUserAction, changeRoleAction, invitePartnerAction, resetPasswordAction, setTitleAction } from "./actions";
-import { PARTNER_ROLES } from "@/lib/permissions";
+
 
 export function InvitePartnerForm() {
   return (
@@ -31,9 +32,8 @@ export function InvitePartnerForm() {
   );
 }
 
-/** Which roles may be handed out where, with a line each on what they mean. */
-export const HQ_ROLE_OPTIONS = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "DOCUMENTATION", "MANAGEMENT", "DESK_COUNSELLOR"] as const;
-export const PARTNER_ROLE_OPTIONS = [...PARTNER_ROLES] as const;
+// The lists themselves live in permissions.ts, next to the roles they mirror.
+export { HQ_ROLE_OPTIONS, PARTNER_ROLE_OPTIONS };
 
 const TITLE_SUGGESTIONS: Record<string, string> = {
   SUPER_ADMIN: "Platform owner",
