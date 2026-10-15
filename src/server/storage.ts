@@ -2,9 +2,7 @@ import "server-only";
 import { mkdir, readFile, unlink, writeFile } from "fs/promises";
 import path from "path";
 import { createId } from "@/lib/id";
-
-const MAX_BYTES = 10 * 1024 * 1024;
-const ALLOWED = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_MB, UPLOAD_MIME } from "@/lib/uploads";
 
 export class UploadError extends Error {}
 
@@ -28,8 +26,8 @@ function localRoot() {
 
 function validate(file: File) {
   if (file.size === 0) throw new UploadError("The file is empty.");
-  if (file.size > MAX_BYTES) throw new UploadError("Files must be 10 MB or smaller.");
-  if (!ALLOWED.includes(file.type)) throw new UploadError("Upload a PDF, JPG, PNG or WebP file.");
+  if (file.size > MAX_UPLOAD_BYTES) throw new UploadError(`Files must be ${MAX_UPLOAD_MB} MB or smaller.`);
+  if (!UPLOAD_MIME.includes(file.type)) throw new UploadError("Upload a PDF, JPG, PNG or WebP file.");
 }
 
 export async function saveUpload(file: File, folder: string): Promise<SavedFile> {

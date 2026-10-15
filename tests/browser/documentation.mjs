@@ -1,6 +1,12 @@
 // The documentation spine: the nine stages, the list built from five sources, the
 // gate on applying, the states a document moves through, the team's queue and its
 // claim, and what the Overseas team keeps. Wants the plain seed.
+//
+// Run this one against a freshly seeded database (npm run db:seed). It decides
+// documents and moves a file along the journey as it goes, so the fixture it
+// works on is used up: the parts that can put their own starting state back do
+// so, but a student whose whole list has been accepted by earlier runs has
+// nothing left to refuse.
 import { chromium } from "playwright";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -81,6 +87,10 @@ check(twice === "0", "merge: no document is on one student's list twice");
 // --- The gate refuses to move the stage, and names what is missing.
 const STAGE_ORDER = ["PROFILE", "SHORTLIST", "APPLICATION", "OFFER", "DEPOSIT", "CONFIRMATION", "VISA", "DEPARTURE", "ARRIVED"];
 const firstStudent = sql("select id from students where journey_stage <> 'ARRIVED' order by created_at limit 1");
+// Every passing run moves this file on a stage, so after a few of them the
+// gate has nothing left to refuse and the suite fails over its own leavings.
+// Put the file back to the start of the journey first.
+sql(`update students set journey_stage = 'PROFILE' where id = '${firstStudent}'`);
 const stageNow = sql(`select journey_stage from students where id = '${firstStudent}'`);
 const stageNext = STAGE_ORDER[Math.min(STAGE_ORDER.indexOf(stageNow) + 1, STAGE_ORDER.length - 1)];
 text = await go(ap, `/students/${firstStudent}/documentation`);
@@ -118,7 +128,10 @@ if (/Move the stage/.test(text)) {
   bad("gate: the counsellor has no stage control on the file");
 }
 
-// An admin may let it through, with a reason, which is logged.
+// An admin may let it through, with a reason, which is logged. Counted as one
+// more than there were, because this suite is run again and again against the
+// same database and an exact count is only ever right the first time.
+const overridesBefore = Number(sql(`select count(*) from gate_overrides where student_id = '${firstStudent}'`));
 text = await go(ap, `/students/${firstStudent}/documentation`);
 await ap.locator('select[name="stage"]').first().selectOption(stageNext);
 await ap.getByRole("button", { name: "Move the stage" }).click();
@@ -126,7 +139,11 @@ check(await waitText(ap, /Give a reason for letting this through/), "gate: an ad
 await ap.locator('input[name="reason"]').first().fill("Marksheets are with the university for attestation");
 await ap.getByRole("button", { name: "Move the stage" }).click();
 check(await toast(ap, /Moved to/), "gate: with a reason it moves");
-check((await waitSql(`select count(*) from gate_overrides where student_id = '${firstStudent}'`, "1")) === "1", "gate: the override is recorded");
+check(
+  (await waitSql(`select count(*) from gate_overrides where student_id = '${firstStudent}'`, String(overridesBefore + 1))) ===
+    String(overridesBefore + 1),
+  "gate: the override is recorded",
+);
 text = await go(ap, `/students/${firstStudent}/documentation`);
 check(/Let through with a reason/.test(text) && /attestation/.test(text), "gate: the override is shown on the file");
 
@@ -175,13 +192,15 @@ check(/Let through with a reason/.test(text) && /attestation/.test(text), "gate:
 // --- A branch that checks its own documents.
 {
   const branchOf = sql(`select org_id from students where id = '${studentId}'`);
-  // Put one document in front of a checker, the way a student sending it in would.
-  sql(
-    `update checklist_items set state = 'UPLOADED' where id = (
-       select id from checklist_items where student_id = '${studentId}' and required and state = 'NOT_ASKED' order by stage limit 1)`,
-  );
+  // Put one document in front of a checker, the way a student sending it in
+  // would. Any required row will do, put back to waiting whatever an earlier
+  // run of this suite left it as: otherwise the second run finds everything
+  // already decided and the branch is offered nothing to decide.
   const waiting = sql(
-    `select ci.id from checklist_items ci where ci.student_id = '${studentId}' and ci.state in ('UPLOADED','IN_REVIEW') limit 1`,
+    `update checklist_items set state = 'UPLOADED', decided_at = null, claimed_by_id = null, claimed_at = null
+     where id = (select id from checklist_items where student_id = '${studentId}' and required
+                 order by (state = 'NOT_ASKED') desc, stage limit 1)
+     returning id`,
   );
   const counsellorEmail = sql(`select email from users where org_id = '${branchOf}' and role in ('PARTNER','COUNSELLOR') limit 1`);
   if (waiting && counsellorEmail) {

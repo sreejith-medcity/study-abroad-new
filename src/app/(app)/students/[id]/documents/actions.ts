@@ -6,54 +6,11 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { getStudentForUser } from "@/server/queries";
-import { deleteUpload, saveUpload, UploadError } from "@/server/storage";
-import { actionFailure } from "@/lib/action-failure";
+import { deleteUpload } from "@/server/storage";
 import { PARTNER_ROLES, PROCESSING_ROLES, isAdmin, issuesTeamDocuments } from "@/lib/permissions";
-import { attachUploadToChecklist } from "@/server/documentation";
 
 import type { FormState } from "@/lib/form-state";
 export type { FormState };
-
-export async function uploadDocumentAction(_: FormState, formData: FormData): Promise<FormState> {
-  const studentId = String(formData.get("studentId"));
-  const typeCode = String(formData.get("typeCode") || "");
-  try {
-    return await upload(formData, studentId, typeCode);
-  } catch (e) {
-    // The whole action, not only the part that writes the file. A counsellor
-    // uploading a certificate got the dead screen and no idea why, and the
-    // throw turned out not to be where the handling was.
-    return actionFailure(e, "The upload", { studentId, typeCode });
-  }
-}
-
-async function upload(formData: FormData, studentId: string, typeCode: string): Promise<FormState> {
-  const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);
-  const file = formData.get("file");
-  await getStudentForUser(user, studentId);
-
-  const type = await db.query.documentTypes.findFirst({ where: eq(schema.documentTypes.code, typeCode) });
-  if (!type) return { error: "Choose a document type." };
-  if (type.uploadedBy === "team" && !issuesTeamDocuments(user)) return { error: `${type.label} is put up by the Medcity Overseas desk.` };
-  if (!(file instanceof File) || file.size === 0) return { error: "Choose a file to upload." };
-  // "Something else" with no name is a file nobody can identify later.
-  const label = String(formData.get("label") ?? "").trim().slice(0, 120) || null;
-  if (typeCode === "OTHER" && !label) return { error: "Say what this document is, so the next person knows what they are looking at." };
-
-  try {
-    const saved = await saveUpload(file, `students/${studentId}`);
-    const [doc] = await db.insert(schema.documents).values({ studentId, typeCode, label, fileName: file.name, uploadedById: user.id, ...saved }).returning();
-    await audit(user.id, "document.upload", "document", doc.id, { typeCode });
-    // A file that answers something on the documentation list joins the team's
-    // queue. Nobody, least of all the student, marks their own document good.
-    await attachUploadToChecklist(studentId, typeCode, doc.id, user.id);
-  } catch (e) {
-    if (e instanceof UploadError) return { error: e.message };
-    return actionFailure(e, "The upload", { studentId, typeCode, fileName: file.name, size: file.size });
-  }
-  revalidatePath(`/students/${studentId}`, "layout");
-  return { ok: `${label ?? type.label} uploaded.` };
-}
 
 export async function deleteDocumentAction(formData: FormData) {
   const user = await requireUser([...PARTNER_ROLES, ...PROCESSING_ROLES]);

@@ -14,17 +14,29 @@ const LOCALE_COOKIE = "portal_locale";
  * language to render in. Anyone else is sent back to their own home.
  */
 export async function requireStudent() {
+  const who = await getPortalStudent();
+  if (!who) redirect("/login");
+  return who;
+}
+
+/**
+ * The same session, but answered rather than redirected away from. A route
+ * that a phone posts a file to has to say "your sign-in ran out" in words the
+ * page can show; a redirect to the login screen would reach the browser as a
+ * page of HTML where an answer was expected.
+ */
+export async function getPortalStudent() {
   const session = await getSession();
-  if (!session) redirect("/login");
-  if (session.role !== "STUDENT") redirect("/");
-  if (session.mustChangePassword) redirect("/change-password");
-  if (!session.studentId) redirect("/forbidden");
+  if (!session) return null;
+  if (session.role !== "STUDENT") return null;
+  if (session.mustChangePassword) return null;
+  if (!session.studentId) return null;
 
   const student = await db.query.students.findFirst({
     where: eq(schema.students.id, session.studentId),
     with: { assignedTo: true, org: true },
   });
-  if (!student) redirect("/forbidden");
+  if (!student) return null;
 
   const cookieLocale = (await cookies()).get(LOCALE_COOKIE)?.value;
   const locale: Locale = isLocale(cookieLocale) ? cookieLocale : isLocale(session.locale) ? session.locale : "en";
