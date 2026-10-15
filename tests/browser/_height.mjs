@@ -26,8 +26,20 @@ for (const role of ["SUPER_ADMIN", "DOCUMENTATION", "COUNSELLOR"]) {
   await page.fill('input[name="password"]', "Password@123");
   await page.click('button[type="submit"]');
   await page.waitForURL((u) => !String(u).includes("/login"), { timeout: 20000 });
-  const links = await page.locator("nav a[href^='/']").evaluateAll((as) => [...new Set(as.map((a) => a.getAttribute("href")))]);
-  const student = sql("select id from students where not archived limit 1");
+  // The shell paints after the sign-in redirect settles; collected too early,
+  // the menu is not there yet and only the pages named below get measured.
+  await page.waitForTimeout(1500);
+  const links = await page.locator("a[href^='/']").evaluateAll((as) =>
+    [...new Set(as.map((a) => a.getAttribute("href")))].filter((h) => h && !h.includes("#") && !h.startsWith("/api/")),
+  );
+  // The fullest file there is, not the first one: an empty student makes every
+  // screen look fine, which is how a long screen stays long.
+  const student = sql(`
+    select s.id from students s
+    where not s.archived
+    order by (select count(*) from applications a where a.student_id = s.id) desc,
+             (select count(*) from documents d where d.student_id = s.id) desc
+    limit 1`);
   const targets = [...links, `/students/${student}/profile`, `/students/${student}/documents`, `/students/${student}/applications`];
   for (const href of targets) {
     try {

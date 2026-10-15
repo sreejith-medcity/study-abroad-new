@@ -15,6 +15,7 @@ import { getSettings } from "@/server/settings";
 import { checkApplication, statusesFor } from "@/server/applications";
 import { getStudentForUser } from "@/server/queries";
 import { Button, Card, CardHeader, Chip, DataList, EmptyState, Input, Select, StatusBadge, cn } from "@/components/ui";
+import { Section } from "@/components/section";
 import { confirmationLabel, dayText, daysUntil, deadlineText } from "@/lib/catalogue";
 import { markFeePaidAction, setDeadlineDoneAction, setDocumentTypeAction, setPriorityAction, setVendorReferenceAction } from "./actions";
 import { PRIORITY_LABEL } from "@/lib/priority";
@@ -446,9 +447,21 @@ function OfferVisaCard({ app, currency, canEdit }: { app: OfferVisaApp; currency
       tone: app.visaDecision === "GRANTED" ? ("ok" as const) : app.visaDecision === "REFUSED" ? ("bad" as const) : undefined,
     },
   ];
+  // Open while it is the part being worked: an offer in hand and the visa not
+  // decided. Folded before any of it has happened, and folded again once the
+  // visa is granted or refused, because then it is a record rather than work.
+  const live = Boolean(app.offerType) && !app.visaDecision;
+  const where = app.visaDecision
+    ? `Visa ${app.visaDecision === "GRANTED" ? "granted" : "refused"}`
+    : app.visaLodgedOn
+      ? "Visa lodged"
+      : app.depositPaidOn
+        ? "Deposit paid"
+        : app.offerType
+          ? "Offer in hand"
+          : "Nothing recorded yet";
   return (
-    <Card>
-      <CardHeader title="Offer and visa" subtitle={canEdit ? "Partners see this summary; they are notified when it changes." : "Kept by the Overseas team"} />
+    <Section id={`offer-visa-${app.id}`} title="Offer and visa" meta={where} defaultOpen={live} bodyClassName="">
       <DataList rows={rows} />
       {canEdit && (
         <details className="border-t border-line px-4 py-3">
@@ -456,7 +469,7 @@ function OfferVisaCard({ app, currency, canEdit }: { app: OfferVisaApp; currency
           <div className="mt-3"><OfferVisaForm applicationId={app.id} values={app} currency={currency} confirmation={confirmation} /></div>
         </details>
       )}
-    </Card>
+    </Section>
   );
 }
 
@@ -465,9 +478,15 @@ async function DeadlinesPanel({ applicationId, canEdit, canTick }: { application
   const d = schema.applicationDeadlines;
   const rows = await db.select().from(d).where(eq(d.applicationId, applicationId)).orderBy(sql`${d.doneAt} is not null`, asc(d.dueOn));
   if (!rows.length && !canEdit) return null;
+  const toMeet = rows.filter((r) => !r.doneAt).length;
   return (
-    <Card>
-      <CardHeader title="Deadlines" subtitle="Payment, CAS request, offer acceptance and the rest, as the institution sets them" />
+    <Section
+      id={`deadlines-${applicationId}`}
+      title="Deadlines"
+      meta={rows.length === 0 ? "None set" : toMeet === 0 ? "All met" : `${toMeet} still to meet`}
+      defaultOpen={toMeet > 0}
+      bodyClassName=""
+    >
       {rows.length > 0 && (
         <ul className="divide-y divide-line border-b border-line text-[13px]">
           {rows.map((r) => {
@@ -499,6 +518,6 @@ async function DeadlinesPanel({ applicationId, canEdit, canTick }: { application
         </ul>
       )}
       {canEdit && <div className="p-4"><DeadlineAddForm applicationId={applicationId} /></div>}
-    </Card>
+    </Section>
   );
 }

@@ -20,16 +20,22 @@ export function Section({
   id,
   title,
   state,
+  meta,
   defaultOpen,
   children,
   className,
+  bodyClassName,
 }: {
   id: string;
   title: ReactNode;
   state?: "Complete" | "Incomplete" | "Optional" | null;
+  /** What the section says about itself while folded, in muted text. */
+  meta?: ReactNode;
   defaultOpen: boolean;
   children: ReactNode;
   className?: string;
+  /** For a section whose contents bring their own padding, such as a list. */
+  bodyClassName?: string;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   useEffect(() => {
@@ -49,9 +55,10 @@ export function Section({
           {state && (
             <span className={cn("text-xs", state === "Complete" ? "text-emerald-700" : state === "Optional" ? "text-muted" : "text-red-600")}>{state}</span>
           )}
+          {meta && <span className="text-xs text-muted">{meta}</span>}
           <span className="ml-auto text-xs text-muted">{open ? "Hide" : "Show"}</span>
         </summary>
-        <div className="border-t border-line p-5">{children}</div>
+        <div className={cn("border-t border-line", bodyClassName ?? "p-5")}>{children}</div>
       </details>
     </Card>
   );

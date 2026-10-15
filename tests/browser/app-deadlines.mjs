@@ -27,7 +27,13 @@ async function signIn(email, ip) {
 }
 const settle = (page) => page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
 const main = async (page) => { await settle(page); return page.locator("main").innerText(); };
-const go = async (page, path) => { await page.goto(BASE + path); return main(page); };
+// Parts of an application that are finished fold up now, so a suite that goes
+// looking for their controls has to open them first, the way a person does.
+const unfold = async (page) => {
+  await page.evaluate(() => document.querySelectorAll("details:not([open]) > summary").forEach((s) => s.click()));
+  await page.waitForTimeout(150);
+};
+const go = async (page, path) => { await page.goto(BASE + path); await settle(page); await unfold(page); return main(page); };
 const toast = (page, re) => page.locator('[role="status"]').filter({ hasText: re }).first().waitFor({ timeout: 10000 }).then(() => true, () => false);
 const iso = (n) => { const d = new Date(Date.now() + n * 86400000); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 
