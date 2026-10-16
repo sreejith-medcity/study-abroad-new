@@ -1,5 +1,6 @@
 "use client";
 
+import { utcToday } from "@/lib/now";
 import { useState } from "react";
 import { ActionForm, FieldError } from "@/components/action-form";
 import { Modal } from "@/components/modal";
@@ -36,7 +37,7 @@ export function RaiseInvoice({
 }) {
   const [open, setOpen] = useState(false);
   const [ticked, setTicked] = useState<string[]>(ready.map((r) => r.incomeLineId));
-  const today = new Date().toISOString().slice(0, 10);
+  const today = utcToday();
   const chosen = ready.filter((r) => ticked.includes(r.incomeLineId));
   const currency = chosen[0]?.currency ?? ready[0]?.currency ?? "INR";
   const sameCurrency = new Set(chosen.map((c) => c.currency)).size <= 1;
@@ -122,7 +123,7 @@ export function SendInvoice({ invoiceId, suggested }: { invoiceId: string; sugge
 /** Money against an invoice, in the instalments vendors actually pay in. */
 export function RecordPayment({ invoiceId, currency, outstanding }: { invoiceId: string; currency: string; outstanding: number }) {
   const [open, setOpen] = useState(false);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = utcToday();
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} className="rounded-lg bg-brand-600 px-3 py-1.5 text-[13px] font-medium text-white">
@@ -206,7 +207,7 @@ export function CreditInvoice({
 }) {
   const [open, setOpen] = useState(false);
   const [ticked, setTicked] = useState<string[]>([]);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = utcToday();
   const fromLines = lines.filter((l) => ticked.includes(l.id)).reduce((sum, l) => sum + l.amount, 0);
   return (
     <>

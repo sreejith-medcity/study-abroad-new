@@ -1,5 +1,6 @@
 "use client";
 
+import { utcToday } from "@/lib/now";
 import { useState } from "react";
 import { ActionForm, FieldError } from "@/components/action-form";
 import { Modal } from "@/components/modal";
@@ -33,7 +34,7 @@ export function DeskStageChip({ stage, assumed }: { stage: DeskStage; assumed: b
 export function HandOver({ applicationId, ready, why }: { applicationId: string; ready: boolean; why: string | null }) {
   const [open, setOpen] = useState(false);
   if (!ready) {
-    return <span className="text-[13px] text-amber-700">{why}</span>;
+    return <span className="text-[13px] text-warn-700">{why}</span>;
   }
   return (
     <>
@@ -61,7 +62,7 @@ export function HandOver({ applicationId, ready, why }: { applicationId: string;
 export function ChooseRoute({ applicationId, routes, current }: { applicationId: string; routes: RouteChoice[]; current: string | null }) {
   if (routes.length === 0) {
     return (
-      <p className="text-[13px] text-amber-700">
+      <p className="text-[13px] text-warn-700">
         No route is recorded for this course, so there is nothing to choose from. Add one under Vendors and routes, or lodge it directly and record that.
       </p>
     );
@@ -103,7 +104,7 @@ export function ChooseRoute({ applicationId, routes, current }: { applicationId:
 
 /** Lodged in their portal, on the day it was actually lodged. */
 export function RecordSubmission({ applicationId, reference, statuses, defaultStatusId }: { applicationId: string; reference: string | null; statuses: StatusChoice[]; defaultStatusId: string | null }) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = utcToday();
   return (
     <ActionForm action={recordSubmissionAction} submitLabel="It is lodged" pendingLabel="Saving…">
       <input type="hidden" name="applicationId" value={applicationId} />
@@ -143,7 +144,7 @@ export function RecordUpdate({ applicationId, statuses }: { applicationId: strin
   // its selection when that happens, which is how an update ends up moving
   // nothing without anybody noticing.
   const [statusId, setStatusId] = useState(() => firstFor("ACKNOWLEDGED"));
-  const today = new Date().toISOString().slice(0, 10);
+  const today = utcToday();
   const group = OUTCOME_GROUP[outcome];
   const suggested = group ? statuses.filter((s) => s.group === group) : [];
   const rest = statuses.filter((s) => !suggested.includes(s));

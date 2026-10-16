@@ -1,16 +1,26 @@
 "use client";
 
+import { utcYearMonth } from "@/lib/now";
 import { ActionForm, FieldError } from "@/components/action-form";
 import { Field, Input, Select } from "@/components/ui";
 import { MONTHS } from "@/lib/format";
 import { saveDeadlineAction } from "./deadline-actions";
 
 export function DeadlineForm({ programId, intakeMonths }: { programId: string; intakeMonths: number[] }) {
-  const now = new Date();
+  // Read in UTC, so a browser east or west of the server does not cross into
+  // the next month hours apart from it and render a list one option shorter
+  // than the one the server sent. That mismatch is what React reports as a
+  // hydration error, and it only appears for a few hours a month, which is
+  // why it read as random.
+  const ym = utcYearMonth();
+  const thisYear = Math.floor(ym / 100);
   const months = intakeMonths.length ? intakeMonths : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
   const options: { value: string; label: string; order: number }[] = [];
-  for (let y = now.getFullYear(); y <= now.getFullYear() + 2; y++) {
-    for (const m of months) if (new Date(y, m, 0) >= now) options.push({ value: `${y}-${m}`, label: `${MONTHS[m - 1]} ${y}`, order: y * 100 + m });
+  for (let y = thisYear; y <= thisYear + 2; y++) {
+    for (const m of months) {
+      const order = y * 100 + m;
+      if (order >= ym) options.push({ value: `${y}-${m}`, label: `${MONTHS[m - 1]} ${y}`, order });
+    }
   }
   options.sort((a, b) => a.order - b.order);
   return (

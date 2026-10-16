@@ -65,7 +65,7 @@ export default async function StudentApplicationsPage({ params, searchParams }: 
                 <Link
                   href={`/students/${id}/applications?app=${a.id}`}
                   aria-current={a.id === selected.id ? "true" : undefined}
-                  className={cn("block overflow-hidden rounded-md border bg-white", a.id === selected.id ? "border-brand-600 ring-2 ring-brand-100" : "border-line hover:border-brand-500")}
+                  className={cn("block overflow-hidden rounded-md border bg-surface", a.id === selected.id ? "border-brand-600 ring-2 ring-brand-100" : "border-line hover:border-brand-500")}
                 >
                   <div className="flex items-center justify-between gap-2 border-b border-line px-3 py-1.5">
                     <StatusBadge group={a.status.group} label={a.status.label} />
@@ -129,6 +129,7 @@ async function ApplyPanel({ studentId, pathway, level, preselectProgramId, count
         preselectProgramId={preselectProgramId}
         canApply={await can(user, "SUBMIT_APPLICATION")}
         canAddCourse={(PROCESSING_ROLES as readonly string[]).includes(user.role)}
+        todayYm={new Date().getFullYear() * 100 + new Date().getMonth() + 1}
         gate={
           gate && gate.missing.length
             ? {
@@ -201,7 +202,7 @@ async function ApplicationDetail({ appId, studentId, channel, canProcess, canChe
           <div className="text-right">
             <StatusBadge group={app.status.group} label={app.status.label} className="text-sm" />
             <p className="mt-1 text-xs text-muted">since {fmtDate(app.statusChangedAt)}</p>
-            {app.deadline && <p className="mt-1 text-xs text-red-600">Deadline {fmtDate(app.deadline)}</p>}
+            {app.deadline && <p className="mt-1 text-xs text-stop-500">Deadline {fmtDate(app.deadline)}</p>}
           </div>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-line pt-3">
@@ -237,7 +238,7 @@ async function ApplicationDetail({ appId, studentId, channel, canProcess, canChe
           )}
         </div>
         {app.deskStage === "RETURNED" && app.returnReason && (
-          <div className="mt-3 rounded-md border border-red-300 bg-red-50 p-3 text-[13px] text-red-900">
+          <div className="mt-3 rounded-md border border-stop-500/25 bg-stop-50 p-3 text-[13px] text-stop-700">
             <p className="font-medium">The Overseas desk sent this back</p>
             <p className="mt-0.5">{app.returnReason}</p>
           </div>
@@ -395,15 +396,15 @@ async function ApplicationDetail({ appId, studentId, channel, canProcess, canChe
               const system = c.source === "SYSTEM";
               return (
                 <li key={c.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
-                  <div className={cn("max-w-[85%] rounded-lg px-3 py-2", system ? "bg-ground text-muted" : fromStudent ? "bg-emerald-50" : mine ? "bg-slate-100" : "bg-brand-50")}>
+                  <div className={cn("max-w-[85%] rounded-lg px-3 py-2", system ? "bg-ground text-muted" : fromStudent ? "bg-good-50" : mine ? "bg-surface-2" : "bg-brand-50")}>
                     <p className="text-xs font-semibold">
                       {fromStudent ? c.authorLabel ?? "Student (WhatsApp)" : c.author ? c.author.deskLabel ?? c.author.name : "System"}
-                      {fromStudent && <span className="ml-1 font-normal text-emerald-700">via WhatsApp</span>}
+                      {fromStudent && <span className="ml-1 font-normal text-good-700">via WhatsApp</span>}
                     </p>
                     <RichText text={c.body} />
                     {c.attachments.map((d) => (
                       <div key={d.id} className="mt-2 flex flex-wrap items-center gap-2">
-                        <a href={`/api/documents/${d.id}`} className="rounded bg-white px-2 py-1 text-xs text-brand-600 hover:underline">📎 {d.fileName}</a>
+                        <a href={`/api/documents/${d.id}`} className="rounded bg-surface px-2 py-1 text-xs text-brand-600 hover:underline">📎 {d.fileName}</a>
                         {canWrite && (!d.typeCode || d.typeCode === "OTHER") && (
                           <form action={setDocumentTypeAction} className="flex items-center gap-1">
                             <input type="hidden" name="documentId" value={d.id} />

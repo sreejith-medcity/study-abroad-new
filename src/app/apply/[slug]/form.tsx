@@ -1,5 +1,6 @@
 "use client";
 
+import { utcYear } from "@/lib/now";
 import { ActionForm, FieldError } from "@/components/action-form";
 import { SelectField, TextField, TextareaField } from "@/components/fields";
 import { submitPublicEnquiryAction } from "./actions";
@@ -10,7 +11,8 @@ const CONSENT =
 type Question = { id: string; label: string; kind: "text" | "choice" | "yesno"; options: string[]; required: boolean };
 
 export function PublicEnquiryForm({ slug, countries, questions = [] }: { slug: string; countries: string[]; questions?: Question[] }) {
-  const year = new Date().getFullYear();
+  // UTC, so this renders the same on the server and in the browser.
+  const year = utcYear();
   return (
     <ActionForm action={submitPublicEnquiryAction} submitLabel="Send my details" pendingLabel="Sending…">
       <input type="hidden" name="slug" value={slug} />

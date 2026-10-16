@@ -1,5 +1,6 @@
 "use client";
 
+import { utcYear } from "@/lib/now";
 import { ActionForm } from "@/components/action-form";
 import { SelectField, TextField, TextareaField } from "@/components/fields";
 import { Button, Select, Input } from "@/components/ui";
@@ -28,7 +29,8 @@ export function RuleForm({
     notes: string | null;
   };
 }) {
-  const now = new Date().getFullYear();
+  // UTC: see the note in the enquiry form.
+  const now = utcYear();
   return (
     <ActionForm action={saveRuleAction} submitLabel={values ? "Save rule" : "Add rule"} pendingLabel="Saving…" resetOnSuccess={!values}>
       {values && <input type="hidden" name="ruleId" value={values.id} />}

@@ -34,6 +34,7 @@ export function ApplyForm({
   canApply,
   canAddCourse,
   gate,
+  todayYm,
 }: {
   studentId: string;
   /** What the picker shows before anything is typed: the shortlist, and the course arrived with. */
@@ -50,6 +51,18 @@ export function ApplyForm({
   canAddCourse: boolean;
   /** What the profile stage is still short of, and whether this person may apply anyway. */
   gate?: { missing: string[]; canOverride: boolean; holds: boolean; locked?: string[] };
+  /**
+   * This month, as the server reads it, in the form 202610.
+   *
+   * The intake list used to be built from the browser's own clock. A browser
+   * in a different timezone from the server crosses into the next month
+   * hours earlier or later, so the server would render twelve intakes and
+   * the browser eleven, and React threw a hydration mismatch on the page.
+   * It only showed itself for a few hours around the turn of a month, which
+   * is exactly why it was hard to catch. The server decides the month now
+   * and the browser is told; both then build the same list.
+   */
+  todayYm: number;
 }) {
   const [intake, setIntake] = useState("");
   const [country, setCountry] = useState(defaultCountry);
@@ -63,19 +76,22 @@ export function ApplyForm({
 
   const intakes = useMemo(() => {
     if (!program) return [];
-    const now = new Date();
+    const thisYear = Math.floor(todayYm / 100);
     const out: { value: string; label: string; order: number }[] = [];
     // No intakes on record (the CRICOS register has none) is not the same as no
     // intakes: every month is offered and the team confirms it with the institution.
     const months = program.intakeMonths.length ? program.intakeMonths : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-    for (let y = now.getFullYear(); y <= now.getFullYear() + 2; y++) {
+    for (let y = thisYear; y <= thisYear + 2; y++) {
       for (const m of months) {
-        if (new Date(y, m - 1, 1) > now) out.push({ value: `${y}-${m}`, label: `${MONTHS[m - 1]} ${y}`, order: y * 100 + m });
+        const order = y * 100 + m;
+        // Strictly after this month: an intake that has already started
+        // cannot be applied for, and the month itself counts as started.
+        if (order > todayYm) out.push({ value: `${y}-${m}`, label: `${MONTHS[m - 1]} ${y}`, order });
       }
     }
     // By date, not by the value string: "2027-10" sorts before "2027-2" as text.
     return out.sort((a, b) => a.order - b.order);
-  }, [program]);
+  }, [program, todayYm]);
 
   if (!canApply) {
     return (
@@ -160,16 +176,16 @@ export function ApplyForm({
         Which vendor this goes through is the Overseas desk&rsquo;s decision, made once the documents are in. Build the file, collect the paper, then hand it over.
       </p>
       {gate && gate.missing.length > 0 && (
-        <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-[13px]">
-          <p className="font-medium text-amber-900">The profile documents are not complete</p>
-          <p className="mt-0.5 text-amber-900">Still needed: {gate.missing.join(", ")}.</p>
+        <div className="rounded-md border border-warn-500/25 bg-warn-50 p-3 text-[13px]">
+          <p className="font-medium text-warn-700">The profile documents are not complete</p>
+          <p className="mt-0.5 text-warn-700">Still needed: {gate.missing.join(", ")}.</p>
           {gate.holds && gate.canOverride ? (
             <Field label="Reason for applying anyway" htmlFor="gateReason" hint="Logged on the file and shown on the documentation tab.">
               <Input id="gateReason" name="gateReason" />
               <FieldError name="gateReason" />
             </Field>
           ) : (
-            <p className="mt-1 text-amber-900">
+            <p className="mt-1 text-warn-700">
               {gate.locked && gate.locked.length > 0
                 ? `${gate.locked.join(", ")} cannot be waived by anybody, so this has to wait until ${gate.locked.length === 1 ? "it is" : "they are"} in.`
                 : gate.holds
@@ -191,7 +207,7 @@ export function ApplyForm({
         </Select>
         <FieldError name="intake" />
         {program && intake && program.deadlines[intake] && daysUntil(program.deadlines[intake]) < 0 && (
-          <p className="text-xs font-medium text-red-700">
+          <p className="text-xs font-medium text-stop-700">
             The institution&apos;s deadline for this intake was {dayText(program.deadlines[intake])}. You can still create the application, but the team may not be able to submit it; check before promising the student.
           </p>
         )}
@@ -216,7 +232,7 @@ export function StatusForm({ applicationId, currentId, statuses }: { application
           <Textarea id={`reason-${applicationId}`} name="reason" rows={2} required={s.requiresReason} />
         </Field>
       )}
-      {s?.isMilestone && selected !== currentId && <p className="text-xs text-emerald-700">Milestone: the student gets a WhatsApp update.</p>}
+      {s?.isMilestone && selected !== currentId && <p className="text-xs text-good-700">Milestone: the student gets a WhatsApp update.</p>}
     </ActionForm>
   );
 }

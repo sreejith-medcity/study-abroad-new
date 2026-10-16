@@ -1,5 +1,6 @@
 "use client";
 
+import { utcYear } from "@/lib/now";
 import { ActionForm } from "@/components/action-form";
 import { SelectField, TextField, TextareaField } from "@/components/fields";
 import { Button, Input, Select, Textarea } from "@/components/ui";
@@ -62,8 +63,10 @@ export function EnquiryForm({
   /** Medcity Overseas staff pick the branch the enquiry belongs to. */
   orgs?: { id: string; name: string }[];
 }) {
-  const now = new Date();
-  const years = [now.getFullYear(), now.getFullYear() + 1, now.getFullYear() + 2];
+  // UTC, so the server and the browser agree on the year at the same
+  // instant whatever timezone each is in.
+  const year = utcYear();
+  const years = [year, year + 1, year + 2];
   return (
     <ActionForm
       action={mode === "create" ? createEnquiryAction : updateEnquiryAction}

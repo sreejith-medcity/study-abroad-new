@@ -1,5 +1,6 @@
 "use client";
 
+import { utcToday } from "@/lib/now";
 import { useState } from "react";
 import { ActionForm, FieldError } from "@/components/action-form";
 import { Modal } from "@/components/modal";
@@ -154,7 +155,7 @@ export function LineActions({
   canWriteOff: boolean;
 }) {
   const [open, setOpen] = useState<null | "received" | "edit" | "off">(null);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = utcToday();
   const settled = line.state === "RECEIVED" || line.state === "WRITTEN_OFF";
   return (
     <span className="flex flex-wrap items-center justify-end gap-3 whitespace-nowrap">
@@ -249,7 +250,7 @@ export function LayOutLines({ studentId, missing }: { studentId: string; missing
 /** What a branch charges or keeps for one kind, from a day. */
 export function RateCardForm({ branches }: { branches: { id: string; name: string }[] }) {
   const [kind, setKind] = useState<IncomeKind>("SERVICE_FEE");
-  const today = new Date().toISOString().slice(0, 10);
+  const today = utcToday();
   return (
     <ActionForm action={saveRateCardAction} submitLabel="Record the rate" resetOnSuccess>
       <div className="grid gap-3 sm:grid-cols-2">

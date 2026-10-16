@@ -1,5 +1,6 @@
 "use client";
 
+import { utcToday } from "@/lib/now";
 import { useState } from "react";
 import { ActionForm, FieldError } from "@/components/action-form";
 import { Modal } from "@/components/modal";
@@ -33,7 +34,7 @@ export function TaskForm({
   onDone?: () => void;
   task?: { id: string; title: string; detail: string | null; dueOn: string; kind: TaskKind; assignedToId: string };
 }) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = utcToday();
   return (
     <ActionForm action={saveTaskAction} submitLabel={task ? "Save" : "Add the task"} resetOnSuccess={!task} className={compact ? "space-y-2" : undefined}>
       {task && <input type="hidden" name="taskId" value={task.id} />}

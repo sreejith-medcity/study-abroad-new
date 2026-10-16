@@ -1,5 +1,6 @@
 "use client";
 
+import { utcToday } from "@/lib/now";
 import { useState } from "react";
 import { ActionForm } from "@/components/action-form";
 import { Modal } from "@/components/modal";
@@ -247,7 +248,7 @@ export function MouForm() {
  */
 export function RateForm({ agents }: { agents: { id: string; name: string }[] }) {
   const [kind, setKind] = useState<"SHARE_OF_COMMISSION" | "FLAT_PER_ENROLMENT">("SHARE_OF_COMMISSION");
-  const today = new Date().toISOString().slice(0, 10);
+  const today = utcToday();
   return (
     <ActionForm action={saveAgentRateAction} submitLabel="Add this rate" pendingLabel="Saving…" resetOnSuccess>
       <div className="grid gap-3 sm:grid-cols-2">
