@@ -36,6 +36,7 @@ import {
   TrendChart,
 } from "@/components/ui";
 import { IconAlert, IconApplications, IconCheck, IconClock, IconQueue, IconSearch } from "@/components/icons";
+import { Section } from "@/components/section";
 import { AgingCard, DashboardFilters, DeadlinesCard, RecentChangesCard } from "./parts";
 import { ownApplicationsOnly } from "@/server/scope";
 
@@ -140,25 +141,21 @@ export default async function AdminDashboard({ user, f, showMoney = true }: { us
 
           <AgingCard rows={mine} showOrg title="Assigned to you" subtitle="Your own files, oldest first" />
           <AgingCard rows={unassignedRows} showOrg title="Nobody has picked these up" subtitle="Live applications with no officer" />
-          <AgingCard rows={aging} showOrg title="Carried by the rest of the desk" subtitle="Assigned to another officer, oldest first" />
+          <AgingCard rows={aging} showOrg fold title="Carried by the rest of the desk" subtitle="Assigned to another officer, oldest first" />
 
+          {/* Read when somebody asks a question of them, not every morning,
+              so they start folded and say what they hold on the line. */}
           <div className="grid gap-5 lg:grid-cols-2">
-            <Card>
-              <CardHeader title="Last six months" subtitle="Applications created against visas received" />
+            <Section id="trend" title="Last six months" meta="Applications against visas" defaultOpen={false}>
               <TrendChart points={points} aLabel="Applications" bLabel="Visas" />
-            </Card>
-            <Card>
-              <CardHeader title="Pathways" subtitle="Where the volume sits" />
+            </Section>
+            <Section id="pathways" title="Pathways" meta="Where the volume sits" defaultOpen={false}>
               <BarList items={pathways} tone="gold" />
-            </Card>
+            </Section>
           </div>
 
-          <Card>
-            <CardHeader
-              title="Partner activity"
-              subtitle="Busiest partners by total applications"
-              action={<Link href="/admin/partners" className="text-[13px] font-medium text-brand-600 hover:underline">Partners and people</Link>}
-            />
+          <Section id="partner-activity" title="Partner activity" meta="Busiest partners by total applications" defaultOpen={false} bodyClassName="">
+
             <Table tableClassName="min-w-[620px]">
               <thead>
                 <tr>
@@ -186,7 +183,7 @@ export default async function AdminDashboard({ user, f, showMoney = true }: { us
                 ))}
               </tbody>
             </Table>
-          </Card>
+          </Section>
 
           <RecentChangesCard rows={recent} showOrg />
         </div>
@@ -219,20 +216,18 @@ export default async function AdminDashboard({ user, f, showMoney = true }: { us
             />
           </Card>
 
-          <Card>
-            <CardHeader title="Desk load" subtitle="Live files per officer" />
+          <Section id="desk-load" title="Desk load" meta="Live files per officer" defaultOpen={false}>
             <BarList
               items={load.officers.map((o) => ({ label: o.name, hint: o.deskLabel ?? undefined, value: o.live }))}
               empty="No officers yet."
             />
-          </Card>
+          </Section>
 
           <DeadlinesCard rows={deadlines} window={(f as Record<string, string | undefined>).dw ?? "14"} />
 
-          <Card>
-            <CardHeader title="Destinations" subtitle="Applications by country" />
+          <Section id="destinations" title="Destinations" meta="Applications by country" defaultOpen={false}>
             <BarList items={destinations} tone="info" />
-          </Card>
+          </Section>
         </div>
       </div>
     </>

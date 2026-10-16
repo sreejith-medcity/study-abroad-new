@@ -1,4 +1,6 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
+import { Section } from "@/components/section";
 import { dayText, daysUntil } from "@/lib/catalogue";
 import { DEADLINE_LABEL, DEADLINE_WINDOWS, type DeadlineType } from "@/lib/deadline-types";
 import { fmtDate, fmtDateTime, fullName, intakeLabel, MONTHS } from "@/lib/format";
@@ -157,6 +159,7 @@ export async function AgingCard({
   showOrg = false,
   title = "Waiting the longest",
   subtitle = "Oldest first, against the lane's service level",
+  fold = false,
 }: {
   rows: {
     id: string;
@@ -173,12 +176,35 @@ export async function AgingCard({
   showOrg?: boolean;
   title?: string;
   subtitle?: string;
+  /**
+   * Folded away unless it holds something, for the lists further down the
+   * dashboard that are read now and then rather than every morning. Left out,
+   * the card behaves as it always has.
+   */
+  fold?: boolean;
 }) {
   const sla = await getSlaDays();
   const now = Date.now();
+  const Shell = fold
+    ? ({ children }: { children: ReactNode }) => (
+        <Section
+          id={`aging-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+          title={title}
+          meta={rows.length === 0 ? "Nothing waiting" : `${rows.length} waiting`}
+          defaultOpen={false}
+          bodyClassName=""
+        >
+          {children}
+        </Section>
+      )
+    : ({ children }: { children: ReactNode }) => (
+        <Card>
+          <CardHeader title={title} subtitle={subtitle} />
+          {children}
+        </Card>
+      );
   return (
-    <Card>
-      <CardHeader title={title} subtitle={subtitle} />
+    <Shell>
       {rows.length === 0 ? (
         <p className="px-4 py-8 text-center text-muted">Nothing is waiting.</p>
       ) : (
@@ -223,7 +249,7 @@ export async function AgingCard({
           </tbody>
         </Table>
       )}
-    </Card>
+    </Shell>
   );
 }
 

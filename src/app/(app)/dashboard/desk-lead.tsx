@@ -1,5 +1,7 @@
 import Link from "next/link";
 import type { SessionUser } from "@/lib/auth";
+import { and, desc, eq, sql } from "drizzle-orm";
+import { db, schema } from "@/db";
 import { deskPool, deskStanding, queueCounts } from "@/server/documentation";
 import { CLAIM_MINUTES } from "@/lib/journey";
 import { ROLE_LABEL } from "@/lib/permissions";
@@ -25,7 +27,31 @@ function waited(hours: number | null) {
  * somebody looks at it per person.
  */
 export default async function DeskLeadDashboard({ user }: { user: SessionUser }) {
-  const [standing, pool, counts] = await Promise.all([deskStanding(), deskPool(), queueCounts(user.id)]);
+  const r = schema.optionRequests;
+  const [standing, pool, counts, options] = await Promise.all([
+    deskStanding(),
+    deskPool(),
+    queueCounts(user.id),
+    // Programme options asked for and not yet sent. The desk lead is who
+    // chases them, so they belong here rather than only on their own screen.
+    db
+      .select({
+        id: r.id,
+        requestNo: r.requestNo,
+        studentName: r.studentName,
+        destinations: r.destinations,
+        status: r.status,
+        createdAt: r.createdAt,
+        assignedToId: r.assignedToId,
+        orgName: sql<string>`org.name`,
+        waitingHours: sql<number>`round(extract(epoch from (now() - ${r.createdAt})) / 3600)::int`,
+      })
+      .from(r)
+      .leftJoin(sql`organizations as org`, sql`org.id = ${r.orgId}`)
+      .where(and(eq(r.archived, false), eq(r.status, "REQUESTED")))
+      .orderBy(desc(r.createdAt))
+      .limit(8),
+  ]);
   const carrying = standing.reduce((n, o) => n + o.carrying, 0);
   const stale = standing.reduce((n, o) => n + o.stale, 0);
   const overdue = pool.overdue + standing.reduce((n, o) => n + o.overdue, 0);
@@ -85,6 +111,35 @@ export default async function DeskLeadDashboard({ user }: { user: SessionUser })
           it and went home. They can be moved to another officer, or put back in the pool, from the queue.
         </Card>
       )}
+
+      {/* Asked for by a branch, owed by this desk. It used to live only on its
+          own screen, so whoever ran the desk found out a request was sitting
+          there when the branch rang to ask. */}
+      <Card>
+        <CardHeader
+          title="Programme options asked for"
+          subtitle="Requests from the branches that have not been sent back yet, oldest waiting first"
+          action={<LinkButton href="/program-options" variant="secondary">Open them</LinkButton>}
+        />
+        {options.length === 0 ? (
+          <EmptyState title="Nothing is waiting">Every request the branches have sent has been answered.</EmptyState>
+        ) : (
+          <ul className="divide-y divide-line">
+            {options.map((o) => (
+              <li key={o.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 text-[13px]">
+                <Link href={`/program-options?id=${o.id}`} className="font-medium text-brand-600 hover:underline">
+                  {o.studentName}
+                </Link>
+                <span className="font-mono text-xs text-muted">{o.requestNo}</span>
+                <span className="text-muted">{o.orgName}</span>
+                {o.destinations.length > 0 && <Chip>{o.destinations.join(", ")}</Chip>}
+                {!o.assignedToId && <Chip tone="warn">Nobody on it</Chip>}
+                <span className="ml-auto whitespace-nowrap text-xs text-muted">Waiting {waited(o.waitingHours)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
 
       <Card>
         <CardHeader
