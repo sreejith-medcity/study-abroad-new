@@ -10,6 +10,32 @@ npm i -D playwright            # once, if it is not installed
 node tests/browser/dashboards.mjs
 ```
 
+## Running all of them
+
+Run them one at a time, each against fresh data:
+
+```bash
+tests/browser/run-all.sh
+```
+
+It reseeds and restarts the server before every suite, and takes a couple of
+hours. That is not politeness, it is the only way the set passes: run back to
+back against one database the suites interfere with each other. One archives
+the student the next is about to search for; one uses up the last document
+waiting to be checked; one sets a branch to check its own papers and the next
+expects it not to. Run together the whole set reports around fifty failures
+and none of them is real. The same suites run on their own, after a reseed,
+pass.
+
+The restart matters too. The sign-in limit is held in the server's memory, so
+a suite that signs the same person in several times is refused partway through
+a long session, and every check after that reads the login page and reports
+the product as broken.
+
+`BASE` points the suites at another port, which is how a change is measured
+against the build before it: build the old commit in a `git worktree`, serve it
+on 3200, and run the same suites against both.
+
 | Script | Covers |
 | --- | --- |
 | `dashboards.mjs` | All five role dashboards, the landing page per role, nav labels |

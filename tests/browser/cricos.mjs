@@ -12,7 +12,7 @@ if (!DIR) { console.error("Set CRICOS_DIR to the folder holding the three CRICOS
 const file = (part) => path.join(DIR, fs.readdirSync(DIR).find((f) => f.includes(part) && f.endsWith(".csv")));
 const OUT = "/tmp/smoke-cricos";
 fs.mkdirSync(OUT, { recursive: true });
-const BASE = "http://localhost:3000";
+const BASE = process.env.BASE ?? "http://localhost:3000";
 const fails = [];
 const ok = (m) => console.log("  ok  " + m);
 const bad = (m) => { console.log("FAIL  " + m); fails.push(m); };

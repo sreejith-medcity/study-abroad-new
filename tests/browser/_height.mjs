@@ -9,7 +9,7 @@
 import { chromium } from "playwright";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
-const BASE = "http://localhost:3000";
+const BASE = process.env.BASE ?? "http://localhost:3000";
 const DB = (fs.readFileSync(".env", "utf8").match(/localhost:5432\/([a-z0-9_]+)/) || [])[1];
 const sql = (q) => execFileSync("psql", ["-h","localhost","-U","postgres","-d",DB,"-Atc",q], { env: { ...process.env, PGPASSWORD: "local" } }).toString().trim();
 const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--no-first-run"] });

@@ -5,7 +5,7 @@ const OUT = "/tmp/smoke-enq";
 // Unique per run: the portal refuses a duplicate number or email, by design.
 const tag = String(Date.now()).slice(-5);
 fs.mkdirSync(OUT, { recursive: true });
-const BASE = "http://localhost:3000";
+const BASE = process.env.BASE ?? "http://localhost:3000";
 const fails = [];
 const ok = (m) => console.log("  ok  " + m);
 const bad = (m) => { console.log("FAIL  " + m); fails.push(m); };

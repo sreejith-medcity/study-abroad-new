@@ -1,9 +1,9 @@
 import { chromium } from "playwright";
 import { execFileSync } from "node:child_process";
 
-const BASE = "http://localhost:3000";
+const BASE = process.env.BASE ?? "http://localhost:3000";
 const DB = execFileSync("bash", ["-lc", "grep -o 'localhost:5432/[a-z0-9_]*' .env | head -1 | cut -d/ -f2"]).toString().trim();
-const sql = (q) => execFileSync("psql", ["-h", "localhost", "-U", "postgres", "-d", DB, "-Atc", q], { env: { ...process.env, PGPASSWORD: "local" } }).toString().trim();
+const sql = (q) => execFileSync("psql", ["-h", "localhost", "-U", "postgres", "-d", DB, "-qAtc", q], { env: { ...process.env, PGPASSWORD: "local" } }).toString().trim();
 const fails = [];
 const ok = (m) => console.log("  ok  " + m);
 const bad = (m) => { console.log("FAIL  " + m); fails.push(m); };

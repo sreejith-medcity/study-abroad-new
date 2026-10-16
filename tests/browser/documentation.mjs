@@ -13,9 +13,13 @@ import fs from "node:fs";
 
 const OUT = "/tmp/smoke-documentation";
 fs.mkdirSync(OUT, { recursive: true });
-const BASE = "http://localhost:3000";
+const BASE = process.env.BASE ?? "http://localhost:3000";
 const DB = (fs.readFileSync(".env", "utf8").match(/localhost:5432\/([a-z0-9_]+)/) || [])[1];
-const sql = (q) => execFileSync("psql", ["-h", "localhost", "-U", "postgres", "-d", DB, "-Atc", q], { env: { ...process.env, PGPASSWORD: "local" } }).toString().trim();
+// -q so psql does not append its command tag. Without it an
+// "update ... returning id" came back as "<the id>\nUPDATE 1", and every
+// later query built from that value silently matched nothing, which read as
+// the product failing rather than the harness.
+const sql = (q) => execFileSync("psql", ["-h", "localhost", "-U", "postgres", "-d", DB, "-qAtc", q], { env: { ...process.env, PGPASSWORD: "local" } }).toString().trim();
 const fails = [];
 const ok = (m) => console.log("  ok  " + m);
 const bad = (m) => { console.log("FAIL  " + m); fails.push(m); };
@@ -26,13 +30,22 @@ async function signIn(email, ip) {
   await ctx.route("**/*", (r) => (r.request().url().startsWith(BASE) ? r.continue() : r.abort()));
   const page = await ctx.newPage();
   const errors = [];
-  page.on("pageerror", (e) => errors.push(`${e} @ ${page.url()}`));
+  page.on("pageerror", (e) => errors.push(`${e} @ ${page.url()}\n${e.stack ?? ""}`));
+  page.on("console", (m) => { const t = m.text(); if (/hydrat|did not match|server rendered/i.test(t)) errors.push(`CONSOLE ${t} @ ${page.url()}`); });
   page.on("response", (r) => { if (r.status() >= 500) errors.push(`${r.status()} ${r.url()}`); });
   await page.goto(`${BASE}/login`);
   await page.fill('input[name="email"]', email);
   await page.fill('input[name="password"]', "Password@123");
   await page.click('button[type="submit"]');
   await page.waitForURL((u) => !String(u).includes("/login"), { timeout: 20000 }).catch(() => {});
+  // Say so rather than carrying on. A sign-in that quietly failed left every
+  // later check reading the login page and reporting the product as broken:
+  // the portal throttles to eight sign-ins per account per ten minutes, so a
+  // suite run twice in a row used to fail in a different place each time.
+  if (page.url().includes("/login")) {
+    const why = await page.locator("main").innerText().catch(() => "");
+    bad(`sign-in for ${email} did not go through${/too many|try again/i.test(why) ? " (throttled: restart the server or wait ten minutes)" : ""}`);
+  }
   return { ctx, page, errors };
 }
 const settle = (page) => page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
@@ -151,6 +164,17 @@ check(/Let through with a reason/.test(text) && /attestation/.test(text), "gate:
 {
   // Mark whatever is still outstanding at this student's stage as never waived,
   // the way the Overseas team would on the requirements screen.
+  //
+  // The override above moved the stage on, and the stage it landed on can be
+  // one with no requirements at all (SHORTLIST has none), which left this
+  // block with nothing to mark and reporting a failure that was the suite's
+  // own doing. So put the student on a stage that does have something
+  // outstanding before marking it.
+  const stageWithWork = sql(
+    `select stage from checklist_items where student_id = '${firstStudent}' and required and state <> 'ACCEPTED'
+     order by stage limit 1`,
+  );
+  if (stageWithWork) sql(`update students set journey_stage = '${stageWithWork}' where id = '${firstStudent}'`);
   const stageNow2 = sql(`select journey_stage from students where id = '${firstStudent}'`);
   const locked = sql(
     `select dt.label from checklist_items ci join document_types dt on dt.code = ci.type_code
@@ -196,12 +220,22 @@ check(/Let through with a reason/.test(text) && /attestation/.test(text), "gate:
   // would. Any required row will do, put back to waiting whatever an earlier
   // run of this suite left it as: otherwise the second run finds everything
   // already decided and the branch is offered nothing to decide.
+  // At the stage the file is actually on, because the screen only shows that
+  // stage: a row picked from another stage is never drawn, and the suite then
+  // clicks whichever Check button happens to be first and asserts against a
+  // row nobody touched.
+  const stageHere = sql(`select journey_stage from students where id = '${studentId}'`);
   const waiting = sql(
     `update checklist_items set state = 'UPLOADED', decided_at = null, claimed_by_id = null, claimed_at = null
-     where id = (select id from checklist_items where student_id = '${studentId}' and required
-                 order by (state = 'NOT_ASKED') desc, stage limit 1)
+     where id = (select id from checklist_items where student_id = '${studentId}' and required and stage = '${stageHere}'
+                 order by (state = 'NOT_ASKED') desc limit 1)
      returning id`,
   );
+  // The row this is about, so the click lands on it rather than on whatever
+  // sits at the top of the list.
+  const waitingLabel = waiting
+    ? sql(`select dt.label from checklist_items ci join document_types dt on dt.code = ci.type_code where ci.id = '${waiting}'`)
+    : "";
   const counsellorEmail = sql(`select email from users where org_id = '${branchOf}' and role in ('PARTNER','COUNSELLOR') limit 1`);
   if (waiting && counsellorEmail) {
     // Off, which is how every branch starts: the branch is not offered the decision.
@@ -216,7 +250,10 @@ check(/Let through with a reason/.test(text) && /attestation/.test(text), "gate:
     // On: the same person may accept, and it sticks.
     sql(`update organizations set checks_own_documents = true where id = '${branchOf}'`);
     await go(br.page, `/students/${studentId}/documentation`);
-    const check1 = br.page.getByRole("button", { name: "Check", exact: true }).first();
+    const row = br.page.locator("li, tr").filter({ hasText: waitingLabel });
+    const check1 = (await row.getByRole("button", { name: "Check", exact: true }).count())
+      ? row.getByRole("button", { name: "Check", exact: true }).first()
+      : br.page.getByRole("button", { name: "Check", exact: true }).first();
     const offered = (await check1.count()) > 0;
     check(offered, "first pass: on, the branch is offered the decision");
     if (offered) await check1.click();
@@ -257,15 +294,50 @@ const docs = await signIn("documentation@medcityoverseas.test", "10.130.1.3");
 // is how that normally happens; here it is done directly so the rest of the
 // suite has a file to work on.
 sql(`update applications set officer_id = (select id from users where email = 'documentation@medcityoverseas.test')`);
+// A document waiting with a real uploaded version on it.
+//
+// "The version that was refused keeps its reason" can only be asked of an
+// item that has a version: the portal stamps the outcome onto the file, and
+// an item pushed into UPLOADED by hand has no file to stamp. The seed lays
+// down a handful of items with real versions and each run of this suite used
+// one up, so the third run picked an item with nothing on it and reported
+// the product as having lost a file it never had.
+//
+// So the fixture is put back rather than consumed: one item that has a
+// version is returned to waiting, and its newest version to undecided.
+// At the student's own stage, because the queue only lists the stage a file
+// is actually on: an item restored at some other stage is never drawn, and
+// the next check fails on a row that was never going to be there.
+const withFile = sql(
+  `select ci.id from checklist_items ci
+   join students s on s.id = ci.student_id
+   where ci.stage = s.journey_stage
+     and exists (select 1 from checklist_files cf where cf.item_id = ci.id)
+   order by ci.updated_at limit 1`,
+);
+if (withFile) {
+  sql(`update checklist_items set state = 'UPLOADED', decided_at = null, decided_by_id = null, reason_code = null, reason = null, claimed_by_id = null, claimed_at = null where id = '${withFile}'`);
+  sql(`update checklist_files set outcome = null, decided_at = null, decided_by_id = null where item_id = '${withFile}' and version = (select version from checklist_items where id = '${withFile}')`);
+}
+const waitingPick = sql(
+  `select ci.id || '|' || dt.label from checklist_items ci
+   join document_types dt on dt.code = ci.type_code
+   where ci.state in ('UPLOADED','IN_REVIEW')
+     and exists (select 1 from checklist_files cf where cf.item_id = ci.id and cf.outcome is null)
+   order by ci.updated_at limit 1`,
+);
+const waitingLabel = waitingPick.split("|")[1] ?? "";
+
 const dp = docs.page;
 text = await go(dp, "/documentation");
 check(/waiting/.test(text) && /Oldest first/.test(text) && /Visa stage first/.test(text), "queue: it opens oldest first and offers the visa sort");
 check(/Unclaimed/.test(text), "queue: an unclaimed document says so");
-const waitingLabel = sql("select dt.label from checklist_items ci join document_types dt on dt.code = ci.type_code where ci.state in ('UPLOADED','IN_REVIEW') limit 1");
+
 check(text.includes(waitingLabel), `queue: the document waiting is listed (${waitingLabel})`);
 await dp.screenshot({ path: `${OUT}/03-queue.png`, fullPage: true });
 
-const waitingId = sql("select id from checklist_items where state in ('UPLOADED','IN_REVIEW') order by updated_at limit 1");
+const waitingId = waitingPick.split("|")[0] ?? "";
+if (!waitingId) bad("queue: no document is waiting with a file on it; run npm run db:seed");
 // Two students can be waiting on the same document, and claiming one moves it
 // down the oldest-first sort, so the row is found by whose file it is.
 const waitingStudent = sql(`select s.first_name || ' ' || s.last_name from checklist_items ci join students s on s.id = ci.student_id where ci.id = '${waitingId}'`);
@@ -281,6 +353,10 @@ text = await go(dp, "/documentation?mine=1");
 check(text.includes(waitingLabel), "queue: Mine shows what this person claimed");
 
 // A rejection needs a reason, and the reason is what the student reads.
+// Counted as a change rather than as a total: the refused versions are kept
+// on purpose, so a second run of this suite finds two of them and a third
+// finds three. Asserting "one" made the suite fail on its own history.
+const refusedBefore = Number(sql(`select count(*) from checklist_files where item_id = '${waitingId}' and outcome = 'REJECTED'`));
 await go(dp, "/documentation");
 const again = dp.locator("tr").filter({ hasText: waitingStudent }).filter({ hasText: waitingLabel }).first();
 await again.getByRole("button", { name: "Check" }).click();
@@ -290,7 +366,13 @@ await dp.locator('select[name="reasonCode"]').first().selectOption({ index: 1 })
 await dp.getByRole("button", { name: "Reject" }).click();
 check((await toast(dp, /sent back/)) || (await waitSql(`select state from checklist_items where id = '${waitingId}'`, "REJECTED")) === "REJECTED", "check: with a reason it goes back");
 check((await waitSql(`select state from checklist_items where id = '${waitingId}'`, "REJECTED")) === "REJECTED", "check: the state is rejected");
-check(sql(`select count(*) from checklist_files where item_id = '${waitingId}' and outcome = 'REJECTED'`) === "1", "check: the version that was refused keeps its reason");
+check(
+  (await waitSql(
+    `select count(*) from checklist_files where item_id = '${waitingId}' and outcome = 'REJECTED'`,
+    String(refusedBefore + 1),
+  )) === String(refusedBefore + 1),
+  "check: the version that was refused keeps its reason",
+);
 
 // Accepting reads the expiry off the document rather than guessing one.
 const toAccept = sql(`select id from checklist_items where student_id = '${studentId}' and state = 'NOT_ASKED' and required order by stage limit 1`);
