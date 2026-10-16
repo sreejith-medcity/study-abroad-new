@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { can } from "@/server/capabilities";
 import { profileCompleteness } from "@/lib/checks";
 import { fmtDate, fmtDateTime } from "@/lib/format";
-import { APP_ROLES, PARTNER_ROLES, canSeeFullPassport, isAdmin, maskPassport } from "@/lib/permissions";
+import { APP_ROLES, PARTNER_ROLES, ROLE_LABEL, canAssignStudents, canSeeFullPassport, isAdmin, isStaff, maskPassport } from "@/lib/permissions";
 import { getStudentForUser } from "@/server/queries";
 import { Alert, Button, Card, Chip } from "@/components/ui";
 import { Section } from "@/components/section";
@@ -15,6 +15,9 @@ import { aiFeatureOn } from "@/server/ai";
 import { guardiansFor, GUARDIAN_LIMIT } from "@/server/family";
 import { AddGuardianForm, GuardianRowActions, ResetGuardianForm } from "@/components/family-forms";
 import { AutofillPanel } from "./autofill";
+import { deskPeople, livingTeams, peopleOnFile } from "@/server/teams";
+import { removePersonFromFileAction, setStudentTeamAction } from "./team-actions";
+import { AddPersonForm } from "./team-panel";
 
 export const metadata = { title: "Student profile" };
 
@@ -52,6 +55,22 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
   const canManageFamily = user.role !== "MANAGEMENT";
   const showFull = (await can(user, "SEE_FULL_PASSPORT")) || reveal === "1";
   const passportDisplay = showFull ? student.passportNumber ?? "" : maskPassport(student.passportNumber);
+
+  // Who carries this file, besides the counsellor it is assigned to. Only the
+  // desk sees this: a branch names its own counsellor and nothing else.
+  const staffHere = isStaff(user);
+  const mayAssign = staffHere && canAssignStudents(user);
+  // What they asked for before they were a student. The enquiry already
+  // points at this file; it was simply never shown here, so the desk read a
+  // registration with none of the conversation that led to it.
+  const enquiry = await db.query.enquiries.findFirst({
+    where: eq(schema.enquiries.studentId, id),
+    with: { notes: { orderBy: desc(schema.enquiryNotes.createdAt), limit: 20 } },
+  });
+
+  const [teams, onFile, staff] = staffHere
+    ? await Promise.all([livingTeams(), peopleOnFile(id), mayAssign ? deskPeople() : Promise.resolve([])])
+    : [[], [], []];
 
   // One source for the row at the top and for whether each part opens folded.
   // A part that is done folds away; a part still wanting something stays open,
@@ -214,6 +233,127 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
           <p className="mb-3 text-[13px] text-muted">The file is sent to an AI service to be read. You check what it found before anything is saved.</p>
           <AutofillPanel studentId={id} docs={readable.map((d) => ({ id: d.id, label: d.type?.label ?? d.fileName }))} />
         </Card>
+      )}
+
+      {enquiry && (
+        <Section
+          id="enquiry"
+          title="Before they registered"
+          meta={[
+            `Enquiry from ${fmtDate(enquiry.createdAt)}`,
+            enquiry.source.replace(/_/g, " ").toLowerCase(),
+            enquiry.notes.length ? `${enquiry.notes.length} ${enquiry.notes.length === 1 ? "note" : "notes"}` : "no notes",
+          ].join(" · ")}
+          defaultOpen={false}
+          bodyClassName=""
+        >
+          <dl className="grid gap-x-6 gap-y-2 px-4 py-3 text-[13px] sm:grid-cols-2">
+            {[
+              ["What they asked about", [enquiry.interestCountry, enquiry.interestPathway].filter(Boolean).join(" · ") || "Not recorded"],
+              ["Intake", enquiry.intakeMonth || enquiry.intakeYear ? `${enquiry.intakeMonth ?? ""} ${enquiry.intakeYear ?? ""}`.trim() : "Not recorded"],
+              ["Budget they gave", enquiry.budgetLakhs ? `${enquiry.budgetLakhs} lakh` : "Not recorded"],
+              ["Where they came from", enquiry.source.replace(/_/g, " ").toLowerCase()],
+            ].map(([label, value]) => (
+              <div key={label}>
+                <dt className="text-xs uppercase tracking-wider text-muted">{label}</dt>
+                <dd>{value}</dd>
+              </div>
+            ))}
+          </dl>
+
+          {enquiry.answers.length > 0 && (
+            <div className="border-t border-line px-4 py-3">
+              <p className="mb-2 text-xs uppercase tracking-wider text-muted">What the branch asked them</p>
+              <ul className="space-y-1.5 text-[13px]">
+                {enquiry.answers.map((a, i) => (
+                  <li key={i}>
+                    <span className="text-muted">{a.question}</span> {a.answer}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {enquiry.notes.length > 0 && (
+            <ul className="divide-y divide-line border-t border-line">
+              {enquiry.notes.map((n) => (
+                <li key={n.id} className="px-4 py-2.5 text-[13px]">
+                  <p className="whitespace-pre-wrap">{n.body}</p>
+                  <p className="mt-0.5 text-xs text-muted">{fmtDateTime(n.createdAt)}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {enquiry.notes.length === 0 && enquiry.answers.length === 0 && (
+            <p className="border-t border-line px-4 py-3 text-[13px] text-muted">
+              Nothing was written down on the enquiry beyond what it asked for.
+            </p>
+          )}
+        </Section>
+      )}
+
+      {staffHere && (
+        <Section
+          id="team"
+          title="Team and who is on this file"
+          meta={[
+            student.teamId ? teams.find((t) => t.id === student.teamId)?.name ?? "A retired team" : "No team",
+            onFile.length === 0 ? "nobody else named" : `${onFile.length} ${onFile.length === 1 ? "person" : "people"} besides the counsellor`,
+          ].join(" · ")}
+          defaultOpen={!student.teamId}
+          bodyClassName=""
+        >
+          <form action={setStudentTeamAction} className="flex flex-wrap items-end gap-2 border-b border-line px-4 py-3">
+            <input type="hidden" name="studentId" value={id} />
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+              Team carrying this file
+              <select
+                name="teamId"
+                defaultValue={student.teamId ?? ""}
+                disabled={!mayAssign}
+                className="mt-1 block w-52 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[13px]"
+              >
+                <option value="">No team</option>
+                {teams.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </label>
+            {mayAssign && <Button variant="secondary" size="sm">Save</Button>}
+            <p className="w-full text-[11px] text-muted">
+              Which part of the business carries this student: Ausbildung, Austria, the UK desk. The queues can be read one team at a time.
+            </p>
+          </form>
+
+          <ul className="divide-y divide-line">
+            {onFile.length === 0 && (
+              <li className="px-4 py-3 text-[13px] text-muted">
+                Only the counsellor this file is assigned to. Add whoever else is working on it, and what they do.
+              </li>
+            )}
+            {onFile.map((row) => (
+              <li key={row.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-[13px]">
+                <span className="font-medium">{row.user?.deskLabel ?? row.user?.name}</span>
+                <Chip tone="info">{row.part}</Chip>
+                <span className="text-xs text-muted">{ROLE_LABEL[row.user?.role ?? ""] ?? row.user?.role}</span>
+                {row.user && !row.user.active && <Chip tone="warn">No longer active</Chip>}
+                {mayAssign && (
+                  <form action={removePersonFromFileAction} className="ml-auto">
+                    <input type="hidden" name="personId" value={row.id} />
+                    <button className="text-xs text-muted hover:text-stop-500">Take off the file</button>
+                  </form>
+                )}
+              </li>
+            ))}
+          </ul>
+
+          {mayAssign && (
+            <div className="border-t border-line px-4 py-3">
+              <AddPersonForm studentId={id} people={staff} />
+            </div>
+          )}
+        </Section>
       )}
 
       <Section id="personal" title="Personal information" state={state.personal} defaultOpen={wants(state.personal)}>

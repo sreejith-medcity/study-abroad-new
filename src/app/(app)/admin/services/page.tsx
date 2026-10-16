@@ -3,11 +3,14 @@ import { and, asc, count, eq, sql, type SQL } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fmtDateTime, fullName } from "@/lib/format";
-import { PROCESSING_ROLES } from "@/lib/permissions";
+import { PROCESSING_ROLES, isAdmin } from "@/lib/permissions";
 import { SERVICE_LABEL, SERVICE_STATUSES, SERVICE_TYPES, STATUS_LABEL, STATUS_TONE, type ServiceStatus, type ServiceType } from "@/lib/services";
 import { readFilters } from "@/server/queries";
 import { Button, Card, Chip, EmptyState, LinkButton, PageHeader, Select, Toolbar } from "@/components/ui";
 import { UpdateServiceForm } from "@/components/service-forms";
+import { Section } from "@/components/section";
+import { deskPeople, serviceOwners } from "@/server/teams";
+import { ServiceOwners } from "./owners";
 
 export const metadata = { title: "Services" };
 
@@ -15,7 +18,7 @@ const PAGE = 50;
 
 /** Every service request across branches, open ones first and oldest first, so nothing waits unseen. */
 export default async function ServicesPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  await requireUser([...PROCESSING_ROLES]);
+  const user = await requireUser([...PROCESSING_ROLES]);
   const f = readFilters(await searchParams) as Record<string, string>;
   const page = Math.max(1, Number(f.page ?? 1) || 1);
   const sr = schema.serviceRequests;
@@ -37,6 +40,13 @@ export default async function ServicesPage({ searchParams }: { searchParams: Pro
   const [{ total }] = await db.select({ total: count() }).from(sr).where(where);
   const byStatus = await db.select({ status: sr.status, n: count() }).from(sr).groupBy(sr.status);
   const orgs = await db.select({ id: schema.organizations.id, name: schema.organizations.name }).from(schema.organizations).where(sql`${schema.organizations.type} <> 'HQ'`).orderBy(asc(schema.organizations.name));
+  // Who each kind lands on, and everybody who could be named.
+  const [owners, staff] = isAdmin(user) ? await Promise.all([serviceOwners(), deskPeople()]) : [new Map(), []];
+  const ownerMap = Object.fromEntries(
+    SERVICE_TYPES.map((t) => [t, owners.get(t)?.user ? { id: owners.get(t)!.user!.id, name: owners.get(t)!.user!.name } : undefined]),
+  );
+  const named = SERVICE_TYPES.filter((t) => ownerMap[t]).length;
+
   const qs = (extra: Record<string, string>) => `/admin/services?${new URLSearchParams(Object.entries({ ...f, ...extra }).filter(([, v]) => v))}`;
 
   return (
@@ -45,6 +55,22 @@ export default async function ServicesPage({ searchParams }: { searchParams: Pro
         title="Services"
         subtitle={`${byStatus.find((b) => b.status === "NEW")?.n ?? 0} new, ${byStatus.find((b) => b.status === "IN_PROGRESS")?.n ?? 0} in progress. Loans, forex, accommodation, insurance and flights for students.`}
       />
+      {isAdmin(user) && (
+        <Section
+          id="owners"
+          title="Who handles what"
+          meta={`${named} of ${SERVICE_TYPES.length} kinds have somebody named`}
+          defaultOpen={named === 0}
+          bodyClassName=""
+        >
+          <p className="border-b border-line px-4 py-2.5 text-[13px] text-muted">
+            A request of each kind lands on the person named here, and they are told about it. Anything left as nobody goes to the whole desk,
+            which is how all of it worked before.
+          </p>
+          <ServiceOwners owners={ownerMap} people={staff} />
+        </Section>
+      )}
+
       <Toolbar>
         <form className="grid w-full gap-2.5 sm:grid-cols-4 [&>*]:min-w-0">
           <Select name="status" aria-label="Status" defaultValue={f.status ?? ""}>

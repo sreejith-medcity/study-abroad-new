@@ -104,6 +104,7 @@ const ADMIN_NAV: NavGroup[] = [
     items: [
       { href: "/enquiries", label: "Enquiries", icon: "enquiry" },
       { href: "/admin/partners", label: "Partners", icon: "partners" },
+      { href: "/admin/teams", label: "Teams", icon: "partners" },
       { href: "/admin/agents", label: "Sub-agents", icon: "partners" },
       { href: "/admin/updates", label: "Updates", icon: "spark" },
       { href: "/admin/promotions", label: "Schemes", icon: "commission" },

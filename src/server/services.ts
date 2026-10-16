@@ -13,6 +13,7 @@ import { PROCESSING_ROLES, STUDENT_WORK_ROLES } from "@/lib/permissions";
 import { SERVICE_LABEL, SERVICE_STATUSES, SERVICE_TYPES, STATUS_LABEL } from "@/lib/services";
 import { adminIds, notifyUsers, partnerRecipients, deskRecipients } from "@/server/notify";
 import { getStudentForUser } from "@/server/queries";
+import { ownerForService } from "@/server/teams";
 
 const request = z.object({
   studentId: z.string().min(1),
@@ -26,12 +27,19 @@ export async function requestServiceAction(_: FormState, fd: FormData): Promise<
   const parsed = request.safeParse(Object.fromEntries(fd));
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Check the highlighted fields." };
   const student = await getStudentForUser(user, parsed.data.studentId);
+  // Medcity has a person for each of these, so a request lands on them rather
+  // than on the whole desk. Nobody named for this kind leaves it as it was.
+  const ownerId = await ownerForService(parsed.data.type);
   const [row] = await db
     .insert(schema.serviceRequests)
-    .values({ studentId: student.id, orgId: student.orgId, type: parsed.data.type, details: parsed.data.details, requestedById: user.id })
+    .values({ studentId: student.id, orgId: student.orgId, type: parsed.data.type, details: parsed.data.details, requestedById: user.id, ownerId })
     .returning();
-  await audit(user.id, "service.request", "student", student.id, { type: row.type, serviceId: row.id });
-  await notifyUsers(await deskRecipients(student.orgId), `${SERVICE_LABEL[row.type]} requested`, `${student.firstName} ${student.lastName}: ${row.details.slice(0, 100)}`, "/admin/services");
+  await audit(user.id, "service.request", "student", student.id, { type: row.type, serviceId: row.id, ownerId });
+  const said = `${student.firstName} ${student.lastName}: ${row.details.slice(0, 100)}`;
+  if (ownerId) {
+    await notifyUsers([ownerId], `${SERVICE_LABEL[row.type]} for you to handle`, said, "/admin/services");
+  }
+  await notifyUsers(await deskRecipients(student.orgId), `${SERVICE_LABEL[row.type]} requested`, said, "/admin/services");
   revalidatePath(`/students/${student.id}/services`);
   return { ok: "Request sent to the Overseas team." };
 }

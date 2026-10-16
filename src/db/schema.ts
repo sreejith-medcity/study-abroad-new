@@ -570,6 +570,8 @@ export const students = pgTable(
       .references(() => organizations.id),
     createdById: text("created_by_id").references(() => users.id),
     assignedToId: text("assigned_to_id").references(() => users.id),
+    /** Which part of the business carries this file: Ausbildung, Austria. */
+    teamId: text("team_id").references(() => teams.id, { onDelete: "set null" }),
     userId: text("user_id").references(() => users.id),
     portalToken: text("portal_token").notNull().unique().$defaultFn(createId),
     /**
@@ -2907,10 +2909,112 @@ export const programDeadlinesRelations = relations(programDeadlines, ({ one }) =
   program: one(programs, { fields: [programDeadlines.programId], references: [programs.id] }),
 }));
 
+/**
+ * A named team: Ausbildung, Austria, the UK desk.
+ *
+ * Medcity's work divides by pathway and destination long before it divides by
+ * role, and until now the portal had no word for that. A team is simply a name
+ * with people in it, so a file can say which part of the business is carrying
+ * it and a queue can be read one team at a time.
+ */
+export const teams = pgTable(
+  "teams",
+  {
+    id: id(),
+    name: text("name").notNull(),
+    note: text("note"),
+    active: boolean("active").notNull().default(true),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("teams_name_uq").on(sql`lower(${t.name})`)],
+);
+
+export const teamMembers = pgTable(
+  "team_members",
+  {
+    id: id(),
+    teamId: text("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** The person who answers for the team's work, where one is named. */
+    lead: boolean("lead").notNull().default(false),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("team_members_uq").on(t.teamId, t.userId), index("team_members_user_idx").on(t.userId)],
+);
+
+/**
+ * Somebody with a part in this student's file besides the counsellor whose
+ * file it is.
+ *
+ * A student is advised by one person and worked on by several: documents,
+ * visa, ticketing. One assigned_to column could only ever name the first of
+ * them, so the rest were carried in people's heads.
+ */
+export const studentPeople = pgTable(
+  "student_people",
+  {
+    id: id(),
+    studentId: text("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** What they do on this file, in the desk's own words: Documents, Visa. */
+    part: text("part").notNull(),
+    addedById: text("added_by_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("student_people_uq").on(t.studentId, t.userId, t.part), index("student_people_student_idx").on(t.studentId)],
+);
+
+/**
+ * Who a new request of each kind lands on, so a ticketing request reaches the
+ * person who books tickets rather than the whole desk.
+ */
+export const serviceOwners = pgTable(
+  "service_owners",
+  {
+    id: id(),
+    type: serviceType("type").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    setById: text("set_by_id").references(() => users.id, { onDelete: "set null" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("service_owners_type_uq").on(t.type)],
+);
+
+export const teamsRelations = relations(teams, ({ many }) => ({
+  members: many(teamMembers),
+  students: many(students),
+}));
+
+export const teamMembersRelations = relations(teamMembers, ({ one }) => ({
+  team: one(teams, { fields: [teamMembers.teamId], references: [teams.id] }),
+  user: one(users, { fields: [teamMembers.userId], references: [users.id] }),
+}));
+
+export const studentPeopleRelations = relations(studentPeople, ({ one }) => ({
+  student: one(students, { fields: [studentPeople.studentId], references: [students.id] }),
+  user: one(users, { fields: [studentPeople.userId], references: [users.id] }),
+}));
+
+export const serviceOwnersRelations = relations(serviceOwners, ({ one }) => ({
+  user: one(users, { fields: [serviceOwners.userId], references: [users.id] }),
+}));
+
 export const studentsRelations = relations(students, ({ one, many }) => ({
   org: one(organizations, { fields: [students.orgId], references: [organizations.id] }),
   assignedTo: one(users, { fields: [students.assignedToId], references: [users.id] }),
   createdBy: one(users, { fields: [students.createdById], references: [users.id] }),
+  team: one(teams, { fields: [students.teamId], references: [teams.id] }),
+  people: many(studentPeople),
   academics: many(academicRecords),
   tests: many(testScores),
   work: many(workExperience),
@@ -3241,3 +3345,5 @@ export type ReferralEarningState = (typeof referralEarningState.enumValues)[numb
 export type IntegrationDirection = (typeof integrationDirection.enumValues)[number];
 export type IntegrationStatus = (typeof integrationStatus.enumValues)[number];
 export type AppSettings = typeof appSettings.$inferSelect;
+export type Team = typeof teams.$inferSelect;
+export type StudentPerson = typeof studentPeople.$inferSelect;
