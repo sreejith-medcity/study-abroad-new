@@ -7,6 +7,7 @@ import { db, schema } from "@/db";
 import { hashPassword, issueSession, requireUser, verifyPassword } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { isLocale } from "@/lib/i18n";
+import { readSkin } from "@/lib/skins";
 import { canManageSettings, isPartner, isSuperAdmin } from "@/lib/permissions";
 import { getSettings } from "@/server/settings";
 import { UploadError, deleteUpload, saveBrandImage } from "@/server/storage";
@@ -44,6 +45,21 @@ export async function saveProfileAction(_: FormState, formData: FormData): Promi
     .where(eq(schema.users.id, user.id));
   await audit(user.id, "user.profile", "user", user.id, {});
   revalidatePath("/settings");
+  return { ok: "Saved." };
+}
+
+/**
+ * The surface the portal is painted on. Kept out of the profile form so
+ * that picking one is a single click rather than a click and a Save:
+ * the whole point of a skin is that you try it and look.
+ */
+export async function saveSkinAction(_: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const skin = readSkin(String(formData.get("skin") ?? ""));
+  await db.update(schema.users).set({ skin }).where(eq(schema.users.id, user.id));
+  // The skin is read at the html element, above every route, so the whole
+  // tree has to be re-rendered rather than just this page.
+  revalidatePath("/", "layout");
   return { ok: "Saved." };
 }
 

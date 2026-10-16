@@ -177,3 +177,188 @@ h4,
   [data-print="only"] { display: revert !important; }
 }
 [data-print="only"] { display: none; }
+
+/* ================================================================
+   Appearance
+
+   Three surfaces, one set of tokens. The whole portal paints itself
+   from --color-surface, --color-line, --color-ink and the rest, so a
+   skin is a redefinition of those on the html element and nothing
+   else has to know. A screen written against the tokens follows on
+   its own; a screen that hardcoded a colour does not, which is why
+   there are none left in the app shell.
+
+   soft  the portal as it has always looked: opaque cards on a warm wash
+   glass translucent cards over a coloured field, blurred behind
+   night  the same layout after dark
+   ================================================================ */
+
+/* The field behind the glass. Without something to blur, a blur reads
+   as a slightly grey card and the effect is wasted. */
+[data-skin="glass"] body {
+  /*
+    A dense list screen covers most of its own page, so the field has to be
+    strong enough to arrive through a card rather than to be admired between
+    them. These values were set by looking: at half this saturation the whole
+    skin read as "slightly washed out white", which is the usual way this
+    effect fails.
+  */
+  background-color: #dfe3f5;
+  background-image:
+    radial-gradient(900px 620px at 2% -6%, rgba(192, 31, 83, 0.62), transparent 58%),
+    radial-gradient(820px 580px at 99% 6%, rgba(4, 102, 175, 0.55), transparent 56%),
+    radial-gradient(1100px 760px at 42% 116%, rgba(99, 26, 51, 0.5), transparent 60%),
+    radial-gradient(700px 480px at 78% 52%, rgba(247, 236, 34, 0.22), transparent 62%),
+    radial-gradient(640px 520px at 20% 62%, rgba(4, 102, 175, 0.3), transparent 64%);
+  background-attachment: fixed;
+}
+
+[data-skin="glass"] {
+  /*
+    Low enough that the field behind actually arrives through the card.
+    At 0.6 the blur was real and invisible: a white card on a pale page
+    looks like a white card. The figures still pass on contrast at this
+    value, which is what decides how far it can go.
+  */
+  --color-surface: rgba(255, 255, 255, 0.46);
+  --color-surface-2: rgba(255, 255, 255, 0.26);
+  --color-ground: transparent;
+  --color-line: rgba(255, 255, 255, 0.5);
+  --color-line-strong: rgba(28, 20, 32, 0.16);
+
+  /*
+    Text on glass is read against whatever the field puts behind the card,
+    not against white, so the quieter colours are stepped down until they
+    still pass 4.5 to 1 over the strongest part of the field. Checked at the
+    worst spot, a card over the crimson corner: muted reads at 4.6 where the
+    unchanged value read at 3.7, which is a fail. A second line nobody can
+    read is the usual price of this effect, and it is not worth paying.
+  */
+  --color-ink: #16101a;
+  --color-ink-soft: #352d3c;
+  --color-muted: #4f4856;
+  --color-brand-600: #92183f;
+  --color-brand-700: #91183f;
+  --color-good-700: #0a5639;
+  --color-warn-700: #6b4204;
+  --color-stop-700: #8d241d;
+  --shadow-card: 0 1px 1px rgba(28, 20, 32, 0.04), 0 10px 28px -18px rgba(28, 20, 32, 0.45);
+  --shadow-lift: 0 2px 2px rgba(28, 20, 32, 0.04), 0 20px 44px -22px rgba(28, 20, 32, 0.5);
+  --shadow-pop: 0 24px 60px -20px rgba(28, 20, 32, 0.42), 0 2px 10px rgba(28, 20, 32, 0.08);
+}
+
+/*
+  Every card in the portal carries shadow-card, every floating thing
+  carries shadow-pop, so those two class names are the hook the blur
+  needs. Nothing had to be tagged by hand.
+*/
+[data-skin="glass"] .shadow-card,
+[data-skin="glass"] .shadow-lift {
+  backdrop-filter: blur(22px) saturate(1.8);
+  -webkit-backdrop-filter: blur(22px) saturate(1.8);
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+/* The lit top edge is what makes a pane read as glass rather than as a
+   washed-out card. One inset hairline, no gradient. */
+[data-skin="glass"] .shadow-card,
+[data-skin="glass"] .shadow-lift,
+[data-skin="glass"] .shadow-pop {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 1px 1px rgba(28, 20, 32, 0.04),
+    0 16px 40px -22px rgba(28, 20, 32, 0.5);
+}
+
+/* A pop-over has to be readable over whatever it covers, so it keeps
+   more of its own white than a card does. */
+[data-skin="glass"] .shadow-pop {
+  background-color: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+}
+
+/* Fields stay legible: a translucent input over a translucent card
+   leaves the text floating on the page behind it. */
+[data-skin="glass"] input:not([type="checkbox"]):not([type="radio"]),
+[data-skin="glass"] select,
+[data-skin="glass"] textarea {
+  background-color: rgba(255, 255, 255, 0.72);
+}
+
+/* ---------------- Night ---------------- */
+
+[data-skin="night"] {
+  color-scheme: dark;
+
+  --color-ink: #f3edf6;
+  --color-ink-soft: #cfc5d6;
+  --color-muted: #9a90a4;
+  --color-line: #2c2333;
+  --color-line-strong: #3d3246;
+  --color-surface: #191220;
+  --color-surface-2: #211828;
+  --color-ground: #110c16;
+
+  /* The brand ramp is re-stepped, not re-chosen. The light end becomes
+     a dark tint, because that is what a 50 is for: the quietest
+     possible wash of the brand against the page. The fills at 600 and
+     900 stay exactly as they are, so a primary button is the same
+     crimson after dark as it is at noon. */
+  --color-brand-50: #2a1120;
+  --color-brand-100: #3a1529;
+  --color-brand-200: #522037;
+  --color-brand-300: #8a2b4c;
+  --color-brand-400: #cf4a76;
+  --color-brand-500: #e05581;
+
+  --color-info-50: #0f2033;
+  --color-info-500: #4ea3ef;
+  --color-info-700: #8cc4f5;
+  --color-good-50: #0e2619;
+  --color-good-500: #35c08a;
+  --color-good-700: #6fdcae;
+  --color-warn-50: #2c1f07;
+  --color-warn-500: #e0a63a;
+  --color-warn-700: #f0c470;
+  --color-stop-50: #2d1312;
+  --color-stop-500: #ef6a62;
+  --color-stop-700: #f6938c;
+
+  --shadow-card: 0 1px 1px rgba(0, 0, 0, 0.4), 0 10px 28px -20px rgba(0, 0, 0, 0.9);
+  --shadow-lift: 0 2px 2px rgba(0, 0, 0, 0.4), 0 20px 44px -22px rgba(0, 0, 0, 0.95);
+  --shadow-pop: 0 26px 60px -18px rgba(0, 0, 0, 0.85), 0 2px 10px rgba(0, 0, 0, 0.5);
+  --shadow-hero: 0 20px 44px -28px rgba(0, 0, 0, 0.9);
+}
+
+[data-skin="night"] body {
+  background-color: var(--color-ground);
+  background-image:
+    radial-gradient(760px 480px at 6% -10%, rgba(192, 31, 83, 0.16), transparent 62%),
+    radial-gradient(700px 460px at 98% 2%, rgba(4, 102, 175, 0.12), transparent 60%);
+  background-attachment: fixed;
+}
+
+/* The one saturated surface is already dark enough to carry white
+   text; after dark it only needs to stop glowing. */
+[data-skin="night"] .brand-wash {
+  background:
+    radial-gradient(900px 420px at 88% -25%, rgba(247, 236, 34, 0.10), transparent 62%),
+    linear-gradient(115deg, #3d1020 0%, #6a1733 42%, #8c1c42 78%, #a32350 100%);
+}
+
+[data-skin="night"] .grain::after {
+  opacity: 0.18;
+}
+
+/*
+  Crimson as a fill works after dark; crimson as small text does not.
+  #c01f53 on a #191220 card reads at 2.6 to 1. These two classes carry
+  almost every link and figure in the portal, so they are lifted here
+  rather than hunted down screen by screen. The checked value is
+  #f08cae on #191220: 8.1 to 1.
+*/
+[data-skin="night"] .text-brand-600,
+[data-skin="night"] .text-brand-700 {
+  color: #f08cae;
+}

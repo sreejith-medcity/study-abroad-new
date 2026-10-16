@@ -58,7 +58,7 @@ export function ProfileForm({
   );
 }
 
-const METER = ["bg-red-500", "bg-orange-500", "bg-amber-500", "bg-emerald-500", "bg-emerald-600"];
+const METER = ["bg-stop-500", "bg-warn-500", "bg-warn-500", "bg-good-500", "bg-good-500"];
 
 export function PasswordForm() {
   const [value, setValue] = useState("");

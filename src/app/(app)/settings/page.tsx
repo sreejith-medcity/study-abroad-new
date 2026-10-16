@@ -5,6 +5,7 @@ import { isPartner, ROLE_BLURB, ROLE_LABEL } from "@/lib/permissions";
 import { fmtDateTime } from "@/lib/format";
 import { Card, CardHeader, DataList } from "@/components/ui";
 import { ProfileForm } from "./forms";
+import { AppearancePicker } from "./appearance";
 
 export const metadata = { title: "Profile settings" };
 
@@ -26,6 +27,11 @@ export default async function ProfileSettingsPage() {
             showDeskLabel={!isPartner(user)}
           />
         </div>
+      </Card>
+
+      <Card>
+        <CardHeader title="Appearance" subtitle="Which surface the portal is painted on. Yours only: it changes nothing for anybody else." />
+        <AppearancePicker current={user.skin} />
       </Card>
 
       <Card>

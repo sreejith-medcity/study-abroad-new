@@ -31,6 +31,8 @@ export type SessionUser = {
   /** STUDENT logins only: the student file this account may read. */
   studentId: string | null;
   locale: string;
+  /** The surface this person reads the portal on: soft, glass or night. */
+  skin: string;
   mustChangePassword: boolean;
 };
 
@@ -169,6 +171,7 @@ export const getSession = cache(async (): Promise<SessionUser | null> => {
       deskLabel: user.deskLabel,
       studentId: user.studentId,
       locale: user.locale,
+      skin: user.skin,
       mustChangePassword: user.mustChangePassword,
     };
   } catch {

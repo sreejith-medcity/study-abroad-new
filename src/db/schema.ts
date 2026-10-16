@@ -391,6 +391,12 @@ export const users = pgTable(
     /** Set on STUDENT logins: the one student file this account may read. */
     studentId: text("student_id"),
     locale: text("locale").notNull().default("en"),
+    /**
+     * Which surface this person wants the portal painted on: "soft",
+     * "glass" or "night". Held as text rather than an enum because the
+     * list will grow and an enum costs a migration each time.
+     */
+    skin: text("skin").notNull().default("soft"),
     /** Raised to end every signed-in session for this account at once. */
     sessionVersion: integer("session_version").notNull().default(1),
     active: boolean("active").notNull().default(true),
