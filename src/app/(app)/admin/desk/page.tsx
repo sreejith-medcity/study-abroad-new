@@ -101,10 +101,10 @@ export default async function DeskPage({ searchParams }: { searchParams: Promise
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.id} className={r.quiet ? "bg-amber-50/60" : undefined}>
+                <tr key={r.id} className={r.quiet ? "bg-warn-50/60" : undefined}>
                   <Td className="whitespace-nowrap text-xs tabular">
                     {waited(r.deskStage === "SUBMITTED" ? (r.lastUpdateAt ?? r.submittedToVendorAt) : r.handedOverAt)}
-                    {r.quiet && <span className="block text-[11px] font-medium text-amber-700">Quiet {r.quietDays} days</span>}
+                    {r.quiet && <span className="block text-[11px] font-medium text-warn-700">Quiet {r.quietDays} days</span>}
                   </Td>
                   <Td>
                     <Link href={`/students/${r.studentId}/applications?app=${r.id}`} className="font-medium text-brand-600 hover:underline">{r.studentName}</Link>

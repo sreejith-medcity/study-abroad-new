@@ -54,7 +54,7 @@ export default async function ContactsPage() {
                         <div className="flex flex-wrap items-center gap-2">
                           <Chip tone={c.level === 1 ? "ok" : c.level === 2 ? "warn" : "bad"}>{LEVEL[c.level]}</Chip>
                           {c.phone && <a href={`tel:${c.phone.replace(/\s/g, "")}`} className="tabular text-brand-600 hover:underline">{c.phone}</a>}
-                          {c.phone && c.whatsapp && <a href={waLink(c.phone)} target="_blank" rel="noopener noreferrer" className="text-emerald-700 hover:underline">WhatsApp</a>}
+                          {c.phone && c.whatsapp && <a href={waLink(c.phone)} target="_blank" rel="noopener noreferrer" className="text-good-700 hover:underline">WhatsApp</a>}
                           {c.email && <a href={`mailto:${c.email}`} className="text-brand-600 hover:underline">{c.email}</a>}
                         </div>
                       </li>

@@ -238,7 +238,7 @@ export default async function ProgramPage({
                               {vendor.code} {vendor.name}
                             </span>
                             {vendor.isDirect && <span className="text-xs text-muted">Our own agreement with the university</span>}
-                            {age.stale && <p className="text-xs text-amber-700">{age.text}</p>}
+                            {age.stale && <p className="text-xs text-warn-700">{age.text}</p>}
                           </td>
                           <td className="px-4 py-2.5 tabular">{tat == null ? <span className="text-muted">Not recorded</span> : `${tat} days`}</td>
                           <td className="px-4 py-2.5 tabular">{fee == null ? <span className="text-muted">Not recorded</span> : fee === 0 ? "None" : fmtMoney(fee, country.currency)}</td>

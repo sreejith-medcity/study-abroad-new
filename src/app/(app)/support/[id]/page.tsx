@@ -40,7 +40,7 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
             const fromTeam = m.author ? !(PARTNER_ROLES as readonly string[]).includes(m.author.role) : false;
             return (
               <li key={m.id} className={cn("flex", fromTeam ? "justify-start" : "justify-end")}>
-                <div className={cn("max-w-[85%] rounded-lg px-3 py-2", fromTeam ? "bg-brand-50" : "bg-slate-100")}>
+                <div className={cn("max-w-[85%] rounded-lg px-3 py-2", fromTeam ? "bg-brand-50" : "bg-surface-2")}>
                   <p className="text-xs font-semibold">{m.author?.name ?? "Former user"}{fromTeam && <span className="font-normal text-brand-700"> · Overseas team</span>}</p>
                   <RichText text={m.body} className="text-[13px]" />
                   <p className="mt-1 text-[11px] text-muted">{fmtDateTime(m.createdAt)}</p>

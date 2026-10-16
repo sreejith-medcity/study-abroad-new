@@ -91,7 +91,7 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
       </span>
     ) },
     { label: "Application fee", cell: ({ p, cur }) => <Muted on={p.applicationFee == null}>{feeText(p.applicationFee, cur, { zero: "No application fee" })}</Muted> },
-    { label: "Your commission", cell: ({ commission }) => commission ? (commission.amount != null ? <span className="font-medium text-emerald-700">≈ {fmtMoney(commission.amount, commission.currency)}</span> : <Muted on>{commission.terms}</Muted>) : <Muted on>No rule</Muted>, hidePrint: true, hide: !showCommission },
+    { label: "Your commission", cell: ({ commission }) => commission ? (commission.amount != null ? <span className="font-medium text-good-700">≈ {fmtMoney(commission.amount, commission.currency)}</span> : <Muted on>{commission.terms}</Muted>) : <Muted on>No rule</Muted>, hidePrint: true, hide: !showCommission },
     { label: "Deposit", cell: ({ p, cur }) => <Muted on={p.initialDeposit == null}>{feeText(p.initialDeposit, cur, { zero: "No deposit" })}</Muted> },
     { label: "English", cell: ({ p }) => {
       const parts = [p.minIelts != null && `IELTS ${p.minIelts}`, p.minPte != null && `PTE ${p.minPte}`, p.minToefl != null && `TOEFL ${p.minToefl}`, p.minDuolingo != null && `Duolingo ${p.minDuolingo}`, p.minOetGrade && `OET ${p.minOetGrade}`].filter(Boolean);

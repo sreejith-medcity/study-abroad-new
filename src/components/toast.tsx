@@ -16,8 +16,8 @@ export function toast(message: string, tone: ToastTone = "ok") {
 }
 
 const TONE: Record<ToastTone, string> = {
-  ok: "border-emerald-200 bg-emerald-50 text-emerald-900",
-  bad: "border-red-200 bg-red-50 text-red-900",
+  ok: "border-good-500/25 bg-good-50 text-good-700",
+  bad: "border-stop-500/25 bg-stop-50 text-stop-700",
   info: "border-line bg-surface text-ink",
 };
 

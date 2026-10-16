@@ -103,7 +103,7 @@ function DocTypeCard({
         <div>
           <p className="font-medium">
             {ok ? <Chip tone="ok">✓</Chip> : <Chip tone="bad">Missing</Chip>} {type.label}
-            {requiredFor && <span className="text-red-600"> *</span>}
+            {requiredFor && <span className="text-stop-500"> *</span>}
           </p>
           {requiredFor && <p className="text-xs text-muted">Required for: {requiredFor.join(", ")}</p>}
           {type.guidance && <p className="mt-1 max-w-xl text-xs leading-relaxed text-ink-soft">{type.guidance}</p>}
@@ -123,17 +123,17 @@ function DocTypeCard({
                 (canWrite ? (
                   <form action={shareDocumentAction}>
                     <input type="hidden" name="documentId" value={f.id} />
-                    <button className={cn("rounded px-1.5 py-0.5 font-medium", f.sharedWithStudent ? "bg-emerald-50 text-emerald-700" : "text-brand-600 hover:underline")} aria-label={f.sharedWithStudent ? `Stop sharing ${f.fileName}` : `Share ${f.fileName} with the student`}>
+                    <button className={cn("rounded px-1.5 py-0.5 font-medium", f.sharedWithStudent ? "bg-good-50 text-good-700" : "text-brand-600 hover:underline")} aria-label={f.sharedWithStudent ? `Stop sharing ${f.fileName}` : `Share ${f.fileName} with the student`}>
                       {f.sharedWithStudent ? "Shared with student ✓" : "Share with student"}
                     </button>
                   </form>
                 ) : (
-                  f.sharedWithStudent && <span className="text-emerald-700">Shared with student</span>
+                  f.sharedWithStudent && <span className="text-good-700">Shared with student</span>
                 ))}
               {canWrite && mayRemove(f.uploadedById) && (
                 <form action={deleteDocumentAction}>
                   <input type="hidden" name="documentId" value={f.id} />
-                  <button className="text-muted hover:text-red-600" aria-label={`Delete ${f.fileName}`}>✕</button>
+                  <button className="text-muted hover:text-stop-500" aria-label={`Delete ${f.fileName}`}>✕</button>
                 </form>
               )}
             </li>

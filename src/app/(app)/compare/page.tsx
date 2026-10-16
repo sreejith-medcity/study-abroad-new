@@ -77,10 +77,10 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
     { label: "Application fee", cell: ({ p, cur }) => (
       <>
         <Muted on={p.applicationFee == null}>{feeText(p.applicationFee, cur, { zero: "No application fee" })}</Muted>
-        {p.feeWaiver && <span className="block text-xs text-emerald-700">Waiver: {p.feeWaiver}</span>}
+        {p.feeWaiver && <span className="block text-xs text-good-700">Waiver: {p.feeWaiver}</span>}
       </>
     ) },
-    { label: "Your commission", cell: ({ commission }) => commission ? (commission.amount != null ? <span className="font-medium text-emerald-700">≈ {fmtMoney(commission.amount, commission.currency)}</span> : <Muted on>{commission.terms}</Muted>) : <Muted on>No rule</Muted>, hidePrint: true, hide: !showCommission },
+    { label: "Your commission", cell: ({ commission }) => commission ? (commission.amount != null ? <span className="font-medium text-good-700">≈ {fmtMoney(commission.amount, commission.currency)}</span> : <Muted on>{commission.terms}</Muted>) : <Muted on>No rule</Muted>, hidePrint: true, hide: !showCommission },
     { label: "Deposit", cell: ({ p, cur }) => (
       <>
         <Muted on={p.initialDeposit == null}>{feeText(p.initialDeposit, cur, { zero: "No deposit" })}</Muted>
@@ -118,7 +118,7 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
   return (
     <>
       <PageHeader title="Compare programs" subtitle="Blank figures have not been verified with the institution." />
-      {tooMany && <p className="mb-3 text-[13px] text-amber-700">Only the first {MAX} ticked programs are shown.</p>}
+      {tooMany && <p className="mb-3 text-[13px] text-warn-700">Only the first {MAX} ticked programs are shown.</p>}
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
           <h2 className="font-display text-[15px] font-semibold">

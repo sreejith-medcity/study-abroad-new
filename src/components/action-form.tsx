@@ -107,7 +107,7 @@ export function ActionForm({
 export function FieldError({ name }: { name: string }) {
   const errors = useContext(ErrorsContext)[name];
   if (!errors?.length) return null;
-  return <p className="text-xs text-red-600">{errors[0]}</p>;
+  return <p className="text-xs text-stop-500">{errors[0]}</p>;
 }
 
 export function SubmitButton({ children, className, variant = "primary" }: { children: ReactNode; className?: string; variant?: "primary" | "secondary" | "quiet" | "danger" }) {

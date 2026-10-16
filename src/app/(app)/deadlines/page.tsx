@@ -111,7 +111,7 @@ export default async function DeadlinesPage({ searchParams }: { searchParams: Pr
                   <tr key={r.id} className="hover:bg-surface-2/60">
                     <Td className="whitespace-nowrap">
                       <p className="font-medium tabular">{dayText(r.deadline)}</p>
-                      <p className={cn("text-xs", left <= 7 ? "font-medium text-red-700" : left <= 21 ? "font-medium text-amber-700" : "text-muted")}>
+                      <p className={cn("text-xs", left <= 7 ? "font-medium text-stop-700" : left <= 21 ? "font-medium text-warn-700" : "text-muted")}>
                         {left === 0 ? "Closes today" : left === 1 ? "1 day left" : `${left} days left`}
                       </p>
                     </Td>
@@ -215,7 +215,7 @@ async function ApplicationDeadlines({ user, f }: { user: SessionUser; f: Record<
                 const left = daysUntil(r.dueOn);
                 return (
                   <tr key={r.id}>
-                    <Td className="whitespace-nowrap"><p className="font-medium">{dayText(r.dueOn)}</p><p className={cn("text-xs", left < 0 ? "font-medium text-red-700" : left <= 3 ? "font-medium text-amber-700" : "text-muted")}>{left < 0 ? `${-left} days overdue` : left === 0 ? "Today" : `${left} days`}</p></Td>
+                    <Td className="whitespace-nowrap"><p className="font-medium">{dayText(r.dueOn)}</p><p className={cn("text-xs", left < 0 ? "font-medium text-stop-700" : left <= 3 ? "font-medium text-warn-700" : "text-muted")}>{left < 0 ? `${-left} days overdue` : left === 0 ? "Today" : `${left} days`}</p></Td>
                     <Td>{DEADLINE_LABEL[r.type]}{r.note ? <p className="text-xs text-muted">{r.note}</p> : null}</Td>
                     <Td><Link prefetch={false} href={`/students/${r.studentId}/applications?app=${r.appId}`} className="font-medium hover:underline">{r.firstName} {r.lastName}</Link><p className="text-xs text-muted">{r.program} · {r.university}</p></Td>
                     <Td className="tabular text-[13px]">{r.ackNo}</Td>

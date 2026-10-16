@@ -81,7 +81,7 @@ export function BriefBox({ keys, step = "" }: { keys: readonly string[]; step?: 
         </p>
       )}
       {notes.map((n) => (
-        <p key={n} className="text-[13px] text-amber-700" data-testid="brief-note">{n}</p>
+        <p key={n} className="text-[13px] text-warn-700" data-testid="brief-note">{n}</p>
       ))}
     </div>
   );

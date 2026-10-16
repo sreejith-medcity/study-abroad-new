@@ -98,9 +98,9 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
     <div className="space-y-5">
       <Card className="grid grid-cols-2 gap-px overflow-hidden bg-line sm:grid-cols-3 xl:grid-cols-6">
         {sections.map((s) => (
-          <a key={s.href} href={s.href} className="bg-white px-4 py-3 text-center hover:bg-ground">
+          <a key={s.href} href={s.href} className="bg-surface px-4 py-3 text-center hover:bg-ground">
             <p className="font-medium">{s.label}</p>
-            <p className={s.state === "Complete" ? "text-xs text-emerald-700" : s.state === "Optional" ? "text-xs text-muted" : "text-xs text-red-600"}>{s.state}</p>
+            <p className={s.state === "Complete" ? "text-xs text-good-700" : s.state === "Optional" ? "text-xs text-muted" : "text-xs text-stop-500"}>{s.state}</p>
           </a>
         ))}
       </Card>
@@ -128,7 +128,7 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
         </form>
       )}
       {openRequests.length > 0 && (
-        <Card className="border-amber-300 p-4">
+        <Card className="border-warn-500/25 p-4">
           <h2 className="font-semibold">Open edit requests</h2>
           <ul className="mt-2 space-y-1">
             {openRequests.map((r) => <li key={r.id}><Chip tone="warn">{r.section}</Chip> {r.message} <span className="text-xs text-muted">{fmtDateTime(r.createdAt)}</span></li>)}
@@ -461,7 +461,7 @@ function RowList({ rows, empty, kind, studentId, canDelete }: { rows: { id: stri
               <input type="hidden" name="studentId" value={studentId} />
               <input type="hidden" name="kind" value={kind} />
               <input type="hidden" name="rowId" value={r.id} />
-              <button className="text-xs text-muted hover:text-red-600">Remove</button>
+              <button className="text-xs text-muted hover:text-stop-500">Remove</button>
             </form>
           )}
         </li>

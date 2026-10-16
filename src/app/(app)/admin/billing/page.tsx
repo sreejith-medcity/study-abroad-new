@@ -114,7 +114,7 @@ export default async function AdminBillingPage({ searchParams }: { searchParams:
                   <p className="mt-0.5 text-[13px] text-muted">
                     {c.bankAccountName} · {maskAccount(c.bankAccountNumber)} · {c.ifsc}
                   </p>
-                  <p className={`mt-1 text-[13px] ${tax.percent > 0 ? "font-medium text-amber-700" : "text-emerald-700"}`}>
+                  <p className={`mt-1 text-[13px] ${tax.percent > 0 ? "font-medium text-warn-700" : "text-good-700"}`}>
                     An invoice raised today: {tax.treatment}
                     {tax.note ? `. ${tax.note}` : ""}
                   </p>

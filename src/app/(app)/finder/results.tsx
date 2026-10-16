@@ -365,11 +365,11 @@ export async function FinderResults({
                   <ul className="mt-2 space-y-1 text-[13px]">
                     {match.reasons.slice(0, 4).map((r) => (
                       <li key={r} className="flex items-start gap-1.5 text-ink-soft">
-                        <IconCheck className="mt-0.5 size-3.5 shrink-0 text-emerald-600" /> {r}
+                        <IconCheck className="mt-0.5 size-3.5 shrink-0 text-good-500" /> {r}
                       </li>
                     ))}
                     {match.cautions.map((r) => (
-                      <li key={r} className="flex items-start gap-1.5 text-amber-700" data-testid="finder-caution">
+                      <li key={r} className="flex items-start gap-1.5 text-warn-700" data-testid="finder-caution">
                         <IconAlert className="mt-0.5 size-3.5 shrink-0" /> {r}
                       </li>
                     ))}

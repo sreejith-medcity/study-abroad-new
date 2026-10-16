@@ -75,7 +75,7 @@ export default async function VendorsPage() {
                       </Td>
                       <Td className="text-[13px]">
                         {vendor.termsConfirmedAt ? fmtDate(vendor.termsConfirmedAt) : <span className="text-muted">Never</span>}
-                        {age.stale && <p className="text-xs font-medium text-amber-700">{vendor.termsConfirmedAt ? "Older than six months" : "Not confirmed yet"}</p>}
+                        {age.stale && <p className="text-xs font-medium text-warn-700">{vendor.termsConfirmedAt ? "Older than six months" : "Not confirmed yet"}</p>}
                       </Td>
                       <Td>
                         <div className="flex flex-col gap-1.5">

@@ -68,7 +68,7 @@ export default async function StudentLayout({ children, params }: { children: Re
             </form>
           )}
           <p className="mt-1 break-all text-muted">{student.email ?? "No email on file"}</p>
-          <p className="text-muted tabular">{student.phone}{student.whatsappOptIn && <span className="ml-2 text-xs text-emerald-700">WhatsApp on</span>}</p>
+          <p className="text-muted tabular">{student.phone}{student.whatsappOptIn && <span className="ml-2 text-xs text-good-700">WhatsApp on</span>}</p>
           <Link href={findHref} data-print="hide" className="mt-2 inline-block text-[13px] font-medium text-brand-600 hover:underline">
             Find programs for {student.firstName}{preferred ? ` in ${preferred.name}` : ""}
           </Link>

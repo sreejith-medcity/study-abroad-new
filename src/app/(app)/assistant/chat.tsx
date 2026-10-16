@@ -55,7 +55,7 @@ export function AssistantChat({ left }: { left: number | null }) {
           </div>
         ))}
         {busy && <p className="text-[13px] text-muted">Looking it up…</p>}
-        {error && <p className="text-[13px] text-red-700" role="alert">{error}</p>}
+        {error && <p className="text-[13px] text-stop-700" role="alert">{error}</p>}
         <div ref={end} />
       </div>
       <form

@@ -156,14 +156,14 @@ export function Combobox({
               setOpen(false);
             }
           }}
-          className="w-full rounded-lg border border-line bg-white px-3 py-2 text-sm outline-none placeholder:text-muted focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+          className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm outline-none placeholder:text-muted focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
         />
       )}
       {open && !chosen && (
         <ul
           id={listId}
           role="listbox"
-          className="thin-scroll absolute z-30 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-line bg-white py-1 shadow-lg"
+          className="thin-scroll absolute z-30 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-line bg-surface py-1 shadow-pop"
         >
           {busy && options.length === 0 && <li className="px-3 py-2 text-[13px] text-muted">Searching…</li>}
           {!busy && options.length === 0 && <li className="px-3 py-2 text-[13px] text-muted">{emptyText}</li>}
@@ -179,7 +179,7 @@ export function Combobox({
               >
                 <span className="flex items-center gap-2">
                   <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{o.label}</span>
-                  {o.tag && <span className="shrink-0 rounded bg-emerald-50 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700">{o.tag}</span>}
+                  {o.tag && <span className="shrink-0 rounded bg-good-50 px-1.5 py-0.5 text-[11px] font-medium text-good-700">{o.tag}</span>}
                 </span>
                 {o.sub && <span className="block truncate text-xs text-muted">{o.sub}</span>}
               </button>

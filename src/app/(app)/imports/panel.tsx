@@ -67,7 +67,7 @@ export function ImportPanel({ kind }: { kind: string }) {
       {r && (
         <div className="rounded-md border border-line p-3 text-[13px]" data-testid="import-result">
           {mine.committed ? (
-            <p className="mb-2 font-medium text-emerald-700">Imported from {mine.fileName}.</p>
+            <p className="mb-2 font-medium text-good-700">Imported from {mine.fileName}.</p>
           ) : (
             <p className="mb-2 text-muted">Checked {mine.fileName}. Nothing is saved until you press Import.</p>
           )}
@@ -86,13 +86,13 @@ export function ImportPanel({ kind }: { kind: string }) {
           {r.errors.length > 0 && (
             <>
               <p className="text-xs text-muted">Rows with problems are left out. Fix them in the file and upload it again; rows already imported are then up to date.</p>
-              <ul className="mt-1 max-h-60 space-y-0.5 overflow-y-auto text-xs text-red-700" data-testid="import-errors">
+              <ul className="mt-1 max-h-60 space-y-0.5 overflow-y-auto text-xs text-stop-700" data-testid="import-errors">
                 {grouped(r.errors).map((g) => <li key={g.message}>{g.where}: {g.message}</li>)}
               </ul>
             </>
           )}
           {r.notes.length > 0 && (
-            <ul className="mt-2 max-h-40 space-y-0.5 overflow-y-auto text-xs text-amber-800" data-testid="import-notes">
+            <ul className="mt-2 max-h-40 space-y-0.5 overflow-y-auto text-xs text-warn-700" data-testid="import-notes">
               {grouped(r.notes).map((g) => <li key={g.message}>{g.where === "Line 1" ? "" : `${g.where}: `}{g.message}</li>)}
             </ul>
           )}

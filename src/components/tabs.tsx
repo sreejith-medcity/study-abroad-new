@@ -17,7 +17,7 @@ export function StepTabs({ steps }: { steps: { href: string; label: string; done
           return (
             <li key={s.href} className="flex items-center gap-2">
               <Link href={s.href} aria-current={active ? "step" : undefined} className="flex shrink-0 items-center gap-2">
-                <span className={cn("grid size-8 shrink-0 place-items-center rounded-full border text-sm font-semibold", active ? "border-brand-600 bg-brand-600 text-white" : s.done ? "border-emerald-600 text-emerald-700" : "border-line bg-white text-muted")}>
+                <span className={cn("grid size-8 shrink-0 place-items-center rounded-full border text-sm font-semibold", active ? "border-brand-600 bg-brand-600 text-white" : s.done ? "border-good-500 text-good-700" : "border-line bg-surface text-muted")}>
                   {s.done && !active ? "✓" : i + 1}
                 </span>
                 <span className={cn("hidden whitespace-nowrap sm:inline", active ? "font-semibold text-ink" : "text-muted")}>{s.label}</span>

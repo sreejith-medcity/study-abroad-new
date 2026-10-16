@@ -23,9 +23,13 @@ const PASSWORD = "Password@123";
 
 async function main() {
   console.log("Resetting data...");
+  // rejection_reasons is on the list because the seed inserts its own set and
+  // the codes are the primary key: left behind from a previous seed, the
+  // insert fails on a duplicate and the reset stops half way, which leaves a
+  // database that is neither the old one nor the new one.
   await db.execute(sql`TRUNCATE resources, wallet_entries, payout_requests, commissions, commission_rules, enquiry_notes, enquiries, audit_logs, outbound_messages, notifications, documents, comments, status_history,
     applications, edit_requests, work_experience, test_scores, academic_records, students, programs, universities,
-    countries, status_definitions, document_types, users, organizations RESTART IDENTITY CASCADE`);
+    countries, status_definitions, document_types, rejection_reasons, users, organizations RESTART IDENTITY CASCADE`);
   await db.execute(sql`DROP SEQUENCE IF EXISTS application_ack_seq`);
   await db.execute(sql`CREATE SEQUENCE application_ack_seq START 144401`);
 

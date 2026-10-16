@@ -53,7 +53,7 @@ export function Section({
         <summary className="flex cursor-pointer list-none items-center gap-3 px-5 py-4 hover:bg-ground">
           <span className="font-semibold text-brand-700">{title}</span>
           {state && (
-            <span className={cn("text-xs", state === "Complete" ? "text-emerald-700" : state === "Optional" ? "text-muted" : "text-red-600")}>{state}</span>
+            <span className={cn("text-xs", state === "Complete" ? "text-good-700" : state === "Optional" ? "text-muted" : "text-stop-500")}>{state}</span>
           )}
           {meta && <span className="text-xs text-muted">{meta}</span>}
           <span className="ml-auto text-xs text-muted">{open ? "Hide" : "Show"}</span>

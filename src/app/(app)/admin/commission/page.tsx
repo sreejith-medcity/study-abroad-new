@@ -342,7 +342,7 @@ export default async function AdminCommissionPage({ searchParams }: { searchPara
                           <p className="tabular">{p.bankName} · {p.bankAccount} · {p.ifsc}</p>
                         </div>
                       ) : (
-                        <p className="mt-1 text-xs font-normal text-amber-700">No billing company chosen</p>
+                        <p className="mt-1 text-xs font-normal text-warn-700">No billing company chosen</p>
                       )}
                     </Td>
                     <Td className="whitespace-nowrap text-right font-semibold tabular">{inr(p.amountInr)}</Td>

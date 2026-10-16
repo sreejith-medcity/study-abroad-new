@@ -194,7 +194,7 @@ export default async function DocumentationPage({ params, searchParams }: { para
             </thead>
             <tbody>
               {shown.map(({ row, standing, expiresInDays }) => (
-                <tr key={row.id} className={standing === "EXPIRED" ? "bg-red-50/60" : undefined}>
+                <tr key={row.id} className={standing === "EXPIRED" ? "bg-stop-50/60" : undefined}>
                   <Td>
                     <span className={row.required ? "font-medium" : undefined}>{row.label}</span>
                     {!row.required && <span className="ml-2 text-xs text-muted">Not required</span>}
@@ -213,7 +213,7 @@ export default async function DocumentationPage({ params, searchParams }: { para
                   </Td>
                   <Td>
                     <StateChip state={row.state} standing={standing} courseStart={ctx.courseStart} />
-                    {row.state === "REJECTED" && <p className="mt-0.5 max-w-xs text-xs text-red-700">{row.reasonLabel ?? "Sent back"}{row.reason ? `: ${row.reason}` : ""}</p>}
+                    {row.state === "REJECTED" && <p className="mt-0.5 max-w-xs text-xs text-stop-700">{row.reasonLabel ?? "Sent back"}{row.reason ? `: ${row.reason}` : ""}</p>}
                     {row.state === "NOT_NEEDED" && row.reason && <p className="mt-0.5 max-w-xs text-xs text-muted">{row.reason}</p>}
                     {row.state === "ASKED" && row.askedAt && <p className="mt-0.5 text-xs text-muted">{fmtDate(row.askedAt)} on {row.askedChannel ?? "the portal"}{row.chaseCount > 0 ? `, chased ${row.chaseCount} time${row.chaseCount === 1 ? "" : "s"}` : ""}</p>}
                     {row.state === "IN_REVIEW" && row.claimedByName && <p className="mt-0.5 text-xs text-muted">With {row.claimedByName}</p>}

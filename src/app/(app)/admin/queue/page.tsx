@@ -68,7 +68,7 @@ export default async function QueuePage({ searchParams }: { searchParams: Promis
         actions={breaches > 0 ? <Chip tone="bad" className="px-3 py-1 text-sm">{breaches} past SLA</Chip> : <Chip tone="ok" className="px-3 py-1 text-sm">All within SLA</Chip>}
       />
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="flex rounded-md border border-line bg-white p-1" role="tablist" aria-label="Pathway">
+        <div className="flex rounded-md border border-line bg-surface p-1" role="tablist" aria-label="Pathway">
           {PATHWAYS.map((p) => (
             <Link key={p.key} href={`/admin/queue?${qs({ pathway: p.key })}`} role="tab" aria-selected={p.key === pathway} className={cn("rounded px-3 py-1.5 font-medium", p.key === pathway ? "bg-brand-600 text-white" : "text-muted hover:text-ink")}>
               {p.label} <span className="tabular opacity-80">{pathwayCounts.find((x) => x.pathway === p.key)?.n ?? 0}</span>
@@ -95,9 +95,9 @@ export default async function QueuePage({ searchParams }: { searchParams: Promis
           {LANES.map((lane) => {
             const items = rows.filter((r) => r.statusGroup === lane.group);
             return (
-              <section key={lane.group} className="flex flex-col rounded-lg bg-slate-200/60 p-2" aria-label={lane.label}>
+              <section key={lane.group} className="flex flex-col rounded-lg bg-surface-2 p-2" aria-label={lane.label}>
                 <h2 className="mb-2 flex items-center justify-between px-1 font-semibold">
-                  {lane.label} <span className="rounded-full bg-white px-2 text-xs tabular">{items.length}</span>
+                  {lane.label} <span className="rounded-full bg-surface px-2 text-xs tabular">{items.length}</span>
                 </h2>
                 <ul className="space-y-2">
                   {items.map((r) => {
@@ -108,7 +108,7 @@ export default async function QueuePage({ searchParams }: { searchParams: Promis
                         <Card className={cn("p-2.5", late && "border-l-4 border-l-red-500")}>
                           <div className="flex items-start justify-between gap-2">
                             <Link href={`/students/${r.studentId}/applications?app=${r.id}`} className="whitespace-nowrap font-semibold tabular hover:underline">{r.ackNo}</Link>
-                            <span className={cn("text-xs tabular", late ? "font-semibold text-red-600" : "text-muted")}>{days}d</span>
+                            <span className={cn("text-xs tabular", late ? "font-semibold text-stop-500" : "text-muted")}>{days}d</span>
                           </div>
                           <p className="font-medium">{fullName(r)}</p>
                           <p className="text-xs text-muted">{r.programName}</p>

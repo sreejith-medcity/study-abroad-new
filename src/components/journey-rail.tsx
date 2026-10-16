@@ -38,7 +38,7 @@ export function JourneyRail({ current, locale }: { current: JourneyStage; locale
               aria-hidden="true"
               className={cn(
                 "mt-0.5 grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-semibold",
-                s.position === "DONE" && "bg-emerald-600 text-white",
+                s.position === "DONE" && "bg-good-500 text-white",
                 s.position === "NOW" && "bg-brand-600 text-white",
                 s.position === "AHEAD" && "border border-line bg-surface text-muted",
               )}
@@ -102,7 +102,7 @@ export function DatesAhead({ dates, locale }: { dates: DateAhead[]; locale: Loca
             <li key={`${d.kind}-${d.about ?? ""}-${i}`} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
               <span className="tabular text-[13px] font-medium text-ink">{fmtDate(d.on)}</span>
               <span className="text-[13px] text-ink-soft">{label(d)}</span>
-              <span className={cn("ml-auto text-[12px]", d.inDays < 0 ? "font-medium text-rose-700" : isSoon(d) ? "font-medium text-amber-700" : "text-muted")}>
+              <span className={cn("ml-auto text-[12px]", d.inDays < 0 ? "font-medium text-stop-700" : isSoon(d) ? "font-medium text-warn-700" : "text-muted")}>
                 {whenText(d, locale)}
               </span>
             </li>

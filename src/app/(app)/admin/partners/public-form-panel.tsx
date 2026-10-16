@@ -38,7 +38,7 @@ export async function PublicFormPanel({
         {enabled && svg && url ? (
           <>
             <div
-              className="shrink-0 rounded-lg border border-line bg-white p-2"
+              className="shrink-0 rounded-lg border border-line bg-surface p-2"
               // The SVG comes from the QR library, not from user input.
               dangerouslySetInnerHTML={{ __html: svg }}
             />

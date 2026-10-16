@@ -231,7 +231,7 @@ export default async function ProgramOptionsPage({ searchParams }: { searchParam
                   const team = m.author ? !(PARTNER_ROLES as readonly string[]).includes(m.author.role) : false;
                   return (
                     <li key={m.id} className={cn("flex", team ? "justify-start" : "justify-end")}>
-                      <div className={cn("max-w-[85%] rounded-lg px-3 py-2 text-[13px]", team ? "bg-brand-50" : "bg-slate-100")}>
+                      <div className={cn("max-w-[85%] rounded-lg px-3 py-2 text-[13px]", team ? "bg-brand-50" : "bg-surface-2")}>
                         <p className="text-xs font-semibold">{m.author?.name ?? "Former user"}{team && <span className="font-normal text-brand-700"> · Overseas team</span>}</p>
                         <RichText text={m.body} />
                         <p className="text-[11px] text-muted">{fmtDateTime(m.createdAt)}</p>

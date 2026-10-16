@@ -582,7 +582,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                               a yearly tuition the university never published. */}
                           {pays.known ? (
                             <>
-                              <span className="font-medium text-emerald-700">{fmtMoney(pays.amount, pays.currency)}</span>
+                              <span className="font-medium text-good-700">{fmtMoney(pays.amount, pays.currency)}</span>
                               {inrApprox(pays.amount, pays.currency, rates) && <span className="block text-xs text-muted">{inrApprox(pays.amount, pays.currency, rates)}</span>}
                             </>
                           ) : (
@@ -597,7 +597,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                       </Td>
                       <Td className={cn("whitespace-nowrap text-[13px]", !r.intakeMonths.length && "text-muted")}>
                         {intakesText(r.intakeMonths)}
-                        {r.feeWaiver && <p className="text-xs font-medium text-emerald-700">Fee waiver</p>}
+                        {r.feeWaiver && <p className="text-xs font-medium text-good-700">Fee waiver</p>}
                       </Td>
                       <Td>
                         {student ? (
@@ -738,9 +738,9 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                       {next.get(r.id) && (() => {
                         const d = next.get(r.id)!;
                         const left = daysUntil(d.deadline);
-                        return <p className={cn("text-xs", left <= 14 ? "font-medium text-amber-700" : "text-muted")}>{MONTHS[d.intakeMonth - 1]} {d.intakeYear}: apply by {dayText(d.deadline)}</p>;
+                        return <p className={cn("text-xs", left <= 14 ? "font-medium text-warn-700" : "text-muted")}>{MONTHS[d.intakeMonth - 1]} {d.intakeYear}: apply by {dayText(d.deadline)}</p>;
                       })()}
-                      {r.feeWaiver && <p className="text-xs font-medium text-emerald-700">Fee waiver</p>}
+                      {r.feeWaiver && <p className="text-xs font-medium text-good-700">Fee waiver</p>}
                     </Td>
                     <Td className="whitespace-nowrap tabular">
                       {r.tuition == null && r.tuitionTotal == null ? <span className="text-muted">Tuition not recorded</span> : tuitionText(r.tuition, r.tuitionTotal, r.currency)}
@@ -749,14 +749,14 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                         const rule = pickRule(rules, r.id, r.universityId, r.countryId);
                         if (!rule) return null;
                         const est = partnerEstimate(rule, r.tuition, r.currency);
-                        return <span className="block text-xs font-medium text-emerald-700">{est.amount != null ? `Your share ≈ ${fmtMoney(est.amount, est.currency)}` : `Commission: ${est.terms}`}</span>;
+                        return <span className="block text-xs font-medium text-good-700">{est.amount != null ? `Your share ≈ ${fmtMoney(est.amount, est.currency)}` : `Commission: ${est.terms}`}</span>;
                       })()}
                       <p className="text-xs text-muted">
                         {r.applicationFee == null ? "App. fee not recorded" : r.applicationFee > 0 ? `App. fee ${fmtMoney(r.applicationFee, r.currency)}` : "No application fee"}
                         {r.deposit ? ` · deposit ${fmtMoney(r.deposit, r.currency)}` : ""}
                         {r.balanceDeposit ? ` · balance ${fmtMoney(r.balanceDeposit, r.currency)}` : ""}
                       </p>
-                      {r.typicalScholarship && <p className="max-w-[14rem] truncate text-xs font-medium text-emerald-700" title={r.typicalScholarship}>Scholarship: {r.typicalScholarship}</p>}
+                      {r.typicalScholarship && <p className="max-w-[14rem] truncate text-xs font-medium text-good-700" title={r.typicalScholarship}>Scholarship: {r.typicalScholarship}</p>}
                     </Td>
                     <Td>
                       <div className="flex max-w-[15rem] flex-wrap gap-1">

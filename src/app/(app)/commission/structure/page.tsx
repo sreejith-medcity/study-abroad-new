@@ -95,7 +95,7 @@ export default async function CommissionStructurePage({ searchParams }: { search
                       </p>
                     </Td>
                     <Td>
-                      <p className="font-semibold text-emerald-700">{you}</p>
+                      <p className="font-semibold text-good-700">{you}</p>
                       <p className="text-xs text-muted">
                         {r.partnerSharePercent}% of {r.basis === "FLAT" ? `a flat ${money(r.flatAmount, r.currency)}` : `${r.percentOfTuition ?? 0}% of first-year tuition`}
                       </p>

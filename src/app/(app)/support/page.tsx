@@ -60,7 +60,7 @@ export default async function SupportPage({ searchParams }: { searchParams: Prom
                       <p className="text-xs text-muted">
                         {CATEGORY_LABEL[r.category]}{staff ? ` · ${r.org.name}` : ""} · raised by {r.raisedBy?.name ?? "someone who has left"}
                         {r.owner ? ` · with ${r.owner.name}` : ""} · updated {fmtDateTime(r.updatedAt)}
-                        {staff && r.status === "OPEN" && days >= 2 && <span className="font-medium text-red-700"> · waiting {days} days</span>}
+                        {staff && r.status === "OPEN" && days >= 2 && <span className="font-medium text-stop-700"> · waiting {days} days</span>}
                       </p>
                     </Link>
                   </li>

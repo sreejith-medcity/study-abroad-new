@@ -50,7 +50,7 @@ export function ImportForm() {
             <Chip tone="ok">{state.preview.valid} ready</Chip> {state.preview.errors.length > 0 && <Chip tone="bad">{state.preview.errors.length} with errors</Chip>}
           </p>
           {state.preview.errors.length > 0 && (
-            <ul className="mb-3 max-h-40 space-y-1 overflow-y-auto text-xs text-red-700">
+            <ul className="mb-3 max-h-40 space-y-1 overflow-y-auto text-xs text-stop-700">
               {state.preview.errors.map((e, i) => <li key={i}>Line {e.line}: {e.message}</li>)}
             </ul>
           )}

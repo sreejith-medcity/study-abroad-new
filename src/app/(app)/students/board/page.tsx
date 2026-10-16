@@ -187,7 +187,7 @@ export default async function BoardPage({ searchParams }: { searchParams: Promis
                           {c.assignedToDesk ?? c.assignedTo ?? "nobody"}
                         </p>
                         <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px]">
-                          <span className={c.quiet ? "font-medium text-amber-700" : "text-muted"}>{since(c.last)}</span>
+                          <span className={c.quiet ? "font-medium text-warn-700" : "text-muted"}>{since(c.last)}</span>
                           {c.tasks.overdue > 0 && <Chip tone="bad">{c.tasks.overdue} overdue</Chip>}
                           {c.tasks.overdue === 0 && c.tasks.open > 0 && <Chip tone="info">{c.tasks.open} to do</Chip>}
                           {c.apps > 0 && <span className="text-muted">{c.apps} application{c.apps === 1 ? "" : "s"}</span>}

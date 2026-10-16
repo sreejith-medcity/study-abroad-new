@@ -73,7 +73,7 @@ export function OrgFold({
       <details open={isOpen} onToggle={(e) => setOpen(e.currentTarget.open)}>
         <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 hover:bg-ground">
           <span className="font-semibold text-brand-700">{title}</span>
-          {attention && <span className="text-xs font-medium text-red-600">{attention}</span>}
+          {attention && <span className="text-xs font-medium text-stop-500">{attention}</span>}
           <span className="text-xs text-muted">{meta}</span>
           <span className="ml-auto text-xs text-muted">{isOpen ? "Hide" : "Show"}</span>
         </summary>

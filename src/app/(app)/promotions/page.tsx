@@ -29,7 +29,7 @@ export default async function PromotionsPage() {
               <div className="flex flex-wrap items-start justify-between gap-2 px-4 pt-4">
                 <div>
                   <h2 className="font-display text-[17px] font-semibold text-ink">{p.title}</h2>
-                  <p className="text-[14px] font-medium text-emerald-700">{p.summary}</p>
+                  <p className="text-[14px] font-medium text-good-700">{p.summary}</p>
                 </div>
                 {st === "running" ? <Chip tone={left <= 7 ? "warn" : "ok"}>{left === 1 ? "Last day" : `${left} days left`}</Chip> : <Chip tone="info">Starts soon</Chip>}
               </div>

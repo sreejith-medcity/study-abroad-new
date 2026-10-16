@@ -52,7 +52,7 @@ export function InterviewPractice({ apps, preselect }: { apps: { id: string; lab
           </div>
         </div>
         <p className="text-xs text-muted">Six questions, then feedback. Only the course, university, country and intake are sent to the AI service, never the student&apos;s name or documents. Each question uses one of the branch&apos;s AI requests.</p>
-        {error && <p className="text-[13px] text-red-700" role="alert">{error}</p>}
+        {error && <p className="text-[13px] text-stop-700" role="alert">{error}</p>}
         <Button type="button" onClick={() => step([])} disabled={busy}>{busy ? "Starting…" : "Start the interview"}</Button>
       </div>
     );
@@ -87,7 +87,7 @@ export function InterviewPractice({ apps, preselect }: { apps: { id: string; lab
         >
           <label htmlFor="iv-answer" className="sr-only">Answer</label>
           <Textarea id="iv-answer" rows={3} value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="The student's answer, in their words" />
-          {error && <p className="text-[13px] text-red-700" role="alert">{error}</p>}
+          {error && <p className="text-[13px] text-stop-700" role="alert">{error}</p>}
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted">Question {asked} of 6</span>
             <Button type="submit" disabled={busy || !answer.trim()}>{busy ? "Thinking…" : asked >= 6 ? "Answer and get feedback" : "Answer"}</Button>
