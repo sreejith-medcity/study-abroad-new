@@ -5,6 +5,24 @@ type Bucket = { hits: number[]; blockedUntil?: number };
 const buckets = new Map<string, Bucket>();
 
 /**
+ * Is this key already blocked? Asked without counting the attempt, so a
+ * caller can check before it knows whether the attempt was a bad one.
+ */
+export function rateLimitBlocked(key: string) {
+  const bucket = buckets.get(key);
+  const now = Date.now();
+  if (bucket?.blockedUntil && bucket.blockedUntil > now) {
+    return { allowed: false as const, retryAfterSeconds: Math.ceil((bucket.blockedUntil - now) / 1000) };
+  }
+  return { allowed: true as const, retryAfterSeconds: 0 };
+}
+
+/** Forget everything counted against this key. */
+export function rateLimitClear(key: string) {
+  buckets.delete(key);
+}
+
+/**
  * Small in-memory sliding-window limiter. Enough to blunt password guessing on a
  * single instance; move to Redis or the database if the app scales out further.
  */

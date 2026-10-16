@@ -7,7 +7,7 @@ import { eq } from "drizzle-orm";
 import { cache } from "react";
 import { db, schema } from "@/db";
 import type { Role } from "@/db/schema";
-import { rateLimit } from "@/server/rate-limit";
+import { rateLimit, rateLimitBlocked, rateLimitClear } from "@/server/rate-limit";
 import { homeFor, isFamilyRole } from "./permissions";
 
 const COOKIE = "sa_session";
@@ -64,30 +64,57 @@ async function record(email: string, outcome: string, userId: string | null, ctx
 export async function signIn(email: string, password: string, ctx: SignInContext = {}): Promise<SignInResult> {
   const address = email.trim().toLowerCase();
   const clientKey = ctx.clientKey ?? "unknown";
-  // Two limits: one per account, one per caller, so neither a single target nor a single source can be hammered.
-  for (const key of [`login:email:${address}`, `login:client:${clientKey}`]) {
-    const check = rateLimit(key, { limit: 8, windowMs: 10 * 60_000, blockMs: 10 * 60_000 });
+  // Two limits: one per account, one per caller, so neither a single target nor
+  // a single source can be hammered.
+  //
+  // Only wrong passwords are counted. The limit is there to stop guessing, and
+  // a correct password is not a guess: counting every sign-in locked out a
+  // branch that shares one account between its counsellors, and anybody on a
+  // connection bad enough to make them sign in again a few times. Eight wrong
+  // tries still blocks the account for ten minutes, and one right one clears
+  // the count.
+  const keys = [`login:email:${address}`, `login:client:${clientKey}`];
+  const limit = { limit: 8, windowMs: 10 * 60_000, blockMs: 10 * 60_000 };
+  for (const key of keys) {
+    const check = rateLimitBlocked(key);
     if (!check.allowed) {
       await record(address, "throttled", null, ctx);
       return { ok: false, reason: "throttled", retryAfterSeconds: check.retryAfterSeconds };
     }
   }
+  /** Count this attempt as a bad one, and say whether that has now blocked it. */
+  const countWrong = () => {
+    let blocked: { retryAfterSeconds: number } | null = null;
+    for (const key of keys) {
+      const r = rateLimit(key, limit);
+      if (!r.allowed && !blocked) blocked = { retryAfterSeconds: r.retryAfterSeconds };
+    }
+    return blocked;
+  };
 
   const user = await db.query.users.findFirst({ where: eq(schema.users.email, address) });
   if (!user) {
+    const blocked = countWrong();
     await record(address, "unknown_email", null, ctx);
+    if (blocked) return { ok: false, reason: "throttled", retryAfterSeconds: blocked.retryAfterSeconds };
     return { ok: false, reason: "invalid" };
   }
   if (!user.active) {
+    // A switched-off account is not a wrong password, so it is not counted
+    // against the limit; it is simply refused.
     await record(address, "inactive", user.id, ctx);
     return { ok: false, reason: "invalid" };
   }
   const matches = await bcrypt.compare(password, user.passwordHash);
   if (!matches) {
+    const blocked = countWrong();
     await record(address, "wrong_password", user.id, ctx);
+    if (blocked) return { ok: false, reason: "throttled", retryAfterSeconds: blocked.retryAfterSeconds };
     return { ok: false, reason: "invalid" };
   }
 
+  // The right password ends the run of wrong ones.
+  for (const key of keys) rateLimitClear(key);
   await issueSession(user.id, user.sessionVersion);
   await db.update(schema.users).set({ lastSignInAt: new Date() }).where(eq(schema.users.id, user.id));
   await record(address, "success", user.id, ctx);
