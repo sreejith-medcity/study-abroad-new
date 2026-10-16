@@ -1,0 +1,34 @@
+# The portal's entry for the Caddyfile already on this box.
+#
+# Two names on purpose: the live one, and a temporary one the whole thing is
+# tested on with real data before any DNS is touched. Both point at the same
+# app; nothing else changes between the test and the move.
+#
+# Add this to /etc/caddy/Caddyfile, then: caddy validate --config
+# /etc/caddy/Caddyfile && systemctl reload caddy
+
+doc.medcityoverseas.com, portal-vps.medcityoverseas.com {
+	encode zstd gzip
+
+	# A passport scan is a few megabytes and Caddy's default is generous, but
+	# say it out loud: this is the limit that used to live with somebody else,
+	# refusing uploads with a 500 nobody could read.
+	request_body {
+		max_size 64MB
+	}
+
+	reverse_proxy 127.0.0.1:3200 {
+		# A big upload on a phone line can take a while to arrive.
+		transport http {
+			read_timeout 300s
+			write_timeout 300s
+		}
+	}
+
+	log {
+		output file /var/log/caddy/portal.log {
+			roll_size 20mb
+			roll_keep 10
+		}
+	}
+}

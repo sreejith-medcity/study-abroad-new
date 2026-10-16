@@ -5,6 +5,16 @@ import type { NextConfig } from "next";
  * commission figures, so the defaults are strict and the few places that need
  * something looser (the Google Fonts stylesheet, Supabase Storage) are named.
  */
+// The browser now uploads documents straight to storage, so the one host it is
+// allowed to send them to is named rather than left to the blanket https:.
+const storageOrigin = (() => {
+  try {
+    return process.env.SUPABASE_URL ? new URL(process.env.SUPABASE_URL).origin : null;
+  } catch {
+    return null;
+  }
+})();
+
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -29,7 +39,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
       "img-src 'self' data: blob: https:",
-      "connect-src 'self' https:",
+      ["connect-src 'self' https:", storageOrigin].filter(Boolean).join(" "),
       "frame-ancestors 'none'",
       "form-action 'self'",
       "base-uri 'self'",
@@ -41,6 +51,10 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // The Docker image runs the standalone server Next emits. Left off
+  // everywhere else so `next start` and the test suites behave as they always
+  // have.
+  output: process.env.BUILD_STANDALONE ? "standalone" : undefined,
   // Server actions accept 1 MB by default. The program CSV import allows 5 MB and
   // the CRICOS register's course file is about 7 MB, so both need more room.
   experimental: { serverActions: { bodySizeLimit: "15mb" } },

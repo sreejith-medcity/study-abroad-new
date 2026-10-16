@@ -1,0 +1,110 @@
+# The portal on the VPS: the database, the app, and a nightly dump.
+#
+# Caddy on the host is the front door, so nothing here is published to the
+# world: the app listens on 127.0.0.1 and Caddy passes requests to it. The
+# database is not published at all.
+#
+# Settings come from deploy/.env beside this file. Make it from env.example.
+
+name: portal
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: portal
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
+      POSTGRES_DB: portal
+      # Kerala time, so a dump named for a date holds that working day.
+      TZ: Asia/Kolkata
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U portal -d portal"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://portal:${POSTGRES_PASSWORD}@db:5432/portal
+      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in deploy/.env}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL}
+      TZ: Asia/Kolkata
+      # Everything the portal talks to. Left empty, each feature simply stays
+      # off rather than breaking the app.
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
+      WHATSAPP_PROVIDER: ${WHATSAPP_PROVIDER:-}
+      WHATSAPP_TOKEN: ${WHATSAPP_TOKEN:-}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-}
+      WHATSAPP_APP_SECRET: ${WHATSAPP_APP_SECRET:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL:-}
+      COMMISSION_FX: ${COMMISSION_FX:-}
+      DOC_CODES: ${DOC_CODES:-}
+      CRON_SECRET: ${CRON_SECRET:-}
+      HEALTH_TOKEN: ${HEALTH_TOKEN:-}
+    volumes:
+      - uploads:/data/uploads
+    ports:
+      - "127.0.0.1:${APP_PORT:-3200}:3000"
+
+  # Schema changes, run by hand on a release: docker compose run --rm migrate
+  migrate:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: build
+    profiles: ["tools"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://portal:${POSTGRES_PASSWORD}@db:5432/portal
+    command: ["npx", "drizzle-kit", "migrate"]
+
+  # A dump a night, kept a fortnight. Plain SQL, so it can be read and
+  # restored anywhere without this stack.
+  backup:
+    image: postgres:16
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      TZ: Asia/Kolkata
+    volumes:
+      - ./backups:/backups
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        while true; do
+          now=$$(date +%H%M)
+          if [ "$$now" = "0215" ]; then
+            out=/backups/portal-$$(date +%Y-%m-%d).sql.gz
+            pg_dump -h db -U portal -d portal --no-owner --no-acl | gzip > "$$out.part" \
+              && mv "$$out.part" "$$out" \
+              && echo "$$(date -Iseconds) wrote $$out" \
+              || echo "$$(date -Iseconds) the dump failed"
+            find /backups -name 'portal-*.sql.gz' -mtime +14 -delete
+            sleep 90
+          fi
+          sleep 50
+        done
+
+volumes:
+  pgdata:
+  uploads:
