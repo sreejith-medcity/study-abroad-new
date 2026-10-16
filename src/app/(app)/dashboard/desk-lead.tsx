@@ -5,8 +5,7 @@ import { db, schema } from "@/db";
 import { deskPool, deskStanding, queueCounts } from "@/server/documentation";
 import { CLAIM_MINUTES } from "@/lib/journey";
 import { ROLE_LABEL } from "@/lib/permissions";
-import { Card, CardHeader, Chip, DashboardHero, EmptyState, LinkButton, Stat, Table, Td, Th, cn } from "@/components/ui";
-import { IconAlert, IconCheck, IconClock, IconQueue } from "@/components/icons";
+import { AlertTiles, Card, CardHeader, Chip, DashboardHero, EmptyState, HeroBand, LinkButton, PersonRow, Table, Td, Th, cn } from "@/components/ui";
 
 /** Hours, in the words somebody would use out loud rather than a decimal. */
 function waited(hours: number | null) {
@@ -82,31 +81,54 @@ export default async function DeskLeadDashboard({ user }: { user: SessionUser })
             </LinkButton>
           </>
         }
+      >
+        <HeroBand
+          figures={[
+            { label: "Waiting", value: pool.waiting, href: "/documentation" },
+            { label: "Claimed", value: carrying },
+            { label: "Overdue", value: overdue },
+            { label: "Decided this week", value: decidedWeek },
+            { label: "Options owed", value: options.length, href: "/program-options" },
+          ]}
+        />
+      </DashboardHero>
+
+      <AlertTiles
+        allClear="Nothing is waiting on this desk."
+        tiles={[
+          {
+            label: "Past the date asked for",
+            value: overdue,
+            tone: "stop",
+            note: "Chased or let go, but not left",
+            href: "/documentation",
+          },
+          {
+            label: "Waiting on nobody",
+            value: pool.waiting,
+            tone: "warn",
+            note: pool.oldestHours == null ? undefined : `Oldest ${waited(pool.oldestHours)}`,
+            href: "/documentation",
+          },
+          {
+            label: `Held over ${CLAIM_MINUTES} minutes`,
+            value: stale,
+            tone: "warn",
+            note: "Somebody opened it and went home",
+            href: "/documentation",
+          },
+          {
+            label: "Decided this week",
+            value: decidedWeek,
+            tone: "good",
+            always: true,
+            note: decidedWeek > 0 ? `${sentBackWeek} sent back, ${Math.round((sentBackWeek / decidedWeek) * 100)}%` : "Nothing decided yet this week",
+          },
+        ]}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card className="p-4">
-          <Stat icon={<IconQueue />} label="Waiting on nobody" value={pool.waiting} />
-          <p className="mt-1 text-xs text-muted">{pool.oldestHours == null ? "Nothing waiting" : `Oldest: ${waited(pool.oldestHours)}`}</p>
-        </Card>
-        <Card className="p-4">
-          <Stat icon={<IconClock />} label="Claimed and still open" value={carrying} />
-          <p className="mt-1 text-xs text-muted">{stale > 0 ? `${stale} held longer than ${CLAIM_MINUTES} minutes` : "None held too long"}</p>
-        </Card>
-        <Card className="p-4">
-          <Stat icon={<IconAlert />} label="Past the date asked for" value={overdue} tone={overdue > 0 ? "stop" : undefined} />
-          <p className="mt-1 text-xs text-muted">{overdue > 0 ? "Chased or let go, but not left" : "Nothing overdue"}</p>
-        </Card>
-        <Card className="p-4">
-          <Stat icon={<IconCheck />} label="Decided this week" value={decidedWeek} />
-          <p className="mt-1 text-xs text-muted">
-            {decidedWeek > 0 ? `${sentBackWeek} sent back, ${Math.round((sentBackWeek / decidedWeek) * 100)}%` : "Nothing decided yet this week"}
-          </p>
-        </Card>
-      </div>
-
       {stale > 0 && (
-        <Card className="border-amber-300 bg-amber-50/60 p-4 text-[13px]">
+        <Card className="border-warn-500/25 bg-warn-50/60 p-4 text-[13px]">
           <span className="font-medium">{stale} document{stale === 1 ? " has" : "s have"} been claimed longer than a check takes.</span> Usually somebody opened
           it and went home. They can be moved to another officer, or put back in the pool, from the queue.
         </Card>
@@ -124,18 +146,22 @@ export default async function DeskLeadDashboard({ user }: { user: SessionUser })
         {options.length === 0 ? (
           <EmptyState title="Nothing is waiting">Every request the branches have sent has been answered.</EmptyState>
         ) : (
-          <ul className="divide-y divide-line">
+          <ul>
             {options.map((o) => (
-              <li key={o.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 text-[13px]">
-                <Link href={`/program-options?id=${o.id}`} className="font-medium text-brand-600 hover:underline">
-                  {o.studentName}
-                </Link>
-                <span className="font-mono text-xs text-muted">{o.requestNo}</span>
-                <span className="text-muted">{o.orgName}</span>
-                {o.destinations.length > 0 && <Chip>{o.destinations.join(", ")}</Chip>}
-                {!o.assignedToId && <Chip tone="warn">Nobody on it</Chip>}
-                <span className="ml-auto whitespace-nowrap text-xs text-muted">Waiting {waited(o.waitingHours)}</span>
-              </li>
+              <PersonRow
+                key={o.id}
+                name={o.studentName}
+                href={`/program-options?id=${o.id}`}
+                meta={
+                  <>
+                    {o.orgName}
+                    {o.destinations.length > 0 && ` · ${o.destinations.join(", ")}`}
+                    {!o.assignedToId && " · nobody on it"}
+                  </>
+                }
+                pill={waited(o.waitingHours)}
+                tone={o.waitingHours != null && o.waitingHours > 48 ? "bad" : "warn"}
+              />
             ))}
           </ul>
         )}
@@ -171,7 +197,7 @@ export default async function DeskLeadDashboard({ user }: { user: SessionUser })
                     <p className="text-xs text-muted">{ROLE_LABEL[o.role] ?? o.role}</p>
                   </Td>
                   <Td className="text-right tabular font-medium">{o.carrying}</Td>
-                  <Td className={cn("whitespace-nowrap text-[13px]", o.stale > 0 && "font-medium text-amber-700")}>
+                  <Td className={cn("whitespace-nowrap text-[13px]", o.stale > 0 && "font-medium text-warn-700")}>
                     {waited(o.oldestHours)}
                     {o.stale > 0 && <span className="block text-xs">{o.stale} held too long</span>}
                   </Td>

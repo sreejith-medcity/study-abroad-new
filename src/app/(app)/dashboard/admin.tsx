@@ -26,16 +26,16 @@ import {
   Card,
   CardHeader,
   Chip,
+  AlertTiles,
   DashboardHero,
   DataList,
   LinkButton,
-  Stat,
   Table,
   Td,
   Th,
   TrendChart,
 } from "@/components/ui";
-import { IconAlert, IconApplications, IconCheck, IconClock, IconQueue, IconSearch } from "@/components/icons";
+import { IconQueue, IconSearch } from "@/components/icons";
 import { Section } from "@/components/section";
 import { AgingCard, DashboardFilters, DeadlinesCard, RecentChangesCard } from "./parts";
 import { ownApplicationsOnly } from "@/server/scope";
@@ -100,12 +100,19 @@ export default async function AdminDashboard({ user, f, showMoney = true }: { us
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_330px]">
         <div className="space-y-5">
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Stat label="New / assessment" tone="brand" icon={<IconApplications className="size-4" />} value={groups.NEW} href="/applications?group=NEW" />
-            <Stat label="Pending from partner" tone="warn" icon={<IconAlert className="size-4" />} value={groups.PENDING_PARTNER} href="/applications?group=PENDING_PARTNER" />
-            <Stat label="In progress" tone="info" icon={<IconClock className="size-4" />} value={groups.IN_PROGRESS} href="/applications?group=IN_PROGRESS" />
-            <Stat label="Offer / contract" tone="good" icon={<IconCheck className="size-4" />} value={groups.OFFER} href="/applications?group=OFFER" />
-          </div>
+          {/* What is wrong first, then what is moving. A lane at nought is
+              said in a line underneath rather than drawn as a card. */}
+          <AlertTiles
+            allClear="Nothing is open across the partners."
+            tiles={[
+              { label: "Past the service level", value: late.total, tone: "stop", note: "Across every lane", href: "/admin/queue" },
+              { label: "Nobody has picked up", value: load.unassigned, tone: "warn", note: "Waiting on this desk", href: "/applications?assignedTo=none" },
+              { label: "Pending from partner", value: groups.PENDING_PARTNER, tone: "warn", href: "/applications?group=PENDING_PARTNER" },
+              { label: "New / assessment", value: groups.NEW, tone: "brand", always: true, href: "/applications?group=NEW" },
+              { label: "In progress", value: groups.IN_PROGRESS, tone: "info", always: true, href: "/applications?group=IN_PROGRESS" },
+              { label: "Offer / contract", value: groups.OFFER, tone: "good", always: true, href: "/applications?group=OFFER" },
+            ]}
+          />
 
           <Card>
             <CardHeader

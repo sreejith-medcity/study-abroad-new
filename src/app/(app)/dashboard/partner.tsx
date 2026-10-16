@@ -10,7 +10,7 @@ import { applicationWhere, type ApplicationFilters } from "@/server/queries";
 import { getSettings, tierTargets } from "@/server/settings";
 import { agingList, builtByWaiting, countryMix, deadlineList, windowFor, funnel, kpiTotals, monthlyPoints, myWork, recentChanges, teamLoad } from "@/server/dashboard";
 import { referralsFor } from "@/server/agents";
-import { STAGE_LABEL, STAGE_TONE, enquiryCounts, followUpQueue } from "@/server/enquiries";
+import { STAGE_LABEL, enquiryCounts, followUpQueue } from "@/server/enquiries";
 import { commissionTotals, inr, walletBalance } from "@/server/commission";
 import {
   BarList,
@@ -23,6 +23,8 @@ import {
   FunnelSteps,
   LinkButton,
   Progress,
+  AlertTiles,
+  PersonRow,
   StatGrid,
   Table,
   Td,
@@ -109,6 +111,12 @@ export default async function PartnerDashboard({
     new URLSearchParams({ ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)) as Record<string, string>, ...extra }).toString();
 
   const seatsUsed = team.filter((t) => t.active).length;
+  // Due today or already past, which is the list somebody would read out
+  // loud. The rest of the queue is still shown underneath it; this is only
+  // what decides the heading, so "Ring these three" is never three people
+  // whose follow-up date is a fortnight away.
+  const toRing = followUps.filter((q) => q.nextFollowUpAt != null && q.nextFollowUpAt.getTime() < Date.now() + 86400000);
+
 
   return (
     <>
@@ -175,6 +183,68 @@ export default async function PartnerDashboard({
             <DashboardFilters f={f as Record<string, string | undefined>} countries={countries} />
           </Section>
 
+          {/* First thing on the branch screen, because it is the only block
+              here that names a person and a telephone number. Everything else
+              on this page is a figure you read; this is three calls you make. */}
+          <Card>
+            <CardHeader
+              title={toRing.length > 0 ? `Ring these ${toRing.length === 1 ? "one" : toRing.length}` : "Nobody to ring today"}
+              subtitle={enquiries.overdue > 0 ? `${enquiries.overdue} overdue, oldest follow-up first` : "Oldest follow-up date first"}
+              action={<Link href="/enquiries" className="text-[13px] font-medium text-brand-600 hover:underline">All enquiries</Link>}
+            />
+            {followUps.length === 0 ? (
+              <EmptyState title="Nothing to chase" icon={<IconEnquiry className="size-5" />}>
+                New walk-ins and calls appear here with their follow-up date.
+              </EmptyState>
+            ) : (
+              <ul>
+                {followUps.map((q) => {
+                  const overdue = q.nextFollowUpAt != null && q.nextFollowUpAt.getTime() < Date.now();
+                  return (
+                    <PersonRow
+                      key={q.id}
+                      name={q.name}
+                      href={`/enquiries/${q.id}`}
+                      meta={
+                        <>
+                          {q.phone}
+                          {" · "}
+                          {q.interestCountry ?? "destination open"}
+                          {" · "}
+                          {STAGE_LABEL[q.stage]}
+                        </>
+                      }
+                      pill={q.nextFollowUpAt ? fmtDate(q.nextFollowUpAt) : "No date"}
+                      tone={overdue ? "bad" : q.nextFollowUpAt ? "warn" : "neutral"}
+                    />
+                  );
+                })}
+              </ul>
+            )}
+          </Card>
+
+          <AlertTiles
+            allClear="Nothing is waiting on your branch this morning."
+            tiles={[
+              {
+                label: "Follow ups overdue",
+                value: enquiries.overdue,
+                tone: "stop",
+                note: "Past the date you set",
+                href: "/enquiries?due=overdue",
+              },
+              { label: "Due today", value: enquiries.dueToday, tone: "warn", href: "/enquiries?due=today" },
+              {
+                label: branchWide ? "Waiting on your branch" : "Waiting on you",
+                value: branchWide ? kpis.pending_partner : work.waiting,
+                tone: "warn",
+                note: "Held up until somebody here acts",
+                href: "/applications?group=PENDING_PARTNER",
+              },
+              { label: "Unread student replies", value: work.replies.length, tone: "info", href: "/applications?group=PENDING_PARTNER" },
+            ]}
+          />
+
           <StatGrid
             tiles={TILES.map((t) => ({
               label: t.label,
@@ -220,36 +290,6 @@ export default async function PartnerDashboard({
               )}
             </Card>
           )}
-
-          <Card>
-            <CardHeader
-              title="Enquiries to call"
-              subtitle={enquiries.overdue > 0 ? `${enquiries.overdue} overdue, oldest first` : "Oldest follow-up date first"}
-              action={<Link href="/enquiries" className="text-[13px] font-medium text-brand-600 hover:underline">All enquiries</Link>}
-            />
-            {followUps.length === 0 ? (
-              <EmptyState title="Nothing to chase" icon={<IconEnquiry className="size-5" />}>
-                New walk-ins and calls appear here with their follow-up date.
-              </EmptyState>
-            ) : (
-              <ul>
-                {followUps.map((q) => {
-                  const overdue = q.nextFollowUpAt && q.nextFollowUpAt.getTime() < Date.now();
-                  return (
-                    <li key={q.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line px-4 py-3 last:border-0">
-                      <Link href={`/enquiries/${q.id}`} className="font-medium hover:underline">{q.name}</Link>
-                      <span className="text-[13px] text-muted tabular">{q.phone}</span>
-                      <span className="text-[13px] text-muted">{q.interestCountry ?? "Destination open"}</span>
-                      <span className="ml-auto flex items-center gap-2">
-                        <Chip tone={STAGE_TONE[q.stage]}>{STAGE_LABEL[q.stage]}</Chip>
-                        <Chip tone={overdue ? "bad" : "neutral"}>{q.nextFollowUpAt ? fmtDate(q.nextFollowUpAt) : "No date"}</Chip>
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </Card>
 
           <div className="grid gap-5 lg:grid-cols-2">
             <Card>
@@ -431,7 +471,7 @@ export default async function PartnerDashboard({
                 {schemes.slice(0, 3).map((p) => (
                   <li key={p.id} className="px-4 py-2.5 text-[13px]">
                     <Link href={`/promotions#${p.id}`} className="font-medium text-ink hover:text-brand-700 hover:underline">{p.title}</Link>
-                    <p className="text-emerald-700">{p.summary}</p>
+                    <p className="text-good-700">{p.summary}</p>
                     <p className="text-xs text-muted">{promotionState(p.startsOn, p.endsOn) === "running" ? `Until ${rangeText(p.startsOn, p.endsOn).split(" to ")[1]}` : `From ${rangeText(p.startsOn, p.endsOn).split(" to ")[0]}`}</p>
                   </li>
                 ))}

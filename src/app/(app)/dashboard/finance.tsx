@@ -67,7 +67,7 @@ export default async function FinanceDashboard({ user }: { user: SessionUser }) 
       </div>
 
       {unpriced > 0 && (
-        <Card className="border-amber-300 bg-amber-50/60 p-4 text-[13px]">
+        <Card className="border-warn-500/25 bg-warn-50/60 p-4 text-[13px]">
           <span className="font-medium">{unpriced} placement{unpriced === 1 ? " has" : "s have"} no rate on their route.</span> Those can never be invoiced until
           somebody records what the route pays. The terms live on Vendors and routes, which is an admin&rsquo;s screen, so this one is for them rather than you.
         </Card>

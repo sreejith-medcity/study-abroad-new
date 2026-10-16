@@ -15,17 +15,17 @@ import {
   Card,
   CardHeader,
   Chip,
+  AlertTiles,
   DashboardHero,
   DataList,
   EmptyState,
   FunnelSteps,
   LinkButton,
-  Stat,
   Table,
   Td,
   Th,
 } from "@/components/ui";
-import { IconAlert, IconCheck, IconPartners, IconShield, IconStudents, IconQueue } from "@/components/icons";
+import { IconCheck, IconPartners, IconShield, IconQueue } from "@/components/icons";
 import { ActivityCard } from "./parts";
 
 const WATCHED = ["passport.reveal", "student.delete", "applications.export", "audit.export", "document.delete", "user.role_change", "user.password_reset"];
@@ -82,6 +82,10 @@ export default async function SuperAdminDashboard({ user, f }: { user: SessionUs
   const orgCount = (snapshot.orgs.BRANCH ?? 0) + (snapshot.orgs.SUB_AGENT ?? 0);
   const backend = storageBackend();
 
+  // Everything that is open somewhere, which is what the platform is for.
+  // Closed work is history and does not belong in a morning figure.
+  const liveApplications = groups.NEW + groups.PENDING_PARTNER + groups.IN_PROGRESS + groups.OFFER;
+
   return (
     <>
       <DashboardHero
@@ -98,12 +102,15 @@ export default async function SuperAdminDashboard({ user, f }: { user: SessionUs
             </LinkButton>
           </>
         }
+        /* Students and live applications first. Counting accounts three ways
+           and never mentioning a student is a maintenance screen, not a
+           morning one; the account figures moved down to where they belong. */
         meta={[
-          { label: "Active accounts", value: snapshot.flags.total - snapshot.flags.inactive },
-          { label: "Signed in this week", value: snapshot.flags.signedInWeek },
-          { label: "Partner organisations", value: orgCount },
-          { label: "Past SLA", value: late.total },
+          { label: "Live applications", value: liveApplications },
+          { label: "Past the service level", value: late.total },
           { label: "Moves today", value: today.moves },
+          { label: "Branches", value: orgCount },
+          { label: "Accounts", value: snapshot.flags.total - snapshot.flags.inactive },
         ]}
       />
 
@@ -129,12 +136,15 @@ export default async function SuperAdminDashboard({ user, f }: { user: SessionUs
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_330px]">
         <div className="space-y-5">
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Stat label="Overseas team" tone="brand" icon={<IconShield className="size-4" />} value={staff} href="/admin/partners" />
-            <Stat label="Partner users" tone="info" icon={<IconStudents className="size-4" />} value={partnerUsers} href="/admin/partners" />
-            <Stat label="Temporary passwords" tone="warn" icon={<IconAlert className="size-4" />} value={snapshot.flags.temporary} href="/admin/partners" />
-            <Stat label="Never signed in" tone="stop" icon={<IconAlert className="size-4" />} value={snapshot.flags.neverSignedIn} href="/admin/partners" />
-          </div>
+          <AlertTiles
+            allClear="Every account is in order."
+            tiles={[
+              { label: "Never signed in", value: snapshot.flags.neverSignedIn, tone: "stop", note: "Made and never used", href: "/admin/partners" },
+              { label: "Temporary passwords", value: snapshot.flags.temporary, tone: "warn", note: "Cannot sign in yet", href: "/admin/partners" },
+              { label: "Overseas team", value: staff, tone: "brand", always: true, href: "/admin/partners" },
+              { label: "Partner users", value: partnerUsers, tone: "info", always: true, href: "/admin/partners" },
+            ]}
+          />
 
           <Card>
             <CardHeader

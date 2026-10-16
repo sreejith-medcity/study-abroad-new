@@ -412,6 +412,189 @@ export function StatGrid({
   );
 }
 
+/* ---------------- The dashboard kit ---------------- */
+
+/**
+ * The figures that belong to the hero sentence, set inside it.
+ *
+ * Four numbers in four cards under a sentence is four cards' worth of borders
+ * to say what the sentence already said. Put inside the hero they read as the
+ * sentence's own arithmetic, and the cards below are then free to hold the
+ * things that need doing.
+ */
+export function HeroBand({ figures }: { figures: { label: string; value: ReactNode; href?: string }[] }) {
+  if (figures.length === 0) return null;
+  return (
+    <dl className="relative z-10 mt-5 flex flex-wrap gap-x-9 gap-y-3 border-t border-white/15 pt-4">
+      {figures.map((f) => {
+        const body = (
+          <>
+            <dd className="font-display text-[23px] font-semibold leading-none tabular tracking-[-0.035em] text-white">{f.value}</dd>
+            <dt className="mt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/55">{f.label}</dt>
+          </>
+        );
+        return f.href ? (
+          <Link key={f.label} href={f.href} className="rounded-md transition-opacity hover:opacity-80">
+            {body}
+          </Link>
+        ) : (
+          <div key={f.label}>{body}</div>
+        );
+      })}
+    </dl>
+  );
+}
+
+const edgeTone = {
+  stop: "border-l-stop-500",
+  warn: "border-l-warn-500",
+  good: "border-l-good-500",
+  info: "border-l-info-500",
+  brand: "border-l-brand-600",
+} as const;
+
+const edgeText = {
+  stop: "text-stop-500",
+  warn: "text-warn-500",
+  good: "text-good-500",
+  info: "text-info-500",
+  brand: "text-brand-600",
+} as const;
+
+/**
+ * The things that are wrong, said in colour.
+ *
+ * Red is late, amber is waiting, green is done. One meaning per colour and
+ * nothing else on the page uses them, so a glance at this row is the whole
+ * morning. A tile at nought is not drawn, because a row of noughts is a row
+ * of nothing and it pushes the real figure off the first screen; what is at
+ * nought is said underneath in one line instead.
+ */
+export function AlertTiles({
+  tiles,
+  allClear = "Nothing needs you this morning.",
+}: {
+  tiles: { label: string; value: number; note?: string; tone: keyof typeof edgeTone; href?: string; always?: boolean }[];
+  allClear?: string;
+}) {
+  const shown = tiles.filter((t) => t.value !== 0 || t.always);
+  const empty = tiles.filter((t) => t.value === 0 && !t.always);
+  if (shown.length === 0) {
+    return (
+      <Card className="px-4 py-5 text-center">
+        <p className="font-display text-[15px] font-semibold text-ink">{allClear}</p>
+        {empty.length > 0 && (
+          <p className="mt-1 text-[13px] text-muted">
+            Nothing {empty.map((t) => t.label.toLowerCase()).join(", ")}.
+          </p>
+        )}
+      </Card>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {shown.map((t) => {
+          const body = (
+            <>
+              <p className={cn("text-[10px] font-semibold uppercase tracking-[0.13em]", edgeText[t.tone])}>{t.label}</p>
+              <p className="mt-1.5 font-display text-[23px] font-semibold leading-none tabular tracking-[-0.035em] text-ink">{t.value}</p>
+              {t.note && <p className="mt-1 text-[12px] text-muted">{t.note}</p>}
+            </>
+          );
+          const shell = cn("rounded-xl border border-line border-l-[3px] bg-surface px-3.5 py-3 shadow-card", edgeTone[t.tone]);
+          return t.href ? (
+            <Link key={t.label} href={t.href} className={cn(shell, "transition-all duration-150 hover:-translate-y-px hover:shadow-lift")}>
+              {body}
+            </Link>
+          ) : (
+            <div key={t.label} className={shell}>
+              {body}
+            </div>
+          );
+        })}
+      </div>
+      {empty.length > 0 && (
+        <p className="px-1 text-[13px] text-muted">
+          Nothing{" "}
+          {empty.map((t, i) => (
+            <span key={t.label}>
+              {i > 0 && (i === empty.length - 1 ? " or " : ", ")}
+              {t.label.toLowerCase()}
+            </span>
+          ))}
+          .
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * A name, as a block of initials.
+ *
+ * A list of people with no faces in it is read by spelling out the names. The
+ * initials are not a face, but they are a shape, and a shape is enough to find
+ * the row you were looking at a moment ago.
+ */
+export function Avatar({ name, className }: { name: string; className?: string }) {
+  const initials =
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0]?.toUpperCase() ?? "")
+      .join("") || "?";
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "grid size-7 flex-none place-items-center rounded-lg bg-gradient-to-br from-brand-400 to-brand-700 text-[11px] font-bold leading-none text-white",
+        className,
+      )}
+    >
+      {initials}
+    </span>
+  );
+}
+
+/**
+ * One person, one line about them, and one pill saying how long.
+ *
+ * Every list on every dashboard is this row. Written once, so a name sits in
+ * the same place on the desk's screen as on a branch's.
+ */
+export function PersonRow({
+  name,
+  href,
+  meta,
+  pill,
+  tone = "neutral",
+}: {
+  name: string;
+  href?: string;
+  meta?: ReactNode;
+  pill?: ReactNode;
+  tone?: keyof typeof chipTone;
+}) {
+  return (
+    <li className="flex items-center gap-2.5 border-b border-line px-4 py-2.5 last:border-0">
+      <Avatar name={name} />
+      <span className="min-w-0 flex-1">
+        {href ? (
+          <Link href={href} className="block truncate text-[13.5px] font-semibold text-ink hover:text-brand-700 hover:underline">
+            {name}
+          </Link>
+        ) : (
+          <span className="block truncate text-[13.5px] font-semibold text-ink">{name}</span>
+        )}
+        {meta && <span className="block truncate text-[12px] text-muted">{meta}</span>}
+      </span>
+      {pill && <Chip tone={tone}>{pill}</Chip>}
+    </li>
+  );
+}
+
 export function TrendChart({
   points,
   aLabel,
@@ -556,12 +739,15 @@ export function DashboardHero({
   subtitle,
   actions,
   meta,
+  children,
 }: {
   eyebrow: string;
   title: string;
   subtitle?: string;
   actions?: ReactNode;
   meta?: { label: string; value: ReactNode }[];
+  /** A HeroBand, for the dashboards that carry their figures in the hero. */
+  children?: ReactNode;
 }) {
   return (
     <div className="brand-wash grain relative mb-5 overflow-hidden rounded-2xl px-5 py-5 shadow-hero ring-1 ring-inset ring-white/10 md:px-6 md:py-6">
@@ -573,16 +759,11 @@ export function DashboardHero({
         </div>
         {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
       </div>
-      {meta && meta.length > 0 && (
-        <dl className="relative z-10 mt-5 flex flex-wrap gap-x-8 gap-y-3 border-t border-white/15 pt-4">
-          {meta.map((m) => (
-            <div key={m.label}>
-              <dt className="text-[11px] font-medium uppercase tracking-wider text-white/60">{m.label}</dt>
-              <dd className="font-display text-lg font-semibold tabular text-white">{m.value}</dd>
-            </div>
-          ))}
-        </dl>
-      )}
+      {/* The older dashboards pass their figures as meta; the newer ones pass
+          a HeroBand as a child. Both end up in the same band, so a figure is
+          the same size and the same weight on every screen. */}
+      {meta && meta.length > 0 && <HeroBand figures={meta} />}
+      {children}
     </div>
   );
 }

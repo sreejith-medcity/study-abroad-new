@@ -5,8 +5,7 @@ import type { SessionUser } from "@/lib/auth";
 import { applicationWhere, type ApplicationFilters } from "@/server/queries";
 import { agingList, deadlineList, kpiTotals, myWork, recentChanges, windowFor } from "@/server/dashboard";
 import { ownApplicationsOnly } from "@/server/scope";
-import { Card, CardHeader, Chip, DashboardHero, EmptyState, LinkButton, Stat, Table, Td, Th } from "@/components/ui";
-import { IconApplications, IconClock, IconQueue, IconStudents } from "@/components/icons";
+import { AlertTiles, Card, CardHeader, Chip, DashboardHero, EmptyState, HeroBand, LinkButton, Table, Td, Th } from "@/components/ui";
 import { AgingCard, DashboardFilters, DeadlinesCard, RecentChangesCard, partOfDay } from "./parts";
 import { greetingName } from "@/lib/format";
 
@@ -60,23 +59,28 @@ export default async function DeskCounsellorDashboard({ user, f }: { user: Sessi
             </LinkButton>
           </>
         }
-      />
+      >
+        <HeroBand
+          figures={[
+            { label: "Your students", value: work.students, href: "/students?mine=1" },
+            { label: "Live applications", value: work.live, href: "/applications" },
+            { label: "Waiting on you", value: work.waiting },
+            { label: "Visas granted", value: kpis.visa_received ?? 0 },
+          ]}
+        />
+      </DashboardHero>
 
       <DashboardFilters countries={countries} f={f} />
 
-      <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card className="p-4">
-          <Stat icon={<IconStudents />} label="Your students" value={work.students} />
-        </Card>
-        <Card className="p-4">
-          <Stat icon={<IconApplications />} label="Live applications" value={work.live} />
-        </Card>
-        <Card className="p-4">
-          <Stat icon={<IconQueue />} label="Waiting on you" value={work.waiting} tone={work.waiting > 0 ? "warn" : undefined} />
-        </Card>
-        <Card className="p-4">
-          <Stat icon={<IconClock />} label="Visas granted" value={kpis.visa_received ?? 0} />
-        </Card>
+      <div className="mt-4">
+        <AlertTiles
+          allClear="Nothing is waiting on you this morning."
+          tiles={[
+            { label: "Waiting on you", value: work.waiting, tone: "warn", note: "Your files, nobody else's", href: "/applications?assignedTo=me" },
+            { label: "Live applications", value: work.live, tone: "info", always: true, href: "/applications" },
+            { label: "Visas granted", value: kpis.visa_received ?? 0, tone: "good", always: true },
+          ]}
+        />
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
