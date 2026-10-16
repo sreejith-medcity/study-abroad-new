@@ -23,20 +23,21 @@ import {
   FunnelSteps,
   LinkButton,
   Progress,
-  Stat,
+  StatGrid,
   Table,
   Td,
   Th,
   TrendChart,
 } from "@/components/ui";
 import { IconAlert, IconApplications, IconChat, IconCheck, IconClock, IconDoc, IconEnquiry, IconPlus, IconSearch, IconSpark } from "@/components/icons";
+import { Section } from "@/components/section";
 import { AgingCard, DashboardFilters, DeadlinesCard, RecentChangesCard, partOfDay } from "./parts";
 import { AnnouncementBanner, UpdatesCard } from "./updates-card";
 import { ownApplicationsOnly } from "@/server/scope";
 
 const TILES = [
-  { key: "", label: "All applications", tone: "brand" as const, icon: <IconApplications className="size-4" /> },
-  { key: "pending_partner", label: "Needs your action", tone: "warn" as const, icon: <IconAlert className="size-4" /> },
+  { key: "", label: "All applications", tone: "brand" as const, icon: <IconApplications className="size-4" />, always: true },
+  { key: "pending_partner", label: "Needs your action", tone: "warn" as const, icon: <IconAlert className="size-4" />, always: true },
   { key: "offers", label: "Offers", tone: "good" as const, icon: <IconCheck className="size-4" /> },
   { key: "visa_received", label: "Visa received", tone: "good" as const, icon: <IconCheck className="size-4" /> },
   { key: "payments", label: "Fees paid", tone: "info" as const, icon: <IconDoc className="size-4" /> },
@@ -67,6 +68,7 @@ export default async function PartnerDashboard({
   const personal = !branchWide;
   const { applications: a, students: s, countries: c, organizations: og } = schema;
   const filters: ApplicationFilters = { from: f.from, to: f.to, country: f.country, intakeYear: f.intakeYear, intakeMonth: f.intakeMonth };
+  const narrowed = Boolean(f.from || f.to || f.country || f.intakeYear || f.intakeMonth);
   const mine = personal ? eq(s.assignedToId, user.id) : undefined;
   const showMoney = await commissionVisible(user);
   const [schemes, links] = await Promise.all([showMoney ? currentPromotions() : Promise.resolve([]), quickLinkList()]);
@@ -167,20 +169,22 @@ export default async function PartnerDashboard({
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-5">
-          <DashboardFilters f={f as Record<string, string | undefined>} countries={countries} />
+          {/* Opened when somebody wants a narrower question; the numbers come
+              first either way. */}
+          <Section id="narrow" title="Narrow this" meta={narrowed ? "narrowed" : "everything, all time"} defaultOpen={narrowed} bodyClassName="">
+            <DashboardFilters f={f as Record<string, string | undefined>} countries={countries} />
+          </Section>
 
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {TILES.map((t) => (
-              <Stat
-                key={t.label}
-                label={t.label}
-                tone={t.tone}
-                icon={t.icon}
-                value={t.key ? kpis[t.key] : kpis.all}
-                href={`/applications?${qs(t.key ? { kpi: t.key } : {})}`}
-              />
-            ))}
-          </div>
+          <StatGrid
+            tiles={TILES.map((t) => ({
+              label: t.label,
+              tone: t.tone,
+              icon: t.icon,
+              always: "always" in t ? t.always : false,
+              value: t.key ? kpis[t.key] : kpis.all,
+              href: `/applications?${qs(t.key ? { kpi: t.key } : {})}`,
+            }))}
+          />
 
           <AgingCard
             rows={waiting}

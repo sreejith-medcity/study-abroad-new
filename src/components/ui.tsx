@@ -355,6 +355,63 @@ export function BarList({
 }
 
 /** Month-by-month columns. Two series so applications and outcomes sit side by side. */
+/**
+ * Two counts a month at a time.
+ *
+ * The second series used to be the brand yellow, which on a white card is a
+ * contrast of 1.2 to 1: the bar was there and nobody could see it. It is the
+ * brand blue now, which a run of the palette checks passes on every count,
+ * including for the two commonest kinds of colour blindness.
+ *
+ * A chart of nothing is worse than a sentence, so a stretch with no activity
+ * says so in words instead of drawing an empty grid.
+ */
+/**
+ * A row of numbers where most of them are nought.
+ *
+ * A branch with one live application was shown eight tiles, seven of them a
+ * nought, which is half a screen spent saying nothing. The ones that hold a
+ * number are tiles; the rest become one quiet line that still links to each
+ * list, because "no offers yet" is worth knowing once, not eight times.
+ */
+export function StatGrid({
+  tiles,
+  nothingYet = "Nothing yet in",
+}: {
+  tiles: { label: string; value: number; tone?: "brand" | "good" | "warn" | "stop" | "info"; icon?: ReactNode; href?: string; always?: boolean }[];
+  nothingYet?: string;
+}) {
+  const shown = tiles.filter((t) => t.value !== 0 || t.always);
+  const empty = tiles.filter((t) => t.value === 0 && !t.always);
+  return (
+    <div className="space-y-2">
+      {shown.length > 0 && (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {shown.map((t) => (
+            <Stat key={t.label} label={t.label} value={t.value} tone={t.tone} icon={t.icon} href={t.href} />
+          ))}
+        </div>
+      )}
+      {empty.length > 0 && (
+        <p className="px-1 text-[13px] text-muted">
+          {nothingYet}{" "}
+          {empty.map((t, i) => (
+            <span key={t.label}>
+              {i > 0 && (i === empty.length - 1 ? " or " : ", ")}
+              {t.href ? (
+                <Link href={t.href} className="text-ink-soft hover:text-brand-600 hover:underline">{t.label.toLowerCase()}</Link>
+              ) : (
+                <span className="text-ink-soft">{t.label.toLowerCase()}</span>
+              )}
+            </span>
+          ))}
+          .
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function TrendChart({
   points,
   aLabel,
@@ -364,49 +421,85 @@ export function TrendChart({
   aLabel: string;
   bLabel?: string;
 }) {
-  const max = Math.max(1, ...points.flatMap((p) => [p.a, p.b ?? 0]));
+  const max = Math.max(...points.flatMap((p) => [p.a, p.b ?? 0]), 0);
+  const total = points.reduce((n, p) => n + p.a + (p.b ?? 0), 0);
+  const months = points.length;
+
+  if (total === 0) {
+    return (
+      <p className="px-4 py-8 text-center text-[13px] text-muted">
+        No {aLabel.toLowerCase()}{bLabel ? ` or ${bLabel.toLowerCase()}` : ""} in the last {months} months.
+      </p>
+    );
+  }
+
   return (
-    <div className="p-4">
-      <div className="flex items-center gap-4 pb-3 text-xs text-muted">
-        <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-brand-600" /> {aLabel}</span>
-        {bLabel && <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-gold-400" /> {bLabel}</span>}
-      </div>
-      <div className="flex h-40 items-end gap-2">
-        {points.map((p) => (
-          <div key={p.label} className="flex h-full min-w-0 flex-1 flex-col justify-end gap-1">
-            <div className="flex h-full items-end justify-center gap-0.5">
-              <div
-                className="w-full max-w-4 rounded-t bg-brand-600/90"
-                style={{ height: `${Math.max(p.a ? 3 : 0, (p.a / max) * 100)}%` }}
-                title={`${aLabel}: ${p.a}`}
-              />
-              {bLabel && (
+    <figure className="p-4">
+      {bLabel && (
+        <figcaption className="flex items-center gap-4 pb-3 text-xs text-muted">
+          <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-brand-600" /> {aLabel}</span>
+          <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-info-500" /> {bLabel}</span>
+        </figcaption>
+      )}
+      <div className="flex gap-2">
+        {/* A bar with no scale beside it is a shape, not a number. */}
+        <div className="flex h-40 w-6 shrink-0 flex-col justify-between py-[2px] text-right text-[10px] tabular text-muted">
+          <span>{max}</span>
+          <span>0</span>
+        </div>
+        <div className="flex h-40 flex-1 items-end gap-2 border-b border-line">
+          {points.map((p) => (
+            <div key={p.label} className="group relative flex h-full min-w-0 flex-1 flex-col justify-end">
+              <div className="flex h-full items-end justify-center gap-[2px]">
                 <div
-                  className="w-full max-w-4 rounded-t bg-gold-400"
-                  style={{ height: `${Math.max(p.b ? 3 : 0, ((p.b ?? 0) / max) * 100)}%` }}
-                  title={`${bLabel}: ${p.b ?? 0}`}
+                  className="w-full max-w-5 rounded-t bg-brand-600"
+                  style={{ height: `${Math.max(p.a ? 3 : 0, max ? (p.a / max) * 100 : 0)}%` }}
                 />
-              )}
+                {bLabel && (
+                  <div
+                    className="w-full max-w-5 rounded-t bg-info-500"
+                    style={{ height: `${Math.max(p.b ? 3 : 0, max ? ((p.b ?? 0) / max) * 100 : 0)}%` }}
+                  />
+                )}
+              </div>
+              {/* The numbers themselves, on the one the pointer is over. */}
+              <span className="pointer-events-none absolute inset-x-0 -top-1 hidden justify-center group-hover:flex">
+                <span className="whitespace-nowrap rounded-md border border-line bg-surface px-1.5 py-0.5 text-[10px] tabular text-ink shadow-card">
+                  {p.a} {aLabel.toLowerCase()}{bLabel ? ` · ${p.b ?? 0} ${bLabel.toLowerCase()}` : ""}
+                </span>
+              </span>
             </div>
-            <span className="truncate text-center text-[10px] text-muted">{p.label}</span>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-    </div>
+      <div className="flex gap-2">
+        <span className="w-6 shrink-0" />
+        <div className="flex flex-1 gap-2">
+          {points.map((p) => (
+            <span key={p.label} className="min-w-0 flex-1 truncate pt-1 text-center text-[10px] text-muted">{p.label}</span>
+          ))}
+        </div>
+      </div>
+    </figure>
   );
 }
 
 /** Registered to enrolled, with the drop between each pair of stages. */
 export function FunnelSteps({ steps }: { steps: { label: string; value: number; href?: string }[] }) {
   const top = Math.max(1, steps[0]?.value ?? 1);
+  if (steps.every((s) => s.value === 0)) {
+    return <p className="px-4 py-8 text-center text-[13px] text-muted">Nothing has gone through these steps yet.</p>;
+  }
   return (
     <ol className="space-y-2 p-4">
       {steps.map((step, i) => {
         const prev = i === 0 ? null : steps[i - 1].value;
         // A stage can exceed the one above it (several applications per student),
         // and "143%" reads like a mistake, so show it as a multiple instead.
+        // "0%" under a nought says nothing twice. A ratio is only shown where
+        // both ends of it are real.
         const ratio =
-          prev === null || prev === 0
+          prev === null || prev === 0 || step.value === 0
             ? null
             : step.value > prev
               ? `${(step.value / prev).toFixed(1)}x`
