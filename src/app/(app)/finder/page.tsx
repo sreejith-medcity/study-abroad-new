@@ -90,17 +90,33 @@ export default async function FinderPage({ searchParams }: { searchParams: Promi
     f.budget ? `tuition up to ₹${f.budget} lakh a year` : null,
   ].filter(Boolean) as string[];
 
+  // Thirty-nine destinations as ticks is a wall before the question itself
+  // begins. Folded, with what is ticked said on the line, so the common case
+  // of one or two countries reads at a glance and stays one click away.
+  const picked = countries.filter((c) => chosen.countries.includes(c.code));
   const destinations = (
     <fieldset>
-      <legend className="mb-1.5 text-[13px] font-semibold text-ink">Destinations</legend>
-      <div className="flex flex-wrap gap-2">
-        {countries.map((c) => (
-          <label key={c.code} className={pill}>
-            <input type="checkbox" name="country" value={c.code} defaultChecked={chosen.countries.includes(c.code)} className="size-3.5" />
-            {c.name} <span className="tabular text-xs text-muted">{c.n.toLocaleString("en-IN")}</span>
-          </label>
-        ))}
-      </div>
+      <details open={picked.length === 0} className="rounded-xl border border-line">
+        <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2">
+          <span className="text-[13px] font-semibold text-ink">Destinations</span>
+          <span className="text-xs text-muted">
+            {picked.length === 0
+              ? "anywhere"
+              : picked.length <= 4
+                ? picked.map((c) => c.name).join(", ")
+                : `${picked.length} chosen`}
+          </span>
+          <span className="ml-auto text-xs text-muted">{countries.length} to choose from</span>
+        </summary>
+        <div className="flex flex-wrap gap-2 border-t border-line p-3">
+          {countries.map((c) => (
+            <label key={c.code} className={pill}>
+              <input type="checkbox" name="country" value={c.code} defaultChecked={chosen.countries.includes(c.code)} className="size-3.5" />
+              {c.name} <span className="tabular text-xs text-muted">{c.n.toLocaleString("en-IN")}</span>
+            </label>
+          ))}
+        </div>
+      </details>
     </fieldset>
   );
   const levelPills = (

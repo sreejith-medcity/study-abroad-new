@@ -1,5 +1,7 @@
 "use client";
 
+import { MAX_RESOURCE_MB, RESOURCE_ACCEPT } from "@/lib/uploads";
+
 import { ActionForm } from "@/components/action-form";
 import { SelectField, TextField, TextareaField } from "@/components/fields";
 import { Checkbox, Field, Input } from "@/components/ui";
@@ -46,8 +48,8 @@ export function ResourceForm({ countries }: { countries: { id: string; name: str
         </SelectField>
         <TextField label="Link" name="url" placeholder="https://…" hint="Use this instead of a file for a video or a page" />
       </div>
-      <Field label="File" htmlFor="file" hint="PDF, JPG, PNG or WebP, up to 10 MB">
-        <Input id="file" name="file" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="py-1.5" />
+      <Field label="File" htmlFor="file" hint={`A PDF, a slide deck, a document, an image or a video, up to ${MAX_RESOURCE_MB} MB. Longer recordings go behind a link.`}>
+        <Input id="file" name="file" type="file" accept={RESOURCE_ACCEPT} className="py-1.5" />
       </Field>
       <fieldset>
         <legend className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">Who can see it</legend>

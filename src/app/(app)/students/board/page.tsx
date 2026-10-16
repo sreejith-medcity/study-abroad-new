@@ -6,7 +6,8 @@ import { fmtDate } from "@/lib/format";
 import { APP_ROLES, PARTNER_ROLES, isStaff, orgScope } from "@/lib/permissions";
 import { STAGES, stageLabel } from "@/lib/journey";
 import { lastContactFor, openTasksFor } from "@/server/tasks";
-import { Card, Chip, EmptyState, PageHeader } from "@/components/ui";
+import { Button, Card, Chip, EmptyState, PageHeader, Select, Toolbar } from "@/components/ui";
+import { livingTeams } from "@/server/teams";
 
 export const metadata = { title: "Students by stage" };
 export const dynamic = "force-dynamic";
@@ -30,7 +31,7 @@ function since(at: Date | null) {
  * file, where the gate and its reasons are, rather than by dragging a card past
  * the rules.
  */
-export default async function BoardPage({ searchParams }: { searchParams: Promise<{ branch?: string; who?: string; quiet?: string }> }) {
+export default async function BoardPage({ searchParams }: { searchParams: Promise<{ branch?: string; who?: string; quiet?: string; team?: string }> }) {
   const user = await requireUser([...APP_ROLES]);
   const sp = await searchParams;
   const st = schema.students;
@@ -58,13 +59,14 @@ export default async function BoardPage({ searchParams }: { searchParams: Promis
         orgScope(user, st.orgId),
         sp.branch ? eq(st.orgId, sp.branch) : undefined,
         sp.who ? eq(st.assignedToId, sp.who) : undefined,
+        sp.team ? eq(st.teamId, sp.team) : undefined,
       ),
     )
     .orderBy(asc(st.firstName))
     .limit(600);
 
   const ids = rows.map((r) => r.id);
-  const [contacts, tasks, branches, counsellors] = await Promise.all([
+  const [contacts, tasks, branches, counsellors, teams] = await Promise.all([
     lastContactFor(ids),
     openTasksFor(ids),
     isStaff(user)
@@ -76,6 +78,7 @@ export default async function BoardPage({ searchParams }: { searchParams: Promis
       .where(and(eq(schema.users.active, true), inArray(schema.users.role, [...PARTNER_ROLES]), isStaff(user) ? undefined : eq(schema.users.orgId, user.orgId)))
       .orderBy(asc(schema.users.name))
       .limit(60),
+    livingTeams(),
   ]);
 
   const cards = rows.map((r) => {
@@ -102,28 +105,60 @@ export default async function BoardPage({ searchParams }: { searchParams: Promis
         actions={<Link href="/students" className="text-[13px] font-medium text-brand-600 hover:underline">The list instead</Link>}
       />
 
-      <Card className="mb-3 p-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <Link href={href({ quiet: undefined })} className={pill(sp.quiet !== "1")}>Everybody ({cards.length})</Link>
-          <Link href={href({ quiet: "1" })} className={pill(sp.quiet === "1")}>Nobody has spoken to them ({cards.filter((c) => c.quiet).length})</Link>
-        </div>
-        {branches.length > 0 && (
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <Link href={href({ branch: undefined })} className={pill(!sp.branch)}>Every branch</Link>
-            {branches.map((b) => (
-              <Link key={b.id} href={href({ branch: b.id })} className={pill(sp.branch === b.id)}>{b.name}</Link>
-            ))}
+      {/* Nineteen branches and a counsellor each made a wall of pills three
+          rows deep before the board itself began. The same choices, as
+          dropdowns, in one line. */}
+      <Toolbar className="mb-3">
+        <form className="grid w-full gap-2.5 sm:grid-cols-4 [&>*]:min-w-0">
+          {branches.length > 0 && (
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+              Branch
+              <Select name="branch" defaultValue={sp.branch ?? ""} className="mt-1">
+                <option value="">Every branch</option>
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </Select>
+            </label>
+          )}
+          {counsellors.length > 1 && (
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+              Counsellor
+              <Select name="who" defaultValue={sp.who ?? ""} className="mt-1">
+                <option value="">Anybody&rsquo;s</option>
+                {counsellors.map((c) => (
+                  <option key={c.id} value={c.id}>{c.deskLabel ?? c.name}</option>
+                ))}
+              </Select>
+            </label>
+          )}
+          {teams.length > 0 && (
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+              Team
+              <Select name="team" defaultValue={sp.team ?? ""} className="mt-1">
+                <option value="">Every team</option>
+                {teams.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </Select>
+            </label>
+          )}
+          <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+            Show
+            <Select name="quiet" defaultValue={sp.quiet ?? ""} className="mt-1">
+              <option value="">Everybody ({cards.length})</option>
+              <option value="1">Nobody has spoken to them ({cards.filter((c) => c.quiet).length})</option>
+            </Select>
+          </label>
+          <div className="flex items-end gap-2 sm:col-span-4">
+            <Button variant="secondary" size="sm">Show these</Button>
+            {(sp.branch || sp.who || sp.team || sp.quiet) && (
+              <Link href="/students/board" className="text-[13px] text-muted hover:text-ink">Clear</Link>
+            )}
+            <span className="ml-auto text-xs text-muted">{shown.length} on the board</span>
           </div>
-        )}
-        {counsellors.length > 1 && (
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <Link href={href({ who: undefined })} className={pill(!sp.who)}>Anybody&rsquo;s</Link>
-            {counsellors.map((c) => (
-              <Link key={c.id} href={href({ who: c.id })} className={pill(sp.who === c.id)}>{c.deskLabel ?? c.name}</Link>
-            ))}
-          </div>
-        )}
-      </Card>
+        </form>
+      </Toolbar>
 
       {shown.length === 0 ? (
         <EmptyState title="Nobody here">Register a student, or widen the filters.</EmptyState>

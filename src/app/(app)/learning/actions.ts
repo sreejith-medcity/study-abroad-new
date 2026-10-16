@@ -7,7 +7,7 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { ADMIN_ROLES, PARTNER_ROLES } from "@/lib/permissions";
-import { UploadError, deleteUpload, saveUpload } from "@/server/storage";
+import { UploadError, deleteUpload, saveResource } from "@/server/storage";
 
 import type { FormState } from "@/lib/form-state";
 export type { FormState };
@@ -44,7 +44,7 @@ export async function saveResourceAction(_: FormState, formData: FormData): Prom
   let saved = null;
   if (hasFile) {
     try {
-      saved = await saveUpload(file, "resources");
+      saved = await saveResource(file);
     } catch (e) {
       if (e instanceof UploadError) return { error: e.message, fieldErrors: { file: [e.message] } };
       throw e;

@@ -2,7 +2,7 @@ import "server-only";
 import { mkdir, readFile, unlink, writeFile } from "fs/promises";
 import path from "path";
 import { createId } from "@/lib/id";
-import { MAX_UPLOAD_BYTES, MAX_UPLOAD_MB, UPLOAD_MIME } from "@/lib/uploads";
+import { MAX_RESOURCE_BYTES, MAX_RESOURCE_MB, MAX_UPLOAD_BYTES, MAX_UPLOAD_MB, RESOURCE_MIME, UPLOAD_MIME } from "@/lib/uploads";
 
 export class UploadError extends Error {}
 
@@ -30,8 +30,29 @@ function validate(file: File) {
   if (!UPLOAD_MIME.includes(file.type)) throw new UploadError("Upload a PDF, JPG, PNG or WebP file.");
 }
 
+/**
+ * A slide deck, a handbook or a recorded session for the learning library.
+ * Wider than a student document and allowed to be larger, because a deck is a
+ * deck and a half-hour recording is not a scan.
+ */
+export async function saveResource(file: File): Promise<SavedFile> {
+  if (file.size === 0) throw new UploadError("The file is empty.");
+  if (file.size > MAX_RESOURCE_BYTES) {
+    throw new UploadError(`Learning resources must be ${MAX_RESOURCE_MB} MB or smaller. Put a long video behind a link instead.`);
+  }
+  if (!RESOURCE_MIME.includes(file.type)) {
+    throw new UploadError("Upload a PDF, slide deck, document, spreadsheet, image or video, or paste a link instead.");
+  }
+  return write(file, "resources");
+}
+
 export async function saveUpload(file: File, folder: string): Promise<SavedFile> {
   validate(file);
+  return write(file, folder);
+}
+
+/** The bytes, wherever storage is. Shared by everything that saves a file. */
+async function write(file: File, folder: string): Promise<SavedFile> {
   const ext = path.extname(file.name).toLowerCase().replace(/[^.a-z0-9]/g, "") || ".bin";
   const key = `${folder}/${createId()}${ext}`;
   const config = supabaseConfig();

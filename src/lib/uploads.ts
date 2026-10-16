@@ -42,3 +42,35 @@ export function refusalFromStatus(status: number, sizeBytes: number): string {
   if (status === 502 || status === 503) return "The server was not taking uploads just then. Wait a moment and try again.";
   return `The server answered with error ${status} and the file was not saved. Try again, and if it keeps happening tell the Overseas desk.`;
 }
+
+/**
+ * A learning resource is not a student document: the desk puts up slide decks,
+ * handbooks and recorded sessions, so the list is wider and the limit higher.
+ * Anything bigger than this belongs behind a link rather than on the server.
+ */
+export const MAX_RESOURCE_MB = 50;
+export const MAX_RESOURCE_BYTES = MAX_RESOURCE_MB * 1024 * 1024;
+export const RESOURCE_MIME = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
+];
+export const RESOURCE_ACCEPT = ".pdf,.jpg,.jpeg,.png,.webp,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.mp4,.webm,.mov";
+
+export function resourceRefusal(file: File): string | null {
+  if (file.size === 0) return "That file is empty.";
+  if (file.size > MAX_RESOURCE_BYTES) {
+    return `That file is ${mb(file.size)} MB and the limit is ${MAX_RESOURCE_MB} MB. Put a long video on Drive or YouTube and paste the link instead.`;
+  }
+  return null;
+}
