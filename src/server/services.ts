@@ -11,7 +11,7 @@ import { ratesForOrg } from "@/server/income";
 import type { FormState } from "@/lib/form-state";
 import { PROCESSING_ROLES, STUDENT_WORK_ROLES } from "@/lib/permissions";
 import { SERVICE_LABEL, SERVICE_STATUSES, SERVICE_TYPES, STATUS_LABEL } from "@/lib/services";
-import { adminIds, notifyUsers, partnerRecipients } from "@/server/notify";
+import { adminIds, notifyUsers, partnerRecipients, deskRecipients } from "@/server/notify";
 import { getStudentForUser } from "@/server/queries";
 
 const request = z.object({
@@ -31,7 +31,7 @@ export async function requestServiceAction(_: FormState, fd: FormData): Promise<
     .values({ studentId: student.id, orgId: student.orgId, type: parsed.data.type, details: parsed.data.details, requestedById: user.id })
     .returning();
   await audit(user.id, "service.request", "student", student.id, { type: row.type, serviceId: row.id });
-  await notifyUsers(await adminIds(), `${SERVICE_LABEL[row.type]} requested`, `${student.firstName} ${student.lastName}: ${row.details.slice(0, 100)}`, "/admin/services");
+  await notifyUsers(await deskRecipients(student.orgId), `${SERVICE_LABEL[row.type]} requested`, `${student.firstName} ${student.lastName}: ${row.details.slice(0, 100)}`, "/admin/services");
   revalidatePath(`/students/${student.id}/services`);
   return { ok: "Request sent to the Overseas team." };
 }

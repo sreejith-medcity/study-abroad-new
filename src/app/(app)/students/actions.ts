@@ -9,10 +9,10 @@ import { db, schema } from "@/db";
 import { hashPassword, requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { phoneKey } from "@/lib/phone";
-import { ADMIN_ROLES, APP_ROLES, PARTNER_ROLES, PROCESSING_ROLES, isAdmin, isCounsellor, isStaff, STUDENT_WORK_ROLES } from "@/lib/permissions";
+import { ADMIN_ROLES, APP_ROLES, DESK_ASSIGNING_ROLES, PARTNER_ROLES, PROCESSING_ROLES, canAssignStudents, isAdmin, isCounsellor, isStaff, STUDENT_WORK_ROLES } from "@/lib/permissions";
 import { can } from "@/server/capabilities";
 import { readAim } from "@/lib/aims";
-import { adminIds, notifyUsers, partnerRecipients } from "@/server/notify";
+import { adminIds, notifyUsers, partnerRecipients, deskRecipients } from "@/server/notify";
 import { getStudentForUser } from "@/server/queries";
 import { tryMintStudentId } from "@/server/medcity-id";
 import { openEarningForStudent } from "@/server/agent-actions";
@@ -182,7 +182,8 @@ export async function createStudentAction(_: FormState, formData: FormData): Pro
  * somebody who can only read it would be handing it to a dead end.
  */
 export async function reassignStudentAction(formData: FormData) {
-  const user = await requireUser([...PARTNER_ROLES, ...ADMIN_ROLES]);
+  const user = await requireUser([...PARTNER_ROLES, ...DESK_ASSIGNING_ROLES]);
+  if (!canAssignStudents(user)) return;
   const studentId = String(formData.get("studentId"));
   const assignedToId = String(formData.get("assignedToId") || "") || null;
   const student = await getStudentForUser(user, studentId);
@@ -442,7 +443,7 @@ export async function requestEditAction(_: FormState, formData: FormData): Promi
   const message = String(formData.get("message") || "").trim();
   if (message.length < 5) return { error: "Say what needs to change." };
   await db.insert(schema.editRequests).values({ studentId, section, message, requestedById: user.id });
-  await notifyUsers(await adminIds(), "Profile edit requested", `${student.firstName} ${student.lastName}: ${section}`, `/students/${studentId}/profile`);
+  await notifyUsers(await deskRecipients(student.orgId), "Profile edit requested", `${student.firstName} ${student.lastName}: ${section}`, `/students/${studentId}/profile`);
   await audit(user.id, "student.edit_request", "student", studentId, { section });
   return { ok: "Edit request sent to the Medcity Overseas team." };
 }

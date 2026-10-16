@@ -3,7 +3,7 @@ import { and, asc, desc, eq, gte, ilike, lte, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { can } from "@/server/capabilities";
 import { requireUser } from "@/lib/auth";
-import { APP_ROLES, ROLE_LABEL, isAdmin, isStaff } from "@/lib/permissions";
+import { APP_ROLES, ROLE_LABEL, canAssignStudents, isAdmin, isStaff } from "@/lib/permissions";
 import { fmtDate, fullName } from "@/lib/format";
 import { idSearchKey, looksLikeStudentId } from "@/lib/medcity-id";
 import { assignableFor, orgUsers, readFilters } from "@/server/queries";
@@ -74,7 +74,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
   // The head office sees the branch the student belongs to plus its own team,
   // because the documentation desk is where a file goes next and admins were
   // not shown this control at all until now.
-  const canAssign = user.role !== "MANAGEMENT" && (staff ? isAdmin(user) : true);
+  const canAssign = canAssignStudents(user);
   const assignable = canAssign
     ? staff
       ? await assignableFor([...new Set(rows.map((r) => r.orgId))], { includeHeadOffice: true })
@@ -191,6 +191,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
             <thead>
               <tr>
                 <Th>{staff ? "Partner" : "Created by"}</Th>
+                {staff && <Th>Registered by</Th>}
                 <Th>Created on</Th>
                 <Th>Student name</Th>
                 <Th>Email</Th>
@@ -204,6 +205,10 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
               {rows.map((r) => (
                 <tr key={r.id} className="hover:bg-ground/40">
                   <Td>{staff ? r.orgName : r.createdByDesk}{r.source !== "partner" && <Chip className="ml-1">{r.source.toUpperCase()}</Chip>}</Td>
+                  {/* Whose file this is, which until now only a partner could
+                      see: the desk saw the branch and had to open the file to
+                      learn who in it had registered the student. */}
+                  {staff && <Td className="whitespace-nowrap">{r.createdByDesk ?? <span className="text-muted">Not recorded</span>}</Td>}
                   <Td className="whitespace-nowrap tabular">{fmtDate(r.createdAt)}</Td>
                   <Td>
                     <Link href={`/students/${r.id}/profile`} className="font-medium text-ink hover:text-brand-600 hover:underline">{fullName(r)}</Link>

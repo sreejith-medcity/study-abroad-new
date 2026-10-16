@@ -16,7 +16,7 @@ import { summarise } from "@/lib/checks";
 import { intakeLabel } from "@/lib/format";
 import { ADMIN_ROLES, PROCESSING_ROLES, isAdmin, isStaff, STUDENT_WORK_ROLES } from "@/lib/permissions";
 import { changeStatus, checkApplication, StatusChangeError } from "@/server/applications";
-import { adminIds, notifyUsers, partnerRecipients } from "@/server/notify";
+import { adminIds, notifyUsers, partnerRecipients, deskRecipients } from "@/server/notify";
 import { getApplicationForUser, getStudentForUser } from "@/server/queries";
 import { stageGate, studentChecklist, studentContext, syncChecklist } from "@/server/documentation";
 import { getSettings } from "@/server/settings";
@@ -123,7 +123,7 @@ export async function createApplicationAction(_: FormState, formData: FormData):
     where: and(eq(schema.programDeadlines.programId, program.id), eq(schema.programDeadlines.intakeYear, year), eq(schema.programDeadlines.intakeMonth, month)),
   });
   const late = deadline && daysUntil(deadline.deadline) < 0 ? `. The deadline for this intake passed on ${dayText(deadline.deadline)}` : "";
-  await notifyUsers(await adminIds(), `New application ${ackNo}`, `${student.firstName} ${student.lastName}: ${program.name}, ${program.university.name}${program.intakeMonths.length ? "" : ". Intake not on record: confirm it with the institution"}${late}`, `/students/${student.id}/applications?app=${app.id}`);
+  await notifyUsers(await deskRecipients(student.orgId), `New application ${ackNo}`, `${student.firstName} ${student.lastName}: ${program.name}, ${program.university.name}${program.intakeMonths.length ? "" : ". Intake not on record: confirm it with the institution"}${late}`, `/students/${student.id}/applications?app=${app.id}`);
   // The destination and the route ask for paper of their own, so the list is
   // rebuilt the moment the application exists.
   await syncChecklist(student.id);

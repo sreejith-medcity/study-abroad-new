@@ -49,6 +49,23 @@ export function worksStudentFiles(user: SessionUser) {
  */
 export const COUNSELLING_ROLES = ["COUNSELLOR", "SENIOR_COUNSELLOR", "TRAINEE_COUNSELLOR", "SUB_AGENT_COUNSELLOR", "DESK_COUNSELLOR"] as const;
 
+/**
+ * Who may hand a student to somebody else.
+ *
+ * At a branch, anybody who works files does: that is how a counsellor passes
+ * one on. At the desk it was admins only, which left the application team
+ * leader, whose whole job is moving a file to the right officer, looking at a
+ * screen with no control on it. Named once here because the screen that offers
+ * the control and the action that accepts it have to agree.
+ */
+export const DESK_ASSIGNING_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "APPLICATION_TEAM_LEADER"] as const;
+
+export function canAssignStudents(user: SessionUser) {
+  if (!worksStudentFiles(user)) return false;
+  if ((PARTNER_ROLES as readonly string[]).includes(user.role)) return true;
+  return (DESK_ASSIGNING_ROLES as readonly string[]).includes(user.role);
+}
+
 /** A counsellor who works inside one branch, at whatever level. */
 export const BRANCH_COUNSELLOR_ROLES = ["COUNSELLOR", "SENIOR_COUNSELLOR", "TRAINEE_COUNSELLOR", "SUB_AGENT_COUNSELLOR"] as const;
 

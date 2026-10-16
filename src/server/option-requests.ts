@@ -9,7 +9,7 @@ import { SHORTLIST_LIMIT } from "@/lib/catalogue";
 import type { FormState } from "@/lib/form-state";
 import { EDUCATION_LEVELS, MAX_CHOICES, newRequestNo } from "@/lib/options";
 import { PROCESSING_ROLES, isStaff, STUDENT_WORK_ROLES } from "@/lib/permissions";
-import { adminIds, notifyUsers } from "@/server/notify";
+import { adminIds, notifyUsers, deskRecipients } from "@/server/notify";
 import { optionRequestForUser } from "@/server/option-access";
 import { getStudentForUser } from "@/server/queries";
 import { saveUpload, UploadError } from "@/server/storage";
@@ -70,7 +70,7 @@ export async function createOptionRequestAction(_: FormState, fd: FormData): Pro
     .returning();
   if (saved.length) await db.insert(schema.optionRequestFiles).values(saved.map((s) => ({ requestId: row.id, storageKey: s.storageKey, fileName: s.fileName, mimeType: s.mimeType, sizeBytes: s.sizeBytes, uploadedById: user.id })));
   await audit(user.id, "options.request", "option_request", row.id, { requestNo: row.requestNo });
-  await notifyUsers(await adminIds(), `Program options requested: ${studentName}`, `${row.requestNo} · ${destinations.join(", ")}`, `/program-options?id=${row.id}`);
+  await notifyUsers(await deskRecipients(row.orgId), `Program options requested: ${studentName}`, `${row.requestNo} · ${destinations.join(", ")}`, `/program-options?id=${row.id}`);
   return { redirectTo: `/program-options?id=${row.id}` };
 }
 
