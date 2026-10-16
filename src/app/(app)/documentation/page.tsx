@@ -3,6 +3,7 @@ import { asc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { ViewTabs } from "@/components/view-tabs";
+import { FilterBar } from "@/components/filter-bar";
 import { viewsWithPins } from "@/server/views";
 import { fmtDate } from "@/lib/format";
 import { isAdmin, PROCESSING_ROLES } from "@/lib/permissions";
@@ -82,27 +83,19 @@ export default async function DocumentationQueuePage({
           <Link href={href({ sort: undefined })} className={pill(sort === "OLDEST")}>Oldest first</Link>
           <Link href={href({ sort: "VISA_FIRST" })} className={pill(sort === "VISA_FIRST")}>Visa stage first</Link>
         </div>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <Link href={href({ stage: undefined })} className={pill(!sp.stage)}>Every stage</Link>
-          {STAGES.map((s) => (
-            <Link key={s.value} href={href({ stage: s.value })} className={pill(sp.stage === s.value)}>{s.number}. {s.label}</Link>
-          ))}
-        </div>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <Link href={href({ branch: undefined })} className={pill(!sp.branch)}>Every branch</Link>
-          {branches.map((b) => (
-            <Link key={b.id} href={href({ branch: b.id })} className={pill(sp.branch === b.id)}>{b.name}</Link>
-          ))}
-        </div>
-        {vendors.length > 0 && (
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <Link href={href({ vendor: undefined })} className={pill(!sp.vendor)}>Every route</Link>
-            {vendors.map((v) => (
-              <Link key={v.id} href={href({ vendor: v.id })} className={pill(sp.vendor === v.id)}>{v.code}</Link>
-            ))}
-          </div>
-        )}
       </Card>
+
+      <FilterBar
+        primary={3}
+        keep={["mine", "sort"]}
+        fields={[
+          { kind: "select", name: "stage", label: "Stage", options: STAGES.map((x) => ({ value: x.value, label: `${x.number}. ${x.label}` })) },
+          { kind: "select", name: "branch", label: "Branch", options: branches.map((b) => ({ value: b.id, label: b.name })) },
+          ...(vendors.length > 0
+            ? [{ kind: "select" as const, name: "vendor", label: "Route", options: vendors.map((v) => ({ value: v.id, label: v.name })) }]
+            : []),
+        ]}
+      />
 
       {branchView ? (
         <Card>

@@ -10,7 +10,8 @@ import { viewsWithPins } from "@/server/views";
 import { fmtDate, fullName, intakeLabel, MONTHS } from "@/lib/format";
 import { APP_ROLES, isStaff } from "@/lib/permissions";
 import { applicationsBase, applicationWhere, orgUsers, readFilters } from "@/server/queries";
-import { Button, Card, EmptyState, DateInput, Input, LinkButton, PageHeader, Select, StatusBadge, Table, Td, Th, Toolbar, cn } from "@/components/ui";
+import { Card, EmptyState, LinkButton, PageHeader, StatusBadge, Table, Td, Th, cn } from "@/components/ui";
+import { FilterBar } from "@/components/filter-bar";
 import { IconApplications, IconExport } from "@/components/icons";
 import { ownApplicationsOnly } from "@/server/scope";
 
@@ -57,74 +58,49 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
       />
 
       <ViewTabs scope="APPLICATIONS" views={savedViews} canShareWithEverybody={staff} />
-      <Toolbar className="mb-4">
-        <form className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-5 [&>*]:min-w-0">
-          {f.kpi && <input type="hidden" name="kpi" value={f.kpi} />}
-          {staff ? (
-            <Select name="org" aria-label="Partner" defaultValue={f.org ?? ""}>
-              <option value="">All partners</option>
-              {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-            </Select>
-          ) : (
-            <Select name="assignedTo" aria-label="Assigned to" defaultValue={f.assignedTo ?? ""}>
-              <option value="">Assigned to: anyone</option>
-              {counsellors.map((c) => <option key={c.id} value={c.id}>{c.deskLabel ?? c.name}</option>)}
-            </Select>
-          )}
-          <div className="flex gap-2">
-            <DateInput label="Created from" name="from" defaultValue={f.from} />
-            <DateInput label="Created to" name="to" defaultValue={f.to} />
-          </div>
-          <Select name="country" aria-label="Country" defaultValue={f.country ?? ""}>
-            <option value="">Country</option>
-            {countries.map((c) => <option key={c.id} value={c.code}>{c.name}</option>)}
-          </Select>
-          <Input name="university" placeholder="University" aria-label="University" defaultValue={f.university} />
-          <div className="flex gap-2">
-            <Select name="intakeMonth" aria-label="Intake month" defaultValue={f.intakeMonth ?? ""}>
-              <option value="">Intake</option>
-              {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-            </Select>
-            <Select name="intakeYear" aria-label="Intake year" defaultValue={f.intakeYear ?? ""}>
-              <option value="">Year</option>
-              {years.map((y) => <option key={y}>{y}</option>)}
-            </Select>
-          </div>
-          <Select name="status" aria-label="Status" defaultValue={f.status ?? ""}>
-            <option value="">Status</option>
-            {statuses.map((s) => <option key={s.code} value={s.code}>{s.label}</option>)}
-          </Select>
-          <Select name="pathway" aria-label="Pathway" defaultValue={f.pathway ?? ""}>
-            <option value="">Pathway</option>
-            <option value="DEGREE">Degree</option>
-            <option value="AUSBILDUNG">Ausbildung</option>
-            <option value="NURSING">Nurse registration</option>
-          </Select>
-          <Input name="ack" placeholder="Acknowledgement no." aria-label="Acknowledgement number" defaultValue={f.ack} />
-          <Input name="program" placeholder="Program name" aria-label="Program" defaultValue={f.program} />
-          <Input name="student" placeholder="Student name" aria-label="Student" defaultValue={f.student} />
-          <Select name="priority" aria-label="Priority" defaultValue={f.priority ?? ""}>
-            <option value="">Any priority</option>
-            {Object.entries(PRIORITY_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </Select>
-          <Select name="sort" aria-label="Sort" defaultValue={f.sort ?? ""}>
-            <option value="">Newest first</option>
-            <option value="priority">High priority first</option>
-          </Select>
-          <Select name="dlType" aria-label="Deadline type" defaultValue={f.dlType ?? ""}>
-            <option value="">Any deadline</option>
-            {DEADLINE_TYPES.map((t) => <option key={t} value={t}>{DEADLINE_LABEL[t]} deadline</option>)}
-          </Select>
-          <div className="flex gap-2">
-            <DateInput label="Due from" name="dlFrom" defaultValue={f.dlFrom} />
-            <DateInput label="Due to" name="dlTo" defaultValue={f.dlTo} />
-          </div>
-          <div className="flex gap-2 lg:col-span-5">
-            <Button type="submit">Search</Button>
-            <LinkButton variant="quiet" href="/applications">Clear all</LinkButton>
-          </div>
-        </form>
-      </Toolbar>
+      <FilterBar
+        primary={4}
+        fields={[
+          { kind: "search", name: "student", label: "Student", placeholder: "Student name" },
+          staff
+            ? { kind: "select", name: "org", label: "Partner", options: orgs.map((o) => ({ value: o.id, label: o.name })) }
+            : {
+                kind: "select",
+                name: "assignedTo",
+                label: "Assigned to",
+                options: counsellors.map((c) => ({ value: c.id, label: c.deskLabel ?? c.name })),
+              },
+          { kind: "select", name: "status", label: "Status", options: statuses.map((x) => ({ value: x.code, label: x.label })) },
+          { kind: "select", name: "country", label: "Country", options: countries.map((c) => ({ value: c.code, label: c.name })) },
+          {
+            kind: "select",
+            name: "pathway",
+            label: "Pathway",
+            options: [
+              { value: "DEGREE", label: "Degree" },
+              { value: "AUSBILDUNG", label: "Ausbildung" },
+              { value: "NURSING", label: "Nurse registration" },
+            ],
+          },
+          { kind: "select", name: "priority", label: "Priority", options: Object.entries(PRIORITY_LABEL).map(([k, v]) => ({ value: k, label: v })) },
+          { kind: "select", name: "intakeMonth", label: "Intake month", options: MONTHS.map((m, i) => ({ value: String(i + 1), label: m })) },
+          { kind: "select", name: "intakeYear", label: "Intake year", options: years.map((y) => ({ value: String(y), label: String(y) })) },
+          { kind: "search", name: "university", label: "University", placeholder: "University" },
+          { kind: "search", name: "program", label: "Program", placeholder: "Program name" },
+          { kind: "search", name: "ack", label: "Acknowledgement", placeholder: "Acknowledgement no." },
+          { kind: "date", name: "from", label: "Created from" },
+          { kind: "date", name: "to", label: "Created to" },
+          { kind: "select", name: "dlType", label: "Deadline type", options: DEADLINE_TYPES.map((t) => ({ value: t, label: DEADLINE_LABEL[t] })) },
+          { kind: "date", name: "dlFrom", label: "Due from" },
+          { kind: "date", name: "dlTo", label: "Due to" },
+          {
+            kind: "select",
+            name: "sort",
+            label: "Order",
+            options: [{ value: "priority", label: "High priority first" }],
+          },
+        ]}
+      />
 
       <Card>
         {list.length === 0 ? (
@@ -150,15 +126,15 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
                 const overdue = r.deadline && r.deadline < now;
                 return (
                   <tr key={r.id} className="hover:bg-ground/40">
-                    <Td><Link href={`/students/${r.studentId}/applications?app=${r.id}`} className="ack font-medium text-brand-700 hover:underline">{r.ackNo}</Link>{r.priority === "HIGH" && <span className="block text-xs font-medium text-red-700">High priority</span>}{r.priority === "LOW" && <span className="block text-xs text-muted">Low priority</span>}</Td>
+                    <Td><Link href={`/students/${r.studentId}/applications?app=${r.id}`} className="ack font-medium text-brand-700 hover:underline">{r.ackNo}</Link>{r.priority === "HIGH" && <span className="block text-xs font-medium text-stop-700">High priority</span>}{r.priority === "LOW" && <span className="block text-xs text-muted">Low priority</span>}</Td>
                     <Td className="whitespace-nowrap tabular">{fmtDate(r.createdAt)}</Td>
                     <Td>{fullName(r)}</Td>
                     <Td>{r.universityName}<p className="text-xs text-muted">{r.countryName}</p></Td>
                     <Td className="max-w-64">{r.programName}</Td>
                     <Td className="whitespace-nowrap">
                       {intakeLabel(r.intakeMonth, r.intakeYear)}
-                      {r.nextDue && <span className={cn("block text-xs", daysUntil(r.nextDue) <= 3 ? "font-medium text-red-700" : "text-muted")}>{daysUntil(r.nextDue) === 0 ? "Due today" : `Due in ${daysUntil(r.nextDue)}d`}</span>}
-                      {r.deadline && <p className={overdue ? "text-xs text-muted line-through" : "text-xs text-red-600"}>⏱ {fmtDate(r.deadline)}</p>}
+                      {r.nextDue && <span className={cn("block text-xs", daysUntil(r.nextDue) <= 3 ? "font-medium text-stop-700" : "text-muted")}>{daysUntil(r.nextDue) === 0 ? "Due today" : `Due in ${daysUntil(r.nextDue)}d`}</span>}
+                      {r.deadline && <p className={overdue ? "text-xs text-muted line-through" : "text-xs text-stop-500"}>⏱ {fmtDate(r.deadline)}</p>}
                     </Td>
                     <Td>{r.createdByName ?? r.createdByFallback}</Td>
                     <Td><StatusBadge group={r.statusGroup} label={r.statusLabel} /></Td>

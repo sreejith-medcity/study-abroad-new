@@ -2,6 +2,7 @@ import Link from "next/link";
 import { asc, ne, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
+import { FilterBar } from "@/components/filter-bar";
 import { ViewTabs } from "@/components/view-tabs";
 import { viewsWithPins } from "@/server/views";
 import { fmtDate, intakeLabel } from "@/lib/format";
@@ -21,21 +22,17 @@ import {
 } from "@/server/enquiries";
 import {
   BarList,
-  Button,
   Card,
   CardHeader,
   Chip,
   DataList,
   EmptyState,
-  Input,
   LinkButton,
   PageHeader,
-  Select,
   Stat,
   Table,
   Td,
   Th,
-  Toolbar,
   TrendChart,
 } from "@/components/ui";
 import { IconAlert, IconCheck, IconEnquiry, IconPlus } from "@/components/icons";
@@ -95,55 +92,48 @@ export default async function EnquiriesPage({ searchParams }: { searchParams: Pr
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-4">
-          <Toolbar>
-            <form className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4 [&>*]:min-w-0">
-              <Input name="q" placeholder="Name, number, town" aria-label="Search" defaultValue={f.q} className="xl:col-span-2" />
-              <Select name="stage" aria-label="Stage" defaultValue={f.stage ?? ""}>
-                <option value="">Any stage</option>
-                <option value="OPEN">Open only</option>
-                {Object.entries(STAGE_LABEL).map(([v, l]) => (
-                  <option key={v} value={v}>{l}</option>
-                ))}
-              </Select>
-              <Select name="source" aria-label="Source" defaultValue={f.source ?? ""}>
-                <option value="">Any source</option>
-                {Object.entries(SOURCE_LABEL).map(([v, l]) => (
-                  <option key={v} value={v}>{l}</option>
-                ))}
-              </Select>
-              <Select name="due" aria-label="Follow up" defaultValue={f.due ?? ""}>
-                <option value="">Any follow up</option>
-                <option value="overdue">Overdue</option>
-                <option value="today">Due today</option>
-                <option value="none">No date set</option>
-              </Select>
-              {staff ? (
-                <Select name="org" aria-label="Partner" defaultValue={f.org ?? ""}>
-                  <option value="">All partners</option>
-                  {orgs.map((o) => (
-                    <option key={o.id} value={o.id}>{o.name}</option>
-                  ))}
-                </Select>
-              ) : (
-                <Select name="assignedTo" aria-label="Owner" defaultValue={f.assignedTo ?? ""}>
-                  <option value="">Anyone</option>
-                  {people.map((p) => (
-                    <option key={p.id} value={p.id}>{p.deskLabel ?? p.name}</option>
-                  ))}
-                </Select>
-              )}
-              <Select name="pathway" aria-label="Pathway" defaultValue={f.pathway ?? ""}>
-                <option value="">Any pathway</option>
-                <option value="DEGREE">Degree</option>
-                <option value="AUSBILDUNG">Ausbildung</option>
-                <option value="NURSING">Nurse registration</option>
-              </Select>
-              <div className="flex justify-end gap-2 sm:col-span-2 xl:col-span-4">
-                <LinkButton href="/enquiries" variant="quiet" size="sm">Clear</LinkButton>
-                <Button type="submit" variant="secondary" size="sm">Filter</Button>
-              </div>
-            </form>
-          </Toolbar>
+          <FilterBar
+            primary={4}
+            className="mb-0"
+            fields={[
+              { kind: "search", name: "q", label: "Search", placeholder: "Name, number, town" },
+              {
+                kind: "select",
+                name: "stage",
+                label: "Stage",
+                options: [{ value: "OPEN", label: "Open only" }, ...Object.entries(STAGE_LABEL).map(([v, l]) => ({ value: v, label: l }))],
+              },
+              {
+                kind: "select",
+                name: "due",
+                label: "Follow up",
+                options: [
+                  { value: "overdue", label: "Overdue" },
+                  { value: "today", label: "Due today" },
+                  { value: "none", label: "No date set" },
+                ],
+              },
+              staff
+                ? { kind: "select", name: "org", label: "Partner", options: orgs.map((o) => ({ value: o.id, label: o.name })) }
+                : {
+                    kind: "select",
+                    name: "assignedTo",
+                    label: "Owner",
+                    options: people.map((p) => ({ value: p.id, label: p.deskLabel ?? p.name })),
+                  },
+              { kind: "select", name: "source", label: "Source", options: Object.entries(SOURCE_LABEL).map(([v, l]) => ({ value: v, label: l })) },
+              {
+                kind: "select",
+                name: "pathway",
+                label: "Pathway",
+                options: [
+                  { value: "DEGREE", label: "Degree" },
+                  { value: "AUSBILDUNG", label: "Ausbildung" },
+                  { value: "NURSING", label: "Nurse registration" },
+                ],
+              },
+            ]}
+          />
 
           <Card>
             {list.length === 0 ? (

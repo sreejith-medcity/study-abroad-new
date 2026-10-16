@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, asc, desc, eq, gte, ilike, lte, or, sql } from "drizzle-orm";
+import { asc, desc, eq, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { can } from "@/server/capabilities";
 import { requireUser } from "@/lib/auth";
@@ -7,12 +7,11 @@ import { ViewTabs } from "@/components/view-tabs";
 import { viewsWithPins } from "@/server/views";
 import { APP_ROLES, ROLE_LABEL, canAssignStudents, isAdmin, isStaff } from "@/lib/permissions";
 import { fmtDate, fullName } from "@/lib/format";
-import { idSearchKey, looksLikeStudentId } from "@/lib/medcity-id";
 import { assignableFor, orgUsers, readFilters, studentWhere } from "@/server/queries";
-import { Button, Card, Chip, EmptyState, DateInput, Input, LinkButton, PageHeader, Select, Table, Td, Th, Toolbar } from "@/components/ui";
+import { Button, Card, Chip, EmptyState, LinkButton, PageHeader, Select, Table, Td, Th } from "@/components/ui";
+import { FilterBar } from "@/components/filter-bar";
 import { IconPlus, IconStudents } from "@/components/icons";
 import { archiveStudentAction, reassignStudentAction } from "./actions";
-import { ownStudentsOnly } from "@/server/scope";
 
 export const metadata = { title: "Students" };
 
@@ -108,38 +107,33 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
 
       <ViewTabs scope="STUDENTS" views={savedViews} canShareWithEverybody={staff} />
 
-      <Toolbar className="mb-4">
-        <form className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-6 [&>*]:min-w-0">
-          {archived && <input type="hidden" name="view" value="archived" />}
-          {staff ? (
-            <Select name="org" aria-label="Partner" defaultValue={f.org ?? ""}>
-              <option value="">All partners</option>
-              {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-            </Select>
-          ) : (
-            <Select name="assignedTo" aria-label="Assigned to" defaultValue={f.assignedTo ?? ""}>
-              <option value="">Assigned to: anyone</option>
-              {assignable.map((c) => <option key={c.id} value={c.id}>{c.deskLabel ?? c.name}</option>)}
-            </Select>
-          )}
-          <DateInput label="Created from" name="from" defaultValue={f.from} />
-          <DateInput label="Created to" name="to" defaultValue={f.to} />
-          <Select name="country" aria-label="Preferred country" defaultValue={f.country ?? ""}>
-            <option value="">Country</option>
-            {countries.map((c) => <option key={c.id}>{c.name}</option>)}
-          </Select>
-          <Select name="pathway" aria-label="Pathway" defaultValue={f.pathway ?? ""}>
-            <option value="">Pathway</option>
-            <option value="DEGREE">Degree</option>
-            <option value="AUSBILDUNG">Ausbildung</option>
-            <option value="NURSING">Nurse registration</option>
-          </Select>
-          <div className="flex gap-2">
-            <Input name="q" placeholder="Name, Medcity ID, email or phone" aria-label="Search" defaultValue={f.q} />
-            <Button type="submit">Search</Button>
-          </div>
-        </form>
-      </Toolbar>
+      <FilterBar
+        primary={4}
+        fields={[
+          { kind: "search", name: "q", label: "Search", placeholder: "Name, Medcity ID, email or phone" },
+          staff
+            ? { kind: "select", name: "org", label: "Partner", options: orgs.map((o) => ({ value: o.id, label: o.name })) }
+            : {
+                kind: "select",
+                name: "assignedTo",
+                label: "Assigned to",
+                options: assignable.map((c) => ({ value: c.id, label: c.deskLabel ?? c.name })),
+              },
+          {
+            kind: "select",
+            name: "pathway",
+            label: "Pathway",
+            options: [
+              { value: "DEGREE", label: "Degree" },
+              { value: "AUSBILDUNG", label: "Ausbildung" },
+              { value: "NURSING", label: "Nurse registration" },
+            ],
+          },
+          { kind: "select", name: "country", label: "Country", options: countries.map((c) => ({ value: c.name, label: c.name })) },
+          { kind: "date", name: "from", label: "Created from" },
+          { kind: "date", name: "to", label: "Created to" },
+        ]}
+      />
 
       <Card>
         {rows.length === 0 ? (
@@ -250,7 +244,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                     {canWrite && (user.role === "PARTNER" || isAdmin(user)) && (
                       <form action={archiveStudentAction}>
                         <input type="hidden" name="studentId" value={r.id} />
-                        <button className="text-xs text-muted hover:text-red-600" title={r.appCount === 0 ? "Delete student with no applications" : archived ? "Restore" : "Archive"}>
+                        <button className="text-xs text-muted hover:text-stop-500" title={r.appCount === 0 ? "Delete student with no applications" : archived ? "Restore" : "Archive"}>
                           {r.appCount === 0 ? "Delete" : archived ? "Restore" : "Archive"}
                         </button>
                       </form>
