@@ -3,10 +3,12 @@ import { and, asc, desc, eq, gte, ilike, lte, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { can } from "@/server/capabilities";
 import { requireUser } from "@/lib/auth";
+import { ViewTabs } from "@/components/view-tabs";
+import { viewsWithPins } from "@/server/views";
 import { APP_ROLES, ROLE_LABEL, canAssignStudents, isAdmin, isStaff } from "@/lib/permissions";
 import { fmtDate, fullName } from "@/lib/format";
 import { idSearchKey, looksLikeStudentId } from "@/lib/medcity-id";
-import { assignableFor, orgUsers, readFilters } from "@/server/queries";
+import { assignableFor, orgUsers, readFilters, studentWhere } from "@/server/queries";
 import { Button, Card, Chip, EmptyState, DateInput, Input, LinkButton, PageHeader, Select, Table, Td, Th, Toolbar } from "@/components/ui";
 import { IconPlus, IconStudents } from "@/components/icons";
 import { archiveStudentAction, reassignStudentAction } from "./actions";
@@ -16,34 +18,16 @@ export const metadata = { title: "Students" };
 
 export default async function StudentsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const user = await requireUser([...APP_ROLES]);
+  // The saved ways of looking at this list, each with what it holds now.
+  const savedViews = await viewsWithPins(user, "STUDENTS");
   const f = readFilters(await searchParams) as Record<string, string>;
   const s = schema.students;
   const staff = isStaff(user);
   const archived = f.view === "archived";
 
-  const conds = [
-    staff ? (f.org ? eq(s.orgId, f.org) : undefined) : eq(s.orgId, user.orgId),
-    // And, for a role that sees only its own students, the same rule the student
-    // file itself enforces, so the list and the file can never disagree.
-    await ownStudentsOnly(user),
-    eq(s.archived, archived),
-    f.assignedTo ? eq(s.assignedToId, f.assignedTo) : undefined,
-    f.from ? gte(s.createdAt, new Date(f.from)) : undefined,
-    f.to ? lte(s.createdAt, new Date(`${f.to}T23:59:59`)) : undefined,
-    f.country ? eq(s.preferredCountry, f.country) : undefined,
-    f.pathway ? eq(s.preferredPathway, f.pathway as schema.Pathway) : undefined,
-    // The search box also answers a Medcity ID, however it was written down:
-    // the punctuation is stripped off both sides before they are compared, so
-    // "mc ktm 26 41" finds MC-KTM-26-0041.
-    f.q
-      ? or(
-          ilike(sql`${s.firstName} || ' ' || ${s.lastName}`, `%${f.q}%`),
-          ilike(s.email, `%${f.q}%`),
-          ilike(s.phone, `%${f.q}%`),
-          ...(looksLikeStudentId(f.q) ? [sql`regexp_replace(upper(coalesce(${s.medcityId}, '')), '[^A-Z0-9]', '', 'g') like ${`%${idSearchKey(f.q)}%`}`] : []),
-        )
-      : undefined,
-  ];
+  // The same rule a saved view counts with, so a tab and the list it opens
+  // can never disagree.
+  const where = await studentWhere(user, f);
 
   const rows = await db
     .select({
@@ -66,7 +50,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
     .from(s)
     .innerJoin(schema.organizations, eq(s.orgId, schema.organizations.id))
     .leftJoin(sql`users as creator`, sql`creator.id = ${s.createdById}`)
-    .where(and(...conds))
+    .where(where)
     .orderBy(desc(s.createdAt))
     .limit(200);
 
@@ -105,7 +89,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
       ? (await db
           .select({ n: sql<number>`count(*)::int` })
           .from(s)
-          .where(and(...conds.filter((c) => c !== undefined), eq(s.archived, true))))[0]?.n ?? 0
+          .where(await studentWhere(user, { ...f, view: "archived" })))[0]?.n ?? 0
       : 0;
 
 
@@ -121,6 +105,8 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
           </>
         }
       />
+
+      <ViewTabs scope="STUDENTS" views={savedViews} canShareWithEverybody={staff} />
 
       <Toolbar className="mb-4">
         <form className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-6 [&>*]:min-w-0">

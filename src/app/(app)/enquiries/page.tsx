@@ -2,6 +2,8 @@ import Link from "next/link";
 import { asc, ne, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
+import { ViewTabs } from "@/components/view-tabs";
+import { viewsWithPins } from "@/server/views";
 import { fmtDate, intakeLabel } from "@/lib/format";
 import { ADMIN_ROLES, PARTNER_ROLES, isStaff } from "@/lib/permissions";
 import { orgUsers } from "@/server/queries";
@@ -44,6 +46,8 @@ const PAGE = 40;
 
 export default async function EnquiriesPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const user = await requireUser([...PARTNER_ROLES, ...ADMIN_ROLES]);
+  // The saved ways of looking at this list, each with what it holds now.
+  const savedViews = await viewsWithPins(user, "ENQUIRIES");
   const f = readEnquiryFilters(await searchParams);
   const page = Math.max(1, Number(f.page ?? 1));
   const staff = isStaff(user);
@@ -78,6 +82,8 @@ export default async function EnquiriesPage({ searchParams }: { searchParams: Pr
           </LinkButton>
         }
       />
+
+      <ViewTabs scope="ENQUIRIES" views={savedViews} canShareWithEverybody={isStaff(user)} />
 
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Stat label="Open" tone="brand" icon={<IconEnquiry className="size-4" />} value={counts.open} href="/enquiries?stage=OPEN" />

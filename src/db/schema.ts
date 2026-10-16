@@ -248,6 +248,11 @@ export const walletEntryKind = pgEnum("wallet_entry_kind", ["COMMISSION", "PAYOU
 export const payoutStatus = pgEnum("payout_status", ["REQUESTED", "APPROVED", "PAID", "REJECTED"]);
 export const resourceKind = pgEnum("resource_kind", ["GUIDE", "TEMPLATE", "POLICY", "TRAINING", "MARKETING", "FAQ"]);
 
+/** The lists a saved view can belong to. */
+export const viewScope = pgEnum("view_scope", ["STUDENTS", "APPLICATIONS", "DOCUMENTATION", "ENQUIRIES"]);
+/** Who else sees a saved view: nobody, the person's own branch, or everybody. */
+export const viewShared = pgEnum("view_shared", ["PRIVATE", "ORG", "EVERYONE"]);
+
 // ---------- Sub-agents ----------
 
 // ---------- The link to Medcity's own CRM ----------
@@ -3009,6 +3014,66 @@ export const serviceOwnersRelations = relations(serviceOwners, ({ one }) => ({
   user: one(users, { fields: [serviceOwners.userId], references: [users.id] }),
 }));
 
+/**
+ * A saved way of looking at a list.
+ *
+ * Every list in here answers a dozen questions through its filters, and
+ * everybody has three or four they ask every morning: my Germany files, what
+ * is waiting on the branch, the January intake. Those were retyped daily or
+ * kept as browser bookmarks nobody else could use. A view is that question
+ * with a name on it, kept, counted, and shared with whoever needs the same
+ * answer.
+ *
+ * The query is stored as the list's own search string, so a view is exactly
+ * the screen somebody was looking at when they saved it, and no filter has to
+ * be taught to this table twice.
+ */
+export const views = pgTable(
+  "views",
+  {
+    id: id(),
+    scope: viewScope("scope").notNull(),
+    name: text("name").notNull(),
+    query: text("query").notNull().default(""),
+    shared: viewShared("shared").notNull().default("PRIVATE"),
+    ownerId: text("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    orgId: text("org_id").references(() => organizations.id, { onDelete: "cascade" }),
+    position: integer("position").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("views_scope_idx").on(t.scope, t.ownerId), index("views_shared_idx").on(t.scope, t.shared)],
+);
+
+/** Which of the views on offer a person keeps on their own tab row. */
+export const viewPins = pgTable(
+  "view_pins",
+  {
+    id: id(),
+    viewId: text("view_id")
+      .notNull()
+      .references(() => views.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    position: integer("position").notNull().default(0),
+  },
+  (t) => [uniqueIndex("view_pins_uq").on(t.viewId, t.userId), index("view_pins_user_idx").on(t.userId)],
+);
+
+export const viewsRelations = relations(views, ({ one, many }) => ({
+  owner: one(users, { fields: [views.ownerId], references: [users.id] }),
+  org: one(organizations, { fields: [views.orgId], references: [organizations.id] }),
+  pins: many(viewPins),
+}));
+
+export const viewPinsRelations = relations(viewPins, ({ one }) => ({
+  view: one(views, { fields: [viewPins.viewId], references: [views.id] }),
+  user: one(users, { fields: [viewPins.userId], references: [users.id] }),
+}));
+
 export const studentsRelations = relations(students, ({ one, many }) => ({
   org: one(organizations, { fields: [students.orgId], references: [organizations.id] }),
   assignedTo: one(users, { fields: [students.assignedToId], references: [users.id] }),
@@ -3347,3 +3412,5 @@ export type IntegrationStatus = (typeof integrationStatus.enumValues)[number];
 export type AppSettings = typeof appSettings.$inferSelect;
 export type Team = typeof teams.$inferSelect;
 export type StudentPerson = typeof studentPeople.$inferSelect;
+export type View = typeof views.$inferSelect;
+export type ViewScope = (typeof viewScope.enumValues)[number];

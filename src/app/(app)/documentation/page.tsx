@@ -2,6 +2,8 @@ import Link from "next/link";
 import { asc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
+import { ViewTabs } from "@/components/view-tabs";
+import { viewsWithPins } from "@/server/views";
 import { fmtDate } from "@/lib/format";
 import { isAdmin, PROCESSING_ROLES } from "@/lib/permissions";
 import { activeRejectionReasons, branchChecked, deskOfficers, documentationQueue, queueCounts } from "@/server/documentation";
@@ -33,6 +35,8 @@ export default async function DocumentationQueuePage({
   searchParams: Promise<{ branch?: string; stage?: string; vendor?: string; sort?: string; mine?: string; view?: string }>;
 }) {
   const user = await requireUser([...PROCESSING_ROLES]);
+  // The saved ways of looking at this list, each with what it holds now.
+  const savedViews = await viewsWithPins(user, "DOCUMENTATION");
   const sp = await searchParams;
   const sort = sp.sort === "VISA_FIRST" ? "VISA_FIRST" : "OLDEST";
   const branchView = sp.view === "branch";
@@ -63,6 +67,8 @@ export default async function DocumentationQueuePage({
         subtitle={`${counts.waiting} waiting · ${counts.mine} claimed by you. Oldest first, and a document is claimed while somebody checks it so two people never check the same one.`}
         actions={isAdmin(user) ? <RunReminders /> : undefined}
       />
+
+      <ViewTabs scope="DOCUMENTATION" views={savedViews} canShareWithEverybody={true} />
       <Card className="mb-3 p-3">
         <div className="flex flex-wrap items-center gap-2">
           <Link href={href({ mine: undefined, view: undefined })} className={pill(!sp.mine && !branchView)}>Everything</Link>

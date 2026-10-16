@@ -5,6 +5,8 @@ import { daysUntil } from "@/lib/catalogue";
 import { asc, desc, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
+import { ViewTabs } from "@/components/view-tabs";
+import { viewsWithPins } from "@/server/views";
 import { fmtDate, fullName, intakeLabel, MONTHS } from "@/lib/format";
 import { APP_ROLES, isStaff } from "@/lib/permissions";
 import { applicationsBase, applicationWhere, orgUsers, readFilters } from "@/server/queries";
@@ -22,6 +24,8 @@ const PAGE = 50;
 
 export default async function ApplicationsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const user = await requireUser([...APP_ROLES]);
+  // The saved ways of looking at this list, each with what it holds now.
+  const savedViews = await viewsWithPins(user, "APPLICATIONS");
   const f = readFilters(await searchParams);
   // A filtered search that finds nothing needs a different answer from an empty list.
   const filtered = Object.values(f as Record<string, string>).some(Boolean);
@@ -51,6 +55,8 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
         subtitle={f.kpi ? `Filtered: ${KPI_LABEL[f.kpi] ?? f.kpi}` : "Manage your students' applications"}
         actions={<LinkButton variant="secondary" href={`/api/applications/export?${exportQs}`} prefetch={false}><IconExport className="size-4" /> Export CSV</LinkButton>}
       />
+
+      <ViewTabs scope="APPLICATIONS" views={savedViews} canShareWithEverybody={staff} />
       <Toolbar className="mb-4">
         <form className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-5 [&>*]:min-w-0">
           {f.kpi && <input type="hidden" name="kpi" value={f.kpi} />}

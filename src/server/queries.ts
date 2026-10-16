@@ -2,7 +2,8 @@ import "server-only";
 import { DEADLINE_TYPES } from "@/lib/deadline-types";
 import { and, asc, eq, gte, ilike, inArray, lte, or, sql, type SQL } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { mayOpenStudent } from "@/server/scope";
+import { mayOpenStudent, ownStudentsOnly } from "@/server/scope";
+import { idSearchKey, looksLikeStudentId } from "@/lib/medcity-id";
 import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { PARTNER_ROLES, STUDENT_WORK_ROLES, isStaff, orgScope } from "@/lib/permissions";
@@ -187,4 +188,36 @@ export async function assignableFor(orgIds: string[], opts: { includeHeadOffice:
     .where(and(eq(u.active, true), inArray(u.role, [...STUDENT_WORK_ROLES]), where))
     .orderBy(asc(o.name), asc(u.name));
   return rows.map((r) => ({ ...r, headOffice: r.orgType === "HQ" }));
+}
+
+/**
+ * The students a person may see, narrowed by the list's own filters.
+ *
+ * Lifted out of the list screen so a saved view can count exactly what the
+ * list would show. Two copies of this rule would drift the day somebody adds
+ * a filter to one of them.
+ */
+export async function studentWhere(user: SessionUser, f: Record<string, string | undefined>) {
+  const st = schema.students;
+  return and(
+    isStaff(user) ? (f.org ? eq(st.orgId, f.org) : undefined) : eq(st.orgId, user.orgId),
+    await ownStudentsOnly(user),
+    eq(st.archived, f.view === "archived"),
+    f.assignedTo ? eq(st.assignedToId, f.assignedTo) : undefined,
+    f.team ? eq(st.teamId, f.team) : undefined,
+    f.from ? gte(st.createdAt, new Date(f.from)) : undefined,
+    f.to ? lte(st.createdAt, new Date(`${f.to}T23:59:59`)) : undefined,
+    f.country ? eq(st.preferredCountry, f.country) : undefined,
+    f.pathway ? eq(st.preferredPathway, f.pathway as schema.Pathway) : undefined,
+    f.q
+      ? or(
+          ilike(sql`${st.firstName} || ' ' || ${st.lastName}`, `%${f.q}%`),
+          ilike(st.email, `%${f.q}%`),
+          ilike(st.phone, `%${f.q}%`),
+          ...(looksLikeStudentId(f.q)
+            ? [sql`regexp_replace(upper(coalesce(${st.medcityId}, '')), '[^A-Z0-9]', '', 'g') like ${`%${idSearchKey(f.q)}%`}`]
+            : []),
+        )
+      : undefined,
+  );
 }
