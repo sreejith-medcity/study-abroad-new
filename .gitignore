@@ -41,5 +41,9 @@ yarn-error.log*
 next-env.d.ts
 
 .env
-uploads/
+# Documents uploaded in development land here. Anchored to the repository
+# root on purpose: written bare, this pattern also swallowed
+# src/app/api/uploads, so the route the browser posts documents to was never
+# committed and the live site answered 500 for every upload.
+/uploads/
 !.env.example
