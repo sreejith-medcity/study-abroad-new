@@ -8,10 +8,11 @@ import { viewsWithPins } from "@/server/views";
 import { APP_ROLES, ROLE_LABEL, canAssignStudents, isAdmin, isStaff } from "@/lib/permissions";
 import { fmtDate, fullName } from "@/lib/format";
 import { assignableFor, orgUsers, readFilters, studentWhere } from "@/server/queries";
-import { Button, Card, Chip, EmptyState, LinkButton, PageHeader, Select, Table, Td, Th } from "@/components/ui";
+import { Card, Chip, EmptyState, LinkButton, PageHeader, Table, Td, Th } from "@/components/ui";
 import { FilterBar } from "@/components/filter-bar";
-import { IconPlus, IconStudents } from "@/components/icons";
-import { archiveStudentAction, reassignStudentAction } from "./actions";
+import { IconMail, IconPhone, IconPlus, IconStudents } from "@/components/icons";
+import { archiveStudentAction } from "./actions";
+import { RowAssign } from "./row-assign";
 
 export const metadata = { title: "Students" };
 
@@ -167,11 +168,10 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                 : "Every student your branch registers appears here, with what each application is waiting on."}
           </EmptyState>
         ) : (
-          <Table tableClassName="min-w-[980px]">
+          <Table tableClassName="min-w-[920px]">
             <thead>
               <tr>
-                <Th>{staff ? "Partner" : "Created by"}</Th>
-                {staff && <Th>Registered by</Th>}
+                <Th>Created by</Th>
                 <Th>Created on</Th>
                 <Th>Student name</Th>
                 <Th>Email</Th>
@@ -184,54 +184,79 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id} className="hover:bg-ground/40">
-                  <Td>{staff ? r.orgName : r.createdByDesk}{r.source !== "partner" && <Chip className="ml-1">{r.source.toUpperCase()}</Chip>}</Td>
-                  {/* Whose file this is, which until now only a partner could
-                      see: the desk saw the branch and had to open the file to
-                      learn who in it had registered the student. */}
-                  {staff && <Td className="whitespace-nowrap">{r.createdByDesk ?? <span className="text-muted">Not recorded</span>}</Td>}
+                  {/* The branch and the person in it who registered the
+                      student, stacked in one column. They were two, and the
+                      pair of them pushed the status pill off the right of the
+                      screen on a laptop, which is the column somebody is
+                      actually scanning for. */}
+                  <Td className="whitespace-nowrap">
+                    <span className="block">
+                      {staff ? r.orgName : r.createdByDesk}
+                      {r.source !== "partner" && <Chip className="ml-1">{r.source.toUpperCase()}</Chip>}
+                    </span>
+                    {staff && (
+                      <span className="block text-[11px] text-muted">{r.createdByDesk ?? "Not recorded"}</span>
+                    )}
+                  </Td>
                   <Td className="whitespace-nowrap tabular">{fmtDate(r.createdAt)}</Td>
                   <Td>
-                    <Link href={`/students/${r.id}/profile`} className="font-medium text-ink hover:text-brand-600 hover:underline">{fullName(r)}</Link>
+                    <Link href={`/students/${r.id}/profile`} className="whitespace-nowrap font-medium text-ink hover:text-brand-600 hover:underline">{fullName(r)}</Link>
                     {r.medcityId && <span className="block font-mono text-[11px] text-muted">{r.medcityId}</span>}
                   </Td>
-                  <Td className="max-w-[16rem] truncate text-muted" title={r.email ?? undefined}>{r.email ?? <span className="text-muted">No email</span>}</Td>
-                  <Td className="whitespace-nowrap tabular">{r.phone}</Td>
+                  {/* A counsellor works this list with the phone in the other
+                      hand. The address and the number were text to read out;
+                      they are the thing you press now. */}
+                  <Td className="max-w-[10rem] text-muted">
+                    {r.email ? (
+                      <a href={`mailto:${r.email}`} className="flex items-center gap-1.5 hover:text-brand-600" title={r.email}>
+                        <IconMail className="size-3.5 shrink-0 text-muted/70" />
+                        <span className="truncate">{r.email}</span>
+                      </a>
+                    ) : (
+                      <span className="text-muted">No email</span>
+                    )}
+                  </Td>
+                  <Td className="whitespace-nowrap">
+                    <a href={`tel:${r.phone.replace(/[^+\d]/g, "")}`} className="flex items-center gap-1.5 tabular text-muted hover:text-brand-600">
+                      <IconPhone className="size-3.5 shrink-0 text-muted/70" />
+                      {r.phone}
+                    </a>
+                  </Td>
                   {canAssign && (
                     <Td>
-                      <form action={reassignStudentAction} className="flex gap-1">
-                        <input type="hidden" name="studentId" value={r.id} />
-                        <Select name="assignedToId" defaultValue={r.assignedToId ?? ""} aria-label={`Assign ${fullName(r)}`} className="min-w-36 py-1.5">
-                          <option value="">Unassigned</option>
-                          {staff ? (
-                            <>
-                              {(branchPeople.get(r.orgId) ?? []).length > 0 && (
-                                <optgroup label={r.orgName}>
-                                  {(branchPeople.get(r.orgId) ?? []).map((c) => (
-                                    <option key={c.id} value={c.id}>{c.deskLabel ?? c.name}</option>
-                                  ))}
-                                </optgroup>
-                              )}
-                              {headOfficePeople.length > 0 && (
-                                <optgroup label="Head office">
-                                  {headOfficePeople.map((c) => (
-                                    <option key={c.id} value={c.id}>
-                                      {c.deskLabel ?? c.name} ({ROLE_LABEL[c.role as keyof typeof ROLE_LABEL] ?? c.role})
-                                    </option>
-                                  ))}
-                                </optgroup>
-                              )}
-                            </>
-                          ) : (
-                            assignable.map((c) => <option key={c.id} value={c.id}>{c.deskLabel ?? c.name}</option>)
-                          )}
-                        </Select>
-                        <Button variant="quiet" className="px-2 py-1" type="submit" aria-label="Save assignment">Save</Button>
-                      </form>
+                      <RowAssign studentId={r.id} current={r.assignedToId ?? ""} label={`Assign ${fullName(r)}`}>
+                        <option value="">Unassigned</option>
+                        {staff ? (
+                          <>
+                            {(branchPeople.get(r.orgId) ?? []).length > 0 && (
+                              <optgroup label={r.orgName}>
+                                {(branchPeople.get(r.orgId) ?? []).map((c) => (
+                                  <option key={c.id} value={c.id}>{c.deskLabel ?? c.name}</option>
+                                ))}
+                              </optgroup>
+                            )}
+                            {headOfficePeople.length > 0 && (
+                              <optgroup label="Head office">
+                                {headOfficePeople.map((c) => (
+                                  <option key={c.id} value={c.id}>
+                                    {c.deskLabel ?? c.name} ({ROLE_LABEL[c.role as keyof typeof ROLE_LABEL] ?? c.role})
+                                  </option>
+                                ))}
+                              </optgroup>
+                            )}
+                          </>
+                        ) : (
+                          assignable.map((c) => <option key={c.id} value={c.id}>{c.deskLabel ?? c.name}</option>)
+                        )}
+                      </RowAssign>
                     </Td>
                   )}
                   <Td>
+                    {/* Nothing in flight is the quiet answer, so it is set
+                        quiet. A blue pill on every row of a new branch's list
+                        reads as eight things to look at. */}
                     {r.appCount === 0 ? (
-                      <Chip tone="info">No applications</Chip>
+                      <span className="whitespace-nowrap text-[12px] text-muted/70">No applications</span>
                     ) : r.pendingCount > 0 ? (
                       <Chip tone="warn">{r.pendingCount} need action</Chip>
                     ) : r.submittedCount > 0 ? (

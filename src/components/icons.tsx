@@ -108,3 +108,9 @@ export const IconBuilding = (p: P) => (
 export const IconCalendar = (p: P) => (
   <svg {...base} {...p}><rect x="3.5" y="5" width="17" height="15" rx="2" /><path d="M3.5 10h17M8 3v4M16 3v4" /></svg>
 );
+export const IconMail = (p: P) => (
+  <svg {...base} {...p}><rect x="3" y="5" width="18" height="14" rx="2.5" /><path d="m3.5 7.5 7.4 5.2a2 2 0 0 0 2.2 0l7.4-5.2" /></svg>
+);
+export const IconPhone = (p: P) => (
+  <svg {...base} {...p}><path d="M8.2 3.6 9.7 7a1.6 1.6 0 0 1-.4 1.8l-1.2 1a13 13 0 0 0 5.1 5.1l1-1.2a1.6 1.6 0 0 1 1.8-.4l3.4 1.5a1.6 1.6 0 0 1 .9 1.7l-.3 1.9a1.8 1.8 0 0 1-2 1.5C11.3 19.6 4.4 12.7 3.1 5a1.8 1.8 0 0 1 1.5-2l1.9-.3a1.6 1.6 0 0 1 1.7.9z" /></svg>
+);

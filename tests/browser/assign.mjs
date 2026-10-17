@@ -46,10 +46,16 @@ check((await picker.count()) > 0, "the student's row has a picker");
 check((await row.locator('optgroup[label="Head office"]').count()) > 0, "the head office is offered");
 check((await picker.locator(`option[value="${docId}"]`).count()) > 0, `documentation (${docName}) is in the list`);
 
+// Picking a name is the whole move: there is no Save button beside it any
+// more, and a branch reassigning a morning's intake was clicking one per row.
+check((await row.locator('form:has(select[name="assignedToId"]) button').count()) === 0, "and no second click to confirm it");
 await picker.selectOption(docId);
-await row.locator('button[type="submit"]').click();
-await admin.waitForTimeout(1500);
-check(sql(`select coalesce(assigned_to_id, '') from students where id = '${studentId}'`) === docId, "the assignment saves to the documentation user");
+// Poll rather than sleep: the row files the change itself, and how long that
+// takes is the server's business.
+const assigned = () => sql(`select coalesce(assigned_to_id, '') from students where id = '${studentId}'`);
+for (let t0 = Date.now(); assigned() !== docId && Date.now() - t0 < 15000; ) await admin.waitForTimeout(300);
+check(assigned() === docId, "choosing a name files it, with nothing else to press");
+check((await row.innerText()).includes("Saved"), "and the row says so");
 check(/student.reassign/.test(sql(`select coalesce(string_agg(action, ','), '') from audit_logs where entity_id = '${studentId}'`)), "it is written to the audit log");
 
 // The point of assigning: that person can now open the file.
