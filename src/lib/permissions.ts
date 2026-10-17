@@ -72,12 +72,6 @@ export const DEADLINE_EDIT_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "APPL
 
 export const canEditDeadlines = (user: SessionUser) => (DEADLINE_EDIT_ROLES as readonly string[]).includes(user.role);
 
-/**
- * Who an application can be put on. The desk works files; a branch counsellor
- * in this list would be a file nobody at the office is carrying.
- */
-export const DESK_OFFICER_ROLES = ["DOCUMENTATION", "APPLICATION_TEAM_LEADER", "SUPER_ADMIN", "OPS_MANAGER", "ADMIN"] as const;
-
 /** Who decides which officer carries a file. */
 export const canAssignDesk = (user: SessionUser) => (DESK_ASSIGNING_ROLES as readonly string[]).includes(user.role);
 

@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { DESK_ASSIGNING_ROLES, DESK_OFFICER_ROLES } from "@/lib/permissions";
+import { DESK_ASSIGNING_ROLES, DOCUMENTATION_ROLES } from "@/lib/permissions";
 import { notifyUsers } from "@/server/notify";
 
 /**
@@ -29,7 +29,7 @@ export async function assignOfficerAction(fd: FormData) {
     // counsellor in the list would be a file nobody at the office is carrying.
     const officer = await db.query.users.findFirst({ where: eq(schema.users.id, officerId), columns: { id: true, active: true, role: true } });
     if (!officer?.active) return;
-    if (!(DESK_OFFICER_ROLES as readonly string[]).includes(officer.role)) return;
+    if (!(DOCUMENTATION_ROLES as readonly string[]).includes(officer.role)) return;
   }
 
   await db.update(schema.applications).set({ officerId, updatedAt: new Date() }).where(eq(schema.applications.id, applicationId));

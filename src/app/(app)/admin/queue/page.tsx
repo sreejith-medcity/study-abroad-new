@@ -10,7 +10,7 @@ import { Button, Card, Chip, LinkButton, PageHeader, Select, cn } from "@/compon
 import { StatusForm } from "@/app/(app)/students/[id]/applications/client";
 import { PROCESSING_ROLES, canAssignDesk, canChangeStatus } from "@/lib/permissions";
 import { getSlaDays } from "@/server/dashboard";
-import { deskOfficers } from "@/server/teams";
+import { deskOfficers } from "@/server/documentation";
 import { InlineSelect } from "@/components/inline-select";
 import { assignOfficerAction } from "./actions";
 
