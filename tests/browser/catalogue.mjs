@@ -2,10 +2,13 @@
 // on every match rather than the visible page, and the work rights column.
 import { chromium } from "playwright";
 import fs from "node:fs";
+import { execFileSync } from "node:child_process";
 
 const OUT = "/tmp/smoke-catalogue";
 fs.mkdirSync(OUT, { recursive: true });
 const BASE = process.env.BASE ?? "http://localhost:3000";
+const DB = (fs.readFileSync(".env", "utf8").match(/localhost:5432\/([a-z0-9_]+)/) || [])[1];
+const sql = (q) => execFileSync("psql", ["-h", "localhost", "-U", "postgres", "-d", DB, "-qAtc", q], { env: { ...process.env, PGPASSWORD: "local" } }).toString().trim();
 const fails = [];
 const ok = (m) => console.log("  ok  " + m);
 const bad = (m) => { console.log("FAIL  " + m); fails.push(m); };
@@ -53,6 +56,30 @@ async function waitForRangeMatching(re, timeout = 20000) {
     await page.waitForTimeout(250);
   }
   return null;
+}
+
+// This suite is about the catalogue at full size: paging, a count that is the
+// whole match rather than the page, a bulk publish across thousands of rows.
+// The sample data has ten programs, so against a seeded database every check
+// here fails and none of the failures means anything. Said out loud and
+// skipped, rather than reported as the product being broken.
+const programs = Number(sql("select count(*) from programs"));
+if (programs < 300) {
+  console.log(`SKIPPED: the catalogue suite needs a full catalogue and this database has ${programs} programs.`);
+  console.log("Load one first:  set -a && . ./.env && set +a && npx tsx scripts/import-catalogue.ts");
+  process.exit(0);
+}
+
+// This suite publishes drafts in bulk, so it needs drafts. Another suite
+// publishes the whole catalogue to get at a partner's search, which leaves
+// none behind, and this one then failed saying it needed more than one page
+// of German drafts and found none. It sets up its own now rather than
+// depending on what ran before it.
+const germanDrafts = Number(sql("select count(*) from programs p join countries c on c.id = p.country_id where p.status = 'DRAFT' and c.code = 'DE'"));
+if (germanDrafts < 30) {
+  sql(`update programs set status = 'DRAFT' where id in (
+         select p.id from programs p join countries c on c.id = p.country_id
+         where c.code = 'DE' order by p.name limit 60)`);
 }
 
 const { ctx, page, errors } = await signIn("sreejith@miak.in", "10.60.1.11");

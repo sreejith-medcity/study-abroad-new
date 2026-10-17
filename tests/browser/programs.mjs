@@ -4,10 +4,13 @@
 //   npm run db:seed && npx tsx scripts/import-catalogue.ts, then publish all.
 import { chromium } from "playwright";
 import fs from "node:fs";
+import { execFileSync } from "node:child_process";
 
 const OUT = "/tmp/smoke-programs";
 fs.mkdirSync(OUT, { recursive: true });
 const BASE = process.env.BASE ?? "http://localhost:3000";
+const DB = (fs.readFileSync(".env", "utf8").match(/localhost:5432\/([a-z0-9_]+)/) || [])[1];
+const sql = (q) => execFileSync("psql", ["-h", "localhost", "-U", "postgres", "-d", DB, "-qAtc", q], { env: { ...process.env, PGPASSWORD: "local" } }).toString().trim();
 const fails = [];
 const ok = (m) => console.log("  ok  " + m);
 const bad = (m) => { console.log("FAIL  " + m); fails.push(m); };
@@ -35,6 +38,20 @@ async function signIn(email, ip) {
 const settle = (page) => page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
 const main = async (page) => { await settle(page); return page.locator("main").innerText(); };
 async function go(page, path) { await page.goto(BASE + path); return main(page); }
+
+// Everything below reads the catalogue as a partner sees it, so the courses
+// it names have to be in it and published. The sample data has ten courses
+// and the import leaves them as drafts, which is why this suite used to
+// report the portal as having lost a course it had never been given.
+const live = Number(sql("select count(*) from programs where status = 'LIVE'"));
+if (live < 300) {
+  console.log(`SKIPPED: this suite needs the full catalogue published and this database has ${live} live courses.`);
+  console.log("Load and publish it first:");
+  console.log("  set -a && . ./.env && set +a && npx tsx scripts/import-catalogue.ts");
+  console.log("  then publish them from /admin/programs, or for a test database:");
+  console.log("  psql -qc \"update programs set status='LIVE' where status='DRAFT'\"");
+  process.exit(0);
+}
 
 // ---------------- Partner ----------------
 const partner = await signIn("kottayam@medcity.test", "10.70.1.1");
