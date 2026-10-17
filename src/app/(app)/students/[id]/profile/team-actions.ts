@@ -5,7 +5,8 @@ import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { STAFF_ROLES, canAssignStudents } from "@/lib/permissions";
+import { PARTNER_ROLES, STAFF_ROLES, STUDENT_WORK_ROLES, canAssignStudents, isStaff } from "@/lib/permissions";
+import { orgUsers } from "@/server/queries";
 import { getStudentForUser } from "@/server/queries";
 import type { FormState } from "@/lib/form-state";
 
@@ -33,18 +34,24 @@ export async function setStudentTeamAction(fd: FormData) {
  * do written next to their name.
  */
 export async function addPersonToFileAction(_: FormState, fd: FormData): Promise<FormState> {
-  const user = await requireUser([...STAFF_ROLES]);
+  const user = await requireUser([...STAFF_ROLES, ...PARTNER_ROLES]);
   if (!canAssignStudents(user)) return { error: "Your account cannot change who is on a file." };
   const studentId = clean(fd.get("studentId"));
-  await getStudentForUser(user, studentId);
+  const student = await getStudentForUser(user, studentId);
   const userId = clean(fd.get("userId"));
   const part = String(fd.get("part") ?? "").trim().slice(0, 40);
   if (!userId) return { error: "Pick somebody." };
   if (!part) return { error: "Say what they do on this file: documents, visa, ticketing." };
 
   const person = await db.query.users.findFirst({ where: eq(schema.users.id, userId) });
-  if (!person?.active || !(STAFF_ROLES as readonly string[]).includes(person.role)) {
+  if (!person?.active || !(STUDENT_WORK_ROLES as readonly string[]).includes(person.role)) {
     return { error: "That person cannot be put on a student's file." };
+  }
+  // A branch may put its own people on its own students and nobody else. The
+  // head office reaches wider, which is the rule the assignment control on
+  // the list has always followed.
+  if (!isStaff(user) && person.orgId !== student.orgId) {
+    return { error: "You can only put your own branch's people on a file." };
   }
   const already = await db.query.studentPeople.findFirst({
     where: and(
@@ -62,7 +69,7 @@ export async function addPersonToFileAction(_: FormState, fd: FormData): Promise
 }
 
 export async function removePersonFromFileAction(fd: FormData) {
-  const user = await requireUser([...STAFF_ROLES]);
+  const user = await requireUser([...STAFF_ROLES, ...PARTNER_ROLES]);
   if (!canAssignStudents(user)) return;
   const id = clean(fd.get("personId"));
   const row = await db.query.studentPeople.findFirst({ where: eq(schema.studentPeople.id, id) });

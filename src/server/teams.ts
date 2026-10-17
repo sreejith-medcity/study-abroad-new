@@ -1,7 +1,9 @@
 import "server-only";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { STAFF_ROLES } from "@/lib/permissions";
+import { STAFF_ROLES, isStaff } from "@/lib/permissions";
+import type { SessionUser } from "@/lib/auth";
+import { orgUsers } from "@/server/queries";
 import type { ServiceType } from "@/lib/services";
 
 /** Every team with its people, for the screen that runs them. */
@@ -39,6 +41,18 @@ export async function deskPeople() {
     .from(schema.users)
     .where(and(inArray(schema.users.role, [...STAFF_ROLES]), eq(schema.users.active, true)))
     .orderBy(asc(schema.users.name));
+}
+
+/**
+ * Who this person may put on a file, for the picker that does it.
+ *
+ * A branch sees its own people: two counsellors sharing a student is the
+ * ordinary case this was missing, and until now only the head office could
+ * record it. The head office sees the desk, as before.
+ */
+export async function peopleToAdd(user: SessionUser) {
+  if (isStaff(user)) return deskPeople();
+  return (await orgUsers(user.orgId)).map((p) => ({ ...p, role: "" }));
 }
 
 /** Who has a part in this student's file, besides the counsellor it belongs to. */

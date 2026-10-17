@@ -15,7 +15,7 @@ import { aiFeatureOn } from "@/server/ai";
 import { guardiansFor, GUARDIAN_LIMIT } from "@/server/family";
 import { AddGuardianForm, GuardianRowActions, ResetGuardianForm } from "@/components/family-forms";
 import { AutofillPanel } from "./autofill";
-import { deskPeople, livingTeams, peopleOnFile } from "@/server/teams";
+import { livingTeams, peopleOnFile, peopleToAdd } from "@/server/teams";
 import { removePersonFromFileAction, setStudentTeamAction } from "./team-actions";
 import { AddPersonForm } from "./team-panel";
 
@@ -56,10 +56,19 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
   const showFull = (await can(user, "SEE_FULL_PASSPORT")) || reveal === "1";
   const passportDisplay = showFull ? student.passportNumber ?? "" : maskPassport(student.passportNumber);
 
-  // Who carries this file, besides the counsellor it is assigned to. Only the
-  // desk sees this: a branch names its own counsellor and nothing else.
+  /*
+    Who carries this file, besides the counsellor it is assigned to.
+
+    This was the desk's panel alone, on the reasoning that a branch names its
+    own counsellor and nothing else. That was wrong about how a branch works:
+    two counsellors sharing a student, or one covering while the other is
+    away, is the ordinary case, and the only way to record it was to ask the
+    head office. A branch sees the panel now and may put its own people on its
+    own students. The team row above stays the desk's, because which part of
+    the business carries a file is not a branch's call.
+  */
   const staffHere = isStaff(user);
-  const mayAssign = staffHere && canAssignStudents(user);
+  const mayAssign = canAssignStudents(user);
   // What they asked for before they were a student. The enquiry already
   // points at this file; it was simply never shown here, so the desk read a
   // registration with none of the conversation that led to it.
@@ -68,9 +77,11 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
     with: { notes: { orderBy: desc(schema.enquiryNotes.createdAt), limit: 20 } },
   });
 
-  const [teams, onFile, staff] = staffHere
-    ? await Promise.all([livingTeams(), peopleOnFile(id), mayAssign ? deskPeople() : Promise.resolve([])])
-    : [[], [], []];
+  const [teams, onFile, staff] = await Promise.all([
+    staffHere ? livingTeams() : Promise.resolve([]),
+    peopleOnFile(id),
+    mayAssign ? peopleToAdd(user) : Promise.resolve([]),
+  ]);
 
   // One source for the row at the top and for whether each part opens folded.
   // A part that is done folds away; a part still wanting something stays open,
@@ -293,17 +304,18 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
         </Section>
       )}
 
-      {staffHere && (
+      {(staffHere || mayAssign) && (
         <Section
           id="team"
-          title="Team and who is on this file"
+          title={staffHere ? "Team and who is on this file" : "Who is on this file"}
           meta={[
-            student.teamId ? teams.find((t) => t.id === student.teamId)?.name ?? "A retired team" : "No team",
+            ...(staffHere ? [student.teamId ? teams.find((t) => t.id === student.teamId)?.name ?? "A retired team" : "No team"] : []),
             onFile.length === 0 ? "nobody else named" : `${onFile.length} ${onFile.length === 1 ? "person" : "people"} besides the counsellor`,
           ].join(" · ")}
-          defaultOpen={!student.teamId}
+          defaultOpen={staffHere ? !student.teamId : onFile.length > 0}
           bodyClassName=""
         >
+          {staffHere && (
           <form action={setStudentTeamAction} className="flex flex-wrap items-end gap-2 border-b border-line px-4 py-3">
             <input type="hidden" name="studentId" value={id} />
             <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
@@ -325,6 +337,7 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
               Which part of the business carries this student: Ausbildung, Austria, the UK desk. The queues can be read one team at a time.
             </p>
           </form>
+          )}
 
           <ul className="divide-y divide-line">
             {onFile.length === 0 && (
