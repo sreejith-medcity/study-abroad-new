@@ -35,6 +35,7 @@ export function ApplyForm({
   canAddCourse,
   gate,
   todayYm,
+  todayIso,
 }: {
   studentId: string;
   /** What the picker shows before anything is typed: the shortlist, and the course arrived with. */
@@ -63,6 +64,13 @@ export function ApplyForm({
    * and the browser is told; both then build the same list.
    */
   todayYm: number;
+  /**
+   * Today, as the server reads it, as yyyy-mm-dd. Used to say whether an
+   * institution's deadline has passed: the browser's own date would make
+   * that sentence appear on the server's render and not on the browser's,
+   * or the other way round, for the hours the two are on different days.
+   */
+  todayIso: string;
 }) {
   const [intake, setIntake] = useState("");
   const [country, setCountry] = useState(defaultCountry);
@@ -206,7 +214,7 @@ export function ApplyForm({
           ))}
         </Select>
         <FieldError name="intake" />
-        {program && intake && program.deadlines[intake] && daysUntil(program.deadlines[intake]) < 0 && (
+        {program && intake && program.deadlines[intake] && daysUntil(program.deadlines[intake], new Date(todayIso)) < 0 && (
           <p className="text-xs font-medium text-stop-700">
             The institution&apos;s deadline for this intake was {dayText(program.deadlines[intake])}. You can still create the application, but the team may not be able to submit it; check before promising the student.
           </p>

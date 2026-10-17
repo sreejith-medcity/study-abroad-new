@@ -1,5 +1,6 @@
 "use client";
 
+import { groupInr } from "@/lib/format";
 import { useFormStatus } from "react-dom";
 import { Button } from "@/components/ui";
 
@@ -10,7 +11,7 @@ export function BulkStatusButtons({ total }: { total: number }) {
   return (
     <>
       <Button name="to" value="LIVE" size="sm" variant="secondary" disabled={pending}>
-        {doing === "LIVE" ? `Publishing ${total.toLocaleString("en-IN")}…` : "Publish"}
+        {doing === "LIVE" ? `Publishing ${groupInr(total)}…` : "Publish"}
       </Button>
       <Button name="to" value="DRAFT" size="sm" variant="quiet" disabled={pending}>
         {doing === "DRAFT" ? "Moving back…" : "Back to draft"}

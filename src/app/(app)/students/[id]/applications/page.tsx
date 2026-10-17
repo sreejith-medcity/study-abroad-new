@@ -130,6 +130,7 @@ async function ApplyPanel({ studentId, pathway, level, preselectProgramId, count
         canApply={await can(user, "SUBMIT_APPLICATION")}
         canAddCourse={(PROCESSING_ROLES as readonly string[]).includes(user.role)}
         todayYm={new Date().getFullYear() * 100 + new Date().getMonth() + 1}
+        todayIso={`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(new Date().getDate()).padStart(2, "0")}`}
         gate={
           gate && gate.missing.length
             ? {

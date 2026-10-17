@@ -1,5 +1,6 @@
 "use client";
 
+import { groupInr } from "@/lib/format";
 import { ActionForm } from "@/components/action-form";
 import { SelectField, TextField, TextareaField } from "@/components/fields";
 import { Button } from "@/components/ui";
@@ -20,7 +21,7 @@ export function PayoutForm({ balance, companies }: { balance: number; companies:
         min="1"
         max={String(balance)}
         required
-        hint={balance > 0 ? `Up to ${new Intl.NumberFormat("en-IN").format(balance)}` : "Nothing available yet"}
+        hint={balance > 0 ? `Up to ${groupInr(balance)}` : "Nothing available yet"}
         disabled={balance <= 0}
       />
       <TextareaField label="Note" name="note" rows={2} hint="Bank details change, invoice number, anything the team should know" />

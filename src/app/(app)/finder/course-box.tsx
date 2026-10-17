@@ -1,5 +1,6 @@
 "use client";
 
+import { groupInr } from "@/lib/format";
 import { useEffect, useRef, useState } from "react";
 import { Input, cn } from "@/components/ui";
 import { IconSearch } from "@/components/icons";
@@ -89,7 +90,7 @@ export function CourseBox({ q, field }: { q?: string; field?: string }) {
                 className={cn("flex w-full items-center justify-between gap-3 px-3 py-1.5 text-left text-[13px] hover:bg-surface-2", s.area && "font-medium text-brand-700")}
               >
                 <span className="truncate">{s.area ? `${s.value} (field of study)` : s.value}</span>
-                <span className="tabular shrink-0 text-xs text-muted">{s.n.toLocaleString("en-IN")}</span>
+                <span className="tabular shrink-0 text-xs text-muted">{groupInr(s.n)}</span>
               </button>
             </li>
           ))}

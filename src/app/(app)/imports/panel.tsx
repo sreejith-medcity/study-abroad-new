@@ -1,5 +1,6 @@
 "use client";
 
+import { groupInr } from "@/lib/format";
 import { startTransition, useActionState, type FormEvent } from "react";
 import { Alert, Button, Chip } from "@/components/ui";
 import { runImportAction, type ImportState } from "@/server/imports/actions";
@@ -14,11 +15,11 @@ function grouped(lines: { line: number; message: string }[]) {
   const by = new Map<string, number[]>();
   for (const l of lines) by.set(l.message, [...(by.get(l.message) ?? []), l.line]);
   return [...by.entries()].map(([message, all]) => {
-    const shown = all.slice(0, 3).map((n) => n.toLocaleString("en-IN")).join(", ");
+    const shown = all.slice(0, 3).map((n) => groupInr(n)).join(", ");
     const rest = all.length - 3;
     return {
       message,
-      where: all.length === 1 ? `Line ${shown}` : `Lines ${shown}${rest > 0 ? ` and ${rest.toLocaleString("en-IN")} more` : ""}`,
+      where: all.length === 1 ? `Line ${shown}` : `Lines ${shown}${rest > 0 ? ` and ${groupInr(rest)} more` : ""}`,
     };
   });
 }
@@ -58,7 +59,7 @@ export function ImportPanel({ kind }: { kind: string }) {
           </Button>
           {r && !mine.committed && willChange > 0 && (
             <Button type="submit" name="mode" value="commit" disabled={pending}>
-              Import {willChange.toLocaleString("en-IN")} row{willChange === 1 ? "" : "s"}
+              Import {groupInr(willChange)} row{willChange === 1 ? "" : "s"}
             </Button>
           )}
         </div>

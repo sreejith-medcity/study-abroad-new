@@ -1,5 +1,6 @@
 "use client";
 
+import { groupInr } from "@/lib/format";
 import { utcToday } from "@/lib/now";
 import { useState } from "react";
 import { ActionForm, FieldError } from "@/components/action-form";
@@ -50,7 +51,7 @@ export function RaiseInvoice({
         Raise an invoice ({ready.length})
       </button>
       <Modal open={open} onClose={() => setOpen(false)} title={`Invoice ${vendorName}`} description="One invoice, as many students as you tick. Vendors settle in batches, so an invoice per placement is an invoice nobody pays." className="max-w-3xl">
-        <ActionForm action={raiseInvoiceAction} submitLabel={`Raise it for ${net.toLocaleString("en-IN")} ${currency}`} pendingLabel="Raising…">
+        <ActionForm action={raiseInvoiceAction} submitLabel={`Raise it for ${groupInr(net)} ${currency}`} pendingLabel="Raising…">
           <input type="hidden" name="vendorId" value={vendorId} />
           {ticked.map((id) => (
             <input key={id} type="hidden" name="incomeLineIds" value={id} />
@@ -72,7 +73,7 @@ export function RaiseInvoice({
                     {[r.course, r.ackNo].filter(Boolean).join(" · ")} · {r.payableWhen} on {r.readyOn}
                   </span>
                 </span>
-                <span className="shrink-0 tabular">{r.amount?.toLocaleString("en-IN")} {r.currency}</span>
+                <span className="shrink-0 tabular">{r.amount == null ? "Not recorded" : groupInr(r.amount)} {r.currency}</span>
               </label>
             ))}
           </div>
@@ -93,7 +94,7 @@ export function RaiseInvoice({
           <Field label="Note on the invoice" htmlFor={`inv-note-${vendorId}`}>
             <Input id={`inv-note-${vendorId}`} name="note" placeholder="Against your statement of 30 September" />
           </Field>
-          <p className="text-xs text-muted">{chosen.length} student{chosen.length === 1 ? "" : "s"}, {net.toLocaleString("en-IN")} {currency} before tax.</p>
+          <p className="text-xs text-muted">{chosen.length} student{chosen.length === 1 ? "" : "s"}, {groupInr(net)} {currency} before tax.</p>
         </ActionForm>
       </Modal>
     </>
@@ -133,7 +134,7 @@ export function RecordPayment({ invoiceId, currency, outstanding }: { invoiceId:
         <ActionForm action={recordInvoicePaymentAction} submitLabel="Record it">
           <input type="hidden" name="invoiceId" value={invoiceId} />
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label={`How much came in (${currency})`} htmlFor={`p-amt-${invoiceId}`} required hint={`${outstanding.toLocaleString("en-IN")} is still owed.`}>
+            <Field label={`How much came in (${currency})`} htmlFor={`p-amt-${invoiceId}`} required hint={`${groupInr(outstanding)} is still owed.`}>
               <Input id={`p-amt-${invoiceId}`} name="amount" inputMode="numeric" defaultValue={outstanding || ""} />
               <FieldError name="amount" />
             </Field>
@@ -238,7 +239,7 @@ export function CreditInvoice({
                       const on = e.currentTarget.checked;
                       setTicked((was) => (on ? [...was, l.id] : was.filter((x) => x !== l.id)));
                     }}
-                    label={<span className="text-[13px]">{l.description} <span className="tabular text-muted">{l.amount.toLocaleString("en-IN")}</span></span>}
+                    label={<span className="text-[13px]">{l.description} <span className="tabular text-muted">{groupInr(l.amount)}</span></span>}
                   />
                 ))}
               </div>
@@ -249,7 +250,7 @@ export function CreditInvoice({
               label={`How much (${currency})`}
               htmlFor={`cn-amt-${invoiceId}`}
               required={ticked.length === 0}
-              hint={ticked.length ? `${fromLines.toLocaleString("en-IN")} from the students ticked.` : `${outstanding.toLocaleString("en-IN")} is still owed.`}
+              hint={ticked.length ? `${groupInr(fromLines)} from the students ticked.` : `${groupInr(outstanding)} is still owed.`}
             >
               <Input id={`cn-amt-${invoiceId}`} name="amount" inputMode="numeric" value={ticked.length ? String(fromLines) : undefined} readOnly={ticked.length > 0} />
               <FieldError name="amount" />
@@ -271,7 +272,7 @@ export function CreditInvoice({
               later falls away. */}
           {ticked.length > 0 && fromLines > outstanding && (
             <Alert tone="warn" title="More than is still owed">
-              Those students come to {fromLines.toLocaleString("en-IN")} and only {outstanding.toLocaleString("en-IN")} is outstanding, because part of this
+              Those students come to {groupInr(fromLines)} and only {groupInr(outstanding)} is outstanding, because part of this
               invoice has been paid. Credit what is owed and settle the difference as a refund, which is money going the other way and belongs in its own record.
             </Alert>
           )}

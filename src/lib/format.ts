@@ -16,9 +16,30 @@ export function fmtDateTime(d: Date | string | null | undefined) {
   return format(new Date(d), "dd/MM/yyyy hh:mm a");
 }
 
+/**
+ * A number with Indian grouping: 12,34,567 rather than 1,234,567.
+ *
+ * Written out rather than left to toLocaleString("en-IN"), because a number
+ * in a component that runs in the browser is formatted twice, once by the
+ * server's Node and once by the browser, and the two only agree if the
+ * server's Node was built with the full set of locale data. On a host where
+ * it was not, the server writes 1,234,567 and the browser writes 12,34,567:
+ * the same number, a different string, and React throws out the page. This
+ * gives one answer everywhere.
+ */
+export function groupInr(n: number): string {
+  const neg = n < 0;
+  const [whole, fraction] = Math.abs(n).toString().split(".");
+  // The last three digits, then pairs: 1 23 45 678.
+  const last3 = whole.slice(-3);
+  const rest = whole.slice(0, -3);
+  const grouped = rest ? `${rest.replace(/\B(?=(\d{2})+(?!\d))/g, ",")},${last3}` : last3;
+  return `${neg ? "-" : ""}${grouped}${fraction ? `.${fraction}` : ""}`;
+}
+
 export function fmtMoney(amount: number | null | undefined, currency: string) {
   if (amount == null) return "";
-  return `${currency} ${amount.toLocaleString("en-IN")}`;
+  return `${currency} ${groupInr(amount)}`;
 }
 
 /** Indian financial year label, e.g. 26-27 for dates between Apr 2026 and Mar 2027. */
