@@ -1,6 +1,27 @@
 import type { Metadata } from "next";
 import { getSession } from "@/lib/auth";
 import { readSkin } from "@/lib/skins";
+/*
+  The type, served from this application rather than from Google.
+
+  Every page used to wait on a stylesheet from fonts.googleapis.com before it
+  could paint, which is a third party on the critical path of a portal that
+  holds student files, and a request from every branch in Kerala to a server
+  somewhere else. These are the same fonts as files in the bundle: no
+  round trip, nothing to be blocked, and nobody told who is reading what.
+
+  Only the weights the portal uses, and only latin, because that is what the
+  portal is written in. Each one is about 25 kilobytes.
+*/
+import "@fontsource/plus-jakarta-sans/latin-600.css";
+import "@fontsource/plus-jakarta-sans/latin-700.css";
+import "@fontsource/plus-jakarta-sans/latin-800.css";
+import "@fontsource/inter/latin-400.css";
+import "@fontsource/inter/latin-500.css";
+import "@fontsource/inter/latin-600.css";
+import "@fontsource/inter/latin-700.css";
+import "@fontsource/ibm-plex-mono/latin-400.css";
+import "@fontsource/ibm-plex-mono/latin-500.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -20,14 +41,6 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const skin = readSkin(session?.skin);
   return (
     <html lang="en" data-skin={skin}>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=IBM+Plex+Mono:wght@400;500&display=swap"
-        />
-      </head>
       <body className="min-h-screen text-[15px] antialiased">{children}</body>
     </html>
   );

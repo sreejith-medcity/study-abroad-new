@@ -47,8 +47,19 @@
   --color-stop-500: #c0342c;
   --color-stop-700: #96261f;
 
-  --font-display: "Poppins", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "DM Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  /*
+    Headings in Plus Jakarta Sans, everything else in Inter.
+
+    Poppins was a geometric face with a wide, circular lower case: handsome
+    on a poster, and on a screen of tables it made every heading longer than
+    it needed to be and every figure wider than the column beside it. Inter
+    was drawn for exactly this, small text on a screen, and its figures are
+    the same width as each other, which is what makes a column of them line
+    up. Plus Jakarta carries the headings so the portal does not read as a
+    page of settings.
+  */
+  --font-display: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* Two steps of depth only: cards sit on the page, pop-overs float above it. */
@@ -66,7 +77,9 @@ body {
   background: var(--color-ground);
   color: var(--color-ink);
   font-family: var(--font-sans);
-  font-feature-settings: "cv05", "ss01";
+  /* Inter: the straight-sided one, and the 1 with a foot, which stops it
+     reading as an l in an acknowledgement number. */
+  font-feature-settings: "cv05" 1, "cv08" 1;
 }
 
 h1,
@@ -75,7 +88,8 @@ h3,
 h4,
 .font-display {
   font-family: var(--font-display);
-  letter-spacing: -0.015em;
+  /* Plus Jakarta sets a little loose at display sizes. */
+  letter-spacing: -0.021em;
 }
 
 .tabular {
