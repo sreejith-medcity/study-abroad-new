@@ -474,7 +474,22 @@ export function AlertTiles({
   tiles,
   allClear = "Nothing needs you this morning.",
 }: {
-  tiles: { label: string; value: number; note?: string; tone: keyof typeof edgeTone; href?: string; always?: boolean }[];
+  tiles: {
+    label: string;
+    value: number;
+    note?: string;
+    tone: keyof typeof edgeTone;
+    href?: string;
+    always?: boolean;
+    /**
+     * How this tile reads in the line that lists what is at nought, which
+     * is written as "Nothing <this>, <this> or <this>." A label is a
+     * heading and does not always survive being dropped into a sentence:
+     * "Nothing visa rejections" is not English. Left out, the label is
+     * used, lowercased.
+     */
+    nothing?: string;
+  }[];
   allClear?: string;
 }) {
   const shown = tiles.filter((t) => t.value !== 0 || t.always);
@@ -485,7 +500,7 @@ export function AlertTiles({
         <p className="font-display text-[15px] font-semibold text-ink">{allClear}</p>
         {empty.length > 0 && (
           <p className="mt-1 text-[13px] text-muted">
-            Nothing {empty.map((t) => t.label.toLowerCase()).join(", ")}.
+            Nothing {empty.map((t) => t.nothing ?? t.label.toLowerCase()).join(", ")}.
           </p>
         )}
       </Card>
@@ -520,7 +535,7 @@ export function AlertTiles({
           {empty.map((t, i) => (
             <span key={t.label}>
               {i > 0 && (i === empty.length - 1 ? " or " : ", ")}
-              {t.label.toLowerCase()}
+              {t.nothing ?? t.label.toLowerCase()}
             </span>
           ))}
           .

@@ -2,8 +2,7 @@ import type { SessionUser } from "@/lib/auth";
 import { ageing, invoiceList, queueByVendor } from "@/server/invoicing";
 import { AGE_LABEL, AGE_ORDER } from "@/lib/invoicing";
 import { fmtMoney } from "@/lib/format";
-import { Card, CardHeader, Chip, DashboardHero, EmptyState, LinkButton, Stat, Table, Td, Th, cn } from "@/components/ui";
-import { IconAlert, IconCheck, IconClock, IconQueue } from "@/components/icons";
+import { AlertTiles, Card, CardHeader, Chip, DashboardHero, EmptyState, HeroBand, LinkButton, Table, Td, Th, cn } from "@/components/ui";
 
 /**
  * The money, for whoever is answerable for it.
@@ -45,26 +44,71 @@ export default async function FinanceDashboard({ user }: { user: SessionUser }) 
             </LinkButton>
           </>
         }
-      />
+      >
+        <HeroBand
+          figures={[
+            { label: "Late", value: late.length, href: "/admin/invoices?tab=ageing" },
+            { label: "Open invoices", value: aged.invoices.length, href: "/admin/invoices" },
+            { label: "Ready to invoice", value: ready, href: "/admin/invoices?tab=queue" },
+            { label: "On a milestone", value: waiting },
+            { label: "No rate at all", value: unpriced },
+          ]}
+        />
+      </DashboardHero>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card className="p-4">
-          <Stat icon={<IconQueue />} label="Ready to invoice" value={ready} />
-          <p className="mt-1 text-xs text-muted">{amounts(readyMoney)}</p>
-        </Card>
-        <Card className="p-4">
-          <Stat icon={<IconClock />} label="Open invoices" value={aged.invoices.length} />
-          <p className="mt-1 text-xs text-muted">{amounts(owed)} outstanding</p>
-        </Card>
-        <Card className="p-4">
-          <Stat icon={<IconAlert />} label="Late" value={late.length} tone={late.length > 0 ? "stop" : undefined} />
-          <p className="mt-1 text-xs text-muted">{late.length > 0 ? "Past the date their terms gave" : "Nothing past its due date"}</p>
-        </Card>
-        <Card className="p-4">
-          <Stat icon={<IconCheck />} label="Waiting on a milestone" value={waiting} />
-          <p className="mt-1 text-xs text-muted">{unpriced > 0 ? `${unpriced} with no rate recorded at all` : "Every ready line has a rate"}</p>
-        </Card>
-      </div>
+      {/* Money owed first. What has come in is a figure you read; what is
+          late is somebody to ring, and the oldest bucket says how hard. */}
+      <AlertTiles
+        allClear="Nothing is late and nothing is waiting to be invoiced."
+        tiles={[
+          {
+            label: "Past 90 days",
+            nothing: "past 90 days",
+            value: aged.buckets.get("LATE_90")?.count ?? 0,
+            tone: "stop",
+            note: amounts(aged.buckets.get("LATE_90")?.amounts ?? {}),
+            href: "/admin/invoices?tab=ageing",
+          },
+          {
+            label: "Late",
+            nothing: "late",
+            value: late.length,
+            tone: "stop",
+            note: `${amounts(owed)} outstanding in all`,
+            href: "/admin/invoices?tab=ageing",
+          },
+          {
+            label: "Ready to invoice",
+            nothing: "ready to invoice",
+            value: ready,
+            tone: "warn",
+            note: amounts(readyMoney),
+            href: "/admin/invoices?tab=queue",
+          },
+          {
+            label: "No rate recorded",
+            nothing: "missing a rate",
+            value: unpriced,
+            tone: "warn",
+            note: "Cannot be invoiced at all",
+            href: "/admin/vendors",
+          },
+          {
+            label: "Waiting on a milestone",
+            nothing: "waiting on a milestone",
+            value: waiting,
+            tone: "info",
+            note: "Nothing to do until it lands",
+          },
+          {
+            label: "Credited back",
+            nothing: "credited back",
+            value: credited,
+            tone: "good",
+            note: "Across every invoice raised",
+          },
+        ]}
+      />
 
       {unpriced > 0 && (
         <Card className="border-warn-500/25 bg-warn-50/60 p-4 text-[13px]">

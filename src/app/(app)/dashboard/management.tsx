@@ -18,6 +18,7 @@ import {
 import { enquiryCounts } from "@/server/enquiries";
 import { commissionTotals, inr } from "@/server/commission";
 import {
+  AlertTiles,
   BarList,
   Card,
   CardHeader,
@@ -25,13 +26,11 @@ import {
   DashboardHero,
   DataList,
   FunnelSteps,
-  Stat,
   Table,
   Td,
   Th,
   TrendChart,
 } from "@/components/ui";
-import { IconAlert, IconApplications, IconCheck } from "@/components/icons";
 import { DashboardFilters, RecentChangesCard } from "./parts";
 import { ownApplicationsOnly } from "@/server/scope";
 
@@ -83,12 +82,49 @@ export default async function ManagementDashboard({ user, f }: { user: SessionUs
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_330px]">
         <div className="space-y-5">
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Stat label="Applications" tone="brand" icon={<IconApplications className="size-4" />} value={kpis.all} href="/applications" />
-            <Stat label="Offers" tone="good" icon={<IconCheck className="size-4" />} value={kpis.offers} href="/applications?kpi=offers" />
-            <Stat label="Visas received" tone="good" icon={<IconCheck className="size-4" />} value={kpis.visa_received} href="/applications?kpi=visa_received" />
-            <Stat label="Past SLA" tone="stop" icon={<IconAlert className="size-4" />} value={late.total} href="/applications?group=PENDING_PARTNER" />
-          </div>
+          {/* Management reads this screen rather than works it, so what
+              belongs at the top is not a list of things to do but the few
+              figures going the wrong way. The volumes are in the hero
+              above; these are the ones that cost money. */}
+          <AlertTiles
+            allClear="Nothing is going the wrong way this period."
+            tiles={[
+              {
+                label: "Past the service level",
+                nothing: "past the service level",
+                value: late.total,
+                tone: "stop",
+                note: "Sitting longer than the lane allows",
+                href: "/applications?group=PENDING_PARTNER",
+              },
+              {
+                label: "Visa rejections",
+                nothing: "rejected at the visa",
+                value: kpis.visa_rejected,
+                tone: "stop",
+                note: "A fee paid and no visa",
+                href: "/applications?kpi=visa_rejected",
+              },
+              {
+                label: "Deferrals",
+                nothing: "deferred",
+                value: kpis.deferrals,
+                tone: "warn",
+                note: "Moved to a later intake",
+                href: "/applications?kpi=deferrals",
+              },
+              {
+                label: "Non-enrolment",
+                nothing: "withdrawn after a visa",
+                value: kpis.non_enrolment,
+                tone: "warn",
+                note: "Withdrew once the visa was in hand",
+                href: "/applications?kpi=non_enrolment",
+              },
+              { label: "Offers", value: kpis.offers, tone: "good", always: true, href: "/applications?kpi=offers" },
+              { label: "Visas received", value: kpis.visa_received, tone: "good", always: true, href: "/applications?kpi=visa_received" },
+            ]}
+          />
 
           <Card>
             <CardHeader title="Twelve month trend" subtitle="Applications created against visas received" />
