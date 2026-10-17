@@ -12,6 +12,7 @@ import { BriefBox } from "./brief-box";
 import { CourseBox } from "./course-box";
 import { FinderResults } from "./results";
 import { Button, Card, CardHeader, Field, Input, LinkButton, PageHeader, Select, cn } from "@/components/ui";
+import { CheckDropdown } from "@/components/check-dropdown";
 
 export const metadata = { title: "Course finder" };
 
@@ -132,6 +133,47 @@ export default async function FinderPage({ searchParams }: { searchParams: Promi
       </div>
     </fieldset>
   );
+  /*
+    The same three questions as a row of dropdowns.
+
+    On the one screen that asks everything at once, sixteen destinations,
+    nine levels and three intakes as ticks come to nearly thirty controls
+    stacked before the scores are even reached, and the scores are what
+    somebody came to fill in. Behind three dropdowns they take one line, and
+    each says what is chosen without being opened. The guided steps keep the
+    ticks, because one question to a screen is where a wall of them is the
+    right shape.
+  */
+  const chosenLevels = LEVELS.filter(([k]) => chosen.levels.includes(k)).map(([, l]) => l);
+  const seasonsChosen = Object.entries(SEASON_LABEL).filter(([k]) => chosen.seasons.includes(k)).map(([, l]) => l);
+  const narrowRow = (
+    <div className="grid gap-2.5 sm:grid-cols-3 [&>*]:min-w-0">
+      <CheckDropdown
+        testId="finder-country"
+        label="Anywhere"
+        summary={picked.length === 0 ? null : picked.length <= 2 ? picked.map((c) => c.name).join(", ") : `${picked.length} destinations`}
+        name="country"
+        options={countries.map((c) => [c.code, `${c.name} (${c.n.toLocaleString("en-IN")})`] as const)}
+        selected={chosen.countries}
+      />
+      <CheckDropdown
+        testId="finder-level"
+        label="Any level"
+        summary={chosenLevels.length === 0 ? null : chosenLevels.length <= 2 ? chosenLevels.join(", ") : `${chosenLevels.length} levels`}
+        name="level"
+        options={LEVELS}
+        selected={chosen.levels}
+      />
+      <CheckDropdown
+        testId="finder-season"
+        label="Any intake"
+        summary={seasonsChosen.length === 0 ? null : seasonsChosen.join(", ")}
+        name="season"
+        options={Object.entries(SEASON_LABEL)}
+        selected={chosen.seasons}
+      />
+    </div>
+  );
   const seasonPills = (
     <fieldset>
       <legend className="mb-1.5 text-[13px] font-semibold text-ink">Intake</legend>
@@ -205,9 +247,7 @@ export default async function FinderPage({ searchParams }: { searchParams: Promi
                 </Select>
               </Field>
             </div>
-            {destinations}
-            {levelPills}
-            {seasonPills}
+            {narrowRow}
             <fieldset className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
               <legend className="mb-1 text-[13px] font-semibold text-ink">Scores as they stand</legend>
               {TESTS.map(([key, label, hint]) => (

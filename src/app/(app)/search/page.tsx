@@ -40,6 +40,10 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   }
   const page = Math.max(1, Number(f.page ?? 1));
   const view = f.view === "universities" ? "universities" : f.view === "routes" ? "routes" : "programs";
+  // How many of the folded controls are on, so the fold can open itself rather
+  // than hide a filter somebody cannot see they have set.
+  const FOLDED = ["intakeMonth", "minIelts", "budget", "field", "vendor", "apply", "sort", "student"] as const;
+  const foldedOn = FOLDED.filter((k) => f[k]).length;
   const { programs: p, universities: u, countries: c, students: s } = schema;
 
   const rates = fxRates(await getSettings());
@@ -300,12 +304,13 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       />
 
       <Toolbar className="mb-3">
-        <form className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4 [&>*]:min-w-0">
+        <form className="space-y-2.5">
           {Object.entries(f)
             .filter(([k]) => CARRIED.includes(k))
             .map(([k, v]) => (
               <input key={k} type="hidden" name={k} value={v} />
             ))}
+          <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-5 [&>*]:min-w-0">
           <div className="relative sm:col-span-2">
             <IconSearch className="pointer-events-none absolute left-3 top-1/2 size-[18px] -translate-y-1/2 text-muted" />
             <Input name="q" defaultValue={f.q} placeholder="Program, university or study area" aria-label="Search" className="pl-10" />
@@ -318,6 +323,19 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           </Select>
           <CheckDropdown testId="level-picker" label="Any level" summary={levelText || null} name="level" options={LEVELS} selected={levelsOn} />
           <CheckDropdown testId="season-picker" label="Any intake season" summary={seasonText ? `${seasonText} intake` : null} name="season" options={Object.entries(SEASON_LABEL)} selected={seasonsOn} />
+        </div>
+
+        {/* Eleven controls in a grid is not a filter bar, it is a wall, and
+            the four somebody actually reaches for were lost in it. The rest
+            fold. The fold opens itself when any of them is on, because a
+            filter you cannot see you have set is worse than one you have to
+            open a fold to reach. */}
+        <details data-testid="search-fold" open={foldedOn > 0} className="group">
+          <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-lg border border-line-strong px-2.5 py-2 text-[13px] font-medium text-ink-soft transition hover:border-brand-300 hover:text-brand-700">
+            <span className="group-open:hidden">More filters{foldedOn > 0 ? ` (${foldedOn} on)` : ""}</span>
+            <span className="hidden group-open:inline">Fewer filters</span>
+          </summary>
+          <div className="mt-2.5 grid gap-2.5 border-t border-line pt-2.5 sm:grid-cols-2 xl:grid-cols-4 [&>*]:min-w-0">
           <Select name="intakeMonth" aria-label="Intake month" defaultValue={f.intakeMonth ?? ""}>
             <option value="">Any intake month</option>
             {MONTHS.map((m, i) => (
@@ -373,10 +391,13 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             initial={students.map((x) => ({ id: x.id, label: fullName(x), sub: [x.medcityId, x.phone].filter(Boolean).join(" · ") }))}
             selected={student ? { id: student.id, label: fullName(student), sub: [student.medcityId, student.phone].filter(Boolean).join(" · ") } : null}
           />
-          <div className="flex justify-end gap-2 sm:col-span-2 xl:col-span-4">
-            <LinkButton href="/search" variant="quiet" size="sm">Clear all</LinkButton>
-            <Button type="submit" size="sm">Search</Button>
           </div>
+        </details>
+
+        <div className="flex justify-end gap-2">
+          <LinkButton href="/search" variant="quiet" size="sm">Clear all</LinkButton>
+          <Button type="submit" size="sm">Search</Button>
+        </div>
         </form>
       </Toolbar>
 

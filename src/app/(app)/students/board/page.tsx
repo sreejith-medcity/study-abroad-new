@@ -6,7 +6,8 @@ import { fmtDate } from "@/lib/format";
 import { APP_ROLES, PARTNER_ROLES, isStaff, orgScope } from "@/lib/permissions";
 import { STAGES, stageLabel } from "@/lib/journey";
 import { lastContactFor, openTasksFor } from "@/server/tasks";
-import { Button, Card, Chip, EmptyState, PageHeader, Select, Toolbar } from "@/components/ui";
+import { Chip, EmptyState, PageHeader } from "@/components/ui";
+import { FilterBar } from "@/components/filter-bar";
 import { livingTeams } from "@/server/teams";
 
 export const metadata = { title: "Students by stage" };
@@ -88,14 +89,6 @@ export default async function BoardPage({ searchParams }: { searchParams: Promis
   });
   const shown = sp.quiet === "1" ? cards.filter((c) => c.quiet) : cards;
 
-  const href = (next: Record<string, string | undefined>) => {
-    const params = new URLSearchParams();
-    const merged = { branch: sp.branch, who: sp.who, quiet: sp.quiet, ...next };
-    for (const [k, v] of Object.entries(merged)) if (v) params.set(k, v);
-    const q = params.toString();
-    return `/students/board${q ? `?${q}` : ""}`;
-  };
-  const pill = (on: boolean) => (on ? "rounded-full bg-brand-600 px-3 py-1 text-xs font-medium text-white" : "rounded-full border border-line px-3 py-1 text-xs text-muted hover:text-ink");
 
   return (
     <>
@@ -106,59 +99,32 @@ export default async function BoardPage({ searchParams }: { searchParams: Promis
       />
 
       {/* Nineteen branches and a counsellor each made a wall of pills three
-          rows deep before the board itself began. The same choices, as
-          dropdowns, in one line. */}
-      <Toolbar className="mb-3">
-        <form className="grid w-full gap-2.5 sm:grid-cols-4 [&>*]:min-w-0">
-          {branches.length > 0 && (
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
-              Branch
-              <Select name="branch" defaultValue={sp.branch ?? ""} className="mt-1">
-                <option value="">Every branch</option>
-                {branches.map((b) => (
-                  <option key={b.id} value={b.id}>{b.name}</option>
-                ))}
-              </Select>
-            </label>
-          )}
-          {counsellors.length > 1 && (
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
-              Counsellor
-              <Select name="who" defaultValue={sp.who ?? ""} className="mt-1">
-                <option value="">Anybody&rsquo;s</option>
-                {counsellors.map((c) => (
-                  <option key={c.id} value={c.id}>{c.deskLabel ?? c.name}</option>
-                ))}
-              </Select>
-            </label>
-          )}
-          {teams.length > 0 && (
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
-              Team
-              <Select name="team" defaultValue={sp.team ?? ""} className="mt-1">
-                <option value="">Every team</option>
-                {teams.map((t) => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
-              </Select>
-            </label>
-          )}
-          <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
-            Show
-            <Select name="quiet" defaultValue={sp.quiet ?? ""} className="mt-1">
-              <option value="">Everybody ({cards.length})</option>
-              <option value="1">Nobody has spoken to them ({cards.filter((c) => c.quiet).length})</option>
-            </Select>
-          </label>
-          <div className="flex items-end gap-2 sm:col-span-4">
-            <Button variant="secondary" size="sm">Show these</Button>
-            {(sp.branch || sp.who || sp.team || sp.quiet) && (
-              <Link href="/students/board" className="text-[13px] text-muted hover:text-ink">Clear</Link>
-            )}
-            <span className="ml-auto text-xs text-muted">{shown.length} on the board</span>
-          </div>
-        </form>
-      </Toolbar>
+          rows deep before the board itself began. The same choices now go
+          through the bar every other list in the portal uses, so what is on
+          reads as chips you can take off one at a time, and there is one way
+          back to everybody. */}
+      <FilterBar
+        primary={3}
+        fields={[
+          ...(branches.length > 0
+            ? [{ kind: "select" as const, name: "branch", label: "Branch", options: branches.map((b) => ({ value: b.id, label: b.name })) }]
+            : []),
+          ...(counsellors.length > 1
+            ? [{ kind: "select" as const, name: "who", label: "Counsellor", options: counsellors.map((c) => ({ value: c.id, label: c.deskLabel ?? c.name })) }]
+            : []),
+          ...(teams.length > 0
+            ? [{ kind: "select" as const, name: "team", label: "Team", options: teams.map((t) => ({ value: t.id, label: t.name })) }]
+            : []),
+          {
+            kind: "select" as const,
+            name: "quiet",
+            label: "Contact",
+            options: [{ value: "1", label: `Never spoken to (${cards.filter((c) => c.quiet).length})` }],
+          },
+        ]}
+      >
+        <span className="pb-2 text-xs text-muted">{shown.length} of {cards.length} on the board</span>
+      </FilterBar>
 
       {shown.length === 0 ? (
         <EmptyState title="Nobody here">Register a student, or widen the filters.</EmptyState>
