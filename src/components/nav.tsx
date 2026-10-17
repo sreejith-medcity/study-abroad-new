@@ -173,54 +173,125 @@ function Item({ item, isActive, rail, onNavigate }: { item: NavItem; isActive: b
   );
 }
 
+const OPEN_KEY = "portal-nav-open";
+
+/**
+ * Which groups are open.
+ *
+ * The first render has to be the same on the server and in the browser, so it
+ * is worked out from the address alone: the group holding the page you are on
+ * is open and the rest are shut. What somebody actually left open is read
+ * from the browser a moment later, once there is a browser to read it from.
+ */
+function useOpenGroups(groups: NavGroup[], holdsActive: (g: NavGroup) => boolean) {
+  const [remembered, setRemembered] = useState<Record<string, boolean> | null>(null);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(OPEN_KEY);
+      setRemembered(raw ? (JSON.parse(raw) as Record<string, boolean>) : {});
+    } catch {
+      // Private browsing, or storage turned off, or somebody's half-written
+      // JSON. The menu still works; it just forgets between visits.
+      setRemembered({});
+    }
+  }, []);
+
+  const isOpen = (group: NavGroup) => {
+    // Whatever else is remembered, the group you are standing in is open.
+    if (holdsActive(group)) return true;
+    if (remembered && group.title in remembered) return remembered[group.title];
+    return false;
+  };
+
+  const toggle = (group: NavGroup, open: boolean) => {
+    const next = { ...(remembered ?? {}), [group.title]: open };
+    setRemembered(next);
+    try {
+      localStorage.setItem(OPEN_KEY, JSON.stringify(next));
+    } catch {
+      // Nothing to do.
+    }
+  };
+
+  // Used to leave the group transitions alone until the remembered state has
+  // arrived, so nothing is seen springing open on the way in.
+  return { isOpen, toggle, settled: remembered !== null, groups };
+}
+
 function Groups({ groups, rail, onNavigate }: { groups: NavGroup[]; rail: boolean; onNavigate?: () => void }) {
   const active = useActive(groups);
+  const holdsActive = (g: NavGroup) => g.items.some((i) => active(i.href));
+  const { isOpen, toggle } = useOpenGroups(groups, holdsActive);
+
   return (
-    <nav aria-label="Main" className={cn("space-y-4", rail ? "px-2 py-3" : "p-3")}>
+    <nav aria-label="Main" className={cn(rail ? "space-y-2 px-2 py-3" : "space-y-1 p-3")}>
       {groups.map((group) => {
         const items = group.items;
-        const holdsActive = items.some((i) => active(i.href));
+        const here = holdsActive(group);
         // Put away, the menu is the screens somebody works in. A column of
         // thirty icons is not a rail, and nobody collapses the menu in order
         // to reach the configuration screens faster. They are one click away
         // again the moment it is opened.
-        if (rail && group.folded && !holdsActive) return null;
+        if (rail && group.folded && !here) return null;
+        // What is waiting inside, which is the whole reason a shut group is
+        // still worth looking at.
         const waiting = items.reduce((n, i) => n + (i.count ?? 0), 0);
-        if (group.folded && !rail) {
+        const urgent = items.some((i) => i.count && i.tone === "stop");
+
+        if (rail) {
           return (
-            <details key={group.title} open={holdsActive} className="group/fold">
-              <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-lg px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted/70 hover:text-ink-soft">
-                {group.title}
-                <span aria-hidden="true" className="ml-auto text-[13px] leading-none transition-transform group-open/fold:rotate-90">
-                  &rsaquo;
-                </span>
-              </summary>
-              <div className="mt-1 space-y-0.5">
+            <div key={group.title}>
+              {/* A rule rather than a word: the groups still read as groups
+                  without a label nobody can see at this width. */}
+              <div aria-hidden="true" className="mx-2 mb-2 border-t border-line first:hidden" />
+              <div className="space-y-0.5">
                 {items.map((item) => (
-                  <Item key={item.href} item={item} isActive={active(item.href)} rail={false} onNavigate={onNavigate} />
+                  <Item key={item.href} item={item} isActive={active(item.href)} rail onNavigate={onNavigate} />
                 ))}
               </div>
-            </details>
+            </div>
           );
         }
+
+        const open = isOpen(group);
         return (
-          <div key={group.title}>
-            {rail ? (
-              // A rule rather than a word: the groups still read as groups
-              // without a label nobody can see at this width.
-              <div aria-hidden="true" className="mx-2 mb-2 border-t border-line first:hidden" />
-            ) : (
-              <p className="flex items-center gap-1.5 px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted/70">
-                {group.title}
-                {waiting > 0 && <span className="size-1.5 rounded-full bg-brand-400" aria-hidden="true" />}
-              </p>
-            )}
-            <div className="space-y-0.5">
+          <details
+            key={group.title}
+            open={open}
+            onToggle={(e) => {
+              const next = e.currentTarget.open;
+              if (next !== open) toggle(group, next);
+            }}
+            className="group/fold"
+          >
+            <summary
+              className={cn(
+                "flex cursor-pointer list-none items-center gap-2 rounded-lg px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] transition-colors",
+                here ? "text-brand-700" : "text-muted/70 hover:text-ink-soft",
+              )}
+            >
+              <span className="truncate">{group.title}</span>
+              {/* Shut, this is the only thing the group can tell you. */}
+              {waiting > 0 && !open && (
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 py-px text-[10px] font-bold tabular tracking-normal",
+                    urgent ? "bg-stop-500 text-white" : "bg-surface-2 text-ink-soft ring-1 ring-inset ring-line-strong",
+                  )}
+                >
+                  {waiting > 99 ? "99+" : waiting}
+                </span>
+              )}
+              <span aria-hidden="true" className="ml-auto text-[13px] leading-none transition-transform group-open/fold:rotate-90">
+                &rsaquo;
+              </span>
+            </summary>
+            <div className="mb-1 mt-0.5 space-y-0.5">
               {items.map((item) => (
-                <Item key={item.href} item={item} isActive={active(item.href)} rail={rail} onNavigate={onNavigate} />
+                <Item key={item.href} item={item} isActive={active(item.href)} rail={false} onNavigate={onNavigate} />
               ))}
             </div>
-          </div>
+          </details>
         );
       })}
     </nav>

@@ -37,31 +37,40 @@ for (const [email, who, ip] of [["sreejith@miak.in", "the Overseas team", "10.80
   await page.goto(`${BASE}/dashboard`);
   await settle(page);
 
-  // Every group, folded or not, and how many entries it holds.
-  const sizes = await page.locator("aside nav > div, aside nav > details").evaluateAll((els) =>
+  // Every group and how many entries it holds.
+  const sizes = await page.locator("aside nav > details").evaluateAll((els) =>
     els.map((e) => ({
-      title: (e.querySelector("p, summary")?.textContent ?? "").trim(),
+      title: (e.querySelector("summary span")?.textContent ?? "").trim(),
       items: e.querySelectorAll("a, span[title]").length,
-      folded: e.tagName === "DETAILS",
     })),
   );
-  const working = sizes.filter((g) => !g.folded);
-  const longest = Math.max(...working.map((g) => g.items));
-  check(longest <= 5, `${who}: no working group is longer than five, longest is ${longest} (${working.find((g) => g.items === longest)?.title})`);
   check(sizes.length >= 5, `${who}: the menu is in groups, ${sizes.length} of them`);
-  check(sizes.some((g) => g.folded), `${who}: the screens set up once are folded away`);
+  // One group is allowed to be long: the screens that are set up once and
+  // read twice a year, which is shut unless you are in it. Everything a
+  // person works in has to be readable without scanning.
+  const long = sizes.filter((g) => g.items > 5);
+  check(
+    long.length <= 1,
+    `${who}: at most one long group, and it is the set-up one (${long.map((g) => `${g.title} ${g.items}`).join(", ") || "none are long"})`,
+  );
+  check(sizes.every((g) => g.items > 0), `${who}: no group is empty`);
 
   /* ---------------- What is waiting, on the menu ---------------- */
 
   // The portal's own number for the documentation queue, against the badge.
   if (email === "sreejith@miak.in") {
     const waiting = Number(sql("select count(*) from checklist_items where state in ('UPLOADED','IN_REVIEW')"));
-    const badge = await page.locator('aside nav a[href="/documentation"] span.tabular').innerText().catch(() => "");
+    // Its group is shut on arrival, so open it the way somebody would.
+    await page.locator("aside nav details summary").filter({ hasText: "APPLICATIONS" }).click();
+    await page.waitForTimeout(300);
+    const badge = (await page.locator('aside nav a[href="/documentation"] span.tabular').textContent().catch(() => "")) ?? "";
     if (waiting > 0) {
-      check(badge === String(waiting), `${who}: the documentation queue carries its count, ${badge} against ${waiting}`);
+      check(badge.trim() === String(waiting), `${who}: the documentation queue carries its count, "${badge.trim()}" against ${waiting}`);
     } else {
       check(badge === "", `${who}: nothing waiting means no badge at all, not a nought`);
     }
+    await page.locator("aside nav details summary").filter({ hasText: "APPLICATIONS" }).click();
+    await page.waitForTimeout(300);
   }
 
   // A badge somebody cannot act on is not worth a millisecond: a branch has
@@ -69,6 +78,52 @@ for (const [email, who, ip] of [["sreejith@miak.in", "the Overseas team", "10.80
   if (email === "kottayam@medcity.test") {
     check((await page.locator('aside nav a[href="/documentation"]').count()) === 0, `${who}: is not shown the desk's queue at all`);
   }
+
+  /* ---------------- Stacked, and remembered ---------------- */
+
+  const shape = () =>
+    page.locator("aside nav details").evaluateAll((ds) =>
+      ds.map((d) => ({
+        title: (d.querySelector("summary span")?.textContent ?? "").trim(),
+        open: d.open,
+        badge: (d.querySelector("summary span.tabular")?.textContent ?? "").trim(),
+      })),
+    );
+
+  const onDashboard = await shape();
+  check(onDashboard.length >= 5, `${who}: every group folds, ${onDashboard.length} of them`);
+  const openNow = onDashboard.filter((g) => g.open);
+  check(openNow.length === 1, `${who}: one group open on arrival, the one you are in (${openNow.map((g) => g.title).join(", ")})`);
+  check(openNow[0]?.title.toUpperCase() === "TODAY", `${who}: and it is Today, because the dashboard is in it`);
+
+  // The whole point of a shut group: it still says what is behind it.
+  const shutWithWork = onDashboard.find((g) => !g.open && g.badge);
+  check(!!shutWithWork, `${who}: a shut group still says how much is waiting inside (${shutWithWork?.title} ${shutWithWork?.badge})`);
+
+  // A menu that fits. Before this, every entry was on screen at once.
+  const visible = await page.locator("aside nav a:visible").count();
+  const all = await page.locator("aside nav a").count();
+  check(visible < all / 2, `${who}: only the group you are in is showing, ${visible} of ${all}`);
+
+  // Open another, go somewhere else, and find it as you left it.
+  //
+  // Deliberately not the group holding where we are about to go: that one
+  // opens itself whether anything was remembered or not, so using it proves
+  // nothing. Money is nowhere near the students list.
+  const other = onDashboard.find((g) => !g.open && g.title.toUpperCase() === "MONEY");
+  check(!!other, `${who}: there is a Money group to leave open`);
+  await page.locator("aside nav details summary").filter({ hasText: other.title }).click();
+  await page.waitForTimeout(400);
+  await page.goto(`${BASE}/students`);
+  await settle(page);
+  const after = await shape();
+  const stillOpen = after.find((g) => g.title === other.title)?.open;
+  check(stillOpen === true, `${who}: ${other.title} was left open, so it is still open on the next screen`);
+  const here = after.find((g) => g.open && g.title.toUpperCase() === "STUDENTS");
+  check(!!here, `${who}: and the group holding the page you are now on opened itself`);
+
+  await page.goto(`${BASE}/dashboard`);
+  await settle(page);
 
   /* ---------------- Putting it away ---------------- */
 
