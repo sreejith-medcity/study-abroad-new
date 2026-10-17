@@ -76,9 +76,9 @@ export default async function DeskCounsellorDashboard({ user, f }: { user: Sessi
         <AlertTiles
           allClear="Nothing is waiting on you this morning."
           tiles={[
-            { label: "Waiting on you", value: work.waiting, tone: "warn", note: "Your files, nobody else's", href: "/applications?assignedTo=me" },
-            { label: "Live applications", value: work.live, tone: "info", always: true, href: "/applications" },
-            { label: "Visas granted", value: kpis.visa_received ?? 0, tone: "good", always: true },
+            { label: "Waiting on you", nothing: "waiting on you", value: work.waiting, tone: "warn", note: "Your files, nobody else's", href: "/applications?assignedTo=me" },
+            { label: "Live applications", nothing: "live", value: work.live, tone: "info", always: true, href: "/applications" },
+            { label: "Visas granted", nothing: "through the visa", value: kpis.visa_received ?? 0, tone: "good", always: true },
           ]}
         />
       </div>

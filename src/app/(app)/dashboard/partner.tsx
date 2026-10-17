@@ -228,12 +228,13 @@ export default async function PartnerDashboard({
             tiles={[
               {
                 label: "Follow ups overdue",
+                nothing: "overdue to follow up",
                 value: enquiries.overdue,
                 tone: "stop",
                 note: "Past the date you set",
                 href: "/enquiries?due=overdue",
               },
-              { label: "Due today", value: enquiries.dueToday, tone: "warn", href: "/enquiries?due=today" },
+              { label: "Due today", nothing: "due today", value: enquiries.dueToday, tone: "warn", href: "/enquiries?due=today" },
               {
                 label: branchWide ? "Waiting on your branch" : "Waiting on you",
                 value: branchWide ? kpis.pending_partner : work.waiting,
@@ -241,7 +242,7 @@ export default async function PartnerDashboard({
                 note: "Held up until somebody here acts",
                 href: "/applications?group=PENDING_PARTNER",
               },
-              { label: "Unread student replies", value: work.replies.length, tone: "info", href: "/applications?group=PENDING_PARTNER" },
+              { label: "Unread student replies", nothing: "unread from a student", value: work.replies.length, tone: "info", href: "/applications?group=PENDING_PARTNER" },
             ]}
           />
 

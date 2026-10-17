@@ -105,12 +105,12 @@ export default async function AdminDashboard({ user, f, showMoney = true }: { us
           <AlertTiles
             allClear="Nothing is open across the partners."
             tiles={[
-              { label: "Past the service level", value: late.total, tone: "stop", note: "Across every lane", href: "/admin/queue" },
-              { label: "Nobody has picked up", value: load.unassigned, tone: "warn", note: "Waiting on this desk", href: "/applications?assignedTo=none" },
-              { label: "Pending from partner", value: groups.PENDING_PARTNER, tone: "warn", href: "/applications?group=PENDING_PARTNER" },
-              { label: "New / assessment", value: groups.NEW, tone: "brand", always: true, href: "/applications?group=NEW" },
-              { label: "In progress", value: groups.IN_PROGRESS, tone: "info", always: true, href: "/applications?group=IN_PROGRESS" },
-              { label: "Offer / contract", value: groups.OFFER, tone: "good", always: true, href: "/applications?group=OFFER" },
+              { label: "Past the service level", nothing: "past the service level", value: late.total, tone: "stop", note: "Across every lane", href: "/admin/queue" },
+              { label: "Nobody has picked up", nothing: "unclaimed", value: load.unassigned, tone: "warn", note: "Waiting on this desk", href: "/applications?assignedTo=none" },
+              { label: "Pending from partner", nothing: "waiting on a partner", value: groups.PENDING_PARTNER, tone: "warn", href: "/applications?group=PENDING_PARTNER" },
+              { label: "New / assessment", nothing: "new", value: groups.NEW, tone: "brand", always: true, href: "/applications?group=NEW" },
+              { label: "In progress", nothing: "in progress", value: groups.IN_PROGRESS, tone: "info", always: true, href: "/applications?group=IN_PROGRESS" },
+              { label: "Offer / contract", nothing: "at offer", value: groups.OFFER, tone: "good", always: true, href: "/applications?group=OFFER" },
             ]}
           />
 

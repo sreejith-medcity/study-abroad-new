@@ -55,8 +55,26 @@ const ICONS = {
   training: IconCheck,
 } as const;
 
-export type NavItem = { href: string; label: string; icon: keyof typeof ICONS; soon?: string };
-export type NavGroup = { title: string; items: NavItem[] };
+export type NavItem = {
+  href: string;
+  label: string;
+  icon: keyof typeof ICONS;
+  soon?: string;
+  /** What is waiting behind this entry, when it is worth saying. */
+  count?: number;
+  /** Red for late, amber for waiting. Left out, the badge is quiet. */
+  tone?: "stop" | "warn";
+};
+export type NavGroup = {
+  title: string;
+  items: NavItem[];
+  /**
+   * A group that is shut until somebody wants it: the configuration screens,
+   * which are read once a quarter and otherwise sit between a counsellor and
+   * the work. It opens itself when the page you are on is inside it.
+   */
+  folded?: boolean;
+};
 
 /**
  * Only the most specific match lights up. Without this, /settings/platform marks
@@ -73,17 +91,49 @@ function useActive(groups: NavGroup[]) {
   return (href: string) => href === best;
 }
 
-function Item({ item, isActive, onNavigate }: { item: NavItem; isActive: boolean; onNavigate?: () => void }) {
+const badgeTone = {
+  stop: "bg-stop-500 text-white",
+  warn: "bg-warn-500 text-white",
+  quiet: "bg-surface-2 text-ink-soft ring-1 ring-inset ring-line-strong",
+} as const;
+
+/** The number waiting behind an entry, or nothing at all when there is none. */
+function Badge({ item, rail }: { item: NavItem; rail: boolean }) {
+  if (!item.count) return null;
+  const tone = item.tone ?? "quiet";
+  if (rail) {
+    // No room for a figure on the rail, so it becomes a dot: enough to send
+    // somebody looking, which is all a collapsed menu has to do.
+    return (
+      <span
+        aria-hidden="true"
+        className={cn("absolute right-0.5 top-0.5 size-2.5 rounded-full ring-2 ring-surface", tone === "quiet" ? "bg-line-strong" : badgeTone[tone].split(" ")[0])}
+      />
+    );
+  }
+  return (
+    <span className={cn("ml-auto min-w-[1.35rem] rounded-full px-1.5 py-px text-center text-[11px] font-bold tabular", badgeTone[tone])}>
+      {item.count > 99 ? "99+" : item.count}
+    </span>
+  );
+}
+
+function Item({ item, isActive, rail, onNavigate }: { item: NavItem; isActive: boolean; rail: boolean; onNavigate?: () => void }) {
   const Icon = ICONS[item.icon];
+  const waiting = item.count ? `, ${item.count} waiting` : "";
   if (item.soon) {
     return (
       <span
-        className="flex cursor-default items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-muted/60"
-        title={`Planned for phase ${item.soon.replace("P", "")}`}
+        className={cn("flex cursor-default items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-muted/60", rail && "justify-center px-0")}
+        title={`${item.label} — planned for phase ${item.soon.replace("P", "")}`}
       >
         <Icon className="size-[18px] shrink-0" />
-        <span className="flex-1 truncate">{item.label}</span>
-        <span className="rounded bg-surface-2 px-1.5 py-0.5 text-[10px] font-semibold text-muted">{item.soon}</span>
+        {!rail && (
+          <>
+            <span className="flex-1 truncate">{item.label}</span>
+            <span className="rounded bg-surface-2 px-1.5 py-0.5 text-[10px] font-semibold text-muted">{item.soon}</span>
+          </>
+        )}
       </span>
     );
   }
@@ -92,45 +142,149 @@ function Item({ item, isActive, onNavigate }: { item: NavItem; isActive: boolean
       href={item.href}
       onClick={onNavigate}
       aria-current={isActive ? "page" : undefined}
+      title={rail ? `${item.label}${waiting}` : undefined}
+      aria-label={rail ? `${item.label}${waiting}` : undefined}
       className={cn(
-        "relative flex items-center gap-2.5 rounded-lg py-2 pl-3 pr-2.5 text-sm font-medium transition-colors",
-        isActive ? "bg-brand-50 text-brand-700" : "text-ink-soft hover:bg-surface-2 hover:text-ink",
+        "group relative flex items-center gap-2.5 rounded-lg text-sm font-medium transition-colors",
+        rail ? "mx-auto size-10 justify-center" : "py-2 pl-3 pr-2",
+        isActive
+          ? rail
+            ? "bg-brand-600 text-white shadow-card"
+            : "bg-brand-50 text-brand-700"
+          : "text-ink-soft hover:bg-surface-2 hover:text-ink",
       )}
     >
-      {/* A marker on the edge, so the active item reads at a glance down the column. */}
-      <span
-        aria-hidden="true"
-        className={cn(
-          "absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full transition-all",
-          isActive ? "bg-brand-600" : "bg-transparent",
-        )}
-      />
-      <Icon className={cn("size-[18px] shrink-0", isActive ? "text-brand-600" : "text-muted")} />
-      <span className="truncate">{item.label}</span>
+      {/* A marker on the edge, so the active item reads at a glance down the
+          column. On the rail the whole square is filled instead: a hairline
+          beside a centred icon is not something anybody notices. */}
+      {!rail && (
+        <span
+          aria-hidden="true"
+          className={cn(
+            "absolute left-0 top-1/2 w-[3px] -translate-y-1/2 rounded-r-full transition-all",
+            isActive ? "h-4 bg-brand-600" : "h-0 bg-transparent",
+          )}
+        />
+      )}
+      <Icon className={cn("size-[18px] shrink-0 transition-colors", isActive ? (rail ? "text-white" : "text-brand-600") : "text-muted group-hover:text-ink-soft")} />
+      {!rail && <span className="truncate">{item.label}</span>}
+      <Badge item={item} rail={rail} />
     </Link>
   );
 }
 
-function Groups({ groups, onNavigate }: { groups: NavGroup[]; onNavigate?: () => void }) {
+function Groups({ groups, rail, onNavigate }: { groups: NavGroup[]; rail: boolean; onNavigate?: () => void }) {
   const active = useActive(groups);
   return (
-    <nav aria-label="Main" className="space-y-5 p-3">
-      {groups.map((group) => (
-        <div key={group.title}>
-          <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted/70">{group.title}</p>
-          <div className="space-y-0.5">
-            {group.items.map((item) => (
-              <Item key={item.href} item={item} isActive={active(item.href)} onNavigate={onNavigate} />
-            ))}
+    <nav aria-label="Main" className={cn("space-y-4", rail ? "px-2 py-3" : "p-3")}>
+      {groups.map((group) => {
+        const items = group.items;
+        const holdsActive = items.some((i) => active(i.href));
+        // Put away, the menu is the screens somebody works in. A column of
+        // thirty icons is not a rail, and nobody collapses the menu in order
+        // to reach the configuration screens faster. They are one click away
+        // again the moment it is opened.
+        if (rail && group.folded && !holdsActive) return null;
+        const waiting = items.reduce((n, i) => n + (i.count ?? 0), 0);
+        if (group.folded && !rail) {
+          return (
+            <details key={group.title} open={holdsActive} className="group/fold">
+              <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-lg px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted/70 hover:text-ink-soft">
+                {group.title}
+                <span aria-hidden="true" className="ml-auto text-[13px] leading-none transition-transform group-open/fold:rotate-90">
+                  &rsaquo;
+                </span>
+              </summary>
+              <div className="mt-1 space-y-0.5">
+                {items.map((item) => (
+                  <Item key={item.href} item={item} isActive={active(item.href)} rail={false} onNavigate={onNavigate} />
+                ))}
+              </div>
+            </details>
+          );
+        }
+        return (
+          <div key={group.title}>
+            {rail ? (
+              // A rule rather than a word: the groups still read as groups
+              // without a label nobody can see at this width.
+              <div aria-hidden="true" className="mx-2 mb-2 border-t border-line first:hidden" />
+            ) : (
+              <p className="flex items-center gap-1.5 px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted/70">
+                {group.title}
+                {waiting > 0 && <span className="size-1.5 rounded-full bg-brand-400" aria-hidden="true" />}
+              </p>
+            )}
+            <div className="space-y-0.5">
+              {items.map((item) => (
+                <Item key={item.href} item={item} isActive={active(item.href)} rail={rail} onNavigate={onNavigate} />
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </nav>
   );
 }
 
+const RAIL_KEY = "portal-nav-rail";
+
+/**
+ * The side menu, which can be put away.
+ *
+ * A counsellor working a wide table wants the screen back, and an admin who
+ * knows the portal does not need the words. Collapsed it is a column of
+ * icons with the counts still on them as dots, so putting it away does not
+ * mean losing what is waiting.
+ *
+ * The choice is remembered in the browser rather than on the account: it is a
+ * preference about this screen, and the same person on a laptop and a large
+ * monitor will want different answers.
+ */
 export function SideNav({ groups }: { groups: NavGroup[] }) {
-  return <Groups groups={groups} />;
+  // Open until told otherwise, and read after mount so the server and the
+  // browser render the same thing: the width is written by CSS on the parent,
+  // which is told about it through the data attribute below.
+  const [rail, setRail] = useState(false);
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    try {
+      setRail(localStorage.getItem(RAIL_KEY) === "1");
+    } catch {
+      // Private browsing, or storage turned off. Open is the right default.
+    }
+    setReady(true);
+  }, []);
+  useEffect(() => {
+    if (!ready) return;
+    try {
+      localStorage.setItem(RAIL_KEY, rail ? "1" : "0");
+    } catch {
+      // Nothing to do; the menu still works, it just forgets.
+    }
+    document.documentElement.dataset.navRail = rail ? "1" : "0";
+  }, [rail, ready]);
+
+  return (
+    <div className="flex h-full flex-col">
+      <Groups groups={groups} rail={rail} />
+      <button
+        type="button"
+        onClick={() => setRail((v) => !v)}
+        aria-pressed={rail}
+        title={rail ? "Show the menu" : "Put the menu away"}
+        className={cn(
+          "mx-3 mb-2 mt-auto flex items-center gap-2 rounded-lg px-2.5 py-2 text-[12px] font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink",
+          rail && "mx-2 justify-center px-0",
+        )}
+      >
+        <span aria-hidden="true" className={cn("text-[14px] leading-none transition-transform", rail && "rotate-180")}>
+          &lsaquo;&lsaquo;
+        </span>
+        {!rail && <span>Put the menu away</span>}
+      </button>
+    </div>
+  );
 }
 
 export function MobileNav({ groups }: { groups: NavGroup[] }) {
@@ -166,7 +320,7 @@ export function MobileNav({ groups }: { groups: NavGroup[] }) {
                 Close
               </button>
             </div>
-            <Groups groups={groups} onNavigate={() => setOpen(false)} />
+            <Groups groups={groups} rail={false} onNavigate={() => setOpen(false)} />
           </div>
         </div>
       )}

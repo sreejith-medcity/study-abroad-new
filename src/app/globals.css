@@ -362,3 +362,25 @@ h4,
 [data-skin="night"] .text-brand-700 {
   color: #f08cae;
 }
+
+/*
+  The side menu, put away.
+
+  The width lives here rather than in the component because the column is the
+  layout's, not the menu's: the menu only says which state it is in, by
+  writing data-nav-rail on the html element. Nothing is rendered differently
+  on the server, so there is nothing for the two renders to disagree about.
+*/
+[data-nav-rail="1"] aside[data-nav] {
+  width: 4rem;
+}
+
+aside[data-nav] {
+  transition: width 160ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  aside[data-nav] {
+    transition: none;
+  }
+}

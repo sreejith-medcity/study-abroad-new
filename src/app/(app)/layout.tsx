@@ -14,27 +14,38 @@ import { IconBell, IconLogout } from "@/components/icons";
 import { logoutAction } from "@/app/login/actions";
 import { APP_ROLES, PARTNER_ROLES, ROLE_LABEL, isAdmin, isSuperAdmin } from "@/lib/permissions";
 import { getSettings } from "@/server/settings";
+import { navCounts } from "@/server/nav-counts";
 
+/*
+  The branch menu, in the order of a branch's day: who to see today, the
+  students, the applications, finding a course, the money, and then the
+  things read now and then, folded.
+*/
 const partnerNav = (home: string): NavGroup[] => [
   {
-    title: "Work",
+    title: "Today",
     items: [
       { href: "/dashboard", label: home, icon: "dashboard" },
       { href: "/my-day", label: "My day", icon: "queue" },
-      { href: "/students", label: "Students", icon: "students" },
-      { href: "/students/board", label: "Students by stage", icon: "flow" },
-      { href: "/applications", label: "Applications", icon: "applications" },
+      { href: "/enquiries", label: "Enquiries", icon: "enquiry" },
     ],
   },
   {
-    title: "Find programs",
+    title: "Students",
+    items: [
+      { href: "/students", label: "Students", icon: "students" },
+      { href: "/students/board", label: "By stage", icon: "flow" },
+      { href: "/applications", label: "Applications", icon: "applications" },
+      { href: "/program-options", label: "Program options", icon: "spark" },
+    ],
+  },
+  {
+    title: "Find a course",
     items: [
       { href: "/finder", label: "Course finder", icon: "spark" },
       { href: "/search", label: "Search programs", icon: "search" },
-      { href: "/program-options", label: "Program options", icon: "spark" },
       { href: "/universities", label: "Universities", icon: "universities" },
       { href: "/deadlines", label: "Deadlines", icon: "deadlines" },
-      { href: "/enquiries", label: "Enquiries", icon: "enquiry" },
     ],
   },
   {
@@ -47,13 +58,19 @@ const partnerNav = (home: string): NavGroup[] => [
     ],
   },
   {
-    title: "Support",
+    title: "Help",
+    items: [
+      { href: "/support", label: "Help desk", icon: "support" },
+      { href: "/learning", label: "Learning resources", icon: "learning" },
+      { href: "/contacts", label: "Contacts", icon: "partners" },
+    ],
+  },
+  {
+    title: "More",
+    folded: true,
     items: [
       { href: "/updates", label: "Updates", icon: "spark" },
       { href: "/events", label: "Events", icon: "events" },
-      { href: "/support", label: "Help desk", icon: "support" },
-      { href: "/contacts", label: "Contacts", icon: "partners" },
-      { href: "/learning", label: "Learning resources", icon: "learning" },
       { href: "/training", label: "Training", icon: "training" },
     ],
   },
@@ -67,52 +84,66 @@ const COUNSELLOR_NAV = partnerNav("My desk").map((g) =>
   g.title === "Money" ? { ...g, items: g.items.filter((i) => i.href !== "/admin/income") } : g,
 );
 
+/*
+  The staff menu, in groups somebody could name.
+
+  It used to be five groups of eleven, ten, eleven, four and one, and the
+  first of them held a dashboard, two queues, a desk, students, applications,
+  a board, programme options, services and the help desk. That is not a
+  group, it is a list with a heading on it, and a list of eleven is read by
+  scanning every time.
+
+  Seven groups now, none longer than five, in the order of a working day:
+  what is on today, the files, the work the desk does, finding a course, the
+  people, the money, and then everything that is set up once and read twice a
+  year, which is shut by default rather than sitting between a counsellor and
+  their morning.
+*/
 const ADMIN_NAV: NavGroup[] = [
   {
-    title: "Processing",
+    title: "Today",
     items: [
       { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
       { href: "/my-day", label: "My day", icon: "queue" },
       { href: "/admin/queue", label: "Work queue", icon: "queue" },
       { href: "/admin/desk", label: "The Overseas desk", icon: "flow" },
-      { href: "/documentation", label: "Documentation queue", icon: "applications" },
-      { href: "/applications", label: "Applications", icon: "applications" },
-      { href: "/students", label: "Students", icon: "students" },
-      { href: "/students/board", label: "Students by stage", icon: "flow" },
-      { href: "/program-options", label: "Program options", icon: "spark" },
-      { href: "/admin/services", label: "Services", icon: "services" },
-      { href: "/support", label: "Help desk", icon: "support" },
     ],
   },
   {
-    title: "Catalogue",
+    title: "Students",
+    items: [
+      { href: "/students", label: "Students", icon: "students" },
+      { href: "/students/board", label: "By stage", icon: "flow" },
+      { href: "/enquiries", label: "Enquiries", icon: "enquiry" },
+      { href: "/program-options", label: "Program options", icon: "spark" },
+    ],
+  },
+  {
+    title: "Applications",
+    items: [
+      { href: "/applications", label: "Applications", icon: "applications" },
+      { href: "/documentation", label: "Documentation", icon: "applications" },
+      { href: "/deadlines", label: "Deadlines", icon: "deadlines" },
+      { href: "/admin/services", label: "Services", icon: "services" },
+    ],
+  },
+  {
+    title: "Find a course",
     items: [
       { href: "/finder", label: "Course finder", icon: "spark" },
       { href: "/search", label: "Search programs", icon: "search" },
       { href: "/universities", label: "Universities", icon: "universities" },
-      { href: "/deadlines", label: "Deadlines", icon: "deadlines" },
-      { href: "/admin/programs", label: "Programs", icon: "programs" },
-      { href: "/admin/vendors", label: "Vendors and routes", icon: "partners" },
       { href: "/admin/scholarships", label: "Scholarships", icon: "spark" },
-      { href: "/admin/destinations", label: "Destinations and rankings", icon: "universities" },
-      { href: "/admin/statuses", label: "Status flows", icon: "flow" },
-      { href: "/admin/documents", label: "Documents and requirements", icon: "applications" },
     ],
   },
   {
     title: "Network",
     items: [
-      { href: "/enquiries", label: "Enquiries", icon: "enquiry" },
       { href: "/admin/partners", label: "Partners", icon: "partners" },
       { href: "/admin/teams", label: "Teams", icon: "partners" },
       { href: "/admin/agents", label: "Sub-agents", icon: "partners" },
-      { href: "/admin/updates", label: "Updates", icon: "spark" },
-      { href: "/admin/promotions", label: "Schemes", icon: "commission" },
       { href: "/admin/contacts", label: "Contacts and links", icon: "partners" },
-      { href: "/admin/prep", label: "Test prep", icon: "learning" },
       { href: "/admin/events", label: "Events", icon: "events" },
-      { href: "/admin/training", label: "Training", icon: "training" },
-      { href: "/admin/insights", label: "Insights", icon: "insights" },
     ],
   },
   {
@@ -125,8 +156,28 @@ const ADMIN_NAV: NavGroup[] = [
     ],
   },
   {
-    title: "Support",
-    items: [{ href: "/learning", label: "Learning resources", icon: "learning" }],
+    title: "Reports",
+    items: [
+      { href: "/admin/insights", label: "Insights", icon: "insights" },
+      { href: "/learning", label: "Learning resources", icon: "learning" },
+      { href: "/support", label: "Help desk", icon: "support" },
+    ],
+  },
+  {
+    // Shut unless you are in it. Set once, read twice a year.
+    title: "Set up",
+    folded: true,
+    items: [
+      { href: "/admin/programs", label: "Programs", icon: "programs" },
+      { href: "/admin/documents", label: "Documents and rules", icon: "applications" },
+      { href: "/admin/statuses", label: "Status flows", icon: "flow" },
+      { href: "/admin/destinations", label: "Destinations", icon: "universities" },
+      { href: "/admin/vendors", label: "Vendors and routes", icon: "partners" },
+      { href: "/admin/prep", label: "Test prep", icon: "learning" },
+      { href: "/admin/training", label: "Training", icon: "training" },
+      { href: "/admin/updates", label: "Updates", icon: "spark" },
+      { href: "/admin/promotions", label: "Schemes", icon: "commission" },
+    ],
   },
 ];
 
@@ -178,7 +229,7 @@ const TEAM_LEAD_NAV: NavGroup[] = [
     title: "The desk",
     items: [
       { href: "/dashboard", label: "The desk", icon: "dashboard" },
-      { href: "/documentation", label: "Documentation queue", icon: "applications" },
+      { href: "/documentation", label: "Documentation", icon: "applications" },
       { href: "/admin/queue", label: "Work queue", icon: "queue" },
       { href: "/applications", label: "Applications", icon: "applications" },
       { href: "/students", label: "Students", icon: "students" },
@@ -287,7 +338,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // agreement. Both screens are theirs alone: a branch has no referrals of its
   // own and nothing to accept.
   const subAgent = user.orgType === "SUB_AGENT" && (PARTNER_ROLES as readonly string[]).includes(user.role);
-  const navGroups: NavGroup[] = [
+  const menu: NavGroup[] = [
     ...withImports,
     ...(subAgent
       ? [
@@ -303,14 +354,27 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { title: "Account", items: [{ href: "/settings", label: "Settings", icon: "settings" }] },
   ];
 
-  const settings = await getSettings();
+  // Four things the shell needs, asked for together rather than one after
+  // another: on a page that renders quickly the waiting was most of the wait.
+  const [settings, counts, unreadRows, me] = await Promise.all([
+    getSettings(),
+    navCounts(user),
+    db
+      .select({ unread: count() })
+      .from(schema.notifications)
+      .where(and(eq(schema.notifications.userId, user.id), isNull(schema.notifications.readAt))),
+    // What's New carries a dot until the person has opened it since the newest item.
+    db.query.users.findFirst({ where: eq(schema.users.id, user.id), columns: { whatsNewSeenAt: true } }),
+  ]);
+  const unread = unreadRows[0]?.unread ?? 0;
 
-  const [{ unread }] = await db
-    .select({ unread: count() })
-    .from(schema.notifications)
-    .where(and(eq(schema.notifications.userId, user.id), isNull(schema.notifications.readAt)));
-  // What's New carries a dot until the person has opened it since the newest item.
-  const me = await db.query.users.findFirst({ where: eq(schema.users.id, user.id), columns: { whatsNewSeenAt: true } });
+  // The numbers go onto the menu here rather than inside it, so the menu
+  // itself stays a plain list of where you can go and nothing in the browser
+  // has to know how a count is worked out.
+  const navGroups: NavGroup[] = menu.map((g) => ({
+    ...g,
+    items: g.items.map((i) => (counts[i.href] ? { ...i, count: counts[i.href].count, tone: counts[i.href].tone } : i)),
+  }));
   const [newest] = await db
     .select({ at: schema.bulletins.createdAt })
     .from(schema.bulletins)
@@ -412,10 +476,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </header>
 
       <div className="flex">
-        <aside className="hidden w-60 shrink-0 border-r border-line bg-surface md:block">
-          <div className="thin-scroll sticky top-16 max-h-[calc(100vh-4rem)] overflow-y-auto">
+        <aside data-nav className="hidden w-60 shrink-0 border-r border-line bg-surface md:block">
+          <div className="thin-scroll sticky top-16 flex max-h-[calc(100vh-4rem)] min-h-[calc(100vh-4rem)] flex-col overflow-y-auto overflow-x-hidden">
             <SideNav groups={navGroups} />
-            <p className="border-t border-line/70 px-4 py-4 text-[11px] leading-relaxed text-muted/70">
+            {/* Hidden once the menu is put away: four characters and an
+                ellipsis is not the name of a company. */}
+            <p className="truncate border-t border-line/70 px-4 py-3 text-[11px] leading-relaxed text-muted/70 [[data-nav-rail='1']_&]:hidden">
               {settings.organisationName}
             </p>
           </div>

@@ -139,10 +139,10 @@ export default async function SuperAdminDashboard({ user, f }: { user: SessionUs
           <AlertTiles
             allClear="Every account is in order."
             tiles={[
-              { label: "Never signed in", value: snapshot.flags.neverSignedIn, tone: "stop", note: "Made and never used", href: "/admin/partners" },
-              { label: "Temporary passwords", value: snapshot.flags.temporary, tone: "warn", note: "Cannot sign in yet", href: "/admin/partners" },
-              { label: "Overseas team", value: staff, tone: "brand", always: true, href: "/admin/partners" },
-              { label: "Partner users", value: partnerUsers, tone: "info", always: true, href: "/admin/partners" },
+              { label: "Never signed in", nothing: "never signed in", value: snapshot.flags.neverSignedIn, tone: "stop", note: "Made and never used", href: "/admin/partners" },
+              { label: "Temporary passwords", nothing: "on a temporary password", value: snapshot.flags.temporary, tone: "warn", note: "Cannot sign in yet", href: "/admin/partners" },
+              { label: "Overseas team", nothing: "on the Overseas team", value: staff, tone: "brand", always: true, href: "/admin/partners" },
+              { label: "Partner users", nothing: "at the partners", value: partnerUsers, tone: "info", always: true, href: "/admin/partners" },
             ]}
           />
 
