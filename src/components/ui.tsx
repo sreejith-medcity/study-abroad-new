@@ -462,6 +462,64 @@ const edgeText = {
 } as const;
 
 /**
+ * The board of figures.
+ *
+ * Unlike AlertTiles, every figure is drawn, nought or not. These are the
+ * numbers somebody checks rather than acts on, and a column that changes
+ * shape between Monday and Tuesday cannot be read by position: you learn
+ * where "visa rejected" sits and then look at that spot, which only works if
+ * it is always in that spot. The colour on the edge still says which ones
+ * matter, and a nought is set in grey so the eye slides past it.
+ */
+export function KpiBoard({
+  tiles,
+  columns = 4,
+}: {
+  tiles: { label: string; value: number | string; tone: keyof typeof edgeTone; href?: string; note?: string }[];
+  columns?: 3 | 4;
+}) {
+  return (
+    <div data-kpi-board className={cn("grid gap-3 sm:grid-cols-2", columns === 4 ? "lg:grid-cols-4" : "lg:grid-cols-3")}>
+      {tiles.map((t) => {
+        const nothing = t.value === 0 || t.value === "0";
+        const body = (
+          <>
+            <p className="truncate text-[12px] font-medium text-muted">{t.label}</p>
+            <p
+              className={cn(
+                "mt-1.5 font-display text-[26px] font-semibold leading-none tabular tracking-[-0.03em]",
+                nothing ? "text-muted/45" : "text-ink",
+              )}
+            >
+              {t.value}
+            </p>
+            {t.note && <p className="mt-1 truncate text-[11.5px] text-muted">{t.note}</p>}
+          </>
+        );
+        const shell = cn(
+          "rounded-xl border border-line border-l-[3px] bg-surface px-3.5 py-3 shadow-card",
+          nothing ? "border-l-line-strong" : edgeTone[t.tone],
+        );
+        return t.href ? (
+          <Link
+            key={t.label}
+            href={t.href}
+            className={cn(shell, "transition-all duration-150 hover:-translate-y-px hover:shadow-lift")}
+          >
+            {body}
+          </Link>
+        ) : (
+          <div key={t.label} className={shell}>
+            {body}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+
+/**
  * The things that are wrong, said in colour.
  *
  * Red is late, amber is waiting, green is done. One meaning per colour and

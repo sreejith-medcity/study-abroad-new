@@ -108,10 +108,12 @@ async function signIn(page, email, password = "Password@123") {
   await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   (await page.locator("main").getByText("Public enquiry form").count()) ? ok("QR panel is on the partner card") : bad("no QR panel");
   (await page.locator("main svg[viewBox]").count()) > 0 ? ok("a QR code is rendered") : bad("no QR svg");
-  // The panels are collapsed <details>, so expand them before looking inside.
-  const summaries = page.locator("main summary", { hasText: "Public enquiry form" });
-  for (let i = 0; i < (await summaries.count()); i++) await summaries.nth(i).click();
-  await page.waitForTimeout(500);
+  // Two folds deep: each branch is a folding card, and the enquiry form is a
+  // fold inside it. A summary in a shut card is in the page but cannot be
+  // clicked, which is what this used to hang on, so open every fold outright
+  // rather than clicking summaries. Clicking would shut the ones already open.
+  await page.locator("main details").evaluateAll((els) => els.forEach((d) => { d.open = true; }));
+  await page.waitForTimeout(400);
   // Counted hidden or not: whether a <details> is open after the refresh is not the point.
   const openButtons = page.getByRole("button", { name: "Open the form for this branch", includeHidden: true });
   const before = await openButtons.count();

@@ -36,16 +36,54 @@ await page.waitForTimeout(600);
 
 const body = (await page.locator("main").innerText()).replace(/\s+/g, " ");
 
-// The noughts are said once, in a line, rather than eight times in tiles.
-const tiles = await page.locator("main a[href^='/applications?']").filter({ hasText: /^(All applications|Needs your action|Offers|Visa received|Fees paid|Deferrals|Non-enrolment|Visa rejected)/ }).count();
-check(tiles <= 4, `the tile row is short (${tiles} tiles)`);
-check(/Nothing yet in/.test(body), "and what is empty is said in one line");
-check(/All applications/.test(body) && /Needs your action/.test(body), "the two that matter keep their tiles whatever they read");
+/*
+  The board of figures.
 
-// The filters are there, folded, with the numbers first.
-const narrow = page.locator("#narrow");
-check((await narrow.count()) === 1, "the filters fold into Narrow this");
-check(!(await narrow.locator("details").evaluate((d) => d.open)), "and start folded when nothing is narrowed");
+  This used to fold the noughts away and say them in a line, to keep the row
+  short. It was the wrong trade on the one screen everybody opens first: a
+  board that changes shape between Monday and Tuesday cannot be read by
+  position, and reading by position is the whole way somebody uses it. Every
+  figure is drawn now, in the same order every day, with a nought dimmed so
+  the eye slides past it.
+*/
+const LABELS = ["All applications", "Needs your action", "Offers", "Visa received", "Fees paid", "Deferrals", "Non-enrolment", "Visa rejected"];
+// Scoped to the board itself: the funnel further down the page links to the
+// same screens with some of the same words, and used to be counted as part of it.
+const board = page.locator("main [data-kpi-board] a");
+const drawn = await board.evaluateAll((els) => els.map((e) => e.textContent.replace(/\s+/g, " ").trim()));
+check(drawn.length === LABELS.length, `every figure is drawn, nought or not (${drawn.length} of ${LABELS.length})`);
+check(
+  LABELS.every((label, i) => (drawn[i] ?? "").startsWith(label)),
+  `and always in the same order, so it can be read by position (${drawn.map((d) => d.replace(/\d+$/, "")).join(" | ")})`,
+);
+
+// A nought is drawn but quietened, rather than shouting alongside a real
+// figure. Read off the figure itself rather than the tile's run-together
+// text, which is how this was got wrong the first time.
+const cells = await board.evaluateAll((els) =>
+  els.map((e) => {
+    const n = e.querySelector("p.tabular");
+    return { value: (n?.textContent ?? "").trim(), colour: n ? getComputedStyle(n).color : "" };
+  }),
+);
+const zeros = cells.filter((c) => c.value === "0");
+const figures = cells.filter((c) => c.value !== "0");
+if (zeros.length > 0 && figures.length > 0) {
+  check(
+    zeros.every((z) => z.colour !== figures[0].colour),
+    `a nought is set quieter than a figure (${zeros[0].colour} against ${figures[0].colour})`,
+  );
+} else if (zeros.length === cells.length) {
+  check(true, `this branch is at nought across the board, so there is nothing to tell apart (${cells.length} tiles)`);
+} else {
+  check(true, "nothing is at nought on this data");
+}
+
+// The filters are on the page rather than behind a fold: narrowing to one
+// intake is the first thing somebody does, and a filter you have to go
+// looking for is a filter nobody uses.
+check((await page.locator("#narrow").count()) === 0, "the filters are not hidden behind a fold any more");
+check((await page.locator('main select[name="intakeMonth"]').count()) === 1, "and the intake filter is on the page");
 
 // The chart says what its height means, and its second colour can be seen.
 const chart = page.locator("figure").first();

@@ -11,6 +11,7 @@ import { getSettings, tierTargets } from "@/server/settings";
 import { agingList, builtByWaiting, countryMix, deadlineList, windowFor, funnel, kpiTotals, monthlyPoints, myWork, recentChanges, teamLoad } from "@/server/dashboard";
 import { referralsFor } from "@/server/agents";
 import { STAGE_LABEL, enquiryCounts, followUpQueue } from "@/server/enquiries";
+import { RegistrationQr } from "@/components/registration-qr";
 import { commissionTotals, inr, walletBalance } from "@/server/commission";
 import {
   BarList,
@@ -25,14 +26,13 @@ import {
   Progress,
   AlertTiles,
   PersonRow,
-  StatGrid,
+  KpiBoard,
   Table,
   Td,
   Th,
   TrendChart,
 } from "@/components/ui";
 import { IconAlert, IconApplications, IconChat, IconCheck, IconClock, IconDoc, IconEnquiry, IconPlus, IconSearch, IconSpark } from "@/components/icons";
-import { Section } from "@/components/section";
 import { AgingCard, DashboardFilters, DeadlinesCard, RecentChangesCard, partOfDay } from "./parts";
 import { AnnouncementBanner, UpdatesCard } from "./updates-card";
 import { ownApplicationsOnly } from "@/server/scope";
@@ -70,7 +70,6 @@ export default async function PartnerDashboard({
   const personal = !branchWide;
   const { applications: a, students: s, countries: c, organizations: og } = schema;
   const filters: ApplicationFilters = { from: f.from, to: f.to, country: f.country, intakeYear: f.intakeYear, intakeMonth: f.intakeMonth };
-  const narrowed = Boolean(f.from || f.to || f.country || f.intakeYear || f.intakeMonth);
   const mine = personal ? eq(s.assignedToId, user.id) : undefined;
   const showMoney = await commissionVisible(user);
   const [schemes, links] = await Promise.all([showMoney ? currentPromotions() : Promise.resolve([]), quickLinkList()]);
@@ -177,11 +176,32 @@ export default async function PartnerDashboard({
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-5">
-          {/* Opened when somebody wants a narrower question; the numbers come
-              first either way. */}
-          <Section id="narrow" title="Narrow this" meta={narrowed ? "narrowed" : "everything, all time"} defaultOpen={narrowed} bodyClassName="">
-            <DashboardFilters f={f as Record<string, string | undefined>} countries={countries} />
-          </Section>
+          {/* The code the counter uses, which lived three screens deep in the
+              admin area where a branch head found it once and never again. */}
+          <RegistrationQr slug={org?.publicSlug ?? null} enabled={org?.publicFormEnabled ?? false} orgName={user.orgName} />
+
+          {/* On the page rather than behind a fold: narrowing the board to one
+              intake or one destination is what somebody does first, and a
+              filter they have to go looking for is a filter nobody uses. */}
+          <DashboardFilters f={f as Record<string, string | undefined>} countries={countries} />
+
+          {/*
+            Every figure, nought or not.
+
+            These are read rather than acted on, and a board that changes shape
+            between Monday and Tuesday cannot be read by position: you learn
+            where "visa rejected" sits and then look at that spot. Folding the
+            noughts away saved a little room and cost that, which was the wrong
+            trade on the one screen everybody opens first.
+          */}
+          <KpiBoard
+            tiles={TILES.map((t) => ({
+              label: t.label,
+              tone: t.tone,
+              value: t.key ? (kpis[t.key] ?? 0) : kpis.all,
+              href: `/applications?${qs(t.key ? { kpi: t.key } : {})}`,
+            }))}
+          />
 
           {/* First thing on the branch screen, because it is the only block
               here that names a person and a telephone number. Everything else
@@ -246,16 +266,6 @@ export default async function PartnerDashboard({
             ]}
           />
 
-          <StatGrid
-            tiles={TILES.map((t) => ({
-              label: t.label,
-              tone: t.tone,
-              icon: t.icon,
-              always: "always" in t ? t.always : false,
-              value: t.key ? kpis[t.key] : kpis.all,
-              href: `/applications?${qs(t.key ? { kpi: t.key } : {})}`,
-            }))}
-          />
 
           <AgingCard
             rows={waiting}
