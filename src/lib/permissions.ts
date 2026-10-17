@@ -60,6 +60,27 @@ export const COUNSELLING_ROLES = ["COUNSELLOR", "SENIOR_COUNSELLOR", "TRAINEE_CO
  */
 export const DESK_ASSIGNING_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "APPLICATION_TEAM_LEADER"] as const;
 
+/**
+ * Who may change a deadline that is already recorded.
+ *
+ * Deadlines were admin-only, which left the application team leader, the one
+ * person who watches them all day, unable to correct one. An institution
+ * moving a date by a week is an ordinary Tuesday, and routing it through an
+ * admin means it is recorded late or not at all.
+ */
+export const DEADLINE_EDIT_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "APPLICATION_TEAM_LEADER"] as const;
+
+export const canEditDeadlines = (user: SessionUser) => (DEADLINE_EDIT_ROLES as readonly string[]).includes(user.role);
+
+/**
+ * Who an application can be put on. The desk works files; a branch counsellor
+ * in this list would be a file nobody at the office is carrying.
+ */
+export const DESK_OFFICER_ROLES = ["DOCUMENTATION", "APPLICATION_TEAM_LEADER", "SUPER_ADMIN", "OPS_MANAGER", "ADMIN"] as const;
+
+/** Who decides which officer carries a file. */
+export const canAssignDesk = (user: SessionUser) => (DESK_ASSIGNING_ROLES as readonly string[]).includes(user.role);
+
 export function canAssignStudents(user: SessionUser) {
   if (!worksStudentFiles(user)) return false;
   if ((PARTNER_ROLES as readonly string[]).includes(user.role)) return true;

@@ -115,9 +115,13 @@ export function applicationsBase() {
       statusCode: sd.code,
       pathway: sd.pathway,
       orgId: a.orgId,
+      officerId: a.officerId,
       createdByName: sql<string>`creator.desk_label`.as("created_by_desk"),
       createdByFallback: sql<string>`creator.name`.as("created_by_name"),
       officerName: sql<string | null>`officer.name`.as("officer_name"),
+      // What the desk calls them, which is what every control that offers the
+      // list shows. The screen that reads a file back has to agree with it.
+      officerLabel: sql<string | null>`coalesce(officer.desk_label, officer.name)`.as("officer_label"),
       officerPhone: sql<string | null>`officer.phone`.as("officer_phone"),
     })
     .from(a)

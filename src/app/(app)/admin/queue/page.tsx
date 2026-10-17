@@ -8,8 +8,11 @@ import { applicationsBase, readFilters } from "@/server/queries";
 import type { Pathway, StatusGroup } from "@/db/schema";
 import { Button, Card, Chip, LinkButton, PageHeader, Select, cn } from "@/components/ui";
 import { StatusForm } from "@/app/(app)/students/[id]/applications/client";
-import { PROCESSING_ROLES, canChangeStatus } from "@/lib/permissions";
+import { PROCESSING_ROLES, canAssignDesk, canChangeStatus } from "@/lib/permissions";
 import { getSlaDays } from "@/server/dashboard";
+import { deskOfficers } from "@/server/teams";
+import { InlineSelect } from "@/components/inline-select";
+import { assignOfficerAction } from "./actions";
 
 export const metadata = { title: "Work queue" };
 
@@ -48,6 +51,12 @@ export default async function QueuePage({ searchParams }: { searchParams: Promis
     .innerJoin(sd, eq(a.statusId, sd.id))
     .where(and(ne(sd.group, "CLOSED"), mine ? sql`(${a.officerId} = ${user.id} or ${a.officerId} is null)` : undefined))
     .groupBy(sd.pathway);
+
+  // Who is carrying each file, and who it could be handed to. The officer
+  // used to fill itself in with whoever first moved the file, so nobody was
+  // ever given one and the lead had no control to give it with.
+  const mayAssign = canAssignDesk(user);
+  const officers = mayAssign ? await deskOfficers() : [];
 
   // Service levels come from platform settings, so a super admin can retune the queue.
   const sla = await getSlaDays();
@@ -115,6 +124,24 @@ export default async function QueuePage({ searchParams }: { searchParams: Promis
                           <p className="text-xs text-muted">{r.universityName} · {intakeLabel(r.intakeMonth, r.intakeYear)}</p>
                           <p className="mt-1 text-xs"><span className="text-muted">Status:</span> {r.statusLabel}</p>
                           <p className="text-xs text-muted">{orgNames[r.orgId]}</p>
+                          {mayAssign ? (
+                            <div className="mt-1.5">
+                              <InlineSelect
+                                action={assignOfficerAction}
+                                idName="applicationId"
+                                id={r.id}
+                                name="officerId"
+                                value={r.officerId ?? ""}
+                                label={`Officer for ${r.ackNo}`}
+                                className="w-full min-w-0 py-1 text-[12px]"
+                              >
+                                <option value="">Nobody yet</option>
+                                {officers.map((o) => <option key={o.id} value={o.id}>{o.deskLabel ?? o.name}</option>)}
+                              </InlineSelect>
+                            </div>
+                          ) : (
+                            <p className="text-xs"><span className="text-muted">Officer:</span> {r.officerLabel ?? <span className="text-muted">Nobody yet</span>}</p>
+                          )}
                           <div className="mt-2 flex flex-wrap gap-2 border-t border-line pt-2 text-xs">
                             {lane.group === "NEW" && <Link href={`/admin/applications/${r.id}/check`} className="text-brand-600 hover:underline">Run check</Link>}
                             {canMoveStatus ? (

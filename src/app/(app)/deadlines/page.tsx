@@ -2,7 +2,7 @@ import Link from "next/link";
 import { and, asc, count, eq, gte, ilike, isNull, lte, or, sql, type SQL } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
-import { APP_ROLES, isStaff, orgScope } from "@/lib/permissions";
+import { APP_ROLES, PROCESSING_ROLES, canEditDeadlines, isStaff, orgScope } from "@/lib/permissions";
 import type { SessionUser } from "@/lib/auth";
 import { DEADLINE_LABEL, DEADLINE_TYPES } from "@/lib/deadline-types";
 import { LEVEL_LABEL, dayText, daysUntil } from "@/lib/catalogue";
@@ -10,6 +10,8 @@ import { MONTHS } from "@/lib/format";
 import { readFilters } from "@/server/queries";
 import { Button, Card, Chip, EmptyState, Input, LinkButton, PageHeader, Select, Table, Td, Th, Toolbar, cn } from "@/components/ui";
 import { IconClock } from "@/components/icons";
+import { InlineDate } from "@/components/inline-date";
+import { moveApplicationDeadlineAction, moveProgramDeadlineAction } from "./actions";
 
 export const metadata = { title: "Deadlines" };
 
@@ -61,6 +63,7 @@ export default async function DeadlinesPage({ searchParams }: { searchParams: Pr
     .innerJoin(c, eq(u.countryId, c.id))
     .where(where);
   const countries = await db.select({ code: c.code, name: c.name }).from(c).orderBy(asc(c.name));
+  const mayEdit = canEditDeadlines(user);
   const qs = (extra: Record<string, string | undefined>) => {
     const sp = new URLSearchParams();
     for (const [k, v] of Object.entries({ ...f, ...extra })) if (v) sp.set(k, v);
@@ -114,6 +117,20 @@ export default async function DeadlinesPage({ searchParams }: { searchParams: Pr
                       <p className={cn("text-xs", left <= 7 ? "font-medium text-stop-700" : left <= 21 ? "font-medium text-warn-700" : "text-muted")}>
                         {left === 0 ? "Closes today" : left === 1 ? "1 day left" : `${left} days left`}
                       </p>
+                      {/* An institution moving a date by a week is an ordinary
+                          Tuesday. It used to mean opening the program in the
+                          admin catalogue, which the team leader who watches
+                          these all day cannot reach at all. */}
+                      {mayEdit && (
+                        <InlineDate
+                          action={moveProgramDeadlineAction}
+                          name="deadline"
+                          id={r.id}
+                          value={r.deadline}
+                          label={`Apply by, for ${r.program}`}
+                          max={`${r.year}-${String(r.month).padStart(2, "0")}-28`}
+                        />
+                      )}
                     </Td>
                     <Td>
                       <Link prefetch={false} href={`/programs/${r.programId}`} className="font-medium text-ink hover:text-brand-700 hover:underline">{r.program}</Link>
@@ -183,6 +200,7 @@ async function ApplicationDeadlines({ user, f }: { user: SessionUser; f: Record<
     .orderBy(asc(d.dueOn))
     .limit(300);
   const countries = await db.select({ code: schema.countries.code, name: schema.countries.name }).from(schema.countries).orderBy(asc(schema.countries.name));
+  const mayMove = (PROCESSING_ROLES as readonly string[]).includes(user.role);
   return (
     <>
       <PageHeader title="Deadlines" subtitle={`${rows.length} open application deadline${rows.length === 1 ? "" : "s"} in the next ${days} days, overdue first`} />
@@ -215,7 +233,15 @@ async function ApplicationDeadlines({ user, f }: { user: SessionUser; f: Record<
                 const left = daysUntil(r.dueOn);
                 return (
                   <tr key={r.id}>
-                    <Td className="whitespace-nowrap"><p className="font-medium">{dayText(r.dueOn)}</p><p className={cn("text-xs", left < 0 ? "font-medium text-stop-700" : left <= 3 ? "font-medium text-warn-700" : "text-muted")}>{left < 0 ? `${-left} days overdue` : left === 0 ? "Today" : `${left} days`}</p></Td>
+                    <Td className="whitespace-nowrap">
+                      <p className="font-medium">{dayText(r.dueOn)}</p>
+                      <p className={cn("text-xs", left < 0 ? "font-medium text-stop-700" : left <= 3 ? "font-medium text-warn-700" : "text-muted")}>{left < 0 ? `${-left} days overdue` : left === 0 ? "Today" : `${left} days`}</p>
+                      {/* The branch is working to this date, so moving it
+                          tells them, with what it was. */}
+                      {mayMove && (
+                        <InlineDate action={moveApplicationDeadlineAction} name="dueOn" id={r.id} value={r.dueOn} label={`${DEADLINE_LABEL[r.type]} for ${r.firstName} ${r.lastName}`} />
+                      )}
+                    </Td>
                     <Td>{DEADLINE_LABEL[r.type]}{r.note ? <p className="text-xs text-muted">{r.note}</p> : null}</Td>
                     <Td><Link prefetch={false} href={`/students/${r.studentId}/applications?app=${r.appId}`} className="font-medium hover:underline">{r.firstName} {r.lastName}</Link><p className="text-xs text-muted">{r.program} · {r.university}</p></Td>
                     <Td className="tabular text-[13px]">{r.ackNo}</Td>

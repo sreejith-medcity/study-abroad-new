@@ -28,7 +28,9 @@ const signIn = async (email) => {
 };
 
 const adminEmail = sql("select email from users where role = 'SUPER_ADMIN' and active limit 1");
-const docEmail = sql("select email from users where role = 'DOCUMENTATION' and active limit 1");
+// The named desk account rather than one of the generated demo officers,
+// which are seeded without the demo password and cannot sign in.
+const docEmail = sql("select email from users where role = 'DOCUMENTATION' and active and email not like 'docs.person%' order by email limit 1");
 const docId = sql(`select id from users where email = '${docEmail}'`);
 const docName = sql(`select coalesce(desk_label, name) from users where id = '${docId}'`);
 // A branch student nobody has handed anywhere, so the assignment is the change.

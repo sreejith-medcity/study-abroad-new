@@ -1,7 +1,7 @@
 import "server-only";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { STAFF_ROLES } from "@/lib/permissions";
+import { DESK_OFFICER_ROLES, STAFF_ROLES } from "@/lib/permissions";
 import type { ServiceType } from "@/lib/services";
 
 /** Every team with its people, for the screen that runs them. */
@@ -38,6 +38,15 @@ export async function deskPeople() {
     .select({ id: schema.users.id, name: schema.users.name, deskLabel: schema.users.deskLabel, role: schema.users.role })
     .from(schema.users)
     .where(and(inArray(schema.users.role, [...STAFF_ROLES]), eq(schema.users.active, true)))
+    .orderBy(asc(schema.users.name));
+}
+
+/** The officers an application can be put on, for the control that does it. */
+export async function deskOfficers() {
+  return db
+    .select({ id: schema.users.id, name: schema.users.name, deskLabel: schema.users.deskLabel })
+    .from(schema.users)
+    .where(and(inArray(schema.users.role, [...DESK_OFFICER_ROLES]), eq(schema.users.active, true)))
     .orderBy(asc(schema.users.name));
 }
 
