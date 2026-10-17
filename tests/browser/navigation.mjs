@@ -143,10 +143,42 @@ for (const [email, who, ip] of [["sreejith@miak.in", "the Overseas team", "10.80
   const stillNarrow = await page.locator("aside[data-nav]").evaluate((e) => e.getBoundingClientRect().width);
   check(Math.round(stillNarrow) === Math.round(narrow), `${who}: and stays away when you move about`);
 
-  await page.getByRole("button", { name: /Show the menu/ }).click();
+  /* ---------------- Peeking at it ---------------- */
+
+  // Nineteen icons and no words, and the only way back to the words was to
+  // find the arrow at the bottom and click it twice. Moving the pointer onto
+  // the column opens it over the page instead.
+  const mainLeft = await page.locator("main").evaluate((e) => e.getBoundingClientRect().left);
+  const toggleShut = await page.locator("aside[data-nav] button").first().boundingBox();
+  await page.mouse.move(32, 400);
+  await page.waitForTimeout(500);
+  const peeking = await page.locator("aside[data-nav]").evaluate((e) => ({
+    column: e.getBoundingClientRect().width,
+    panel: e.firstElementChild.getBoundingClientRect().width,
+  }));
+  check(peeking.panel > narrow * 2, `${who}: the pointer on the column opens the menu, ${Math.round(narrow)} to ${Math.round(peeking.panel)}`);
+  check((await page.locator("aside[data-nav]").innerText()).includes("Students"), `${who}: and the words are back`);
+  // The column itself must not move, or the page jumps every time a cursor
+  // crosses the left edge on the way to something else.
+  check(Math.round(peeking.column) === Math.round(narrow), `${who}: over the page rather than pushing it`);
+  check(
+    Math.round(await page.locator("main").evaluate((e) => e.getBoundingClientRect().left)) === Math.round(mainLeft),
+    `${who}: so nothing underneath shifts`,
+  );
+  // The toggle must not move as the menu opens: it used to sit after the
+  // list, and opening the menu put the folded groups back and slid it down
+  // the screen, away from the pointer on its way to it.
+  const toggleOpen = await page.locator("aside[data-nav] button").first().boundingBox();
+  check(Math.abs(toggleOpen.y - toggleShut.y) < 2, `${who}: and the way to close it again has not moved`);
+  await page.mouse.move(900, 500);
+  await page.waitForTimeout(500);
+  const shut = await page.locator("aside[data-nav]").evaluate((e) => e.firstElementChild.getBoundingClientRect().width);
+  check(Math.round(shut) === Math.round(narrow), `${who}: and it puts itself away again`);
+
+  await page.getByRole("button", { name: /Keep the menu open/ }).click();
   await page.waitForTimeout(400);
   const back = await page.locator("aside[data-nav]").evaluate((e) => e.getBoundingClientRect().width);
-  check(Math.round(back) === Math.round(wide), `${who}: and comes back`);
+  check(Math.round(back) === Math.round(wide), `${who}: and comes back (${Math.round(back)} against ${Math.round(wide)})`);
 
   await ctx.close();
 }

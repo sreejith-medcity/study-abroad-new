@@ -336,24 +336,75 @@ export function SideNav({ groups }: { groups: NavGroup[] }) {
     document.documentElement.dataset.navRail = rail ? "1" : "0";
   }, [rail, ready]);
 
+  /*
+    Peeking at a menu that has been put away.
+
+    With the menu away there are nineteen icons and no words, and the only way
+    back to the words was to find the arrow at the bottom and click it, then
+    click it again. Moving the pointer onto the column opens it over the page
+    instead, for as long as the pointer is there. The column itself stays four
+    rem wide, so nothing underneath moves: the page does not jump every time
+    somebody's cursor crosses the left edge on the way to something else.
+
+    The state is written on the document rather than held in a class here,
+    because the width belongs to the layout's column, not to this component,
+    which is the same reason the put-away state is written there.
+  */
+  const [peek, setPeek] = useState(false);
+  useEffect(() => {
+    if (!ready) return;
+    document.documentElement.dataset.navPeek = rail && peek ? "1" : "0";
+  }, [rail, peek, ready]);
+  useEffect(() => () => {
+    document.documentElement.dataset.navPeek = "0";
+  }, []);
+  const open = !rail || peek;
+
   return (
-    <div className="flex h-full flex-col">
-      <Groups groups={groups} rail={rail} />
-      <button
-        type="button"
-        onClick={() => setRail((v) => !v)}
-        aria-pressed={rail}
-        title={rail ? "Show the menu" : "Put the menu away"}
-        className={cn(
-          "mx-3 mb-2 mt-auto flex items-center gap-2 rounded-lg px-2.5 py-2 text-[12px] font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink",
-          rail && "mx-2 justify-center px-0",
-        )}
-      >
-        <span aria-hidden="true" className={cn("text-[14px] leading-none transition-transform", rail && "rotate-180")}>
-          &lsaquo;&lsaquo;
-        </span>
-        {!rail && <span>Put the menu away</span>}
-      </button>
+    <div
+      className="flex h-full flex-col"
+      onPointerEnter={(e) => {
+        // A finger is not a pointer passing by: on a touch screen this fires
+        // on the tap that was meant for the icon underneath.
+        if (e.pointerType !== "touch") setPeek(true);
+      }}
+      onPointerLeave={() => setPeek(false)}
+      onFocusCapture={() => setPeek(true)}
+      onBlurCapture={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setPeek(false);
+      }}
+    >
+      {/*
+        The toggle sits at the top, not after the list.
+
+        It used to be the last thing in the column, which was fine while the
+        column never changed height. Opening the menu on hover puts the folded
+        groups back, the list grows past the bottom of the screen, and the
+        button slid away from the pointer that was on its way to it. At the
+        top it cannot move, and it is where the portal people already use puts
+        it.
+      */}
+      <div className={cn("flex shrink-0 items-center px-3 pt-3", !open && "justify-center px-0")}>
+        <button
+          type="button"
+          onClick={() => {
+            setPeek(false);
+            setRail((v) => !v);
+          }}
+          aria-pressed={rail}
+          title={rail ? "Keep the menu open" : "Put the menu away"}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[12px] font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink",
+            !open && "px-0",
+          )}
+        >
+          <span aria-hidden="true" className={cn("text-[14px] leading-none transition-transform", rail && "rotate-180")}>
+            &lsaquo;&lsaquo;
+          </span>
+          {open && <span>{rail ? "Keep the menu open" : "Put the menu away"}</span>}
+        </button>
+      </div>
+      <Groups groups={groups} rail={!open} />
     </div>
   );
 }

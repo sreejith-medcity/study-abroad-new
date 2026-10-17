@@ -389,11 +389,33 @@ h4,
   width: 4rem;
 }
 
+/*
+  Peeking at the menu that has been put away.
+
+  The column stays four rem, so nothing underneath moves: the page would
+  otherwise jump every time a cursor crossed the left edge on the way to
+  something else. The panel inside it widens over the page instead, which is
+  what the menu does in the portal people are used to.
+*/
+[data-nav-rail="1"] aside[data-nav] > div {
+  width: 4rem;
+  transition: width 160ms ease;
+}
+
+[data-nav-rail="1"][data-nav-peek="1"] aside[data-nav] > div {
+  width: 15rem;
+  border-right: 1px solid var(--color-line);
+  background: var(--color-surface);
+  box-shadow: 0 18px 40px -20px rgb(23 16 28 / 0.45);
+  z-index: 40;
+}
+
 aside[data-nav] {
   transition: width 160ms ease;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  [data-nav-rail="1"] aside[data-nav] > div,
   aside[data-nav] {
     transition: none;
   }

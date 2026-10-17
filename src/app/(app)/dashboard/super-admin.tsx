@@ -27,7 +27,6 @@ import {
   Th,
 } from "@/components/ui";
 import { IconCheck, IconPartners, IconShield, IconQueue } from "@/components/icons";
-import { ActivityCard } from "./parts";
 
 const WATCHED = ["passport.reveal", "student.delete", "applications.export", "audit.export", "document.delete", "user.role_change", "user.password_reset"];
 
@@ -306,7 +305,13 @@ export default async function SuperAdminDashboard({ user, f }: { user: SessionUs
             <BarList items={partners.map((p) => ({ label: p.name, hint: p.tier, value: p.total, href: `/applications?org=${p.id}` }))} />
           </Card>
 
-          <ActivityCard rows={snapshot.recentAudit} actionLabel={actionLabel} />
+          {/* There were two audit feeds on this page. "Actions worth watching"
+              above is the one with a reason to be here: passport reveals,
+              deletions and exports, the handful somebody should see the day
+              they happen. The other listed everything newest first, which on
+              a live deployment meant the scheduler logging itself three times
+              before any person appeared. Everything is still in the audit log,
+              one click away, where it can be searched. */}
         </div>
       </div>
     </>

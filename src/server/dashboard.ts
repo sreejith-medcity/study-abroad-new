@@ -397,7 +397,7 @@ export async function myWork(user: SessionUser) {
 
 /** Accounts, organisations and platform health for the super admin dashboard. */
 export async function platformSnapshot() {
-  const [roles, orgs, [flags], recentAudit, auditByAction, [messages]] = await Promise.all([
+  const [roles, orgs, [flags], auditByAction, [messages]] = await Promise.all([
     db.select({ role: us.role, n: count() }).from(us).where(eq(us.active, true)).groupBy(us.role),
     db.select({ type: og.type, n: count() }).from(og).groupBy(og.type),
     db
@@ -412,22 +412,13 @@ export async function platformSnapshot() {
       })
       .from(us),
     db
-      .select({
-        id: al.id,
-        action: al.action,
-        entityType: al.entityType,
-        entityId: al.entityId,
-        createdAt: al.createdAt,
-        actorName: us.name,
-      })
-      .from(al)
-      .leftJoin(us, eq(al.actorId, us.id))
-      .orderBy(desc(al.createdAt))
-      .limit(8),
-    db
       .select({ action: al.action, n: count() })
       .from(al)
-      .where(gte(al.createdAt, new Date(Date.now() - 7 * 86400000)))
+      // The scheduler logging itself is not activity. On a live deployment it
+      // runs several times a day and came fourth in this chart, above real
+      // work, which is six bars spent saying the machine is switched on. The
+      // audit log still has every run.
+      .where(and(gte(al.createdAt, new Date(Date.now() - 7 * 86400000)), ne(al.entityType, "cron")))
       .groupBy(al.action)
       .orderBy(desc(count()))
       .limit(6),
@@ -443,7 +434,6 @@ export async function platformSnapshot() {
     roles: Object.fromEntries(roles.map((r) => [r.role, Number(r.n)])) as Record<string, number>,
     orgs: Object.fromEntries(orgs.map((r) => [r.type, Number(r.n)])) as Record<string, number>,
     flags,
-    recentAudit,
     auditByAction: auditByAction.map((r) => ({ action: r.action, value: Number(r.n) })),
     messages,
   };

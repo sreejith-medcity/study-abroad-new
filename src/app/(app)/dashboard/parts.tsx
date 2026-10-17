@@ -253,31 +253,3 @@ export async function AgingCard({
   );
 }
 
-export function ActivityCard({
-  rows,
-  actionLabel,
-}: {
-  rows: { id: string; action: string; entityType: string; entityId: string; createdAt: Date; actorName: string | null }[];
-  actionLabel: (action: string) => string;
-}) {
-  return (
-    <Card>
-      <CardHeader
-        title="Latest recorded actions"
-        subtitle="Straight from the audit log"
-        action={<Link href="/admin/audit" className="text-[13px] font-medium text-brand-600 hover:underline">Open audit log</Link>}
-      />
-      <ul>
-        {rows.map((r) => (
-          <li key={r.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-b border-line px-4 py-2.5 text-[13px] last:border-0">
-            <span className="font-medium text-ink">{r.actorName ?? "System"}</span>
-            <span className="text-muted">{actionLabel(r.action).toLowerCase()}</span>
-            <span className="text-muted">· {r.entityType.replace(/_/g, " ")}</span>
-            <span className="ml-auto text-xs text-muted">{fmtDateTime(r.createdAt)}</span>
-          </li>
-        ))}
-        {rows.length === 0 && <li className="px-4 py-8 text-center text-muted">Nothing recorded yet.</li>}
-      </ul>
-    </Card>
-  );
-}
