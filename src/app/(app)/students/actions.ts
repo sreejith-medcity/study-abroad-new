@@ -16,6 +16,7 @@ import { adminIds, notifyUsers, partnerRecipients, deskRecipients } from "@/serv
 import { getStudentForUser } from "@/server/queries";
 import { tryMintStudentId } from "@/server/medcity-id";
 import { openEarningForStudent } from "@/server/agent-actions";
+import { handEnquiryToDocumentation } from "@/server/enquiry-handover";
 import { BACKGROUND_QUESTIONS, CONTACT_RELATIONS } from "@/lib/background";
 
 import type { FormState } from "@/lib/form-state";
@@ -151,6 +152,13 @@ export async function createStudentAction(_: FormState, formData: FormData): Pro
         stageAfter: "CONVERTED",
       });
       await audit(user.id, "enquiry.convert", "enquiry", enquiry.id, { studentId: student.id });
+
+      // The desk used to learn a student existed when an application turned
+      // up, which can be weeks later, and the document list did not exist
+      // until somebody opened the tab that builds it. Registration hands the
+      // file over now: the list is opened, somebody at the desk is put on it,
+      // and the desk is told.
+      await handEnquiryToDocumentation(student.id, user.id, `${d.firstName} ${d.lastName}`);
 
       // A lead a sub-agent referred keeps its referrer on the student file, and
       // the earning is opened the same day so the sub-agent can see it coming.
