@@ -27,6 +27,7 @@ import {
   CardHeader,
   Chip,
   AlertTiles,
+  KpiBoard,
   DashboardHero,
   DataList,
   LinkButton,
@@ -100,17 +101,30 @@ export default async function AdminDashboard({ user, f, showMoney = true }: { us
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_330px]">
         <div className="space-y-5">
-          {/* What is wrong first, then what is moving. A lane at nought is
-              said in a line underneath rather than drawn as a card. */}
+          {/* What is wrong first, then what is moving. An alert at nought is
+              said in a line rather than drawn as a card; a lane is drawn
+              whatever it reads. */}
+          {/* Two different things were in one row. The first three come and
+              go with the trouble, which is right for an alert; the rest are
+              the board, and a board that changes shape between Monday and
+              Tuesday cannot be read by position. Position is how anybody
+              actually uses the screen they open first, so the figures are
+              drawn every day in the same order with a nought dimmed. */}
           <AlertTiles
             allClear="Nothing is open across the partners."
             tiles={[
               { label: "Past the service level", nothing: "past the service level", value: late.total, tone: "stop", note: "Across every lane", href: "/admin/queue" },
               { label: "Nobody has picked up", nothing: "unclaimed", value: load.unassigned, tone: "warn", note: "Waiting on this desk", href: "/applications?assignedTo=none" },
               { label: "Pending from partner", nothing: "waiting on a partner", value: groups.PENDING_PARTNER, tone: "warn", href: "/applications?group=PENDING_PARTNER" },
-              { label: "New / assessment", nothing: "new", value: groups.NEW, tone: "brand", always: true, href: "/applications?group=NEW" },
-              { label: "In progress", nothing: "in progress", value: groups.IN_PROGRESS, tone: "info", always: true, href: "/applications?group=IN_PROGRESS" },
-              { label: "Offer / contract", nothing: "at offer", value: groups.OFFER, tone: "good", always: true, href: "/applications?group=OFFER" },
+            ]}
+          />
+
+          <KpiBoard
+            columns={3}
+            tiles={[
+              { label: "New / assessment", value: groups.NEW, tone: "brand", href: "/applications?group=NEW" },
+              { label: "In progress", value: groups.IN_PROGRESS, tone: "info", href: "/applications?group=IN_PROGRESS" },
+              { label: "Offer / contract", value: groups.OFFER, tone: "good", href: "/applications?group=OFFER" },
             ]}
           />
 

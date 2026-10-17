@@ -5,7 +5,7 @@ import type { SessionUser } from "@/lib/auth";
 import { applicationWhere, type ApplicationFilters } from "@/server/queries";
 import { agingList, deadlineList, kpiTotals, myWork, recentChanges, windowFor } from "@/server/dashboard";
 import { ownApplicationsOnly } from "@/server/scope";
-import { AlertTiles, Card, CardHeader, Chip, DashboardHero, EmptyState, HeroBand, LinkButton, Table, Td, Th } from "@/components/ui";
+import { AlertTiles, Card, CardHeader, Chip, DashboardHero, EmptyState, HeroBand, KpiBoard, LinkButton, Table, Td, Th } from "@/components/ui";
 import { AgingCard, DashboardFilters, DeadlinesCard, RecentChangesCard, partOfDay } from "./parts";
 import { greetingName } from "@/lib/format";
 
@@ -77,8 +77,20 @@ export default async function DeskCounsellorDashboard({ user, f }: { user: Sessi
           allClear="Nothing is waiting on you this morning."
           tiles={[
             { label: "Waiting on you", nothing: "waiting on you", value: work.waiting, tone: "warn", note: "Your files, nobody else's", href: "/applications?assignedTo=me" },
-            { label: "Live applications", nothing: "live", value: work.live, tone: "info", always: true, href: "/applications" },
-            { label: "Visas granted", nothing: "through the visa", value: kpis.visa_received ?? 0, tone: "good", always: true },
+          ]}
+        />
+
+        {/* Two different things were in one row. The first three come and
+            go with the trouble, which is right for an alert; the rest are
+            the board, and a board that changes shape between Monday and
+            Tuesday cannot be read by position. Position is how anybody
+            actually uses the screen they open first, so the figures are
+            drawn every day in the same order with a nought dimmed. */}
+        <KpiBoard
+          columns={3}
+          tiles={[
+            { label: "Live applications", value: work.live, tone: "info", href: "/applications" },
+            { label: "Visas granted", value: kpis.visa_received ?? 0, tone: "good" },
           ]}
         />
       </div>

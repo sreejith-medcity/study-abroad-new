@@ -5,7 +5,7 @@ import { db, schema } from "@/db";
 import { deskPool, deskStanding, queueCounts } from "@/server/documentation";
 import { CLAIM_MINUTES } from "@/lib/journey";
 import { ROLE_LABEL } from "@/lib/permissions";
-import { AlertTiles, Card, CardHeader, Chip, DashboardHero, EmptyState, HeroBand, LinkButton, PersonRow, Table, Td, Th, cn } from "@/components/ui";
+import { AlertTiles, Card, CardHeader, Chip, DashboardHero, EmptyState, HeroBand, KpiBoard, LinkButton, PersonRow, Table, Td, Th, cn } from "@/components/ui";
 
 /** Hours, in the words somebody would use out loud rather than a decimal. */
 function waited(hours: number | null) {
@@ -117,11 +117,20 @@ export default async function DeskLeadDashboard({ user }: { user: SessionUser })
             note: "Somebody opened it and went home",
             href: "/documentation",
           },
+        ]}
+      />
+
+      {/* Two different things were in one row. The alerts above come and go
+          with the trouble, which is right for an alert. What the desk got
+          through is not an alert, and a figure that disappears on a quiet
+          week is a figure nobody can read by position. */}
+      <KpiBoard
+        columns={3}
+        tiles={[
           {
             label: "Decided this week",
             value: decidedWeek,
             tone: "good",
-            always: true,
             note: decidedWeek > 0 ? `${sentBackWeek} sent back, ${Math.round((sentBackWeek / decidedWeek) * 100)}%` : "Nothing decided yet this week",
           },
         ]}

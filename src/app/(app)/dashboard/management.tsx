@@ -19,6 +19,7 @@ import { enquiryCounts } from "@/server/enquiries";
 import { commissionTotals, inr } from "@/server/commission";
 import {
   AlertTiles,
+  KpiBoard,
   BarList,
   Card,
   CardHeader,
@@ -121,8 +122,20 @@ export default async function ManagementDashboard({ user, f }: { user: SessionUs
                 note: "Withdrew once the visa was in hand",
                 href: "/applications?kpi=non_enrolment",
               },
-              { label: "Offers", value: kpis.offers, tone: "good", always: true, href: "/applications?kpi=offers" },
-              { label: "Visas received", value: kpis.visa_received, tone: "good", always: true, href: "/applications?kpi=visa_received" },
+            ]}
+          />
+
+          {/* Two different things were in one row. The first three come and
+              go with the trouble, which is right for an alert; the rest are
+              the board, and a board that changes shape between Monday and
+              Tuesday cannot be read by position. Position is how anybody
+              actually uses the screen they open first, so the figures are
+              drawn every day in the same order with a nought dimmed. */}
+          <KpiBoard
+            columns={3}
+            tiles={[
+              { label: "Offers", value: kpis.offers, tone: "good", href: "/applications?kpi=offers" },
+              { label: "Visas received", value: kpis.visa_received, tone: "good", href: "/applications?kpi=visa_received" },
             ]}
           />
 

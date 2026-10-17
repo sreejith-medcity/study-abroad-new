@@ -16,6 +16,7 @@ import {
   CardHeader,
   Chip,
   AlertTiles,
+  KpiBoard,
   DashboardHero,
   DataList,
   EmptyState,
@@ -141,8 +142,20 @@ export default async function SuperAdminDashboard({ user, f }: { user: SessionUs
             tiles={[
               { label: "Never signed in", nothing: "never signed in", value: snapshot.flags.neverSignedIn, tone: "stop", note: "Made and never used", href: "/admin/partners" },
               { label: "Temporary passwords", nothing: "on a temporary password", value: snapshot.flags.temporary, tone: "warn", note: "Cannot sign in yet", href: "/admin/partners" },
-              { label: "Overseas team", nothing: "on the Overseas team", value: staff, tone: "brand", always: true, href: "/admin/partners" },
-              { label: "Partner users", nothing: "at the partners", value: partnerUsers, tone: "info", always: true, href: "/admin/partners" },
+            ]}
+          />
+
+          {/* Two different things were in one row. The first three come and
+              go with the trouble, which is right for an alert; the rest are
+              the board, and a board that changes shape between Monday and
+              Tuesday cannot be read by position. Position is how anybody
+              actually uses the screen they open first, so the figures are
+              drawn every day in the same order with a nought dimmed. */}
+          <KpiBoard
+            columns={3}
+            tiles={[
+              { label: "Overseas team", value: staff, tone: "brand", href: "/admin/partners" },
+              { label: "Partner users", value: partnerUsers, tone: "info", href: "/admin/partners" },
             ]}
           />
 
