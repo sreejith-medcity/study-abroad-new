@@ -81,8 +81,24 @@
  * application, and there is nothing here to change. 15.5.28 was tried, a
  * full sweep of all 78 suites on it: no regression anywhere, and the warning
  * still there, which figures, since the React it carries is byte for byte
- * the one 15.5.27 carries. Next 16 rewrote this area and is the next thing
- * to try, but that is a major version and a decision of its own.
+ * the one 15.5.27 carries.
+ *
+ * Next 16 was tried too, in a throwaway clone with its own database, and it
+ * looks like the answer:
+ *   - it builds with no change to a line of this application
+ *   - twenty-seven suites run on it, among them all twelve that had shown
+ *     the warning on 15.5.28, and the warning did not appear once
+ *   - the probe below, eight rounds, did not turn it up either, where the
+ *     same eight rounds on 15.5.27 turned it up twice
+ *   - nothing failed an assertion
+ *
+ * What it does cost: two suites hang on page.waitForLoadState("networkidle"),
+ * which never settles under 16. That idiom is used ninety-five times across
+ * thirty-one suites and would have to go, which is no loss, since Playwright
+ * has advised against it for years and every one of those waits is standing
+ * in for something specific the suite could wait for instead. That is the
+ * whole of the upgrade's cost as far as this has been taken; whether to pay
+ * it is a decision about a major version, not about this warning.
  *
  * How to make React say what it saw, which is the part worth keeping. Next
  * does not use the React in node_modules; it carries its own at
