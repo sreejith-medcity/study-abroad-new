@@ -42,7 +42,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const view = f.view === "universities" ? "universities" : f.view === "routes" ? "routes" : "programs";
   // How many of the folded controls are on, so the fold can open itself rather
   // than hide a filter somebody cannot see they have set.
-  const FOLDED = ["intakeMonth", "minIelts", "budget", "field", "vendor", "apply", "sort", "student"] as const;
+  const FOLDED = ["intakeMonth", "minIelts", "budget", "field", "vendor", "apply", "sort"] as const;
   const foldedOn = FOLDED.filter((k) => f[k]).length;
   const { programs: p, universities: u, countries: c, students: s } = schema;
 
@@ -310,7 +310,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             .map(([k, v]) => (
               <input key={k} type="hidden" name={k} value={v} />
             ))}
-          <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-5 [&>*]:min-w-0">
+          <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-6 [&>*]:min-w-0">
           <div className="relative sm:col-span-2">
             <IconSearch className="pointer-events-none absolute left-3 top-1/2 size-[18px] -translate-y-1/2 text-muted" />
             <Input name="q" defaultValue={f.q} placeholder="Program, university or study area" aria-label="Search" className="pl-10" />
@@ -323,6 +323,22 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           </Select>
           <CheckDropdown testId="level-picker" label="Any level" summary={levelText || null} name="level" options={LEVELS} selected={levelsOn} />
           <CheckDropdown testId="season-picker" label="Any intake season" summary={seasonText ? `${seasonText} intake` : null} name="season" options={Object.entries(SEASON_LABEL)} selected={seasonsOn} />
+          {/* Not a filter, and folding it away was a mistake. Every row in
+              the results says "Pick a student to apply", and this is the
+              control that does it: behind the fold, the instruction pointed
+              at something nobody could see. */}
+          <div id="pick-student" className="scroll-mt-24 min-w-0">
+            <Combobox
+              name="student"
+              label="Check against student"
+              endpoint="/api/pick/students"
+              placeholder="Check eligibility for…"
+              emptyText="No student matches that name, ID or number."
+              initial={students.map((x) => ({ id: x.id, label: fullName(x), sub: [x.medcityId, x.phone].filter(Boolean).join(" · ") }))}
+              selected={student ? { id: student.id, label: fullName(student), sub: [student.medcityId, student.phone].filter(Boolean).join(" · ") } : null}
+            />
+          </div>
+
         </div>
 
         {/* Eleven controls in a grid is not a filter bar, it is a wall, and
@@ -382,15 +398,6 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             {view === "routes" && <option value="tat">Fastest offer first</option>}
             <option value="rank">Best university ranking first</option>
           </Select>
-          <Combobox
-            name="student"
-            label="Check against student"
-            endpoint="/api/pick/students"
-            placeholder="Check eligibility for…"
-            emptyText="No student matches that name, ID or number."
-            initial={students.map((x) => ({ id: x.id, label: fullName(x), sub: [x.medcityId, x.phone].filter(Boolean).join(" · ") }))}
-            selected={student ? { id: student.id, label: fullName(student), sub: [student.medcityId, student.phone].filter(Boolean).join(" · ") } : null}
-          />
           </div>
         </details>
 
@@ -819,7 +826,16 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                             Apply
                           </LinkButton>
                         ) : (
-                          <span className="text-xs text-muted">Pick a student to apply</span>
+                          /* This used to be a sentence telling somebody to
+                             go and use a control elsewhere on the page.
+                             It is the control now. */
+                          <a
+                            href="#pick-student"
+                            className="text-xs font-medium text-brand-600 underline-offset-2 hover:underline"
+                            aria-label="Choose a student, then apply"
+                          >
+                            Pick a student to apply
+                          </a>
                         )}
                         {student && canShortlist && (picked.has(r.id) || !shortlistFull) && (
                           <ShortlistButton studentId={student.id} programId={r.id} on={picked.has(r.id)} />

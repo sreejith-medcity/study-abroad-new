@@ -40,7 +40,11 @@ fs.mkdirSync(shots, { recursive: true });
 
 await page.goto(`${BASE}/settings`);
 await settle();
-check(await page.locator('button[aria-pressed]').count() === 3, "Settings offers three surfaces");
+// Scoped to the page's own content: the menu's put-away toggle in the
+// sidebar carries aria-pressed too, and counting it made this suite fail
+// for a reason that had nothing to do with appearance.
+const surfaces = page.locator('main button[aria-pressed]');
+check((await surfaces.count()) === 3, `Settings offers three surfaces, found ${await surfaces.count()}`);
 
 const skinOf = () => page.evaluate(() => document.documentElement.getAttribute("data-skin"));
 // The card background, as the browser actually paints it.
@@ -53,7 +57,7 @@ const cardBg = () =>
 for (const [i, want] of [[1, "glass"], [2, "night"], [0, "soft"]]) {
   await page.goto(`${BASE}/settings`);
   await settle();
-  await page.locator("button[aria-pressed]").nth(i).click();
+  await page.locator("main button[aria-pressed]").nth(i).click();
   await page.waitForFunction((w) => document.documentElement.getAttribute("data-skin") === w, want, { timeout: 10000 }).catch(() => {});
   check((await skinOf()) === want, `Picking ${want} paints the page in it`);
   check(sql(`select skin from users where email = '${email}'`) === want, `Picking ${want} is remembered`);

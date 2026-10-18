@@ -60,6 +60,20 @@ for (const name of ["q", "country"]) {
 }
 check((await fold.locator('select[name="budget"]').count()) === 1, "search: and the tuition budget goes into it");
 
+// Every row of the results says "Pick a student to apply". The control that
+// does it was folded away with the filters, so the instruction pointed at
+// something nobody could see. It is not a filter and it does not fold.
+check(
+  (await page.locator('#pick-student input[role="combobox"]').isVisible()) === true,
+  "search: the student picker is on the bar, not behind the fold",
+);
+check(
+  (await fold.locator("#pick-student").count()) === 0,
+  "search: and cannot be folded away again",
+);
+const prompt = page.locator('main a[href="#pick-student"]').first();
+check((await prompt.count()) > 0, "search: and the row's prompt is a link to it rather than a sentence about it");
+
 // A filter that is on but folded would be invisible, so the fold opens itself.
 await page.goto(`${BASE}/search?budget=15`);
 await page.waitForTimeout(900);
