@@ -98,10 +98,17 @@ check(sql("select count(*) from integration_events where direction = 'IN' and st
 
 // --- Registering somebody new.
 const crmId = `CRM-${tag}`;
+// "Whose copy is newer" is the whole rule these calls exercise, and the
+// portal's own copy is stamped at the moment the suite runs. Fixed dates were
+// in the future when this was written and are in the past now, which turned a
+// perfectly good signed update into a stale one. So each message carries a
+// time relative to this run: later() for one the portal should accept, and a
+// plain old date for the one that is meant to lose.
+const later = (hours) => new Date(Date.now() + hours * 3_600_000).toISOString();
 const body = (over = {}) =>
   JSON.stringify({
     crmId,
-    updatedAt: "2026-10-02T09:15:00Z",
+    updatedAt: later(1),
     branch: "KOT",
     firstName: "Meera",
     lastName: `FromCrm${tag}`,
@@ -133,7 +140,7 @@ check(sql(`select first_name from students where id = '${studentId}'`) === "Meer
 check(sql(`select count(*) from students where crm_id = '${crmId}'`) === "1", "idempotency: no second student was created");
 
 // --- Last edit wins, in both directions.
-r = await call("/api/crm/students", { method: "POST", headers: auth, body: body({ updatedAt: "2026-10-03T09:00:00Z", city: "Kochi" }) });
+r = await call("/api/crm/students", { method: "POST", headers: auth, body: body({ updatedAt: later(2), city: "Kochi" }) });
 check(r.status === 200 && r.json?.created === false, "update: a newer message updates the student");
 check(sql(`select city from students where id = '${studentId}'`) === "Kochi", "update: and the field is written");
 check((r.json?.changed ?? []).includes("city"), "update: the answer says which fields were written");
@@ -141,7 +148,7 @@ check(sql(`select count(*) from audit_logs where action = 'crm.student.update' a
 
 // A counsellor corrects something, then a stale CRM message tries to undo it.
 sql(`update students set city = 'Alappuzha', updated_at = now() where id = '${studentId}'`);
-r = await call("/api/crm/students", { method: "POST", headers: auth, body: body({ updatedAt: "2026-09-01T09:00:00Z", city: "Kochi" }) });
+r = await call("/api/crm/students", { method: "POST", headers: auth, body: body({ updatedAt: "2026-01-01T09:00:00Z", city: "Kochi" }) });
 check(r.status === 200, "stale: an older message is still accepted");
 check(sql(`select city from students where id = '${studentId}'`) === "Alappuzha", "stale: but the correction stands, because the portal's copy is newer");
 check(r.json?.staleMessage === true, "stale: the answer says the message was the older one");
@@ -153,11 +160,11 @@ check(/city/.test(text), "stale: naming the field");
 await sp.screenshot({ path: `${OUT}/02-needs-a-person.png`, fullPage: true });
 
 // A blank never clears what the portal holds.
-r = await call("/api/crm/students", { method: "POST", headers: auth, body: body({ updatedAt: "2026-10-05T09:00:00Z", email: "" }) });
+r = await call("/api/crm/students", { method: "POST", headers: auth, body: body({ updatedAt: later(3), email: "" }) });
 check(sql(`select email from students where id = '${studentId}'`) !== "", "blank: an empty value from the CRM does not empty the portal's field");
 
 // A field nobody agreed on is named, not written.
-r = await call("/api/crm/students", { method: "POST", headers: auth, body: body({ updatedAt: "2026-10-06T09:00:00Z", journeyStage: "VISA" }) });
+r = await call("/api/crm/students", { method: "POST", headers: auth, body: body({ updatedAt: later(4), journeyStage: "VISA" }) });
 check((r.json?.ignoredFields ?? []).includes("journeyStage"), "scope: a field outside the agreed list is named back rather than written");
 check(sql(`select journey_stage from students where id = '${studentId}'`) !== "VISA", "scope: and the portal's own column is untouched");
 
@@ -192,7 +199,7 @@ await go(sp, "/admin/integrations?tab=keys");
 const keyRow = sp.locator("tr").filter({ hasText: `Vendor test ${tag}` }).first();
 await keyRow.getByRole("button", { name: "Require signing" }).click();
 check((await waitSql(`select signature_required from integration_keys where key_id = '${keyId}'`, "t")) === "t", "signing: it can be switched on for a key without making a new one");
-r = await call("/api/crm/students", { method: "POST", headers: auth, body: body({ updatedAt: "2026-10-07T09:00:00Z" }) });
+r = await call("/api/crm/students", { method: "POST", headers: auth, body: body({ updatedAt: later(5) }) });
 check(r.status === 401 && /signature/i.test(r.json?.error ?? ""), "signing: with it on, a bearer token alone is refused");
 
 const signed = (method, path, payload) => {
@@ -200,11 +207,11 @@ const signed = (method, path, payload) => {
   const sig = createHmac("sha256", secret).update([method.toUpperCase(), path, ts, payload].join("\n")).digest("hex");
   return { "x-medcity-key": keyId, "x-medcity-timestamp": ts, "x-medcity-signature": sig, "content-type": "application/json" };
 };
-const payload = body({ updatedAt: "2026-10-08T09:00:00Z", city: "Kollam" });
+const payload = body({ updatedAt: later(6), city: "Kollam" });
 r = await call("/api/crm/students", { method: "POST", headers: signed("POST", "/api/crm/students", payload), body: payload });
 check(r.status === 200, `signing: a request signed the documented way is accepted (${r.status})`);
 check(sql(`select city from students where id = '${studentId}'`) === "Kollam", "signing: and does its work");
-r = await call("/api/crm/students", { method: "POST", headers: signed("POST", "/api/crm/students", payload), body: body({ updatedAt: "2026-10-09T09:00:00Z", city: "Tampered" }) });
+r = await call("/api/crm/students", { method: "POST", headers: signed("POST", "/api/crm/students", payload), body: body({ updatedAt: later(7), city: "Tampered" }) });
 check(r.status === 401, "signing: a body changed after signing is refused");
 const old = String(Math.floor(Date.now() / 1000) - 3600);
 const oldSig = createHmac("sha256", secret).update(["POST", "/api/crm/students", old, payload].join("\n")).digest("hex");

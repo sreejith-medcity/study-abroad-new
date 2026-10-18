@@ -107,7 +107,15 @@ check(/MSc Business Management/.test(text) && /Arathi Krishnan/.test(text), "dea
 // The apply form warns on the intake whose deadline has passed.
 await go(pp, `/students/${sid}/applications?tab=apply&program=${programId}`);
 await pp.waitForLoadState("networkidle");
-await pp.selectOption('select[name="programId"]', programId);
+// The course picker is a type-ahead now, and ?program= fills it in, so there
+// is nothing to choose here: wait for the hidden input the form actually
+// posts, and for the intakes that follow from it.
+await pp.waitForFunction(
+  (id) => document.querySelector('input[name="programId"]')?.value === id,
+  programId,
+  { timeout: 15000 },
+);
+await pp.waitForFunction(() => (document.querySelector('select[name="intake"]')?.options.length ?? 0) > 1, null, { timeout: 15000 }).catch(() => {});
 const opts = await pp.locator('select[name="intake"] option').allTextContents();
 check(opts.some((o) => /apply by/.test(o)), "apply form: intakes carry their deadline");
 await pp.selectOption('select[name="intake"]', intakes[1].value);

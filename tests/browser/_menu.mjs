@@ -27,3 +27,23 @@ export async function clickInMenu(page, name) {
   }
   await link.click();
 }
+
+/**
+ * Open every group in the side menu, for a suite that reads the menu rather
+ * than clicking in it.
+ *
+ * Shut, a group is a heading and nothing else, so its entries are not in the
+ * page's text. A suite asking "is there a way to the course finder" has to
+ * open the groups first, the same as a person hunting for it.
+ */
+export async function openMenu(page) {
+  await page.locator("aside nav a").first().waitFor({ state: "attached", timeout: 15000 }).catch(() => {});
+  for (let i = 0; i < 3; i++) {
+    const shut = await page.locator("nav details:not([open]) > summary").evaluateAll((els) => {
+      els.forEach((e) => e.click());
+      return els.length;
+    });
+    await page.waitForTimeout(200);
+    if (shut === 0) break;
+  }
+}

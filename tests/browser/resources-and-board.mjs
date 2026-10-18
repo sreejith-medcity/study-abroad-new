@@ -59,7 +59,10 @@ check(
 // The board asks with dropdowns.
 await page.goto(`${BASE}/students/board`);
 await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
-const selects = await page.locator('form select[name="branch"], form select[name="who"], form select[name="team"], form select[name="quiet"]').count();
+// The filters apply the moment they change, so there is no form around them
+// and no Apply button any more. What was asked for is dropdowns, and that is
+// what is counted.
+const selects = await page.locator('main select[name="branch"], main select[name="who"], main select[name="team"], main select[name="quiet"]').count();
 check(selects >= 2, `the board filters are dropdowns (${selects} of them)`);
 const pills = await page.locator("a.rounded-full").count();
 check(pills === 0, `and the wall of pills is gone (${pills} left)`);

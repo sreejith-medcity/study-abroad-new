@@ -75,10 +75,13 @@ if (programs < 300) {
 // none behind, and this one then failed saying it needed more than one page
 // of German drafts and found none. It sets up its own now rather than
 // depending on what ran before it.
-const germanDrafts = Number(sql("select count(*) from programs p join countries c on c.id = p.country_id where p.status = 'DRAFT' and c.code = 'DE'"));
+// A program's country is its university's: programs carried a country of
+// their own once and no longer do.
+const GERMAN = "programs p join universities u on u.id = p.university_id join countries c on c.id = u.country_id";
+const germanDrafts = Number(sql(`select count(*) from ${GERMAN} where p.status = 'DRAFT' and c.code = 'DE'`));
 if (germanDrafts < 30) {
   sql(`update programs set status = 'DRAFT' where id in (
-         select p.id from programs p join countries c on c.id = p.country_id
+         select p.id from ${GERMAN}
          where c.code = 'DE' order by p.name limit 60)`);
 }
 

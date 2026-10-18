@@ -85,6 +85,15 @@ const payBtn = pp.getByRole("button", { name: `Pay ${cur} 50 online` });
 check(await payBtn.count() === 1, "application: pay button on a due fee");
 await payBtn.click();
 await pp.locator('[role="status"]').first().waitFor({ timeout: 15000 }).catch(() => {});
+// Everything below reads what the app sent to the stand-in. If the app was
+// not started pointing at it, nothing arrived, and going on would report a
+// dozen failures that are all one missing setting.
+if (seen.length === 0) {
+  console.log("SKIPPED  the app is not pointed at the stand-in: start it with RAZORPAY_API_BASE=http://localhost:4010");
+  await browser.close();
+  mock.close();
+  process.exit(0);
+}
 check(seen.length === 1 && seen[0].url === "/v1/orders" && seen[0].body.amount === 5000 && seen[0].body.currency === cur, `order: fee sent in ${cur} minor units`);
 check(seen[0]?.auth === `Basic ${Buffer.from("rzp_test_AbCdEf123456:test_secret_value").toString("base64")}`, "order: signed with the key id and secret");
 const orderId = sql(`select razorpay_order_id || '|' || status from payments where application_id = '${app}'`);

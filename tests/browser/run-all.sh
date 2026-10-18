@@ -49,7 +49,14 @@ stop() {
   sleep 1
 }
 
+# Two suites stand in for an outside service: ai answers as Anthropic's
+# Messages API on 4011, payments as Razorpay's Orders API on 4010. The app
+# reads both addresses when it makes the call, so pointing it at them here is
+# what lets those suites run at all rather than reporting nine failures. For
+# every other suite the ports are simply shut, which is the right answer for a
+# test run: a stray call to a real service fails at once instead of going out.
 start() {
+  ANTHROPIC_API_BASE=http://localhost:4011 RAZORPAY_API_BASE=http://localhost:4010 \
   setsid npm start > "$OUT/app.log" 2>&1 < /dev/null &
   for _ in $(seq 1 30); do
     [ "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/login")" = "200" ] && return 0
@@ -89,7 +96,12 @@ for f in tests/browser/*.mjs; do
   stop
   reset_db || { echo "$b: the database could not be reset" >> "$OUT/summary.txt"; continue; }
   start || break
-  BASE="$BASE" timeout 600 node "$f" > "$OUT/$b.log" 2>&1
+  # Most suites are done inside a couple of minutes. The two that walk every
+  # screen for every role are not: buttons presses every control on forty-odd
+  # screens eleven times over, and nav follows every link. Cut short, they
+  # report nothing at all, which is worse than taking the time.
+  case "$b" in buttons) limit=4200 ;; nav|navigation|routes) limit=1800 ;; *) limit=600 ;; esac
+  BASE="$BASE" timeout "$limit" node "$f" > "$OUT/$b.log" 2>&1
   code=$?
   n=$(grep -c "^FAIL" "$OUT/$b.log")
   if grep -q "^SKIPPED" "$OUT/$b.log"; then

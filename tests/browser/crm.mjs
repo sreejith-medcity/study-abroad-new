@@ -114,9 +114,12 @@ text = await go(cp, "/students/board");
 check(/Students by stage/.test(text), "board: the screen exists");
 check(/1\. Profile/.test(text) && /7\. Visa/.test(text), "board: the nine stages are the columns");
 check(/since a word|spoken to/.test(text), "board: each card says how long since anybody spoke to them");
-check(/Nobody has spoken to them/.test(text), "board: the files nobody has touched are one click away");
+// The wall of pills became the bar every other list uses, so the one-click
+// way to the untouched files is an option on the Contact dropdown and, once
+// it is on, a chip saying so.
+check(/Never spoken to/.test(text), "board: the files nobody has touched are one click away");
 const quiet = await go(cp, "/students/board?quiet=1");
-check(/Nobody has spoken to them/.test(quiet), "board: and that filter holds");
+check(/Never spoken to/.test(quiet) && /filter on/i.test(quiet), "board: and that filter holds");
 await cp.screenshot({ path: `${OUT}/03-board.png`, fullPage: true });
 
 // --- The portal raises its own tasks when it chases.

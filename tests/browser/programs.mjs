@@ -69,8 +69,12 @@ check(freeCount > 0 && freeCount < 100, `search: "No application fee" keeps only
 // Commission from the seeded UK rule: 15% of tuition, half to the partner.
 text = await go(pp, "/search?q=MSc+Advanced+Computer+Science&country=GB");
 check(/Your share ≈ (£|GBP )1,452/.test(text), "search: the partner's share shows on a program with a yearly fee");
-text = await go(pp, "/search?country=GB&sort=commission");
-check(/Your share ≈/.test(text.split("\n").slice(0, 200).join("\n")), "search: highest commission first puts priced programs on top");
+await go(pp, "/search?country=GB&sort=commission");
+// Counted in rows rather than in lines of page text: the filter panel grew
+// past two hundred lines of its own, and "near the top" has always meant the
+// first few results, not the first screenful of controls.
+const topRows = (await pp.locator("main tbody tr").allInnerTexts()).slice(0, 5).join("\n");
+check(/Your share ≈/.test(topRows), "search: highest commission first puts priced programs on top");
 
 await go(pp, "/search?q=Advanced+Clinical+Practice");
 await pp.getByRole("link", { name: "MSc Advanced Clinical Practice" }).first().click();

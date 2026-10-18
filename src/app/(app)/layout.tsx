@@ -329,7 +329,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     ...(ai?.enabled && ai.features.assistant ? [{ href: "/assistant", label: "Assistant", icon: "spark" as const }] : []),
     ...(ai?.enabled && ai.features.interview ? [{ href: "/interview", label: "Practice interview", icon: "learning" as const }] : []),
   ];
-  const withAi = groups.map((g) => (g.title === "Find programs" && aiItems.length ? { ...g, items: [...g.items, ...aiItems] } : g));
+  // They belong beside the course search, and which group that is was looked
+  // up by its title until the title changed and both entries quietly
+  // disappeared from every menu. The group is found by what is in it now, and
+  // if a role has no course group the entries get one of their own rather
+  // than going missing again.
+  const withAi = (() => {
+    if (aiItems.length === 0) return groups;
+    const at = groups.findIndex((g) => g.items.some((i) => i.href === "/search" || i.href === "/finder"));
+    if (at === -1) return [...groups, { title: "Ask the portal", items: aiItems }];
+    return groups.map((g, i) => (i === at ? { ...g, items: [...g.items, ...aiItems] } : g));
+  })();
   // Bulk upload is for branch owners and the team.
   const withImports = withAi.map((g, i) =>
     i === 0 && (user.role === "PARTNER" || isAdmin(user)) ? { ...g, items: [...g.items, { href: "/imports", label: "Bulk upload", icon: "applications" as const }] } : g,

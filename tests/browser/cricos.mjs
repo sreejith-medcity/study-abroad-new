@@ -9,7 +9,14 @@ import fs from "node:fs";
 import path from "node:path";
 
 const DIR = process.env.CRICOS_DIR;
-if (!DIR) { console.error("Set CRICOS_DIR to the folder holding the three CRICOS CSVs"); process.exit(1); }
+// The register itself is not in this repository: it is three large files
+// downloaded from cricos.education.gov.au. Without them this suite has
+// nothing to work on, which is not a failure, so it says so and stands down
+// rather than reporting a broken screen.
+if (!DIR) {
+  console.log("SKIPPED  set CRICOS_DIR to the folder holding the three CRICOS CSVs to run this one");
+  process.exit(0);
+}
 const file = (part) => path.join(DIR, fs.readdirSync(DIR).find((f) => f.includes(part) && f.endsWith(".csv")));
 const OUT = "/tmp/smoke-cricos";
 fs.mkdirSync(OUT, { recursive: true });

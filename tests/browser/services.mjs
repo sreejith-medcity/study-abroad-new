@@ -63,10 +63,15 @@ await ap.waitForURL(/\/admin\/services/);
 text = await main(ap);
 check(/1 new/.test(text) && /Arathi Krishnan/.test(text) && /INR 25 lakh/.test(text), "queue: the new request is there with its details");
 await ap.waitForLoadState("networkidle");
-await ap.selectOption('select[name="status"] >> nth=1', "IN_PROGRESS");
-await ap.fill('input[name="provider"]', "Sample Bank, Kottayam branch");
-await ap.fill('textarea[name="teamNote"]', "Sanction letter expected in 10 days");
-await ap.getByRole("button", { name: "Save" }).first().click();
+// The page carries two other things with a Save of their own now: the filter
+// bar above, and the "Who handles what" panel with one row per kind of
+// service. So the request's own form is found by the field only it has,
+// rather than by being first on the page.
+const req = ap.locator("form").filter({ has: ap.locator('input[name="provider"]') }).first();
+await req.locator('select[name="status"]').selectOption("IN_PROGRESS");
+await req.locator('input[name="provider"]').fill("Sample Bank, Kottayam branch");
+await req.locator('textarea[name="teamNote"]').fill("Sanction letter expected in 10 days");
+await req.getByRole("button", { name: "Save" }).click();
 check(await toast(ap, /Saved/), "queue: the team moves it on");
 await ap.reload();
 check(/0 new, 1 in progress/.test(await main(ap)), "queue: the counts follow");

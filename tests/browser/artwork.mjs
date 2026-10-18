@@ -1,5 +1,6 @@
 import { chromium } from "playwright";
 import fs from "node:fs";
+import zlib from "node:zlib";
 
 const OUT = "/tmp/smoke-artwork";
 fs.mkdirSync(OUT, { recursive: true });
@@ -40,6 +41,52 @@ const BIG = `${OUT}/big-logo.png`;
 const FAVICON = `${OUT}/favicon.png`;
 fs.writeFileSync(LOGO, '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 64"><rect width="240" height="64" fill="#0466af"/><text x="16" y="40" fill="#fff" font-size="26" font-family="sans-serif">SMOKE</text></svg>');
 fs.writeFileSync(FAVICON, PNG);
+// The oversized one is drawn here rather than kept in the repository. It is
+// far larger than the 600 by 150 the header wants, which is what the browser
+// is meant to notice, and it is an ordinary picture rather than noise so that
+// the shrunk version is genuinely small.
+fs.writeFileSync(BIG, bigPng(3000, 1800));
+
+function bigPng(w, h) {
+  const crc32 = (buf) => {
+    let c = ~0;
+    for (const b of buf) {
+      c ^= b;
+      for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1));
+    }
+    return ~c >>> 0;
+  };
+  const chunk = (type, data) => {
+    const head = Buffer.alloc(4);
+    head.writeUInt32BE(data.length);
+    const body = Buffer.concat([Buffer.from(type, "ascii"), data]);
+    const tail = Buffer.alloc(4);
+    tail.writeUInt32BE(crc32(body));
+    return Buffer.concat([head, body, tail]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(w, 0);
+  ihdr.writeUInt32BE(h, 4);
+  ihdr[8] = 8; // bit depth
+  ihdr[9] = 2; // truecolour
+  const raw = Buffer.alloc(h * (1 + w * 3));
+  for (let y = 0; y < h; y++) {
+    const row = y * (1 + w * 3);
+    raw[row] = 0; // no filter
+    for (let x = 0; x < w; x++) {
+      const i = row + 1 + x * 3;
+      raw[i] = (x * 255) / w;
+      raw[i + 1] = (y * 255) / h;
+      raw[i + 2] = ((x + y) * 255) / (w + h);
+    }
+  }
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk("IHDR", ihdr),
+    chunk("IDAT", zlib.deflateSync(raw, { level: 1 })),
+    chunk("IEND", Buffer.alloc(0)),
+  ]);
+}
 
 {
   const { ctx, page, errors } = await signIn("sreejith@miak.in", "10.40.3.11");

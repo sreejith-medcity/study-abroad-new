@@ -17,7 +17,25 @@
  * same, and if React still threw, the mismatch is somewhere this does not
  * look: a hoisted style or script, or a boundary that re-rendered.
  *
+ * What the error actually is, found by patching React to describe it
+ * (the recipe is at the bottom of this comment):
+ *   - it is thrown from popHydrationState, as a parent finishes. The meaning
+ *     is "there are server-rendered nodes left inside this element that the
+ *     client never accounted for", not "this element is wrong"
+ *   - the element it lands on is always the first container inside the page's
+ *     own content: the inner div of PageHeader, or the inner div of the
+ *     dashboard hero. The leftover node is that container's first child, the
+ *     h1 or the eyebrow, so the client consumed none of its children
+ *   - React reports it as an element difference, not a text one
+ *
  * What has already been ruled out, so nobody repeats it:
+ *   - the server's own HTML. Twenty-five fetches of /wallet gave one shape,
+ *     byte for byte, and it is the right shape: main > div.mx-auto >
+ *     div.mb-6 > div > h1 + p. The markup the browser is handed is correct
+ *   - a development React. Swapping React's development client into a
+ *     production build (not `next dev`: the same build, the same server, only
+ *     the renderer changed) gave none in sixty-six loads, which also means
+ *     the fuller message that build would print cannot be got this way
  *   - the shell's client components, removed one at a time, make no difference
  *   - a cold server start makes no difference: eight cold starts, none threw
  *   - plain navigation barely reproduces it: about one load in thirty
@@ -32,11 +50,40 @@
  *     is real and worth knowing, but it is not this: the one error seen in
  *     fourteen loads landed on a page with the ordinary ordering
  *
- * Where to look next. It needs a production build and a session that posts
- * forms, so the usable instrumentation is probably a patched copy of React's
- * error so the offending node can be printed, rather than more comparing of
- * HTML after the fact: by the time this script reads the DOM, React has
- * already repaired the mismatch, which is why every region reads as "same".
+ * What it looks like. The client is fast enough to be hydrating while the
+ * document is still arriving: slowing the client down in any way takes it to
+ * nought, the processor throttled six times over, the slower development
+ * renderer, and a quiet machine. Next wraps the page in a Suspense boundary
+ * of its own (the `<div hidden><!--$--><!--\/$--></div>` at the top of every
+ * body), and content that lands in that boundary is moved into place by a
+ * script. A move that happens while React is walking the same parent is
+ * exactly this error: nodes left over that the client never claimed. Nothing
+ * in this application renders a Suspense boundary, so if that is it, it is
+ * Next's streaming rather than a line here, and the thing to try is the
+ * upgrade: 15.5.28 is a patch ahead of us on the backport line, and 16 is
+ * current.
+ *
+ * How to make React say what it saw, which is the part worth keeping. Next
+ * does not use the React in node_modules; it carries its own at
+ * node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.production.js.
+ * Patching that one and rebuilding does work. In `throwOnHydrationMismatch`,
+ * before the throw, print the fiber (walk `.return` for the path, `.child`
+ * and `.sibling` for what the client rendered), `nextHydratableInstance` (the
+ * first leftover server node) and `hydrationParentFiber.stateNode.childNodes`
+ * (what is actually in the DOM). Keep the original file somewhere first, and
+ * put it back afterwards: a patched React must never be committed or
+ * deployed.
+ *
+ * Reproducing it at all is the hard part. It came out at about one load in
+ * ten with four people signed in at once walking seven screens each, and then
+ * would not come out again in four hundred loads of the same build on a
+ * quieter machine. Budget for that before starting.
+ *
+ * Where to look next: the patched-React recipe above, held open long enough
+ * to catch one on a page whose content streams in parts, with the boundary
+ * script's timing logged beside it. Comparing HTML after the fact, which is
+ * what this script does, cannot settle it: by the time it reads the DOM
+ * React has repaired the mismatch, which is why every region reads "same".
  *
  * It is worth the effort. On a full suite run it is the single largest cause
  * of failure: eight suites fail on nothing else, and three more fail on it as

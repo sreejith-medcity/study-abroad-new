@@ -4,6 +4,7 @@
 // turnaround from the team's own files, and the new filters (public or private,
 // highest qualification, study gap in months). Wants the real catalogue.
 import { chromium } from "playwright";
+import { openMenu } from "./_menu.mjs";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 
@@ -53,6 +54,8 @@ const pp = partner.page;
 
 // --- The way in: one screen by default, the three questions on offer.
 let text = await go(pp, "/dashboard");
+// The menu is in groups now, shut but for the one holding the page.
+await openMenu(pp);
 check((await pp.getByRole("link", { name: "Course finder" }).count()) > 0, "nav: the course finder is in the menu");
 text = await go(pp, "/finder");
 check(/Everything on one screen/.test(text), "finder: the one-screen form is the way in");

@@ -33,7 +33,21 @@ async function signIn(email, ip) {
 }
 const settle = (page) => page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
 const main = async (page) => { await settle(page); return page.locator("main").innerText(); };
-async function go(page, p) { await page.goto(BASE + p); return main(page); }
+// The secondary filters on the search screen fold away behind "More filters",
+// and the sort is one of them, so a suite reading the page has to open the
+// fold the same way a person does.
+async function unfold(page) {
+  for (let i = 0; i < 3; i++) {
+    const n = await page.evaluate(() => {
+      const shut = [...document.querySelectorAll("main details:not([open]) > summary")];
+      shut.forEach((e) => e.click());
+      return shut.length;
+    });
+    await page.waitForTimeout(200);
+    if (n === 0) break;
+  }
+}
+async function go(page, p) { await page.goto(BASE + p); await unfold(page); return main(page); }
 async function waitText(page, re, timeout = 15000) {
   const until = Date.now() + timeout;
   while (Date.now() < until) { if (re.test(await page.locator("main").innerText())) return true; await page.waitForTimeout(300); }

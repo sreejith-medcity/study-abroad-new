@@ -11,6 +11,22 @@ const login = async (page, email, password) => {
   await page.waitForLoadState("networkidle");
 };
 const rowOf = (page, email) => page.locator("main li").filter({ hasText: email });
+/**
+ * A branch folds away on this screen unless something is waiting on it, so the
+ * person in it has to be brought out before their controls can be pressed.
+ * Opening every shut fold is what somebody hunting for a name does.
+ */
+const unfold = async (page) => {
+  for (let i = 0; i < 3; i++) {
+    const n = await page.evaluate(() => {
+      const shut = [...document.querySelectorAll("main details:not([open]) > summary")];
+      shut.forEach((e) => e.click());
+      return shut.length;
+    });
+    await page.waitForTimeout(250);
+    if (n === 0) break;
+  }
+};
 const waitText = async (page, text, label) => {
   try {
     await page.locator('main, [role="status"]').getByText(text).first().waitFor({ timeout: 8000 });
@@ -28,6 +44,7 @@ const page = await ctx.newPage();
 await login(page, "sreejith@miak.in", "Password@123");
 await page.goto(`${BASE}/admin/partners`);
 await page.waitForLoadState("networkidle");
+await unfold(page);
 
 // 1. promote a desk admin to super admin, then back
 {

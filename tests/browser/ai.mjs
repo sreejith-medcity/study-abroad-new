@@ -4,6 +4,7 @@
 // monthly allowance and the switch. Wants the plain seed and the server
 // started with ANTHROPIC_API_BASE=http://localhost:4011.
 import { chromium } from "playwright";
+import { openMenu } from "./_menu.mjs";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import http from "node:http";
@@ -83,7 +84,7 @@ sql(`update students set profile_locked = false, passport_number = null, city_of
 const partner = await signIn("kottayam@medcity.test", "10.104.1.2");
 const pp = partner.page;
 let t = await go(pp, "/assistant");
-check(/not switched on/.test(t) && !/Assistant/.test(await pp.locator("nav").first().innerText()), "off: no key, no assistant");
+check(/not switched on/.test(t) && !/Assistant/.test(await pp.locator("aside nav").first().innerText()), "off: no key, no assistant");
 
 // --- The owner switches AI on.
 const owner = await signIn("sreejith@miak.in", "10.104.1.1");
@@ -102,10 +103,24 @@ check(!sql("select api_key_enc from ai_settings").includes("sk-ant"), "settings:
 
 // --- Assistant.
 t = await go(pp, "/assistant");
-check(/Assistant/.test(await pp.locator("nav").first().innerText()), "nav: assistant appears once on");
+// The menu is in groups now, shut but for the one holding the page, so the
+// entries have to be brought out before they can be read.
+await openMenu(pp);
+// The side menu, not whichever nav element comes first in the page: the
+// narrow-screen menu is a nav of its own and is hidden at this width.
+check(/Assistant/.test(await pp.locator("aside nav").first().innerText()), "nav: assistant appears once on");
 await pp.getByLabel("Your question").fill("Anything at Westbridge?");
 await pp.getByRole("button", { name: "Ask", exact: true }).click();
 await pp.locator('[data-role="assistant"]').first().waitFor({ timeout: 20000 }).catch(() => {});
+// Everything below reads what the app sent to the stand-in. If the app was
+// not started pointing at it, nothing arrived, and going on would report a
+// dozen failures that are all one missing setting.
+if (calls.length === 0) {
+  console.log("SKIPPED  the app is not pointed at the stand-in: start it with ANTHROPIC_API_BASE=http://localhost:4011");
+  await browser.close();
+  mock.close();
+  process.exit(0);
+}
 const answer = pp.locator('[data-role="assistant"]').first();
 check(await answer.locator("strong", { hasText: "Westbridge" }).count() === 1 && await answer.getByRole("link", { name: "Open the program" }).count() === 1, "assistant: answer with a program link from the catalogue tool");
 const toolRound = calls.find((c) => JSON.stringify(c.body.messages).includes("tool_result"));

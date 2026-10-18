@@ -31,7 +31,21 @@ async function signIn(email, ip) {
   return { ctx, page, errors };
 }
 const main = (page) => page.locator("main").innerText();
-async function go(page, p) { await page.goto(BASE + p); return main(page); }
+// A finished section of the profile folds away, so a suite that works on one
+// has to open it first, the same as a person. Folds nest, so this goes round
+// until there is nothing shut left.
+async function unfold(page) {
+  for (let i = 0; i < 4; i++) {
+    const n = await page.evaluate(() => {
+      const shut = [...document.querySelectorAll("main details:not([open]) > summary")];
+      shut.forEach((e) => e.click());
+      return shut.length;
+    });
+    await page.waitForTimeout(200);
+    if (n === 0) break;
+  }
+}
+async function go(page, p) { await page.goto(BASE + p); await unfold(page); return main(page); }
 const toast = (page, re) => page.locator('[role="status"]').filter({ hasText: re }).first().waitFor({ timeout: 10000 }).then(() => true, () => false);
 
 const sid = sql("select s.id from students s join organizations o on o.id = s.org_id where o.name ilike '%kottayam%' and s.first_name = 'Aswin'");

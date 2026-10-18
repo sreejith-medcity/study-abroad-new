@@ -31,6 +31,7 @@ await page.click('button[type="submit"]');
 await page.waitForURL((u) => !String(u).includes("/login"), { timeout: 20000 });
 await page.goto(`${BASE}/students/${student}/profile`, { waitUntil: "domcontentloaded" });
 await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 12000 }).catch(() => {});
+await unfold(page);
 
 const form = page.locator("form").filter({ has: page.getByRole("button", { name: "Add contact" }) }).first();
 check(await form.count() > 0, "the contacts row is on the profile");
@@ -60,3 +61,18 @@ check(saved.startsWith("7012777503|dawnnwillson@gmail.com"), `and both are on th
 await browser.close();
 console.log(fails.length ? `\n${fails.length} failed` : "\nall passed");
 process.exit(fails.length ? 1 : 0);
+
+// A finished section of the profile folds away now, so the control a suite
+// wants is in the page but not on screen until the fold is opened, the same
+// as for a person. Folds nest, so this goes round until nothing is shut.
+async function unfold(page) {
+  for (let i = 0; i < 4; i++) {
+    const n = await page.evaluate(() => {
+      const shut = [...document.querySelectorAll("main details:not([open]) > summary")];
+      shut.forEach((e) => e.click());
+      return shut.length;
+    });
+    await page.waitForTimeout(200);
+    if (n === 0) break;
+  }
+}

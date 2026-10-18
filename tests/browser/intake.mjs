@@ -69,6 +69,7 @@ const mine = sql("select coalesce((select id from students where assigned_to_id 
 sql(`update students set profile_locked = false where id = '${mine}'`);
 await counsellor.goto(`${BASE}/students/${mine}/profile`, { waitUntil: "domcontentloaded" });
 await settle(counsellor);
+await unfold(counsellor);
 const testForm = counsellor.locator("form").filter({ has: counsellor.getByRole("button", { name: /Add test score|Record it as pending/ }) }).first();
 check(await testForm.locator('input[name="writing"]').count() > 0, "IELTS asks for the four sections, not just an overall");
 await testForm.locator('input[name="listening"]').fill("7.0");
@@ -80,6 +81,7 @@ check(sql(`select coalesce(writing, '') from test_scores where student_id = '${m
 
 await counsellor.goto(`${BASE}/students/${mine}/profile`, { waitUntil: "domcontentloaded" });
 await settle(counsellor);
+await unfold(counsellor);
 const form2 = counsellor.locator("form").filter({ has: counsellor.getByRole("button", { name: /Add test score|Record it as pending/ }) }).first();
 await form2.locator('select[name="state"]').selectOption("NOT_TAKEN");
 await form2.getByRole("button", { name: "Record it as pending" }).click();
@@ -116,3 +118,18 @@ check(sql("select status from programs where name = 'MSc Aviation Management'") 
 await browser.close();
 console.log(fails.length ? `\n${fails.length} failed` : "\nall passed");
 process.exit(fails.length ? 1 : 0);
+
+// A finished section of the profile folds away now, so the control a suite
+// wants is in the page but not on screen until the fold is opened, the same
+// as for a person. Folds nest, so this goes round until nothing is shut.
+async function unfold(page) {
+  for (let i = 0; i < 4; i++) {
+    const n = await page.evaluate(() => {
+      const shut = [...document.querySelectorAll("main details:not([open]) > summary")];
+      shut.forEach((e) => e.click());
+      return shut.length;
+    });
+    await page.waitForTimeout(200);
+    if (n === 0) break;
+  }
+}

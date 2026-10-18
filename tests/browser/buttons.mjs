@@ -80,10 +80,17 @@ const REFUSED = /your role|not open to|only an admin|only a|is not allowed|canno
 /** Modals hide their controls until opened, so the openers get pressed too. */
 const OPENS_MODAL = /^(?!.*(close|cancel)).{3,60}$/i;
 
-const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--no-first-run", "--disable-background-networking"] });
+// A browser each, rather than one for the whole sweep.
+//
+// A role's walk is several hundred navigations in one tab, and the renderer
+// never gives that memory back: by the third role it was past a gigabyte and
+// the kernel took it, which arrived here as "the page has been closed" in the
+// middle of a screen that was perfectly fine. Closing the browser between
+// roles costs a couple of seconds and hands the memory back every time.
 let ip = 10;
 for (const [email, label, studentId] of WHO) {
   if (!studentId) { bad(`${label}: the seed left no student to work on`); continue; }
+  const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--no-first-run", "--disable-background-networking"] });
   const ctx = await browser.newContext({ viewport: { width: 1500, height: 1100 }, extraHTTPHeaders: { "x-forwarded-for": `10.253.1.${ip++}` } });
   await ctx.route("**/*", (r) => (r.request().url().startsWith(BASE) ? r.continue() : r.abort()));
   const page = await ctx.newPage();
@@ -173,8 +180,8 @@ for (const [email, label, studentId] of WHO) {
     ? ok(`${label}: all ${pressed} controls across ${screens.length} screens belong to them (${skipped} destructive ones described, not pressed)`)
     : bad(`${label}: refused by ${refused.join("; ")}`);
   await ctx.close();
+  await browser.close();
 }
 
-await browser.close();
 console.log(fails.length ? `\n${fails.length} failed` : "\nall passed");
 process.exit(fails.length ? 1 : 0);

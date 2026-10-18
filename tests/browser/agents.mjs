@@ -2,6 +2,7 @@
 // desk passing it to a branch, what a referral earns, and the four conditions on
 // a withdrawal. Wants the plain seed.
 import { chromium } from "playwright";
+import { openMenu } from "./_menu.mjs";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 
@@ -156,6 +157,9 @@ sql(`update users set must_change_password = false, password_hash = (select pass
 const agent = await signIn(`anil.${tag}@example.com`, "10.190.1.3");
 const gp = agent.page;
 await go(gp, "/dashboard");
+// The menu is in groups now, shut but for the one holding the page, so the
+// entries have to be brought out before they are in the page's text.
+await openMenu(gp);
 const shell = await body(gp);
 check(/My referrals/i.test(shell), "agent: their own referrals are in the nav");
 check(/Agreement/.test(shell), "agent: and the Agreement");
