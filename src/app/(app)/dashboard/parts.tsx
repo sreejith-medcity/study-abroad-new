@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { Section } from "@/components/section";
 import { dayText, daysUntil } from "@/lib/catalogue";
 import { DEADLINE_LABEL, DEADLINE_WINDOWS, type DeadlineType } from "@/lib/deadline-types";
-import { fmtDate, fmtDateTime, fullName, intakeLabel, MONTHS } from "@/lib/format";
+import { fmtDate, fullName, intakeLabel, MONTHS } from "@/lib/format";
 import { GROUP_LABEL, getSlaDays } from "@/server/dashboard";
 import type { StatusGroup } from "@/db/schema";
 import { Button, Card, CardHeader, Chip, DateInput, LinkButton, Select, StatusBadge, Table, Td, Th, Toolbar, cn } from "@/components/ui";

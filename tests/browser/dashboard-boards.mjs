@@ -19,10 +19,13 @@ const check = (cond, m) => (cond ? console.log("  ok  " + m) : (console.log("FAI
 // What each desk is promised, in the order it is promised in. The point of
 // the board is that this list is the same every morning, so the test says it
 // out loud rather than counting whatever happens to be drawn.
+const LANES = ["New / assessment", "Pending from partner", "In progress", "Offer / contract", "Visa / done", "On hold"];
 const BOARDS = [
-  ["SUPER_ADMIN", ["Overseas team", "Partner users"]],
+  // The platform owner and management read the same lanes: the business is
+  // where the applications are, not how many accounts exist.
+  ["SUPER_ADMIN", LANES],
   ["ADMIN", ["New / assessment", "In progress", "Offer / contract"]],
-  ["MANAGEMENT", ["Offers", "Visas received"]],
+  ["MANAGEMENT", LANES],
   ["DESK_COUNSELLOR", ["Live applications", "Visas granted"]],
   ["APPLICATION_TEAM_LEADER", ["Decided this week"]],
 ];
@@ -75,6 +78,27 @@ for (const [role, labels] of BOARDS) {
   const body = (await page.locator("main").innerText()).replace(/\s+/g, " ");
   const alerts = page.locator("main [data-alert-tiles] a, main [data-alert-tiles] > div");
   if ((await alerts.count()) > 0 || /^Nothing /m.test(body)) check(true, `${role}: the alerts are still a separate row`);
+
+  // Everything that is not the board folds to a line that says its own
+  // summary. A dashboard of nine open panels of equal weight has no shape:
+  // the figures that matter are somewhere in the middle of it.
+  const folded = await page.locator("main details:not([open])").count();
+  const open = await page.locator("main details[open]").count();
+  if (folded + open > 0) {
+    check(open === 0, `${role}: the secondary panels are folded, not open (${open} open of ${folded + open})`);
+    // The title and the "Show" at the end are not the summary. What has to
+    // be there is the line between them, and textContent runs the three
+    // together, so they are read as separate elements.
+    const summaries = await page.locator("main details:not([open]) > summary").evaluateAll((els) =>
+      els.map((e) => {
+        const parts = [...e.children].map((c) => (c.textContent ?? "").replace(/\s+/g, " ").trim());
+        return { title: parts[0] ?? "", said: parts.slice(1, -1).join(" ").trim() };
+      }),
+    );
+    // Terse is fine: "10 live" says as much as a sentence would. Empty is not.
+    const mute = summaries.filter((x) => x.said.length === 0);
+    check(mute.length === 0, `${role}: and each says what it holds without being opened (${mute[0]?.title ?? "all do"})`);
+  }
 
   // React 418 is a hydration mismatch that has been on these pages since
   // before this work and shows up on perhaps one load in three. Counting it

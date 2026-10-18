@@ -6,6 +6,7 @@ import { applicationWhere, type ApplicationFilters } from "@/server/queries";
 import {
   countryMix,
   funnel,
+  GROUP_LABEL,
   groupCounts,
   kpiTotals,
   lateWork,
@@ -21,8 +22,6 @@ import {
   AlertTiles,
   KpiBoard,
   BarList,
-  Card,
-  CardHeader,
   Chip,
   DashboardHero,
   DataList,
@@ -32,6 +31,7 @@ import {
   Th,
   TrendChart,
 } from "@/components/ui";
+import { Section } from "@/components/section";
 import { DashboardFilters, RecentChangesCard } from "./parts";
 import { ownApplicationsOnly } from "@/server/scope";
 
@@ -131,26 +131,38 @@ export default async function ManagementDashboard({ user, f }: { user: SessionUs
               Tuesday cannot be read by position. Position is how anybody
               actually uses the screen they open first, so the figures are
               drawn every day in the same order with a nought dimmed. */}
+          {/* The lanes an application moves through, in the order it moves
+              through them, named as the portal names them everywhere else.
+              Drawn in full every day, a nought dimmed rather than gone, so
+              the board can be read by position. */}
           <KpiBoard
             columns={3}
             tiles={[
-              { label: "Offers", value: kpis.offers, tone: "good", href: "/applications?kpi=offers" },
-              { label: "Visas received", value: kpis.visa_received, tone: "good", href: "/applications?kpi=visa_received" },
+              { label: GROUP_LABEL.NEW, value: groups.NEW, tone: "brand", href: "/applications?group=NEW", note: "Waiting to be assessed" },
+              { label: GROUP_LABEL.PENDING_PARTNER, value: groups.PENDING_PARTNER, tone: "warn", href: "/applications?group=PENDING_PARTNER", note: "Held up at a branch" },
+              { label: GROUP_LABEL.IN_PROGRESS, value: groups.IN_PROGRESS, tone: "info", href: "/applications?group=IN_PROGRESS", note: "With the desk" },
+              { label: GROUP_LABEL.OFFER, value: groups.OFFER, tone: "good", href: "/applications?group=OFFER", note: "Offer or contract in hand" },
+              { label: GROUP_LABEL.SUCCESS, value: groups.SUCCESS, tone: "good", href: "/applications?group=SUCCESS", note: "Visa received or deployed" },
+              { label: GROUP_LABEL.HOLD, value: groups.HOLD, tone: "warn", href: "/applications?group=HOLD", note: "Deferred or waiting on an intake" },
             ]}
           />
 
-          <Card>
-            <CardHeader title="Twelve month trend" subtitle="Applications created against visas received" />
-            <TrendChart points={points} aLabel="Applications" bLabel="Visas" />
-          </Card>
+          <h2 className="pt-1 text-[11px] font-semibold uppercase tracking-[0.13em] text-muted">More detail</h2>
 
-          <div className="grid gap-5 lg:grid-cols-2">
-            <Card>
-              <CardHeader title="Conversion funnel" subtitle="Registered through to enrolled" />
-              <FunnelSteps steps={[{ label: "Enquiries logged", value: enquiries.total, href: "/enquiries" }, ...steps]} />
-            </Card>
-            <Card>
-              <CardHeader title="Rates" subtitle="Stage to stage, all time" />
+          <Section id="trend" title="Twelve month trend" meta="applications created against visas received" defaultOpen={false}>
+            <TrendChart points={points} aLabel="Applications" bLabel="Visas" />
+          </Section>
+
+          <Section
+            id="funnel"
+            title="Conversion funnel"
+            meta={`${enquiries.total} enquiries logged through to ${steps[steps.length - 1]?.value ?? 0} ${(steps[steps.length - 1]?.label ?? "enrolled").toLowerCase()}`}
+            defaultOpen={false}
+          >
+            <FunnelSteps steps={[{ label: "Enquiries logged", value: enquiries.total, href: "/enquiries" }, ...steps]} />
+          </Section>
+
+          <Section id="rates" title="Rates" meta={`${rate(offers, applied)} of applications get an offer`} defaultOpen={false} bodyClassName="">
               <DataList
                 rows={[
                   { label: "Enquiries that registered", value: rate(registered, enquiries.total) },
@@ -164,15 +176,15 @@ export default async function ManagementDashboard({ user, f }: { user: SessionUs
                   { label: "Non-enrolment", value: kpis.non_enrolment, tone: "warn" },
                 ]}
               />
-            </Card>
-          </div>
+          </Section>
 
-          <Card>
-            <CardHeader
-              title="Partner performance"
-              subtitle="Every branch and sub-agent, busiest first"
-              action={<span className="text-[13px] text-muted">Read only</span>}
-            />
+          <Section
+            id="partners"
+            title="Partner performance"
+            meta={partners.length === 0 ? "no partners yet" : `${partners.length} branches and sub-agents, ${partners[0].name} busiest`}
+            defaultOpen={false}
+            bodyClassName=""
+          >
             <Table tableClassName="min-w-[680px]">
               <thead>
                 <tr>
@@ -202,7 +214,7 @@ export default async function ManagementDashboard({ user, f }: { user: SessionUs
                 ))}
               </tbody>
             </Table>
-          </Card>
+          </Section>
 
           <RecentChangesCard rows={recent} showOrg />
         </div>
@@ -210,8 +222,7 @@ export default async function ManagementDashboard({ user, f }: { user: SessionUs
         <div className="space-y-5">
           <DashboardFilters f={f as Record<string, string | undefined>} countries={countries} compact />
 
-          <Card>
-            <CardHeader title="Today" subtitle="Since midnight" />
+          <Section id="today" title="Today" meta={`${today.students} students, ${today.applications} applications, ${today.moves} moves`} defaultOpen={false} bodyClassName="">
             <DataList
               rows={[
                 { label: "New students", value: today.students },
@@ -219,10 +230,9 @@ export default async function ManagementDashboard({ user, f }: { user: SessionUs
                 { label: "Status changes", value: today.moves },
               ]}
             />
-          </Card>
+          </Section>
 
-          <Card>
-            <CardHeader title="Commission" subtitle="Partner share, indicative in rupees" />
+          <Section id="commission" title="Commission" meta={inr(commission.EXPECTED.partner + commission.INVOICED.partner + commission.RECEIVED.partner) + " in flight"} defaultOpen={false} bodyClassName="">
             <DataList
               rows={[
                 { label: "Expected", value: inr(commission.EXPECTED.partner), href: "/admin/commission?status=EXPECTED" },
@@ -231,20 +241,17 @@ export default async function ManagementDashboard({ user, f }: { user: SessionUs
                 { label: "Paid to partners", value: inr(commission.SETTLED.partner), href: "/admin/commission?status=SETTLED", tone: "ok" },
               ]}
             />
-          </Card>
+          </Section>
 
-          <Card>
-            <CardHeader title="Destinations" subtitle="Applications by country" />
+          <Section id="destinations" title="Destinations" meta={`${destinations.length} ${destinations.length === 1 ? "country" : "countries"}`} defaultOpen={false} bodyClassName="">
             <BarList items={destinations} tone="info" />
-          </Card>
+          </Section>
 
-          <Card>
-            <CardHeader title="Pathways" subtitle="Degree, Ausbildung and nursing" />
+          <Section id="pathways" title="Pathways" meta={"degree, Ausbildung and nursing"} defaultOpen={false} bodyClassName="">
             <BarList items={pathways} tone="gold" />
-          </Card>
+          </Section>
 
-          <Card>
-            <CardHeader title="Pipeline" subtitle="Where live work sits" />
+          <Section id="pipeline" title="Pipeline" meta={`${groups.NEW + groups.PENDING_PARTNER + groups.IN_PROGRESS + groups.OFFER} live`} defaultOpen={false} bodyClassName="">
             <DataList
               rows={[
                 { label: "New / assessment", value: groups.NEW },
@@ -255,7 +262,7 @@ export default async function ManagementDashboard({ user, f }: { user: SessionUs
                 { label: "Closed", value: groups.CLOSED, tone: "bad" },
               ]}
             />
-          </Card>
+          </Section>
         </div>
       </div>
     </>

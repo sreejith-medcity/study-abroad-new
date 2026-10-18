@@ -4,7 +4,7 @@ import { fmtDate } from "@/lib/format";
 import { storageBackend } from "@/server/storage";
 import { actionLabel } from "@/server/audit-query";
 import type { ApplicationFilters } from "@/server/queries";
-import { funnel, groupCounts, lateWork, partnerLeaderboard, platformSnapshot, todayCounts } from "@/server/dashboard";
+import { GROUP_LABEL, funnel, groupCounts, lateWork, officerLoad, partnerLeaderboard, platformSnapshot, todayCounts } from "@/server/dashboard";
 import { commissionTotals, inr } from "@/server/commission";
 import { db, schema } from "@/db";
 import { and, desc, eq, inArray, isNull, or } from "drizzle-orm";
@@ -12,8 +12,6 @@ import { ROLE_LABEL } from "@/lib/permissions";
 import {
   Alert,
   BarList,
-  Card,
-  CardHeader,
   Chip,
   AlertTiles,
   KpiBoard,
@@ -26,7 +24,8 @@ import {
   Td,
   Th,
 } from "@/components/ui";
-import { IconCheck, IconPartners, IconShield, IconQueue } from "@/components/icons";
+import { IconCheck, IconPartners, IconShield } from "@/components/icons";
+import { Section } from "@/components/section";
 
 const WATCHED = ["passport.reveal", "student.delete", "applications.export", "audit.export", "document.delete", "user.role_change", "user.password_reset"];
 
@@ -35,10 +34,11 @@ export default async function SuperAdminDashboard({ user, f }: { user: SessionUs
   void f;
   const { users: us, organizations: og } = schema;
 
-  const [snapshot, groups, late, steps, partners, today, commission, attention, sensitive] = await Promise.all([
+  const [snapshot, groups, late, load, steps, partners, today, commission, attention, sensitive] = await Promise.all([
     platformSnapshot(),
     groupCounts(user),
     lateWork(user),
+    officerLoad(user),
     funnel(user),
     partnerLeaderboard(5),
     todayCounts(user),
@@ -72,13 +72,9 @@ export default async function SuperAdminDashboard({ user, f }: { user: SessionUs
       .limit(6),
   ]);
 
-  const staff =
-    (snapshot.roles.SUPER_ADMIN ?? 0) +
-    (snapshot.roles.OPS_MANAGER ?? 0) +
-    (snapshot.roles.ADMIN ?? 0) +
-    (snapshot.roles.DOCUMENTATION ?? 0) +
-    (snapshot.roles.MANAGEMENT ?? 0);
-  const partnerUsers = (snapshot.roles.PARTNER ?? 0) + (snapshot.roles.COUNSELLOR ?? 0);
+  // Counting the team and the partners two different ways was for a board
+  // that now carries the live lanes instead. Both figures are still a click
+  // away, in full, under Accounts by role.
   const orgCount = (snapshot.orgs.BRANCH ?? 0) + (snapshot.orgs.SUB_AGENT ?? 0);
   const backend = storageBackend();
 
@@ -134,185 +130,211 @@ export default async function SuperAdminDashboard({ user, f }: { user: SessionUs
         </div>
       )}
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_330px]">
-        <div className="space-y-5">
-          <AlertTiles
-            allClear="Every account is in order."
-            tiles={[
-              { label: "Never signed in", nothing: "never signed in", value: snapshot.flags.neverSignedIn, tone: "stop", note: "Made and never used", href: "/admin/partners" },
-              { label: "Temporary passwords", nothing: "on a temporary password", value: snapshot.flags.temporary, tone: "warn", note: "Cannot sign in yet", href: "/admin/partners" },
-            ]}
-          />
+      {/*
+        What the morning needs, then everything else a line at a time.
 
-          {/* Two different things were in one row. The first three come and
-              go with the trouble, which is right for an alert; the rest are
-              the board, and a board that changes shape between Monday and
-              Tuesday cannot be read by position. Position is how anybody
-              actually uses the screen they open first, so the figures are
-              drawn every day in the same order with a nought dimmed. */}
-          <KpiBoard
-            columns={3}
-            tiles={[
-              { label: "Overseas team", value: staff, tone: "brand", href: "/admin/partners" },
-              { label: "Partner users", value: partnerUsers, tone: "info", href: "/admin/partners" },
-            ]}
-          />
+        This screen was nine panels of equal weight, all open, in two columns:
+        every number the platform holds, shown at once, so none of them stood
+        out and the ones that matter were somewhere in the middle. The shape
+        below is the one the HR portal uses and it is the right one. What is
+        wrong and what is live stay drawn. Everything else folds to a single
+        row that says its own summary on the line, so the whole of it can be
+        read without opening anything, and opened when there is a reason.
+      */}
+      <div className="space-y-5">
+        {/*
+          What is wrong, then where the work is.
 
-          <Card>
-            <CardHeader
-              title="Accounts that need an owner"
-              subtitle="Temporary passwords, accounts that have never signed in, and switched off accounts"
-              action={<Link href="/admin/partners" className="text-[13px] font-medium text-brand-600 hover:underline">Manage people</Link>}
-            />
-            {attention.length === 0 ? (
-              <EmptyState title="Every account is in good shape" icon={<IconCheck className="size-5" />}>
-                Nobody is waiting on a password and nobody is switched off.
-              </EmptyState>
-            ) : (
-              <Table tableClassName="min-w-[640px]">
-                <thead>
-                  <tr>
-                    <Th>Person</Th>
-                    <Th>Role</Th>
-                    <Th>Organisation</Th>
-                    <Th>State</Th>
-                    <Th>Last signed in</Th>
+          This used to lead with accounts: how many had never signed in and
+          how many were on a temporary password. That is housekeeping, not a
+          morning. It is still here, under Accounts that need an owner, which
+          is the same people and says how many on its line.
+        */}
+        <AlertTiles
+          allClear="Nothing is late and nothing is unclaimed."
+          tiles={[
+            { label: "Past the service level", nothing: "past the service level", value: late.total, tone: "stop", note: "Sitting longer than the lane allows", href: "/admin/queue" },
+            { label: "Nobody has picked up", nothing: "unclaimed", value: load.unassigned, tone: "warn", note: "Live and with no officer", href: "/applications?assignedTo=none" },
+          ]}
+        />
+
+        {/* The lanes an application actually moves through, in the order it
+            moves through them, named as the portal names them everywhere
+            else. Drawn in full every day, a nought dimmed rather than gone. */}
+        <KpiBoard
+          columns={3}
+          tiles={[
+            { label: GROUP_LABEL.NEW, value: groups.NEW, tone: "brand", href: "/applications?group=NEW", note: "Waiting to be assessed" },
+            { label: GROUP_LABEL.PENDING_PARTNER, value: groups.PENDING_PARTNER, tone: "warn", href: "/applications?group=PENDING_PARTNER", note: "Held up at a branch" },
+            { label: GROUP_LABEL.IN_PROGRESS, value: groups.IN_PROGRESS, tone: "info", href: "/applications?group=IN_PROGRESS", note: "With the desk" },
+            { label: GROUP_LABEL.OFFER, value: groups.OFFER, tone: "good", href: "/applications?group=OFFER", note: "Offer or contract in hand" },
+            { label: GROUP_LABEL.SUCCESS, value: groups.SUCCESS, tone: "good", href: "/applications?group=SUCCESS", note: "Visa received or deployed" },
+            { label: GROUP_LABEL.HOLD, value: groups.HOLD, tone: "warn", href: "/applications?group=HOLD", note: "Deferred or waiting on an intake" },
+          ]}
+        />
+
+        <h2 className="pt-1 text-[11px] font-semibold uppercase tracking-[0.13em] text-muted">More detail</h2>
+
+        <Section
+          id="attention"
+          title="Accounts that need an owner"
+          meta={
+            attention.length === 0
+              ? "every account is in good shape"
+              : `${attention.length} on a temporary password, never used, or switched off`
+          }
+          defaultOpen={false}
+          bodyClassName=""
+        >
+          {attention.length === 0 ? (
+            <EmptyState title="Every account is in good shape" icon={<IconCheck className="size-5" />}>
+              Nobody is waiting on a password and nobody is switched off.
+            </EmptyState>
+          ) : (
+            <Table tableClassName="min-w-[640px]">
+              <thead>
+                <tr>
+                  <Th>Person</Th>
+                  <Th>Role</Th>
+                  <Th>Organisation</Th>
+                  <Th>State</Th>
+                  <Th>Last signed in</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {attention.map((r) => (
+                  <tr key={r.id}>
+                    <Td>
+                      <p className={r.active ? "font-medium" : "text-muted line-through"}>{r.name}</p>
+                      <p className="truncate text-xs text-muted">{r.email}</p>
+                    </Td>
+                    <Td>
+                      <Chip tone={r.role === "SUPER_ADMIN" ? "gold" : r.role === "OPS_MANAGER" ? "warn" : r.role === "ADMIN" ? "brand" : "neutral"}>
+                        {ROLE_LABEL[r.role] ?? r.role}
+                      </Chip>
+                    </Td>
+                    <Td className="max-w-[14rem] truncate text-[13px]" title={r.orgName}>{r.orgName}</Td>
+                    <Td>
+                      {!r.active ? (
+                        <Chip tone="bad">Switched off</Chip>
+                      ) : r.mustChangePassword ? (
+                        <Chip tone="warn">Temporary password</Chip>
+                      ) : (
+                        <Chip>Never signed in</Chip>
+                      )}
+                    </Td>
+                    <Td className="whitespace-nowrap text-[13px] text-muted">{r.lastSignInAt ? fmtDate(r.lastSignInAt) : "Never"}</Td>
                   </tr>
-                </thead>
-                <tbody>
-                  {attention.map((r) => (
-                    <tr key={r.id}>
-                      <Td>
-                        <p className={r.active ? "font-medium" : "text-muted line-through"}>{r.name}</p>
-                        <p className="truncate text-xs text-muted">{r.email}</p>
-                      </Td>
-                      <Td>
-                        <Chip tone={r.role === "SUPER_ADMIN" ? "gold" : r.role === "OPS_MANAGER" ? "warn" : r.role === "ADMIN" ? "brand" : "neutral"}>
-                          {ROLE_LABEL[r.role] ?? r.role}
-                        </Chip>
-                      </Td>
-                      <Td className="max-w-[14rem] truncate text-[13px]" title={r.orgName}>{r.orgName}</Td>
-                      <Td>
-                        {!r.active ? (
-                          <Chip tone="bad">Switched off</Chip>
-                        ) : r.mustChangePassword ? (
-                          <Chip tone="warn">Temporary password</Chip>
-                        ) : (
-                          <Chip>Never signed in</Chip>
-                        )}
-                      </Td>
-                      <Td className="whitespace-nowrap text-[13px] text-muted">{r.lastSignInAt ? fmtDate(r.lastSignInAt) : "Never"}</Td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-            )}
-          </Card>
-
-          <Card>
-            <CardHeader
-              title="Actions worth watching"
-              subtitle="Passport reveals, deletes and exports, newest first"
-              action={<Link href="/admin/audit" className="text-[13px] font-medium text-brand-600 hover:underline">Full audit log</Link>}
-            />
-            {sensitive.length === 0 ? (
-              <EmptyState title="Nothing sensitive recorded yet" icon={<IconShield className="size-5" />}>
-                Passport reveals, record deletions and data exports appear here as soon as they happen.
-              </EmptyState>
-            ) : (
-              <ul>
-                {sensitive.map((r) => (
-                  <li key={r.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-b border-line px-4 py-2.5 text-[13px] last:border-0">
-                    <Chip tone={/delete|reveal/.test(r.action) ? "bad" : "warn"}>{actionLabel(r.action)}</Chip>
-                    <span className="font-medium">{r.actorName ?? "System"}</span>
-                    <span className="text-muted">· {r.entityType.replace(/_/g, " ")}</span>
-                    <span className="ml-auto text-xs text-muted">{fmtDate(r.createdAt)}</span>
-                  </li>
                 ))}
-              </ul>
-            )}
-          </Card>
+              </tbody>
+            </Table>
+          )}
+        </Section>
 
-          <div className="grid gap-5 lg:grid-cols-2">
-            <Card>
-              <CardHeader title="Recorded activity" subtitle="Last seven days, by action" />
-              <BarList
-                items={snapshot.auditByAction.map((r) => ({ label: actionLabel(r.action), value: r.value }))}
-                tone="brand"
-                empty="Nothing recorded in the last week."
-              />
-            </Card>
-            <Card>
-              <CardHeader title="Business funnel" subtitle="The same numbers management sees" />
-              <FunnelSteps steps={steps} />
-            </Card>
-          </div>
-        </div>
+        <Section
+          id="watching"
+          title="Actions worth watching"
+          meta={sensitive.length === 0 ? "nothing sensitive recorded yet" : `${sensitive.length} passport reveals, deletions and exports`}
+          defaultOpen={false}
+          bodyClassName=""
+        >
+          {sensitive.length === 0 ? (
+            <EmptyState title="Nothing sensitive recorded yet" icon={<IconShield className="size-5" />}>
+              Passport reveals, record deletions and data exports appear here as soon as they happen.
+            </EmptyState>
+          ) : (
+            <ul>
+              {sensitive.map((r) => (
+                <li key={r.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-b border-line px-4 py-2.5 text-[13px] last:border-0">
+                  <Chip tone={/delete|reveal/.test(r.action) ? "bad" : "warn"}>{actionLabel(r.action)}</Chip>
+                  <span className="font-medium">{r.actorName ?? "System"}</span>
+                  <span className="text-muted">· {r.entityType.replace(/_/g, " ")}</span>
+                  <span className="ml-auto text-xs text-muted">{fmtDate(r.createdAt)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Section>
 
-        <div className="space-y-5">
-          <Card>
-            <CardHeader title="Accounts by role" subtitle="Active accounts only" />
-            <DataList
-              rows={[
-                { label: "Super admin", value: snapshot.roles.SUPER_ADMIN ?? 0 },
-                { label: "Ops manager", value: snapshot.roles.OPS_MANAGER ?? 0 },
-                { label: "Overseas admin", value: snapshot.roles.ADMIN ?? 0 },
-                { label: "Documentation team", value: snapshot.roles.DOCUMENTATION ?? 0 },
-                { label: "Management", value: snapshot.roles.MANAGEMENT ?? 0 },
-                { label: "Branch head", value: snapshot.roles.PARTNER ?? 0 },
-                { label: "Counsellor", value: snapshot.roles.COUNSELLOR ?? 0 },
-                { label: "Student portal", value: snapshot.roles.STUDENT ?? 0 },
-                { label: "Switched off", value: snapshot.flags.inactive, tone: snapshot.flags.inactive ? "warn" : undefined },
-              ]}
-            />
-          </Card>
+        <Section
+          id="funnel"
+          title="Business funnel"
+          meta={steps.map((x) => `${x.value} ${x.label.toLowerCase()}`).slice(0, 3).join(" · ")}
+          defaultOpen={false}
+        >
+          <FunnelSteps steps={steps} />
+        </Section>
 
-          <Card>
-            <CardHeader title="Platform state" subtitle="What this deployment is running" />
-            <DataList
-              rows={[
-                { label: "Document storage", value: backend === "supabase" ? "Supabase Storage" : "Local disk", tone: backend === "supabase" ? "ok" : "warn" },
-                { label: "Messages sent", value: snapshot.messages.sent },
-                { label: "Messages queued", value: snapshot.messages.queued },
-                { label: "Messages failed", value: snapshot.messages.failed, tone: snapshot.messages.failed ? "bad" : undefined },
-                { label: "Branches", value: snapshot.orgs.BRANCH ?? 0 },
-                { label: "Sub-agents", value: snapshot.orgs.SUB_AGENT ?? 0 },
-                { label: "Commission in flight", value: inr(commission.EXPECTED.partner + commission.INVOICED.partner + commission.RECEIVED.partner) },
-                { label: "Paid to partners", value: inr(commission.SETTLED.partner), tone: "ok" },
-              ]}
-            />
-          </Card>
+        <Section
+          id="people"
+          title="Accounts by role"
+          meta={`${snapshot.flags.total - snapshot.flags.inactive} active${snapshot.flags.inactive ? `, ${snapshot.flags.inactive} switched off` : ""}`}
+          defaultOpen={false}
+          bodyClassName=""
+        >
+          <DataList
+            rows={[
+              { label: "Super admin", value: snapshot.roles.SUPER_ADMIN ?? 0 },
+              { label: "Ops manager", value: snapshot.roles.OPS_MANAGER ?? 0 },
+              { label: "Overseas admin", value: snapshot.roles.ADMIN ?? 0 },
+              { label: "Documentation team", value: snapshot.roles.DOCUMENTATION ?? 0 },
+              { label: "Management", value: snapshot.roles.MANAGEMENT ?? 0 },
+              { label: "Branch head", value: snapshot.roles.PARTNER ?? 0 },
+              { label: "Counsellor", value: snapshot.roles.COUNSELLOR ?? 0 },
+              { label: "Student portal", value: snapshot.roles.STUDENT ?? 0 },
+              { label: "Switched off", value: snapshot.flags.inactive, tone: snapshot.flags.inactive ? "warn" : undefined },
+            ]}
+          />
+        </Section>
 
-          <Card>
-            <CardHeader
-              title="Live work"
-              subtitle="Same lanes as the work queue"
-              action={<Link href="/admin/queue" className="text-[13px] font-medium text-brand-600 hover:underline"><IconQueue className="inline size-4" /></Link>}
-            />
-            <DataList
-              rows={[
-                { label: "New / assessment", value: groups.NEW },
-                { label: "Pending from partner", value: groups.PENDING_PARTNER, tone: "warn" },
-                { label: "In progress", value: groups.IN_PROGRESS },
-                { label: "Offer / contract", value: groups.OFFER, tone: "ok" },
-                { label: "Past SLA", value: late.total, tone: late.total ? "bad" : undefined },
-              ]}
-            />
-          </Card>
+        <Section
+          id="partners"
+          title="Busiest partners"
+          meta={partners.length === 0 ? "no applications yet" : `${partners[0].name} leads with ${partners[0].total}`}
+          defaultOpen={false}
+          bodyClassName=""
+        >
+          <BarList items={partners.map((p) => ({ label: p.name, hint: p.tier, value: p.total, href: `/applications?org=${p.id}` }))} />
+        </Section>
 
-          <Card>
-            <CardHeader title="Busiest partners" subtitle="By total applications" />
-            <BarList items={partners.map((p) => ({ label: p.name, hint: p.tier, value: p.total, href: `/applications?org=${p.id}` }))} />
-          </Card>
+        <Section
+          id="activity"
+          title="Recorded activity"
+          meta="the last seven days, by what was done"
+          defaultOpen={false}
+          bodyClassName=""
+        >
+          <BarList
+            items={snapshot.auditByAction.map((r) => ({ label: actionLabel(r.action), value: r.value }))}
+            tone="brand"
+            empty="Nothing recorded in the last week."
+          />
+        </Section>
 
-          {/* There were two audit feeds on this page. "Actions worth watching"
-              above is the one with a reason to be here: passport reveals,
-              deletions and exports, the handful somebody should see the day
-              they happen. The other listed everything newest first, which on
-              a live deployment meant the scheduler logging itself three times
-              before any person appeared. Everything is still in the audit log,
-              one click away, where it can be searched. */}
-        </div>
+        <Section
+          id="platform"
+          title="Platform state"
+          meta={[
+            backend === "supabase" ? "Supabase storage" : "documents on local disk",
+            `${snapshot.orgs.BRANCH ?? 0} branches`,
+            snapshot.messages.failed ? `${snapshot.messages.failed} messages failed` : `${snapshot.messages.sent} messages sent`,
+          ].join(" · ")}
+          defaultOpen={false}
+          bodyClassName=""
+        >
+          <DataList
+            rows={[
+              { label: "Document storage", value: backend === "supabase" ? "Supabase Storage" : "Local disk", tone: backend === "supabase" ? "ok" : "warn" },
+              { label: "Messages sent", value: snapshot.messages.sent },
+              { label: "Messages queued", value: snapshot.messages.queued },
+              { label: "Messages failed", value: snapshot.messages.failed, tone: snapshot.messages.failed ? "bad" : undefined },
+              { label: "Branches", value: snapshot.orgs.BRANCH ?? 0 },
+              { label: "Sub-agents", value: snapshot.orgs.SUB_AGENT ?? 0 },
+              { label: "Commission in flight", value: inr(commission.EXPECTED.partner + commission.INVOICED.partner + commission.RECEIVED.partner) },
+              { label: "Paid to partners", value: inr(commission.SETTLED.partner), tone: "ok" },
+            ]}
+          />
+        </Section>
       </div>
     </>
   );
