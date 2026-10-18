@@ -20,10 +20,27 @@
  * What has already been ruled out, so nobody repeats it:
  *   - the shell's client components, removed one at a time, make no difference
  *   - a cold server start makes no difference: eight cold starts, none threw
- *   - plain navigation does not reproduce it: thirty loads of a page that had
- *     thrown, none threw
- * It turns up during a long session that posts forms and moves about, which
- * is what the browser suites do and what this script does not yet imitate.
+ *   - plain navigation barely reproduces it: about one load in thirty
+ *   - it is not a slow client losing a race with streamed content. Throttling
+ *     the processor six times over did not raise the rate; it fell to nought
+ *     in thirty loads
+ *   - it does not happen in development at all. A whole suite that fails on it
+ *     in a production build passes against `next dev` with nothing logged,
+ *     which also means the non-minified message cannot be got that way
+ *   - the server does shuffle its own script tags between identical renders of
+ *     /students/board and /documentation, two of the pages that complain. That
+ *     is real and worth knowing, but it is not this: the one error seen in
+ *     fourteen loads landed on a page with the ordinary ordering
+ *
+ * Where to look next. It needs a production build and a session that posts
+ * forms, so the usable instrumentation is probably a patched copy of React's
+ * error so the offending node can be printed, rather than more comparing of
+ * HTML after the fact: by the time this script reads the DOM, React has
+ * already repaired the mismatch, which is why every region reads as "same".
+ *
+ * It is worth the effort. On a full suite run it is the single largest cause
+ * of failure: eight suites fail on nothing else, and three more fail on it as
+ * well as something real.
  */
 import { chromium } from "playwright";
 
