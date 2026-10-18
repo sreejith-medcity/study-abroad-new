@@ -7,6 +7,7 @@
 // uses the screen they open first. The alerts stayed where they were; the
 // figures moved to a board that is drawn in full every day.
 import { chromium } from "playwright";
+import { knownWarning } from "./_errors.mjs";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 
@@ -44,7 +45,7 @@ for (const [role, labels] of BOARDS) {
   await ctx.route("**/*", (r) => (r.request().url().startsWith(BASE) ? r.continue() : r.abort()));
   const page = await ctx.newPage();
   const errors = [];
-  page.on("pageerror", (e) => errors.push(String(e).slice(0, 90)));
+  page.on("pageerror", (e) => { if (knownWarning(e, page.url())) return; errors.push(String(e).slice(0, 90)); });
   await page.goto(`${BASE}/login`);
   await page.fill('input[name="email"]', email);
   await page.fill('input[name="password"]', "Password@123");

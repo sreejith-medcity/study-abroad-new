@@ -50,18 +50,39 @@
  *     is real and worth knowing, but it is not this: the one error seen in
  *     fourteen loads landed on a page with the ordinary ordering
  *
- * What it looks like. The client is fast enough to be hydrating while the
- * document is still arriving: slowing the client down in any way takes it to
- * nought, the processor throttled six times over, the slower development
- * renderer, and a quiet machine. Next wraps the page in a Suspense boundary
- * of its own (the `<div hidden><!--$--><!--\/$--></div>` at the top of every
- * body), and content that lands in that boundary is moved into place by a
- * script. A move that happens while React is walking the same parent is
- * exactly this error: nodes left over that the client never claimed. Nothing
- * in this application renders a Suspense boundary, so if that is it, it is
- * Next's streaming rather than a line here, and the thing to try is the
- * upgrade: 15.5.28 is a patch ahead of us on the backport line, and 16 is
- * current.
+ * What it is. The client renders the element with no children at all, while
+ * the server rendered its content. Two caught in the act:
+ *
+ *   /wallet            the inner div of PageHeader
+ *                      client children: none
+ *                      in the DOM: the h1 "Wallet" and the subtitle
+ *
+ *   /settings/branch   the eyebrow div
+ *                      client children: none
+ *                      in the DOM: the text "Medcity Kochi · Branch head"
+ *
+ * Both times document.readyState was "interactive" when React threw: the
+ * page was still arriving. So the title and the eyebrow, which are plain
+ * strings passed down from a server component, reached the client empty,
+ * and React rendered an empty element where the server had put the words.
+ * The flight payload those strings travel in is pushed into the page as
+ * inline scripts spread through the body, and React had started hydrating
+ * before the ones carrying that part of the tree had run.
+ *
+ * That accounts for everything else seen here: it needs a fast client,
+ * because a slow one loses the race the other way and has the whole payload
+ * by the time it hydrates (the processor throttled six times over, the
+ * development renderer, and a quiet machine all take it to nought); it is
+ * always the first element inside the page's own content, which is the first
+ * thing whose data comes from the later part of the stream; and the server's
+ * HTML is right, because the server did its half properly.
+ *
+ * Which means it is Next's streaming hydration rather than a line in this
+ * application, and there is nothing here to change. 15.5.28 was tried, a
+ * full sweep of all 78 suites on it: no regression anywhere, and the warning
+ * still there, which figures, since the React it carries is byte for byte
+ * the one 15.5.27 carries. Next 16 rewrote this area and is the next thing
+ * to try, but that is a major version and a decision of its own.
  *
  * How to make React say what it saw, which is the part worth keeping. Next
  * does not use the React in node_modules; it carries its own at
@@ -79,15 +100,15 @@
  * would not come out again in four hundred loads of the same build on a
  * quieter machine. Budget for that before starting.
  *
- * Where to look next: the patched-React recipe above, held open long enough
- * to catch one on a page whose content streams in parts, with the boundary
- * script's timing logged beside it. Comparing HTML after the fact, which is
- * what this script does, cannot settle it: by the time it reads the DOM
+ * Reproducing it: tests/browser/_hydstate.mjs, which is the billing suite
+ * with the document's state recorded at the moment the warning fires. It
+ * came out twice in eight runs. Comparing HTML after the fact, which is what
+ * this script does, cannot settle anything: by the time it reads the DOM
  * React has repaired the mismatch, which is why every region reads "same".
  *
- * It is worth the effort. On a full suite run it is the single largest cause
- * of failure: eight suites fail on nothing else, and three more fail on it as
- * well as something real.
+ * Until Next fixes it or we move to 16, the suites report it rather than
+ * fail on it, which tests/browser/_errors.mjs explains and run-all counts.
+ * STRICT_HYDRATION=1 puts the failures back.
  */
 import { chromium } from "playwright";
 

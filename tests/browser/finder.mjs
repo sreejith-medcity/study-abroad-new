@@ -4,6 +4,7 @@
 // turnaround from the team's own files, and the new filters (public or private,
 // highest qualification, study gap in months). Wants the real catalogue.
 import { chromium } from "playwright";
+import { knownWarning } from "./_errors.mjs";
 import { openMenu } from "./_menu.mjs";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -27,7 +28,7 @@ async function signIn(email, ip) {
   await ctx.route("**/*", (r) => (r.request().url().startsWith(BASE) ? r.continue() : r.abort()));
   const page = await ctx.newPage();
   const errors = [];
-  page.on("pageerror", (e) => errors.push(`${e} @ ${page.url()}`));
+  page.on("pageerror", (e) => { if (knownWarning(e, page.url())) return; errors.push(`${e} @ ${page.url()}`); });
   page.on("response", (r) => { if (r.status() >= 500) errors.push(`${r.status()} ${r.url()}`); });
   await page.goto(`${BASE}/login`);
   await page.fill('input[name="email"]', email);

@@ -4,6 +4,7 @@
 // the new program-page fields and the "Something's not right?" link.
 // Wants the real catalogue loaded and published, and psql on PATH.
 import { chromium } from "playwright";
+import { knownWarning } from "./_errors.mjs";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 
@@ -22,7 +23,7 @@ async function signIn(email, ip) {
   await ctx.route("**/*", (r) => (r.request().url().startsWith(BASE) ? r.continue() : r.abort()));
   const page = await ctx.newPage();
   const errors = [];
-  page.on("pageerror", (e) => errors.push(String(e)));
+  page.on("pageerror", (e) => { if (knownWarning(e, page.url())) return; errors.push(String(e)); });
   page.on("response", (r) => { if (r.status() >= 500) errors.push(`${r.status()} ${r.url()}`); });
   await page.goto(`${BASE}/login`);
   await page.fill('input[name="email"]', email);

@@ -34,6 +34,7 @@ PORT="${PORT:-3000}"
 BASE="${BASE:-http://localhost:$PORT}"
 OUT="${OUT:-/tmp/portal-suites}"
 FRESH="${FRESH:-}"
+hyd=0
 mkdir -p "$OUT"
 : > "$OUT/summary.txt"
 
@@ -104,6 +105,10 @@ for f in tests/browser/*.mjs; do
   BASE="$BASE" timeout "$limit" node "$f" > "$OUT/$b.log" 2>&1
   code=$?
   n=$(grep -c "^FAIL" "$OUT/$b.log")
+  # The hydration warning is reported rather than failed (tests/browser/_errors.mjs
+  # says why). Counting it here keeps it in front of whoever reads the run.
+  h=$(grep -c "recovered hydration mismatch" "$OUT/$b.log")
+  hyd=$((hyd + h))
   if grep -q "^SKIPPED" "$OUT/$b.log"; then
     echo "$b: skipped" >> "$OUT/summary.txt"
   elif [ "$code" -ne 0 ] || [ "$n" -gt 0 ]; then
@@ -115,5 +120,11 @@ for f in tests/browser/*.mjs; do
 done
 
 echo
+if [ "$hyd" -gt 0 ]; then
+  echo "The hydration warning was seen $hyd times across the run. It is reported"
+  echo "rather than failed; scripts/hydration-diff.mjs says what is known about it,"
+  echo "and STRICT_HYDRATION=1 makes it fail again."
+  echo
+fi
 echo "Logs in $OUT. What did not pass:"
 grep -vE ': (ok|skipped)$' "$OUT/summary.txt" || echo "  everything passed"

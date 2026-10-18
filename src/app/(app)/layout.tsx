@@ -76,12 +76,24 @@ const partnerNav = (home: string): NavGroup[] => [
   },
 ];
 
+/**
+ * Finding a group by something in it rather than by its title.
+ *
+ * The assistant and the practice interview were added to the group titled
+ * "Find programs"; the group was renamed "Find a course" and both entries
+ * fell out of every menu, silently, for months. A title is wording and will
+ * be rewritten. An address is the thing itself, so the four places that pick
+ * a group out of this list pick it by one.
+ */
+const holds = (href: string) => (g: NavGroup) => g.items.some((i) => i.href === href);
+const MONEY = holds("/wallet");
+
 const PARTNER_NAV = partnerNav("Dashboard");
 // The branch's income is the branch head's screen: a counsellor is refused by
 // it, and a link that refuses the person who was shown it is worse than no
 // link.
 const COUNSELLOR_NAV = partnerNav("My desk").map((g) =>
-  g.title === "Money" ? { ...g, items: g.items.filter((i) => i.href !== "/admin/income") } : g,
+  MONEY(g) ? { ...g, items: g.items.filter((i) => i.href !== "/admin/income") } : g,
 );
 
 /*
@@ -255,7 +267,7 @@ const TEAM_LEAD_NAV: NavGroup[] = [
  * program options, which are requested by a branch of the desk.
  */
 const DESK_COUNSELLOR_NAV: NavGroup[] = partnerNav("My desk")
-  .filter((g) => g.title !== "Money")
+  .filter((g) => !MONEY(g))
   .map((g) => ({ ...g, items: g.items.filter((i) => !["/enquiries", "/program-options"].includes(i.href)) }));
 
 /**
@@ -321,7 +333,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 ? PARTNER_NAV
                 : (await commissionVisible(user))
                   ? COUNSELLOR_NAV
-                  : COUNSELLOR_NAV.filter((g) => g.title !== "Money");
+                  : COUNSELLOR_NAV.filter((g) => !MONEY(g));
 
   // The AI pages appear for branches only once the owner has switched them on.
   const ai = await aiConfig();
@@ -336,7 +348,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // than going missing again.
   const withAi = (() => {
     if (aiItems.length === 0) return groups;
-    const at = groups.findIndex((g) => g.items.some((i) => i.href === "/search" || i.href === "/finder"));
+    const at = groups.findIndex((g) => holds("/search")(g) || holds("/finder")(g));
     if (at === -1) return [...groups, { title: "Ask the portal", items: aiItems }];
     return groups.map((g, i) => (i === at ? { ...g, items: [...g.items, ...aiItems] } : g));
   })();

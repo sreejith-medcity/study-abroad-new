@@ -3,6 +3,7 @@
 // status, provider and note, and is notified.
 // Wants the sample data (npm run db:seed).
 import { chromium } from "playwright";
+import { knownWarning } from "./_errors.mjs";
 import { clickInMenu } from "./_menu.mjs";
 import { studentIdByName } from "./_student.mjs";
 
@@ -18,7 +19,7 @@ async function signIn(email, ip) {
   await ctx.route("**/*", (r) => (r.request().url().startsWith(BASE) ? r.continue() : r.abort()));
   const page = await ctx.newPage();
   const errors = [];
-  page.on("pageerror", (e) => errors.push(String(e)));
+  page.on("pageerror", (e) => { if (knownWarning(e, page.url())) return; errors.push(String(e)); });
   page.on("response", (r) => { if (r.status() >= 500) errors.push(`${r.status()} ${r.url()}`); });
   await page.goto(`${BASE}/login`);
   await page.fill('input[name="email"]', email);

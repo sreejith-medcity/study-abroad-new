@@ -1,4 +1,5 @@
 import { chromium } from "playwright";
+import { knownWarning } from "./_errors.mjs";
 import fs from "node:fs";
 
 const OUT = "/tmp/smoke-portal";
@@ -18,7 +19,7 @@ async function fresh(ip) {
   await ctx.route("**/*", (r) => (r.request().url().startsWith(BASE) ? r.continue() : r.abort()));
   const page = await ctx.newPage();
   const errors = [];
-  page.on("pageerror", (e) => errors.push(String(e)));
+  page.on("pageerror", (e) => { if (knownWarning(e, page.url())) return; errors.push(String(e)); });
   page.on("response", (r) => { if (r.status() >= 500) errors.push(`${r.status()} ${r.url()}`); });
   return { ctx, page, errors };
 }

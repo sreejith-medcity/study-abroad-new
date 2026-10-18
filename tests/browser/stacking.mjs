@@ -7,6 +7,7 @@
 // three intakes as ticks, nearly thirty controls stacked above the scores,
 // and the scores are what somebody came to fill in.
 import { chromium } from "playwright";
+import { knownWarning } from "./_errors.mjs";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 
@@ -21,8 +22,7 @@ const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 }, 
 await ctx.route("**/*", (r) => (r.request().url().startsWith(BASE) ? r.continue() : r.abort()));
 const page = await ctx.newPage();
 const errors = [];
-page.on("pageerror", (e) => errors.push(`${page.url().replace(BASE, "")}: ${String(e).slice(0, 90)}`));
-
+page.on("pageerror", (e) => { if (knownWarning(e, page.url())) return; errors.push(`${page.url().replace(BASE, "")}: ${String(e).slice(0, 90)}`); });
 await page.goto(`${BASE}/login`);
 // The busiest branch, so the board has something on it: "0 of 0" would pass
 // every check below without proving anything.

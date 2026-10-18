@@ -1,4 +1,5 @@
 import { chromium } from "playwright";
+import { knownWarning } from "./_errors.mjs";
 import fs from "node:fs";
 import { execFileSync } from "node:child_process";
 
@@ -23,7 +24,7 @@ async function signIn(email, ip, password = "Password@123") {
   await ctx.route("**/*", (r) => (r.request().url().startsWith(BASE) ? r.continue() : r.abort()));
   const page = await ctx.newPage();
   const errors = [];
-  page.on("pageerror", (e) => errors.push(String(e)));
+  page.on("pageerror", (e) => { if (knownWarning(e, page.url())) return; errors.push(String(e)); });
   page.on("response", (r) => { if (r.status() >= 500) errors.push(`${r.status()} ${r.url()}`); });
   await page.goto(`${BASE}/login`);
   await page.fill('input[name="email"]', email);
@@ -202,7 +203,7 @@ async function signIn(email, ip, password = "Password@123") {
   const ctx = await browser.newContext({ viewport: { width: 1500, height: 1000 }, extraHTTPHeaders: { "x-forwarded-for": "10.210.2.1" } });
   const page = await ctx.newPage();
   const errors = [];
-  page.on("pageerror", (e) => errors.push(String(e)));
+  page.on("pageerror", (e) => { if (knownWarning(e, page.url())) return; errors.push(String(e)); });
   await page.goto(`${BASE}/login`);
   await page.fill('input[name="email"]', "documentation@medcityoverseas.test");
   await page.fill('input[name="password"]', "Password@123");
@@ -280,7 +281,7 @@ async function signIn(email, ip, password = "Password@123") {
   const ctx = await browser.newContext({ viewport: { width: 1500, height: 1000 }, extraHTTPHeaders: { "x-forwarded-for": "10.210.2.2" } });
   const page = await ctx.newPage();
   const errors = [];
-  page.on("pageerror", (e) => errors.push(String(e)));
+  page.on("pageerror", (e) => { if (knownWarning(e, page.url())) return; errors.push(String(e)); });
   page.on("response", (r) => { if (r.status() >= 500) errors.push(`${r.status()} ${r.url()}`); });
   await page.goto(`${BASE}/login`);
   await page.fill('input[name="email"]', "teamlead@medcityoverseas.test");
@@ -341,7 +342,7 @@ async function signIn(email, ip, password = "Password@123") {
     const ctx = await browser.newContext({ viewport: { width: 1400, height: 1000 }, extraHTTPHeaders: { "x-forwarded-for": `10.212.1.${ip++}` } });
     const page = await ctx.newPage();
     const errors = [];
-    page.on("pageerror", (e) => errors.push(String(e).slice(0, 120)));
+    page.on("pageerror", (e) => { if (knownWarning(e, page.url())) return; errors.push(String(e).slice(0, 120)); });
     page.on("response", (r) => { if (r.status() >= 500) errors.push(`${r.status()} ${r.url()}`); });
     await page.goto(`${BASE}/login`);
     await page.fill('input[name="email"]', email);

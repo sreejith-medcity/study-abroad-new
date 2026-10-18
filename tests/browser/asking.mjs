@@ -3,6 +3,7 @@
 // chasing that happens without anyone remembering, and the submission pack.
 // Wants the plain seed.
 import { chromium } from "playwright";
+import { knownWarning } from "./_errors.mjs";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import JSZip from "jszip";
@@ -22,7 +23,7 @@ async function signIn(email, ip) {
   await ctx.route("**/*", (r) => (r.request().url().startsWith(BASE) ? r.continue() : r.abort()));
   const page = await ctx.newPage();
   const errors = [];
-  page.on("pageerror", (e) => errors.push(`${e} @ ${page.url()}`));
+  page.on("pageerror", (e) => { if (knownWarning(e, page.url())) return; errors.push(`${e} @ ${page.url()}`); });
   page.on("response", (r) => { if (r.status() >= 500) errors.push(`${r.status()} ${r.url()}`); });
   await page.goto(`${BASE}/login`);
   await page.fill('input[name="email"]', email);
@@ -134,7 +135,7 @@ const learner = await browser.newContext({ viewport: { width: 420, height: 900 }
 await learner.route("**/*", (r) => (r.request().url().startsWith(BASE) ? r.continue() : r.abort()));
 const lp = await learner.newPage();
 const learnerErrors = [];
-lp.on("pageerror", (e) => learnerErrors.push(String(e)));
+lp.on("pageerror", (e) => { if (knownWarning(e, lp.url())) return; learnerErrors.push(String(e)); });
 lp.on("response", (r) => { if (r.status() >= 500) learnerErrors.push(`${r.status()} ${r.url()}`); });
 await lp.goto(`${BASE}/login`);
 await lp.fill('input[name="email"]', sql(`select email from users where student_id = '${portalStudent}' and role = 'STUDENT' limit 1`));

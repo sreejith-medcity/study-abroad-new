@@ -8,6 +8,7 @@
 // so, but a student whose whole list has been accepted by earlier runs has
 // nothing left to refuse.
 import { chromium } from "playwright";
+import { knownWarning } from "./_errors.mjs";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 
@@ -30,7 +31,7 @@ async function signIn(email, ip) {
   await ctx.route("**/*", (r) => (r.request().url().startsWith(BASE) ? r.continue() : r.abort()));
   const page = await ctx.newPage();
   const errors = [];
-  page.on("pageerror", (e) => errors.push(`${e} @ ${page.url()}\n${e.stack ?? ""}`));
+  page.on("pageerror", (e) => { if (knownWarning(e, page.url())) return; errors.push(`${e} @ ${page.url()}\n${e.stack ?? ""}`); });
   page.on("console", (m) => { const t = m.text(); if (/hydrat|did not match|server rendered/i.test(t)) errors.push(`CONSOLE ${t} @ ${page.url()}`); });
   page.on("response", (r) => { if (r.status() >= 500) errors.push(`${r.status()} ${r.url()}`); });
   await page.goto(`${BASE}/login`);

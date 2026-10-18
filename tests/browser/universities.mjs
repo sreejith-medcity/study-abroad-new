@@ -2,6 +2,7 @@
 // destination, level and type, with links through to its page and its programs.
 // Wants the catalogue loaded and published (see programs.mjs).
 import { chromium } from "playwright";
+import { knownWarning } from "./_errors.mjs";
 import { clickInMenu } from "./_menu.mjs";
 import fs from "node:fs";
 
@@ -18,7 +19,7 @@ const ctx = await browser.newContext({ viewport: { width: 1400, height: 1000 }, 
 await ctx.route("**/*", (r) => (r.request().url().startsWith(BASE) ? r.continue() : r.abort()));
 const page = await ctx.newPage();
 const errors = [];
-page.on("pageerror", (e) => errors.push(String(e)));
+page.on("pageerror", (e) => { if (knownWarning(e, page.url())) return; errors.push(String(e)); });
 page.on("response", (r) => { if (r.status() >= 500) errors.push(`${r.status()} ${r.url()}`); });
 await page.goto(`${BASE}/login`);
 await page.fill('input[name="email"]', "kottayam@medcity.test");
