@@ -3,6 +3,7 @@
 // student sees the offer and visa in the portal.
 // Wants the sample data (npm run db:seed).
 import { chromium } from "playwright";
+import { studentIdByName } from "./_student.mjs";
 import fs from "node:fs";
 
 const OUT = "/tmp/smoke-offer-visa";
@@ -32,9 +33,19 @@ const settle = (page) => page.locator('[aria-busy="true"]').first().waitFor({ st
 const main = async (page) => { await settle(page); return page.locator("main").innerText(); };
 // Parts of an application that are finished fold up now, so a suite that goes
 // looking for their controls has to open them first, the way a person does.
+// Folds nest: a section folds, and a panel inside it folds again. One pass
+// opens the outer ones and reveals inner ones that are still shut, so this
+// goes round until there is nothing left to open.
 const unfold = async (page) => {
-  await page.evaluate(() => document.querySelectorAll("details:not([open]) > summary").forEach((s) => s.click()));
-  await page.waitForTimeout(150);
+  for (let i = 0; i < 4; i++) {
+    const n = await page.evaluate(() => {
+      const shut = [...document.querySelectorAll("details:not([open]) > summary")];
+      shut.forEach((s) => s.click());
+      return shut.length;
+    });
+    await page.waitForTimeout(200);
+    if (n === 0) break;
+  }
 };
 const go = async (page, path) => { await page.goto(BASE + path); await settle(page); await unfold(page); return main(page); };
 const iso = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
@@ -43,17 +54,20 @@ const toast = (page, re) => page.locator('[role="status"]').filter({ hasText: re
 const admin = await signIn("admin@medcityoverseas.test", "10.73.1.1");
 const ap = admin.page;
 await go(ap, "/search");
-const sid = await ap.locator('select[name="student"] option', { hasText: "Fathima Rahman" }).getAttribute("value");
+const sid = await studentIdByName(ap, BASE, "Fathima Rahman");
 await go(ap, `/students/${sid}/applications`);
 const appUrl = ap.url();
 await ap.waitForLoadState("networkidle");
 check(/Offer and visa/.test(await main(ap)) && /No offer yet/.test(await main(ap)), "admin: the card shows no offer yet");
 
-await ap.getByText("Update offer and visa").click();
+// The panel is already open: go() unfolds everything on the way in, and
+// clicking the summary again would shut it.
 await ap.selectOption('select[name="visaDecision"]', "GRANTED");
 await ap.getByRole("button", { name: "Save offer and visa" }).click();
 await ap.waitForTimeout(1200);
 check(/When was the decision\?/.test(await main(ap)), "admin: a visa decision needs its date");
+// Saving re-renders the card, which brings the folds back.
+await unfold(ap);
 await ap.selectOption('select[name="visaDecision"]', "");
 
 await ap.selectOption('select[name="offerType"]', "CONDITIONAL");
@@ -81,7 +95,7 @@ check(/Conditional offer recorded/.test(text), "partner: notified of the offer")
 // The visa, granted.
 await go(ap, appUrl.replace(BASE, ""));
 await ap.waitForLoadState("networkidle");
-await ap.getByText("Update offer and visa").click();
+// Already open, same as above: go() unfolds on the way in.
 await ap.fill('input[name="confirmationNumber"]', "E4G1234567");
 await ap.fill('input[name="visaLodgedOn"]', iso(-10));
 await ap.selectOption('select[name="visaDecision"]', "GRANTED");

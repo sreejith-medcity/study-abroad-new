@@ -3,6 +3,8 @@
 // it, and ticks it off; an offer's accept-by date becomes a deadline by itself.
 // Wants the sample data (npm run db:seed).
 import { chromium } from "playwright";
+import { reveal } from "./_reveal.mjs";
+import { studentIdByName } from "./_student.mjs";
 
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const fails = [];
@@ -47,7 +49,7 @@ check(/Nothing due in this window/.test(text), "dashboard: the Today tab narrows
 const admin = await signIn("admin@medcityoverseas.test", "10.81.1.2");
 const ap = admin.page;
 await go(ap, "/search");
-const sid = await ap.locator('select[name="student"] option', { hasText: "Fathima Rahman" }).getAttribute("value");
+const sid = await studentIdByName(ap, BASE, "Fathima Rahman");
 await go(ap, `/students/${sid}/applications`);
 const appUrl = ap.url();
 await ap.waitForLoadState("networkidle");
@@ -79,6 +81,9 @@ check(!(await pp.getByRole("button", { name: "Add deadline" }).count()), "partne
 await go(ap, appUrl.replace(BASE, ""));
 await ap.waitForLoadState("networkidle");
 await ap.getByText("Update offer and visa").click();
+// The offer and visa controls sit two folds deep on a file: a section,
+// and an "Update offer and visa" panel inside it.
+await reveal(ap, ap.locator('select[name="offerType"], select[name="visaDecision"]'));
 await ap.selectOption('select[name="offerType"]', "CONDITIONAL");
 await ap.fill('input[name="offerDate"]', iso(0));
 await ap.fill('input[name="offerAcceptBy"]', iso(10));

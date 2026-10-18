@@ -3,6 +3,8 @@
 // status, provider and note, and is notified.
 // Wants the sample data (npm run db:seed).
 import { chromium } from "playwright";
+import { clickInMenu } from "./_menu.mjs";
+import { studentIdByName } from "./_student.mjs";
 
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const fails = [];
@@ -33,7 +35,7 @@ const toast = (page, re) => page.locator('[role="status"]').filter({ hasText: re
 const partner = await signIn("kottayam@medcity.test", "10.74.1.1");
 const pp = partner.page;
 await go(pp, "/search");
-const sid = await pp.locator('select[name="student"] option', { hasText: "Arathi Krishnan" }).getAttribute("value");
+const sid = await studentIdByName(pp, BASE, "Arathi Krishnan");
 let text = await go(pp, `/students/${sid}/services`);
 check(/Services \(0\)/.test(text) && /Nothing requested yet/.test(text), "student file: a Services tab, empty to start");
 await pp.waitForLoadState("networkidle");
@@ -56,7 +58,7 @@ const admin = await signIn("admin@medcityoverseas.test", "10.74.1.2");
 const ap = admin.page;
 text = await go(ap, "/notifications");
 check(/Education loan requested/.test(text), "admin: notified of the request");
-await ap.getByRole("link", { name: "Services" }).first().click();
+await clickInMenu(ap, "Services");
 await ap.waitForURL(/\/admin\/services/);
 text = await main(ap);
 check(/1 new/.test(text) && /Arathi Krishnan/.test(text) && /INR 25 lakh/.test(text), "queue: the new request is there with its details");

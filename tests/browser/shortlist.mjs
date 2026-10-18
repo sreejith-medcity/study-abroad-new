@@ -2,6 +2,7 @@
 // comparison on the student file, removal, who may change it, and isolation
 // between branches. Wants the real catalogue loaded and published.
 import { chromium } from "playwright";
+import { studentIdByName } from "./_student.mjs";
 import fs from "node:fs";
 
 const OUT = "/tmp/smoke-shortlist";
@@ -42,11 +43,11 @@ async function waitText(page, re, timeout = 15000) {
 const partner = await signIn("kottayam@medcity.test", "10.80.1.1");
 const pp = partner.page;
 
-// Pick Arathi from the student selector so the test does not depend on ids.
+// Pick Arathi through the search page's own control so the test does not
+// depend on ids. It used to be a dropdown and is a type-ahead now.
+const studentId = await studentIdByName(pp, BASE, "Arathi Krishnan");
+check(!!studentId, "search: the student can be picked on the search page");
 await go(pp, "/search?q=Hull");
-const option = pp.locator('select[name="student"] option', { hasText: "Arathi Krishnan" });
-const studentId = await option.getAttribute("value");
-check(!!studentId, "search: the student is in the selector");
 
 // Hiding what the student cannot meet yet: fewer rows, and none marked "Not yet".
 {
@@ -104,12 +105,12 @@ check((await mgmt.page.locator("thead th a[href^='/programs/']").count()) === 2,
 check((await mgmt.page.getByRole("button", { name: "Remove" }).count()) === 0, "management: no Remove button");
 
 // A student with nothing shortlisted gets a way in, not a blank table.
-const option2 = await (await go(pp, "/search"), pp.locator('select[name="student"] option', { hasText: "Aswin Anil" }).getAttribute("value"));
+const option2 = await studentIdByName(pp, BASE, "Aswin Anil");
 text = await go(pp, `/students/${option2}/shortlist`);
 check(/Nothing shortlisted yet/.test(text) && /Search programs for this student/.test(text), "empty shortlist: explains how to add");
 
 // The student sees what the counsellor shortlisted, read-only, in their own language.
-const fathimaId = await (await go(pp, "/search"), pp.locator('select[name="student"] option', { hasText: "Fathima Rahman" }).getAttribute("value"));
+const fathimaId = await studentIdByName(pp, BASE, "Fathima Rahman");
 await go(pp, `/search?q=Mohawk&student=${fathimaId}`);
 await pp.waitForLoadState("networkidle");
 await pp.getByRole("button", { name: "Shortlist", exact: true }).first().click();

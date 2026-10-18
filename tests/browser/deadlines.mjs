@@ -3,6 +3,7 @@
 // get a warning in the apply form when an intake's deadline has passed.
 // Wants the real catalogue loaded and published (see programs.mjs).
 import { chromium } from "playwright";
+import { studentIdByName } from "./_student.mjs";
 import fs from "node:fs";
 
 const OUT = "/tmp/smoke-deadlines";
@@ -95,7 +96,7 @@ check(/MSc Business Management/.test(text) && /10 days left/.test(text) && !/clo
 await pp.screenshot({ path: `${OUT}/deadlines.png`, fullPage: true });
 
 // Shortlist it for a student, and the page's own filter finds it.
-const sid = await (await go(pp, "/search"), pp.locator('select[name="student"] option', { hasText: "Arathi Krishnan" }).getAttribute("value"));
+const sid = await studentIdByName(pp, BASE, "Arathi Krishnan");
 await go(pp, `/programs/${programId}?student=${sid}`);
 await pp.waitForLoadState("networkidle");
 const sl = pp.getByRole("button", { name: "Add to shortlist", exact: true });

@@ -4,6 +4,7 @@
 // Wants a seeded database with the catalogue and the three register files:
 //   CRICOS_DIR=/path/to/folder node tests/browser/cricos.mjs
 import { chromium } from "playwright";
+import { studentIdByName } from "./_student.mjs";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -112,7 +113,7 @@ check(/Page 1 of \d+/.test(text), "university page: a large university pages its
 check(/Official website/.test(await pp.locator("main").innerText()), "university page: links the official website");
 await pp.screenshot({ path: `${OUT}/university.png`, fullPage: true });
 
-const sid = await (await go(pp, "/search"), pp.locator('select[name="student"] option', { hasText: "Arathi Krishnan" }).getAttribute("value"));
+const sid = await studentIdByName(pp, BASE, "Arathi Krishnan");
 text = await timed("apply panel, keyword", () => go(pp, `/students/${sid}/applications?tab=apply&q=Monash&country=AU`));
 const options = await pp.locator('select[name="programId"] option').count();
 check(options > 20 && options <= 60, `apply panel: a bounded list that includes register courses (${options - 1} options)`);
