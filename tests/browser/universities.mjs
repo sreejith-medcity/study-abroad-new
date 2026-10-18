@@ -2,6 +2,7 @@
 // destination, level and type, with links through to its page and its programs.
 // Wants the catalogue loaded and published (see programs.mjs).
 import { chromium } from "playwright";
+import { clickInMenu } from "./_menu.mjs";
 import fs from "node:fs";
 
 const OUT = "/tmp/smoke-universities";
@@ -28,7 +29,7 @@ await page.waitForURL((u) => !String(u).includes("/login"), { timeout: 20000 });
 const main = () => page.locator("main").innerText();
 const countOf = (t) => Number((t.match(/([\d,]+) institutions?/) || [])[1]?.replace(/,/g, ""));
 
-await page.getByRole("link", { name: "Universities" }).first().click();
+await clickInMenu(page, "Universities");
 await page.waitForURL(/\/universities$/);
 let text = await main();
 const all = countOf(text);

@@ -3,6 +3,7 @@
 // team's progress; another branch cannot open the certificate.
 // Wants the sample data (npm run db:seed).
 import { chromium } from "playwright";
+import { clickInMenu } from "./_menu.mjs";
 
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const fails = [];
@@ -65,7 +66,7 @@ check(/Published/.test(await main(ap)), "admin: published");
 
 const counsellor = await signIn("uk.docs@medcity.test", "10.78.1.2");
 const cp = counsellor.page;
-await cp.getByRole("link", { name: "Training" }).first().click();
+await clickInMenu(cp, "Training");
 await cp.waitForURL(/\/training$/);
 check(/UK Graduate visa basics/.test(await main(cp)) && /Not started/.test(await main(cp)), "counsellor: sees the course");
 await cp.getByRole("link", { name: /UK Graduate visa basics/ }).click();

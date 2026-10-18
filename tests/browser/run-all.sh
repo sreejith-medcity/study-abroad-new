@@ -8,7 +8,19 @@
 # expects it not to. Run that way the whole set reports about fifty failures
 # and none of them is real. Run this way they pass.
 #
-# It takes a couple of hours. For one suite while working on it:
+# Fresh data means a copy of a prepared database, not a fresh seed. A seed
+# leaves ten courses in the catalogue, and a dozen suites want the real one:
+# search, the finder, universities, destinations, deadlines, shortlists and
+# the assistant all read it, and every one of them failed on a full run for
+# that reason alone. So the catalogue is loaded once into a template and each
+# suite gets a copy, which takes half a second rather than three minutes.
+#
+# The template is built on the first run and reused after that. To rebuild it,
+# for instance after a migration:
+#
+#   FRESH=1 tests/browser/run-all.sh
+#
+# For one suite while working on it:
 #
 #   npm run db:seed && npm run build && npm start &
 #   node tests/browser/<name>.mjs
@@ -21,15 +33,23 @@ cd "$(dirname "$0")/../.."
 PORT="${PORT:-3000}"
 BASE="${BASE:-http://localhost:$PORT}"
 OUT="${OUT:-/tmp/portal-suites}"
+FRESH="${FRESH:-}"
 mkdir -p "$OUT"
 : > "$OUT/summary.txt"
 
-restart() {
+DB=$(grep -oE "localhost:5432/[a-z0-9_]+" .env | head -1 | cut -d/ -f2)
+TEMPLATE="${DB}_seed"
+psqlq() { PGPASSWORD="${PGPASSWORD:-local}" psql -h localhost -U "${PGUSER:-postgres}" -d "$1" -qAtc "$2"; }
+
+stop() {
   for pid in $(ls /proc | grep -E '^[0-9]+$'); do
     cmd=$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null) || continue
     case "$cmd" in *"next-server"*|*"next start"*) kill -9 "$pid" 2>/dev/null ;; esac
   done
   sleep 1
+}
+
+start() {
   setsid npm start > "$OUT/app.log" 2>&1 < /dev/null &
   for _ in $(seq 1 30); do
     [ "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/login")" = "200" ] && return 0
@@ -39,18 +59,42 @@ restart() {
   return 1
 }
 
+# The template: a seeded database with the real catalogue loaded and published.
+if [ -n "$FRESH" ] || [ "$(psqlq postgres "select count(*) from pg_database where datname = '$TEMPLATE'")" != "1" ]; then
+  echo "preparing $TEMPLATE (seed, catalogue, publish) — a few minutes, once"
+  stop
+  npm run db:seed > "$OUT/seed.log" 2>&1 || { echo "the seed failed; see $OUT/seed.log" >&2; exit 1; }
+  npx tsx --env-file=.env scripts/import-catalogue.ts > "$OUT/catalogue.log" 2>&1 \
+    || echo "the catalogue did not load; the suites that need it will skip or fail (see $OUT/catalogue.log)" >&2
+  psqlq "$DB" "update programs set status = 'LIVE' where status = 'DRAFT'" > /dev/null
+  psqlq postgres "drop database if exists $TEMPLATE" > /dev/null
+  psqlq postgres "create database $TEMPLATE template $DB owner app" > /dev/null \
+    || { echo "could not make the template" >&2; exit 1; }
+fi
+
+# Postgres will not copy or drop a database that anything is connected to, so
+# the server has to be down for both, which it has to be anyway: the sign-in
+# limit is held in memory and a suite that signs the same person in several
+# times is otherwise refused on the ninth.
+reset_db() {
+  psqlq postgres "drop database if exists $DB" > /dev/null \
+    && psqlq postgres "create database $DB template $TEMPLATE owner app" > /dev/null
+}
+
 for f in tests/browser/*.mjs; do
   b=$(basename "$f" .mjs)
-  [ "$b" = "_height" ] && continue
-  # Fresh data for every suite, and a fresh process with it: the sign-in limit
-  # is held in memory, and a suite that signs the same person in several times
-  # will otherwise be refused on the ninth.
-  npm run db:seed > "$OUT/seed.log" 2>&1 || { echo "$b: the seed failed" >> "$OUT/summary.txt"; continue; }
-  restart || break
+  # Anything beginning with an underscore is a helper or somebody's scratch
+  # file, not a suite.
+  case "$b" in _*) continue;; esac
+  stop
+  reset_db || { echo "$b: the database could not be reset" >> "$OUT/summary.txt"; continue; }
+  start || break
   BASE="$BASE" timeout 600 node "$f" > "$OUT/$b.log" 2>&1
   code=$?
   n=$(grep -c "^FAIL" "$OUT/$b.log")
-  if [ "$code" -ne 0 ] || [ "$n" -gt 0 ]; then
+  if grep -q "^SKIPPED" "$OUT/$b.log"; then
+    echo "$b: skipped" >> "$OUT/summary.txt"
+  elif [ "$code" -ne 0 ] || [ "$n" -gt 0 ]; then
     echo "$b: exit=$code fails=$n" >> "$OUT/summary.txt"
   else
     echo "$b: ok" >> "$OUT/summary.txt"
@@ -60,4 +104,4 @@ done
 
 echo
 echo "Logs in $OUT. What did not pass:"
-grep -v ': ok$' "$OUT/summary.txt" || echo "  everything passed"
+grep -vE ': (ok|skipped)$' "$OUT/summary.txt" || echo "  everything passed"

@@ -3,6 +3,7 @@
 // resolves it. Another branch cannot open it.
 // Wants the sample data (npm run db:seed).
 import { chromium } from "playwright";
+import { clickInMenu } from "./_menu.mjs";
 
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const fails = [];
@@ -32,7 +33,7 @@ const toast = (page, re) => page.locator('[role="status"]').filter({ hasText: re
 
 const partner = await signIn("kottayam@medcity.test", "10.77.1.1");
 const pp = partner.page;
-await pp.getByRole("link", { name: "Help desk" }).first().click();
+await clickInMenu(pp, "Help desk");
 await pp.waitForURL(/\/support$/);
 await pp.waitForLoadState("networkidle");
 await pp.getByRole("button", { name: "Send to the Overseas team" }).click();

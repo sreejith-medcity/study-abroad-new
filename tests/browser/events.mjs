@@ -3,6 +3,7 @@
 // cancelled event disappears from their list.
 // Wants the sample data (npm run db:seed).
 import { chromium } from "playwright";
+import { clickInMenu } from "./_menu.mjs";
 
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const fails = [];
@@ -33,7 +34,7 @@ const tomorrow = (() => { const d = new Date(Date.now() + 86400000); return `${d
 
 const admin = await signIn("admin@medcityoverseas.test", "10.75.1.1");
 const ap = admin.page;
-await ap.getByRole("link", { name: "Events" }).first().click();
+await clickInMenu(ap, "Events");
 await ap.waitForURL(/\/admin\/events/);
 await ap.waitForLoadState("networkidle");
 await ap.fill('input[name="title"]', "Studying in the UK: the 2027 intakes");
@@ -56,7 +57,7 @@ const partner = await signIn("kottayam@medcity.test", "10.75.1.2");
 const pp = partner.page;
 let text = await go(pp, "/notifications");
 check(/Webinar: Studying in the UK/.test(text), "partner: notified of the new event");
-await pp.getByRole("link", { name: "Events" }).first().click();
+await clickInMenu(pp, "Events");
 await pp.waitForURL(/\/events/);
 text = await main(pp);
 check(/Studying in the UK/.test(text) && /6:30 pm/i.test(text) && /3 seats left/.test(text), "events: shown in IST with its seats");
