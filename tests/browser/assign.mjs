@@ -50,13 +50,23 @@ check((await picker.locator(`option[value="${docId}"]`).count()) > 0, `documenta
 
 // Picking a name is the whole move: there is no Save button beside it any
 // more, and a branch reassigning a morning's intake was clicking one per row.
-check((await row.locator('form:has(select[name="assignedToId"]) button').count()) === 0, "and no second click to confirm it");
+//
+// The button is rendered by the server and taken away once the script runs,
+// so that a browser which never runs it still has something to press. Asking
+// before that has happened is asking too early, and reading it as a failure
+// made this check fail about one run in three.
+const saveButton = row.locator('form:has(select[name="assignedToId"]) button');
+for (let t0 = Date.now(); (await saveButton.count()) > 0 && Date.now() - t0 < 10000; ) await admin.waitForTimeout(200);
+check((await saveButton.count()) === 0, "and no second click to confirm it");
 await picker.selectOption(docId);
 // Poll rather than sleep: the row files the change itself, and how long that
 // takes is the server's business.
 const assigned = () => sql(`select coalesce(assigned_to_id, '') from students where id = '${studentId}'`);
 for (let t0 = Date.now(); assigned() !== docId && Date.now() - t0 < 15000; ) await admin.waitForTimeout(300);
 check(assigned() === docId, "choosing a name files it, with nothing else to press");
+// Same again: the word arrives when the server answers, not when the
+// database row changes, and those are not the same instant.
+for (let t0 = Date.now(); !(await row.innerText()).includes("Saved") && Date.now() - t0 < 10000; ) await admin.waitForTimeout(200);
 check((await row.innerText()).includes("Saved"), "and the row says so");
 check(/student.reassign/.test(sql(`select coalesce(string_agg(action, ','), '') from audit_logs where entity_id = '${studentId}'`)), "it is written to the audit log");
 
