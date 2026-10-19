@@ -9,6 +9,7 @@ import { hashPassword, requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { ADMIN_ROLES, HQ_ROLES, PARTNER_ROLES, ROLE_LABEL, canManageSuperAdmins, canManageUsers, canResetPasswords, isFamilyRole } from "@/lib/permissions";
 import { makeSlug } from "@/server/public-form";
+import { orgIsUntouched } from "@/server/org-untouched";
 
 import type { FormState } from "@/lib/form-state";
 export type { FormState };
@@ -127,6 +128,64 @@ export async function updateOrgAction(formData: FormData) {
       .where(eq(schema.organizations.id, orgId));
   }
   await audit(user.id, "organization.update", "organization", orgId, { tier, seats, rm, ...(idCode ? { idCode } : {}) });
+  revalidatePath("/admin/partners");
+}
+
+/**
+ * Closing a branch, and opening one again.
+ *
+ * A branch that has stopped is not a branch that never was: its students,
+ * its applications and its commission all stay exactly where they are, and
+ * every screen that reads them keeps reading them. What changes is that it
+ * is no longer offered on a new student, its public enquiry form and test
+ * preparation page stop answering, and it is out of the lists people pick
+ * from. The database has understood this since the branch table was written
+ * and nothing in the portal could ever say it, so a branch that closed was
+ * in every dropdown forever.
+ */
+export async function toggleOrgActiveAction(formData: FormData) {
+  const user = await requireUser([...ADMIN_ROLES]);
+  const orgId = String(formData.get("orgId"));
+  const org = await db.query.organizations.findFirst({ where: eq(schema.organizations.id, orgId) });
+  if (!org || org.type === "HQ") return;
+  await db.update(schema.organizations).set({ active: !org.active }).where(eq(schema.organizations.id, orgId));
+  await audit(user.id, org.active ? "organization.close" : "organization.reopen", "organization", orgId, { name: org.name });
+  revalidatePath("/admin/partners");
+}
+
+/**
+ * A branch nothing has touched is a mistake, and a mistake should be
+ * removable. The same rule as a team: added by somebody setting the portal
+ * up, never used, and otherwise in every list for good.
+ *
+ * Untouched means no students, no enquiries and nobody who has ever signed
+ * in. Its accounts go with it, because an account nobody has ever used is
+ * part of the same mistake. Anything beyond that and the delete is refused
+ * and the branch is closed instead, which keeps everything.
+ *
+ * The last word is the database's rather than this list's: all but four of
+ * the tables that point at a branch refuse to let it go, and those four are
+ * the branch's own working notes, which mean nothing without it. So the
+ * delete runs inside a transaction and a refusal rolls the whole thing back.
+ */
+export async function deleteOrgAction(formData: FormData) {
+  const user = await requireUser([...ADMIN_ROLES]);
+  const orgId = String(formData.get("orgId"));
+  const org = await db.query.organizations.findFirst({ where: eq(schema.organizations.id, orgId) });
+  if (!org || org.type === "HQ") return;
+  if (!(await orgIsUntouched(orgId))) return;
+  try {
+    await db.transaction(async (tx) => {
+      await tx.delete(schema.users).where(eq(schema.users.orgId, orgId));
+      await tx.delete(schema.organizations).where(eq(schema.organizations.id, orgId));
+    });
+  } catch {
+    // Something still points at it that this did not think to look for. The
+    // branch is untouched, so nothing is lost by leaving it alone and saying
+    // nothing: the screen will still offer to close it.
+    return;
+  }
+  await audit(user.id, "organization.delete", "organization", orgId, { name: org.name, type: org.type });
   revalidatePath("/admin/partners");
 }
 

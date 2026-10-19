@@ -5,7 +5,8 @@ import { fmtDate } from "@/lib/format";
 import { ADMIN_ROLES, HQ_ROLES, PARTNER_ROLES, ROLE_BLURB, ROLE_LABEL, canManageSuperAdmins, canManageUsers, canResetPasswords } from "@/lib/permissions";
 import { Button, Card, Chip, Input, PageHeader, Select, Alert } from "@/components/ui";
 import { IconPartners } from "@/components/icons";
-import { toggleUserAction, updateOrgAction } from "./actions";
+import { deleteOrgAction, toggleOrgActiveAction, toggleUserAction, updateOrgAction } from "./actions";
+import { untouchedOrgs } from "@/server/org-untouched";
 import { AddUserForm, InvitePartnerForm, ResetPasswordForm, RoleForm, TitleForm } from "./forms";
 import { OrgFold, OrgList } from "./org-list";
 import { PublicFormPanel } from "./public-form-panel";
@@ -39,6 +40,9 @@ export default async function PartnersPage() {
     },
     orderBy: [sql`case when ${schema.organizations.type} = 'HQ' then 0 else 1 end`, asc(schema.organizations.name)],
   });
+  // Which of these have done nothing at all, and so can be deleted rather
+  // than closed. One definition, shared with the action behind the button.
+  const untouched = await untouchedOrgs(orgs.filter((o) => o.type !== "HQ").map((o) => o.id));
   const studentLoginRows = await db
     .select({ orgId: schema.users.orgId, n: sql<number>`count(*)::int` })
     .from(schema.users)
@@ -227,6 +231,31 @@ export default async function PartnersPage() {
                     />
                   </div>
                 </details>
+                {/* A branch added by mistake goes; one that has done anything
+                    at all is closed, which keeps every student, application
+                    and rupee exactly where they are. */}
+                {!hq &&
+                  (untouched.has(o.id) ? (
+                    <form action={deleteOrgAction} className="border-t border-line px-4 py-2">
+                      <input type="hidden" name="orgId" value={o.id} />
+                      <button className="text-xs text-muted hover:text-stop-500">Delete this branch</button>
+                      <span className="ml-2 text-xs text-muted">
+                        No students, no enquiries, and nobody has signed in, so there is nothing to keep. Its accounts go with it.
+                      </span>
+                    </form>
+                  ) : (
+                    <form action={toggleOrgActiveAction} className="border-t border-line px-4 py-2">
+                      <input type="hidden" name="orgId" value={o.id} />
+                      <button className="text-xs text-muted hover:text-stop-500">
+                        {o.active ? "Close this branch" : "Open it again"}
+                      </button>
+                      <span className="ml-2 text-xs text-muted">
+                        {o.active
+                          ? "Everything it has done stays. It stops being offered on new students, and its enquiry form stops answering."
+                          : "Closed, so it is not offered on new students."}
+                      </span>
+                    </form>
+                  ))}
               </OrgFold>
             );
           })}

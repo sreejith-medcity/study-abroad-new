@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
@@ -46,6 +46,32 @@ export async function toggleTeamAction(fd: FormData) {
   if (!team) return;
   await db.update(schema.teams).set({ active: !team.active }).where(eq(schema.teams.id, teamId));
   await audit(user.id, team.active ? "team.retire" : "team.restore", "team", teamId, { name: team.name });
+  revalidatePath("/admin/teams");
+}
+
+/**
+ * A team nothing has used yet is a mistake, and a mistake should be removable.
+ *
+ * Retiring is right for a team that carried work: the files it carried still
+ * say so, and a name that meant something last year still reads. It is no use
+ * at all for "NCLEX RN processesing", typed twice by somebody setting the
+ * portal up, with nobody in it and nothing on it. Those cluttered the screen
+ * with no way to clear them.
+ *
+ * So: empty and unused can go for good, anything else can only be retired.
+ * The screen offers whichever applies, and this checks again rather than
+ * trusting it, because a form can be posted by hand.
+ */
+export async function deleteTeamAction(fd: FormData) {
+  const user = await requireUser([...ADMIN_ROLES]);
+  const teamId = clean(fd.get("teamId"), 40);
+  const team = await db.query.teams.findFirst({ where: eq(schema.teams.id, teamId) });
+  if (!team) return;
+  const [{ carried }] = await db.select({ carried: count() }).from(schema.students).where(eq(schema.students.teamId, teamId));
+  const [{ members }] = await db.select({ members: count() }).from(schema.teamMembers).where(eq(schema.teamMembers.teamId, teamId));
+  if (carried > 0 || members > 0) return;
+  await db.delete(schema.teams).where(eq(schema.teams.id, teamId));
+  await audit(user.id, "team.delete", "team", teamId, { name: team.name });
   revalidatePath("/admin/teams");
 }
 

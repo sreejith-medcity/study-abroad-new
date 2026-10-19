@@ -4,7 +4,7 @@ import { deskPeople, teamsWithMembers } from "@/server/teams";
 import { Button, Card, Chip, EmptyState, Input, PageHeader } from "@/components/ui";
 import { Section } from "@/components/section";
 import { IconPartners } from "@/components/icons";
-import { removeTeamMemberAction, renameTeamAction, setTeamLeadAction, toggleTeamAction } from "./actions";
+import { deleteTeamAction, removeTeamMemberAction, renameTeamAction, setTeamLeadAction, toggleTeamAction } from "./actions";
 import { AddMemberForm, NewTeamForm } from "./forms";
 
 export const metadata = { title: "Teams" };
@@ -38,6 +38,9 @@ export default async function TeamsPage() {
 
           {teams.map((t) => {
             const members = t.members.filter((m) => m.user?.active);
+            // Counted from everybody ever put in it, not just the people who
+            // are still active: a team somebody has been in is not untouched.
+            const unused = t.members.length === 0 && t.students === 0;
             const leads = members.filter((m) => m.lead);
             const inTeam = new Set(members.map((m) => m.userId));
             const meta = [
@@ -91,17 +94,30 @@ export default async function TeamsPage() {
                   <AddMemberForm teamId={t.id} people={people.filter((p) => !inTeam.has(p.id))} />
                 </div>
 
-                <form action={toggleTeamAction} className="border-t border-line px-4 py-2">
-                  <input type="hidden" name="teamId" value={t.id} />
-                  <button className="text-xs text-muted hover:text-stop-500">
-                    {t.active ? "Retire this team" : "Put it back"}
-                  </button>
-                  <span className="ml-2 text-xs text-muted">
-                    {t.active
-                      ? "A retired team stays on the files it already carries and stops being offered on new ones."
-                      : "Retired, so it is not offered on new files."}
-                  </span>
-                </form>
+                {/* Nothing has used it, so it is a mistake rather than
+                    history, and it can go for good. Anything that carried
+                    work is retired instead, further down. */}
+                {unused ? (
+                  <form action={deleteTeamAction} className="border-t border-line px-4 py-2">
+                    <input type="hidden" name="teamId" value={t.id} />
+                    <button className="text-xs text-muted hover:text-stop-500">Delete this team</button>
+                    <span className="ml-2 text-xs text-muted">
+                      Nobody is in it and no student is carried by it, so there is nothing to keep.
+                    </span>
+                  </form>
+                ) : (
+                  <form action={toggleTeamAction} className="border-t border-line px-4 py-2">
+                    <input type="hidden" name="teamId" value={t.id} />
+                    <button className="text-xs text-muted hover:text-stop-500">
+                      {t.active ? "Retire this team" : "Put it back"}
+                    </button>
+                    <span className="ml-2 text-xs text-muted">
+                      {t.active
+                        ? "A retired team stays on the files it already carries and stops being offered on new ones."
+                        : "Retired, so it is not offered on new files."}
+                    </span>
+                  </form>
+                )}
               </Section>
             );
           })}
