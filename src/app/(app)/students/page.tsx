@@ -8,11 +8,13 @@ import { viewsWithPins } from "@/server/views";
 import { APP_ROLES, ROLE_LABEL, canAssignStudents, isAdmin, isStaff } from "@/lib/permissions";
 import { fmtDate, fullName } from "@/lib/format";
 import { assignableFor, orgUsers, readFilters, studentWhere } from "@/server/queries";
+import { peopleOnFiles } from "@/server/teams";
 import { Card, Chip, EmptyState, LinkButton, PageHeader, Table, Td, Th } from "@/components/ui";
 import { FilterBar } from "@/components/filter-bar";
 import { IconMail, IconPhone, IconPlus, IconStudents } from "@/components/icons";
 import { archiveStudentAction } from "./actions";
 import { RowAssign } from "./row-assign";
+import { RowPeople } from "./row-people";
 
 export const metadata = { title: "Students" };
 
@@ -72,6 +74,8 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
     if (got) got.push(person);
     else branchPeople.set(person.orgId, [person]);
   }
+  // Who shares each of these files, in one query rather than fifty.
+  const sharedWith = canAssign ? await peopleOnFiles(rows.map((r) => r.id)) : new Map<string, { id: string; name: string; part: string }[]>();
   const countries = await db.select().from(schema.countries).orderBy(asc(schema.countries.name));
   const orgs = staff ? await db.select().from(schema.organizations).where(sql`type <> 'HQ'`).orderBy(asc(schema.organizations.name)) : [];
   const canWrite = user.role !== "MANAGEMENT";
@@ -249,6 +253,16 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                           assignable.map((c) => <option key={c.id} value={c.id}>{c.deskLabel ?? c.name}</option>)
                         )}
                       </RowAssign>
+                      {/* A file belongs to one counsellor; this is everybody
+                          else working on it. Item six of the branches' list:
+                          "options to assign to more than 2". */}
+                      <RowPeople
+                        studentId={r.id}
+                        ownerId={r.assignedToId ?? ""}
+                        people={sharedWith.get(r.id) ?? []}
+                        canAdd={staff ? assignable : (branchPeople.get(r.orgId) ?? assignable)}
+                        label={`Share ${fullName(r)} with somebody else`}
+                      />
                     </Td>
                   )}
                   <Td>

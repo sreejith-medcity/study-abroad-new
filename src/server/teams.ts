@@ -64,6 +64,29 @@ export async function peopleOnFile(studentId: string) {
   });
 }
 
+/**
+ * The same, for a page of students at once.
+ *
+ * The students list shows who shares each file, and asking per row would be
+ * fifty queries for one screen.
+ */
+export async function peopleOnFiles(studentIds: string[]) {
+  const out = new Map<string, { id: string; name: string; part: string }[]>();
+  if (studentIds.length === 0) return out;
+  const rows = await db.query.studentPeople.findMany({
+    where: inArray(schema.studentPeople.studentId, studentIds),
+    with: { user: { columns: { id: true, name: true, deskLabel: true, active: true } } },
+    orderBy: asc(schema.studentPeople.createdAt),
+  });
+  for (const r of rows) {
+    if (!r.user?.active) continue;
+    const list = out.get(r.studentId) ?? [];
+    list.push({ id: r.id, name: r.user.deskLabel ?? r.user.name, part: r.part });
+    out.set(r.studentId, list);
+  }
+  return out;
+}
+
 /** Who each kind of service request lands on, where somebody has been named. */
 export async function serviceOwners() {
   const rows = await db.query.serviceOwners.findMany({

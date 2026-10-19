@@ -260,7 +260,7 @@ export function EmptyState({
  */
 export function Table({ children, className, tableClassName }: { children: ReactNode; className?: string; tableClassName?: string }) {
   return (
-    <div className={cn("thin-scroll overflow-x-auto", className)}>
+    <div className={cn("thin-scroll relative overflow-x-auto", className)}>
       <table className={cn("w-full border-collapse text-left text-md", tableClassName)}>{children}</table>
     </div>
   );

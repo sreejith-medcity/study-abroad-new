@@ -65,6 +65,9 @@ export async function addPersonToFileAction(_: FormState, fd: FormData): Promise
   await db.insert(schema.studentPeople).values({ studentId, userId, part, addedById: user.id });
   await audit(user.id, "student.person.add", "student", studentId, { userId, part });
   revalidatePath(`/students/${studentId}`, "layout");
+  // The list shows who shares each file now, so it has to be redrawn as well
+  // as the file itself: this can be done from either.
+  revalidatePath("/students");
   return { ok: `${person.deskLabel ?? person.name} added for ${part}.` };
 }
 
@@ -78,4 +81,5 @@ export async function removePersonFromFileAction(fd: FormData) {
   await db.delete(schema.studentPeople).where(eq(schema.studentPeople.id, id));
   await audit(user.id, "student.person.remove", "student", row.studentId, { userId: row.userId, part: row.part });
   revalidatePath(`/students/${row.studentId}`, "layout");
+  revalidatePath("/students");
 }
