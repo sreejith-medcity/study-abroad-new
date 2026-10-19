@@ -414,6 +414,13 @@ export function MobileNav({ groups }: { groups: NavGroup[] }) {
   const path = usePathname();
 
   useEffect(() => setOpen(false), [path]);
+  // Escape shuts it, like every other menu in the portal. The dark backdrop
+  // and the Close button were the only ways out of it.
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("keydown", esc);
+    return () => document.removeEventListener("keydown", esc);
+  }, []);
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
     return () => {

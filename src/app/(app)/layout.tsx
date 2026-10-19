@@ -7,6 +7,7 @@ import { requireUser } from "@/lib/auth";
 import { fmtDateTime } from "@/lib/format";
 import { MobileNav, SideNav, type NavGroup } from "@/components/nav";
 import { CommandPalette } from "@/components/palette";
+import { PopMenu } from "@/components/pop-menu";
 import { ToastHost } from "@/components/toast";
 import { cn } from "@/components/ui";
 import { BrandLogo, BrandStyle } from "@/components/brand";
@@ -428,12 +429,19 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             What&apos;s new
             {freshNews && <span className="ml-1 size-2 rounded-full bg-gold-400" aria-label="New items" />}
           </Link>
-          <details className="group relative">
-            <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-lg px-2.5 py-2 text-white/90 transition-colors hover:bg-white/10" aria-label={`Notifications, ${unread} unread`}>
-              <IconBell />
-              {unread > 0 && <span className="rounded-full bg-gold-400 px-1.5 text-2xs font-bold text-ink tabular">{unread}</span>}
-            </summary>
-            <div className="absolute right-0 mt-2 w-[22rem] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-xl border border-line bg-surface text-ink shadow-pop">
+          <PopMenu
+            label={`Notifications, ${unread} unread`}
+            className="group"
+            triggerClassName="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-white/90 transition-colors hover:bg-white/10"
+            panelClassName="absolute right-0 mt-2 w-[22rem] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-xl border border-line bg-surface text-ink shadow-pop"
+            trigger={
+              <>
+                <IconBell />
+                {unread > 0 && <span className="rounded-full bg-gold-400 px-1.5 text-2xs font-bold text-ink tabular">{unread}</span>}
+              </>
+            }
+          >
+            <>
               <div className="flex items-center justify-between border-b border-line px-3.5 py-2.5">
                 <span className="font-display text-md font-semibold">Notifications</span>
                 <Link href="/notifications" className="text-sm font-medium text-brand-600 hover:underline">
@@ -458,21 +466,27 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                   ))}
                 </ul>
               )}
-            </div>
-          </details>
+            </>
+          </PopMenu>
 
-          <details className="relative">
-            <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg py-1.5 pl-1.5 pr-2.5 text-white transition-colors hover:bg-white/10">
-              <span className="grid size-8 place-items-center rounded-full bg-white/15 font-display text-sm font-semibold">
-                {user.name.slice(0, 1).toUpperCase()}
-              </span>
-              <span className="hidden text-left leading-tight sm:block">
-                <span className="block text-sm font-medium">{user.name.split(" ")[0]}</span>
-                <span className="block text-2xs text-white/70">{ROLE_LABEL[user.role]}</span>
-              </span>
-              <span aria-hidden="true" className="text-white/70">▾</span>
-            </summary>
-            <div className="absolute right-0 mt-2 w-64 rounded-xl border border-line bg-surface p-3.5 text-ink shadow-pop">
+          <PopMenu
+            label={`${user.name}, account menu`}
+            triggerClassName="flex items-center gap-2 rounded-lg py-1.5 pl-1.5 pr-2.5 text-white transition-colors hover:bg-white/10"
+            panelClassName="absolute right-0 mt-2 w-64 rounded-xl border border-line bg-surface p-3.5 text-ink shadow-pop"
+            trigger={
+              <>
+                <span className="grid size-8 place-items-center rounded-full bg-white/15 font-display text-sm font-semibold">
+                  {user.name.slice(0, 1).toUpperCase()}
+                </span>
+                <span className="hidden text-left leading-tight sm:block">
+                  <span className="block text-sm font-medium">{user.name.split(" ")[0]}</span>
+                  <span className="block text-2xs text-white/70">{ROLE_LABEL[user.role]}</span>
+                </span>
+                <span aria-hidden="true" className="text-white/70">▾</span>
+              </>
+            }
+          >
+            <>
               <p className="font-display text-md font-semibold">{user.name}</p>
               <p className="truncate text-xs text-muted">{user.email}</p>
               <p className="mt-1 text-xs text-muted">
@@ -492,8 +506,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                   <IconLogout className="size-4" /> Sign out
                 </button>
               </form>
-            </div>
-          </details>
+            </>
+          </PopMenu>
         </div>
       </header>
 

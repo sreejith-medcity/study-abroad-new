@@ -1,12 +1,16 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
+import { onMenuOpen, useSelfClosing } from "./pop-menu";
 import { cn } from "./ui";
 
 /**
  * A select-like button that opens a list of checkboxes, for filters that take
  * several values. The boxes are ordinary form fields, so the surrounding GET
- * form submits them as repeated keys. Closes on a click outside or Escape.
+ * form submits them as repeated keys. It shuts itself the same way the header
+ * menus do: a click outside, Escape, another menu opening, or the screen
+ * changing underneath it. Two filters side by side no longer hang open over
+ * each other.
  */
 export function CheckDropdown({
   label,
@@ -24,21 +28,9 @@ export function CheckDropdown({
   testId?: string;
 }) {
   const ref = useRef<HTMLDetailsElement>(null);
-  useEffect(() => {
-    const close = (e: Event) => {
-      const el = ref.current;
-      if (!el?.open) return;
-      if (e instanceof KeyboardEvent ? e.key === "Escape" : !el.contains(e.target as Node)) el.open = false;
-    };
-    document.addEventListener("pointerdown", close);
-    document.addEventListener("keydown", close);
-    return () => {
-      document.removeEventListener("pointerdown", close);
-      document.removeEventListener("keydown", close);
-    };
-  }, []);
+  useSelfClosing(ref);
   return (
-    <details ref={ref} className="relative" data-testid={testId}>
+    <details ref={ref} className="relative" data-testid={testId} onToggle={onMenuOpen}>
       <summary
         aria-label={label}
         className="flex h-10 cursor-pointer list-none items-center justify-between rounded-lg border border-line-strong bg-surface px-3 text-md [&::-webkit-details-marker]:hidden"
