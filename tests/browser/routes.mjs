@@ -4,7 +4,7 @@
 // route when the application is created, and what a student never sees.
 // Wants the plain seed.
 import { chromium } from "playwright";
-import { knownWarning } from "./_errors.mjs";
+import { hydrated, knownWarning } from "./_errors.mjs";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 
@@ -163,7 +163,7 @@ const partner = await signIn("kottayam@medcity.test", "10.120.1.2");
 const pp = partner.page;
 const studentId = sql("select id from students where first_name = 'Arathi'");
 await go(pp, `/students/${studentId}/applications?tab=apply&program=${pid}`);
-await pp.waitForLoadState("networkidle");
+await hydrated(pp);
 check((await pp.locator('select[name="routeId"]').count()) === 0, "apply: the counsellor is not asked for a route at all");
 check(/Overseas desk/.test(await main(pp)), "apply: the form says the desk chooses it once the documents are in");
 await pp.locator('select[name="intake"]').selectOption({ index: 1 });
@@ -179,7 +179,7 @@ const newApp = sql(`select id from applications where student_id = '${studentId}
 const ackNo = sql(`select ack_no from applications where id = '${newApp}'`);
 sql(`update applications set desk_stage = 'READY', handed_over_at = now() where id = '${newApp}'`);
 await go(ap, `/students/${studentId}/applications?app=${newApp}`);
-await ap.waitForLoadState("networkidle");
+await hydrated(ap);
 check(/Which road it goes down/.test(await main(ap)), "desk: the admin is offered the roads for that course");
 await ap.locator('input[name="routeId"]').first().check();
 await ap.getByRole("button", { name: "Choose this route" }).click();
@@ -205,7 +205,7 @@ const csv = [
   `KC,${uni},${pname},percent,9,,,,,,`,
 ].join("\n");
 await go(ap, "/imports?kind=routes");
-await ap.waitForLoadState("networkidle");
+await hydrated(ap);
 text = await main(ap);
 check(/Routes/.test(text), "upload: routes are one of the kinds the team can upload");
 await ap.locator("#file-routes").setInputFiles({ name: "routes.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });

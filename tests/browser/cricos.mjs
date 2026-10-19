@@ -4,7 +4,7 @@
 // Wants a seeded database with the catalogue and the three register files:
 //   CRICOS_DIR=/path/to/folder node tests/browser/cricos.mjs
 import { chromium } from "playwright";
-import { knownWarning } from "./_errors.mjs";
+import { hydrated, knownWarning } from "./_errors.mjs";
 import { studentIdByName } from "./_student.mjs";
 import fs from "node:fs";
 import path from "node:path";
@@ -50,7 +50,7 @@ const timed = async (label, fn) => { const t = Date.now(); const r = await fn();
 const admin = await signIn("admin@medcityoverseas.test", "10.90.1.1");
 const ap = admin.page;
 await go(ap, "/admin/programs");
-await ap.waitForLoadState("networkidle");
+await hydrated(ap);
 await ap.getByText("Server cannot reach data.gov.au? Upload the files").click();
 await ap.setInputFiles('input[name="institutions"]', file("institutions"));
 await ap.setInputFiles('input[name="courses"]', file("courses"));
@@ -71,7 +71,7 @@ check(/Last sync:/.test(text), "admin: the card shows the last sync");
 
 await timed("bulk publish of every Australian draft", async () => {
   await go(ap, "/admin/programs?country=AU&status=DRAFT");
-  await ap.waitForLoadState("networkidle");
+  await hydrated(ap);
   await ap.getByRole("button", { name: "Publish" }).first().click();
   // The list does not always redraw after the action, so reload to read the result.
   let t0 = Date.now(), n = -1;
@@ -81,7 +81,7 @@ await timed("bulk publish of every Australian draft", async () => {
 
 // Running it again changes nothing but refreshes.
 await go(ap, "/admin/programs");
-await ap.waitForLoadState("networkidle");
+await hydrated(ap);
 await ap.getByText("Server cannot reach data.gov.au? Upload the files").click();
 await ap.setInputFiles('input[name="institutions"]', file("institutions"));
 await ap.setInputFiles('input[name="courses"]', file("courses"));
@@ -125,7 +125,7 @@ const sid = await studentIdByName(pp, BASE, "Arathi Krishnan");
 text = await timed("apply panel, keyword", () => go(pp, `/students/${sid}/applications?tab=apply&q=Monash&country=AU`));
 const options = await pp.locator('select[name="programId"] option').count();
 check(options > 20 && options <= 60, `apply panel: a bounded list that includes register courses (${options - 1} options)`);
-await pp.waitForLoadState("networkidle");
+await hydrated(pp);
 // Pick a course from the register: the one whose intake list says none are on record.
 for (let i = 1; i < Math.min(options, 15); i++) {
   await pp.selectOption('select[name="programId"]', { index: i });

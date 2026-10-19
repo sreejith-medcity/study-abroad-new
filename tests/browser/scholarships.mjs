@@ -3,7 +3,7 @@
 // by it, and pausing or an expired deadline hides it again.
 // Wants the real catalogue loaded and published.
 import { chromium } from "playwright";
-import { knownWarning } from "./_errors.mjs";
+import { hydrated, knownWarning } from "./_errors.mjs";
 import fs from "node:fs";
 
 const OUT = "/tmp/smoke-scholarships";
@@ -37,7 +37,7 @@ const admin = await signIn("admin@medcityoverseas.test", "10.94.1.1");
 const ap = admin.page;
 let text = await go(ap, "/admin/scholarships");
 check(/No scholarships yet/.test(text), "admin: starts empty with a way in");
-await ap.waitForLoadState("networkidle");
+await hydrated(ap);
 
 await ap.fill('input[name="university"]', "University of Hull");
 await ap.fill('input[name="name"]', "Vice-Chancellor's International Scholarship");
@@ -78,7 +78,7 @@ check(count(text) === 10, `search: "Scholarship available" finds the Hull master
 
 // Pause it and it disappears everywhere.
 await go(ap, "/admin/scholarships");
-await ap.waitForLoadState("networkidle");
+await hydrated(ap);
 await ap.getByRole("button", { name: "Pause" }).first().click();
 await ap.getByText("Paused").first().waitFor({ timeout: 10000 }).catch(() => {});
 text = await go(pp, "/search?scholarship=1");

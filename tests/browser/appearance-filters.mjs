@@ -6,6 +6,7 @@
 // is saved but not painted is the failure worth catching: the setting page
 // would look right either way.
 import { chromium } from "playwright";
+import { hydrated } from "./_errors.mjs";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 
@@ -30,7 +31,7 @@ await page.fill('input[name="password"]', "Password@123");
 await page.click('button[type="submit"]');
 await page.waitForURL((u) => !String(u).includes("/login"), { timeout: 20000 });
 
-const settle = () => page.waitForLoadState("networkidle").catch(() => {});
+const settle = () => hydrated(page).catch(() => {});
 // Outside the repository, like every other suite: nothing under tests/ is
 // git-ignored, and a screenshot is not source.
 const shots = "/tmp/smoke-appearance";

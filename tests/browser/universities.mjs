@@ -2,7 +2,7 @@
 // destination, level and type, with links through to its page and its programs.
 // Wants the catalogue loaded and published (see programs.mjs).
 import { chromium } from "playwright";
-import { knownWarning } from "./_errors.mjs";
+import { hydrated, knownWarning } from "./_errors.mjs";
 import { clickInMenu } from "./_menu.mjs";
 import fs from "node:fs";
 
@@ -56,7 +56,7 @@ check(/Live programs/.test(await main()), "index: a name opens the university pa
 await page.goto(`${BASE}/universities?q=Hull`);
 await page.getByRole("link", { name: "Search its programs" }).click();
 await page.waitForURL(/\/search\?/);
-await page.waitForLoadState("networkidle");
+await hydrated(page);
 check(/University of Hull/.test(await main()), "index: 'Search its programs' opens search for that university");
 
 await page.goto(`${BASE}/universities?sort=programs`);

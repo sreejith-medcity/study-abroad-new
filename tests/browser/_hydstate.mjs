@@ -12,6 +12,7 @@
 // now filters it, since looking at it is the whole point.
 process.env.STRICT_HYDRATION = "1";
 import { chromium } from "playwright";
+import { hydrated } from "./_errors.mjs";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 
@@ -73,7 +74,7 @@ sql("delete from payout_requests where billing_company_id is not null; delete fr
 const owner = await signIn("kochi@medcity.test", "10.99.1.1");
 const op = owner.page;
 await go(op, "/settings/branch");
-await op.waitForLoadState("networkidle");
+await hydrated(op);
 const form = op.locator("#billing form").last();
 const fill = async (v) => { for (const [name, value] of Object.entries(v)) await form.locator(`[name="${name}"]`).fill(value); };
 await fill({ legalName: "Kochi Education Services LLP", state: "Kerala", address: "2nd Floor, MG Road, Kochi 682016", pan: "ABCDE12F", gstin: "32ABCDE9999F1Z5", bankAccountName: "Kochi Education Services LLP", bankAccountNumber: "123", ifsc: "SBIN1234567" });
@@ -105,7 +106,7 @@ check(!/Add a billing company/.test(text) && !(await op.getByRole("button", { na
 // Edit without re-entering the account number.
 const first = sql("select id from billing_companies where legal_name = 'Kochi Education Services LLP'");
 await go(op, `/settings/branch?edit=${first}#billing`);
-await op.waitForLoadState("networkidle");
+await hydrated(op);
 const edit = op.locator("#billing li").filter({ hasText: "Kochi Education Services LLP" }).locator("form").filter({ has: op.getByRole("button", { name: "Save company" }) });
 await edit.locator('[name="legalName"]').fill("Kochi Education Services Private Limited");
 await edit.getByRole("button", { name: "Save company" }).click();
@@ -114,14 +115,14 @@ check(sql(`select legal_name || '|' || bank_account_number from billing_companie
 
 // Default moves.
 await go(op, "/settings/branch");
-await op.waitForLoadState("networkidle");
+await hydrated(op);
 await op.locator("#billing li").filter({ hasText: "Second Company 2" }).getByRole("button", { name: "Make default" }).click();
 await op.waitForTimeout(1500);
 check(sql("select legal_name from billing_companies where is_default") === "Second Company 2", "billing: one default at a time");
 
 // Payout to a chosen company.
 await go(op, "/wallet");
-await op.waitForLoadState("networkidle");
+await hydrated(op);
 const payTo = op.getByLabel("Pay to");
 check((await payTo.inputValue()) === "bc-test-2", "wallet: the default company is picked");
 await payTo.selectOption(first);
@@ -132,7 +133,7 @@ check(sql("select billing_company_id from payout_requests where status = 'REQUES
 
 // Used on a payout, it cannot be removed; an unused one can.
 await go(op, "/settings/branch");
-await op.waitForLoadState("networkidle");
+await hydrated(op);
 await op.getByRole("button", { name: "Remove Kochi Education Services Private Limited" }).click();
 await op.getByText(/stays for the record/).first().waitFor({ timeout: 10000 }).catch(() => {});
 check(/stays for the record/.test(await main(op)), "billing: a company on a payout stays");
@@ -156,7 +157,7 @@ check(r.status() >= 300 || !/Billing companies/.test(await main(cp)), "billing: 
 // --- Owner hides commission from counsellors (Kottayam).
 const kOwner = await signIn("kottayam@medcity.test", "10.99.1.4");
 await go(kOwner.page, "/settings/branch");
-await kOwner.page.waitForLoadState("networkidle");
+await hydrated(kOwner.page);
 await kOwner.page.getByRole("button", { name: "Hide commission from counsellors" }).click();
 await kOwner.page.getByRole("button", { name: "Show commission to counsellors" }).waitFor({ timeout: 10000 }).catch(() => {});
 check(sql("select counsellors_see_commission from organizations where name = 'Medcity Kottayam'") === "f", "switch: saved");
@@ -173,7 +174,7 @@ check(/\/dashboard/.test(cp.url()), "switch: so does the commission structure");
 text = await go(kOwner.page, "/search?country=GB");
 check(/Your share|Commission:/.test(text), "switch: the owner still sees commission");
 await go(kOwner.page, "/settings/branch");
-await kOwner.page.waitForLoadState("networkidle");
+await hydrated(kOwner.page);
 await kOwner.page.getByRole("button", { name: "Show commission to counsellors" }).click();
 await kOwner.page.getByRole("button", { name: "Hide commission from counsellors" }).waitFor({ timeout: 10000 }).catch(() => {});
 text = await go(cp, "/search?country=GB");

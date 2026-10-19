@@ -4,7 +4,7 @@
 // monthly allowance and the switch. Wants the plain seed and the server
 // started with ANTHROPIC_API_BASE=http://localhost:4011.
 import { chromium } from "playwright";
-import { knownWarning } from "./_errors.mjs";
+import { hydrated, knownWarning } from "./_errors.mjs";
 import { openMenu } from "./_menu.mjs";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -91,7 +91,7 @@ check(/not switched on/.test(t) && !/Assistant/.test(await pp.locator("aside nav
 const owner = await signIn("sreejith@miak.in", "10.104.1.1");
 const op = owner.page;
 await go(op, "/settings/platform");
-await op.waitForLoadState("networkidle");
+await hydrated(op);
 const f = op.locator("#ai form");
 await f.locator('[name="apiKey"]').fill("not-a-key");
 await f.locator('[name="enabled"]').check();
@@ -133,7 +133,7 @@ check(sql("select count(*) from ai_usage where feature = 'assistant'") === "1", 
 const app = sql(`select id from applications where student_id = '${sid}' limit 1`);
 calls.length = 0;
 await go(pp, `/interview?app=${app}`);
-await pp.waitForLoadState("networkidle");
+await hydrated(pp);
 await pp.getByRole("button", { name: "Start the interview" }).click();
 for (let i = 1; i <= 6; i++) {
   await pp.getByText(`Question number ${i}`).waitFor({ timeout: 20000 }).catch(() => {});
@@ -151,7 +151,7 @@ check(/Past practice/.test(t) && /UK university credibility interview/.test(t), 
 
 // --- Reading a passport into the profile.
 await go(pp, `/students/${sid}/documents`);
-await pp.waitForLoadState("networkidle");
+await hydrated(pp);
 const up = pp.locator("div.rounded-md.border-dashed").filter({ hasText: "Upload another document" });
 await up.locator("select").selectOption("PASSPORT");
 await up.locator('input[type="file"]').setInputFiles({ name: "passport.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64") });
@@ -159,7 +159,7 @@ await up.getByRole("button", { name: "Upload" }).click();
 await pp.getByText("passport.png").first().waitFor({ timeout: 10000 }).catch(() => {});
 calls.length = 0;
 await go(pp, `/students/${sid}/profile`);
-await pp.waitForLoadState("networkidle");
+await hydrated(pp);
 await pp.getByRole("button", { name: /^Read Passport/ }).first().click();
 await pp.getByTestId("autofill-review").waitFor({ timeout: 20000 }).catch(() => {});
 check((await pp.locator("#af-pn").inputValue()) === "Z1234567" && (await pp.locator("#af-cob").inputValue()) === "Kottayam", "autofill: passport fields filled for checking");

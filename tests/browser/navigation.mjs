@@ -4,6 +4,7 @@
 // by scanning every time, and it said nothing about what was waiting behind
 // any of it. These checks hold the three things that changed.
 import { chromium } from "playwright";
+import { hydrated } from "./_errors.mjs";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 
@@ -28,7 +29,7 @@ async function signIn(email, ip) {
   return { ctx, page };
 }
 
-const settle = (page) => page.waitForLoadState("networkidle").catch(() => {});
+const settle = (page) => hydrated(page).catch(() => {});
 
 /* ---------------- Grouped so a group can be read ---------------- */
 
@@ -137,11 +138,19 @@ for (const [email, who, ip] of [["sreejith@miak.in", "the Overseas team", "10.80
   const unlabelled = await page.locator("aside nav a").evaluateAll((as) => as.filter((a) => !a.getAttribute("title")).length);
   check(unlabelled === 0, `${who}: every icon on the rail names itself, ${unlabelled} do not`);
 
-  // It is still put away on the next screen.
+  // It is still put away on the next screen. The column is read from the
+  // browser's own memory after the page is interactive and then slides to
+  // width, so the measurement waits for it to stop moving rather than
+  // catching it mid-slide.
   await page.goto(`${BASE}/students`);
   await settle(page);
-  const stillNarrow = await page.locator("aside[data-nav]").evaluate((e) => e.getBoundingClientRect().width);
-  check(Math.round(stillNarrow) === Math.round(narrow), `${who}: and stays away when you move about`);
+  const widthNow = () => page.locator("aside[data-nav]").evaluate((e) => e.getBoundingClientRect().width);
+  let stillNarrow = await widthNow();
+  for (let t0 = Date.now(); Math.round(stillNarrow) !== Math.round(narrow) && Date.now() - t0 < 5000; ) {
+    await page.waitForTimeout(100);
+    stillNarrow = await widthNow();
+  }
+  check(Math.round(stillNarrow) === Math.round(narrow), `${who}: and stays away when you move about (${Math.round(stillNarrow)})`);
 
   /* ---------------- Peeking at it ---------------- */
 

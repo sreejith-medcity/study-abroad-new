@@ -2,7 +2,7 @@
 // kept), enquiries from Excel, and the team's application and commission
 // updates, each checked before anything is saved. Wants the plain seed.
 import { chromium } from "playwright";
-import { knownWarning } from "./_errors.mjs";
+import { hydrated, knownWarning } from "./_errors.mjs";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import ExcelJS from "exceljs";
@@ -39,7 +39,7 @@ const toast = (page, re) => page.locator('[role="status"]').filter({ hasText: re
 
 const upload = async (page, kind, name, content) => {
   await go(page, `/imports?kind=${kind}`);
-  await page.waitForLoadState("networkidle");
+  await hydrated(page);
   const buffer = typeof content === "string" ? Buffer.from(content) : content;
   await page.locator(`#file-${kind}`).setInputFiles({ name, mimeType: name.endsWith(".xlsx") ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : "text/csv", buffer });
   await page.getByRole("button", { name: "Check the file" }).click();

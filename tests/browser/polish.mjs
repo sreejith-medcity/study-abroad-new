@@ -1,5 +1,5 @@
 import { chromium } from "playwright";
-import { knownWarning } from "./_errors.mjs";
+import { hydrated, knownWarning } from "./_errors.mjs";
 import fs from "node:fs";
 
 const OUT = "/tmp/smoke-polish";
@@ -34,9 +34,12 @@ async function signIn(email, ip, password = "Password@123") {
 {
   const { ctx, page, errors } = await signIn("sreejith@miak.in", "10.30.2.11");
   await page.goto(`${BASE}/dashboard`);
-  await page.waitForLoadState("domcontentloaded");
-  // Pages stream behind a skeleton now, so wait for the real content.
+  // Pages stream behind a skeleton now, so wait for the real content. Ctrl+K
+  // is handled by a component in the browser, so this also waits for React
+  // to have taken the page over: without that the key goes nowhere, which it
+  // did about one run in two.
   await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
+  await hydrated(page);
 
   await page.keyboard.press("Control+k");
   const dialog = page.locator('[role="dialog"][aria-label="Search the portal"]');

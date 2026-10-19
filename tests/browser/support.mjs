@@ -3,7 +3,7 @@
 // resolves it. Another branch cannot open it.
 // Wants the sample data (npm run db:seed).
 import { chromium } from "playwright";
-import { knownWarning } from "./_errors.mjs";
+import { hydrated, knownWarning } from "./_errors.mjs";
 import { clickInMenu } from "./_menu.mjs";
 
 const BASE = process.env.BASE ?? "http://localhost:3000";
@@ -36,7 +36,7 @@ const partner = await signIn("kottayam@medcity.test", "10.77.1.1");
 const pp = partner.page;
 await clickInMenu(pp, "Help desk");
 await pp.waitForURL(/\/support$/);
-await pp.waitForLoadState("networkidle");
+await hydrated(pp);
 await pp.getByRole("button", { name: "Send to the Overseas team" }).click();
 await pp.waitForTimeout(1000);
 check(/Choose what it is about/.test(await main(pp)), "raise: the category is required");
@@ -56,7 +56,7 @@ check(/Help desk: August commission/.test(text), "admin: notified");
 text = await go(ap, "/support");
 check(/August commission not in the wallet/.test(text) && /Medcity Kottayam/.test(text), "admin: sees it with the branch");
 await go(ap, ticketUrl.replace(BASE, ""));
-await ap.waitForLoadState("networkidle");
+await hydrated(ap);
 await ap.fill('textarea[name="body"]', "Both are accruing now; they will show in the wallet once received.");
 await ap.getByRole("button", { name: "Send reply" }).click();
 check(await toast(ap, /Reply sent/), "admin: replies");

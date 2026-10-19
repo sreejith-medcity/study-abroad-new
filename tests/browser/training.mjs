@@ -3,7 +3,7 @@
 // team's progress; another branch cannot open the certificate.
 // Wants the sample data (npm run db:seed).
 import { chromium } from "playwright";
-import { knownWarning } from "./_errors.mjs";
+import { hydrated, knownWarning } from "./_errors.mjs";
 import { clickInMenu } from "./_menu.mjs";
 
 const BASE = process.env.BASE ?? "http://localhost:3000";
@@ -35,7 +35,7 @@ const toast = (page, re) => page.locator('[role="status"]').filter({ hasText: re
 const admin = await signIn("admin@medcityoverseas.test", "10.78.1.1");
 const ap = admin.page;
 await go(ap, "/admin/training");
-await ap.waitForLoadState("networkidle");
+await hydrated(ap);
 await ap.fill('input[name="title"]', "UK Graduate visa basics");
 await ap.fill('input[name="passMark"]', "150");
 await ap.getByRole("button", { name: "Create course" }).click();
@@ -45,7 +45,7 @@ await ap.fill('input[name="passMark"]', "100");
 await ap.getByRole("button", { name: "Create course" }).click();
 check(await toast(ap, /Course created as a draft/), "admin: the course is created as a draft");
 await ap.reload();
-await ap.waitForLoadState("networkidle");
+await hydrated(ap);
 check(await ap.getByRole("button", { name: "Publish" }).isDisabled(), "admin: a course without questions cannot be published");
 
 await ap.getByText("Add a question").first().click();
@@ -59,7 +59,7 @@ await ap.check('input[name="correct"][value="0"]');
 await ap.getByRole("button", { name: "Add question" }).click();
 check(await toast(ap, /Question added/), "admin: a question is added");
 await ap.reload();
-await ap.waitForLoadState("networkidle");
+await hydrated(ap);
 check(/✓ 18 months · 3 years/.test(await main(ap)), "admin: the right answer is marked");
 await ap.getByRole("button", { name: "Publish" }).click();
 await ap.waitForTimeout(1500);
@@ -72,7 +72,7 @@ await cp.waitForURL(/\/training$/);
 check(/UK Graduate visa basics/.test(await main(cp)) && /Not started/.test(await main(cp)), "counsellor: sees the course");
 await cp.getByRole("link", { name: /UK Graduate visa basics/ }).click();
 await cp.waitForURL(/\/training\/[^/]+$/);
-await cp.waitForLoadState("networkidle");
+await hydrated(cp);
 await cp.getByRole("button", { name: "Submit answers" }).click();
 await cp.waitForTimeout(1000);
 check(/Answer every question/.test(await main(cp)), "quiz: every question must be answered");
@@ -80,7 +80,7 @@ await cp.getByLabel("3 years").check();
 await cp.getByRole("button", { name: "Submit answers" }).click();
 await cp.waitForURL(/attempt=/, { timeout: 15000 }).catch(() => {});
 check(/0%: not a pass yet/.test(await main(cp)), "quiz: a wrong answer is not a pass");
-await cp.waitForLoadState("networkidle");
+await hydrated(cp);
 await cp.getByLabel("18 months").check();
 await cp.getByRole("button", { name: "Submit answers" }).click();
 await cp.waitForFunction(() => document.body.innerText.includes("Passed with 100%"), null, { timeout: 15000 }).catch(() => {});

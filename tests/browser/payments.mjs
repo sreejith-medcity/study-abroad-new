@@ -3,7 +3,7 @@
 // signed webhook marking it paid once, the lists, and the switch. Wants the
 // plain seed and the server started with RAZORPAY_API_BASE=http://localhost:4010.
 import { chromium } from "playwright";
-import { knownWarning } from "./_errors.mjs";
+import { hydrated, knownWarning } from "./_errors.mjs";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import http from "node:http";
@@ -61,7 +61,7 @@ sql(`delete from payments; delete from payment_settings; update programs set app
 const owner = await signIn("sreejith@miak.in", "10.103.1.1");
 const sp = owner.page;
 await go(sp, "/settings/platform");
-await sp.waitForLoadState("networkidle");
+await hydrated(sp);
 const form = sp.locator("#payments form");
 await form.locator('[name="razorpayKeyId"]').fill("pk_live_123");
 await form.locator('[name="keySecret"]').fill("test_secret_value");
@@ -81,7 +81,7 @@ check(!(await sp.content()).includes("test_secret_value"), "settings: the secret
 const partner = await signIn("kottayam@medcity.test", "10.103.1.2");
 const pp = partner.page;
 await go(pp, `/students/${sid}/applications?app=${app}`);
-await pp.waitForLoadState("networkidle");
+await hydrated(pp);
 const payBtn = pp.getByRole("button", { name: `Pay ${cur} 50 online` });
 check(await payBtn.count() === 1, "application: pay button on a due fee");
 await payBtn.click();

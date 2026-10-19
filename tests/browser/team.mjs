@@ -3,7 +3,7 @@
 // owner, sign-in ends at once) and back on, resets a password, and nobody
 // else can reach it. Wants the plain seed.
 import { chromium } from "playwright";
-import { knownWarning } from "./_errors.mjs";
+import { hydrated, knownWarning } from "./_errors.mjs";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 
@@ -73,7 +73,7 @@ check(/change-password/.test(fp.url()), "add: the new counsellor is sent to choo
 
 // Switch a counsellor off: students move to the owner, sign-in ends.
 await go(op, "/settings/team");
-await op.waitForLoadState("networkidle");
+await hydrated(op);
 await op.getByRole("button", { name: "Switch off Uk" }).or(op.getByRole("button", { name: /^Switch off / }).first()).first().click().catch(() => {});
 await op.waitForTimeout(1500);
 const off = sql(`select active from users where id = '${ukDocs}'`);

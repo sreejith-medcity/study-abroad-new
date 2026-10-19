@@ -4,7 +4,7 @@
 // turnaround from the team's own files, and the new filters (public or private,
 // highest qualification, study gap in months). Wants the real catalogue.
 import { chromium } from "playwright";
-import { knownWarning } from "./_errors.mjs";
+import { hydrated, knownWarning } from "./_errors.mjs";
 import { openMenu } from "./_menu.mjs";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -111,7 +111,7 @@ const uniId = await uniBox.getAttribute("value");
 const uniCount = Number(sql(`select count(*) from programs p join universities u on u.id = p.university_id where u.id = '${uniId}' and p.status = 'LIVE' and p.level = 'PG'`));
 await uniBox.check();
 await pp.getByRole("button", { name: "Apply" }).click();
-await pp.waitForLoadState("networkidle");
+await hydrated(pp);
 text = await main(pp);
 check(matched(text) > 0 && matched(text) <= total && matched(text) <= uniCount, `panel: one university narrows ${total} to ${matched(text)}`);
 check(/Narrow these/.test(text), "panel: sits beside the matches");
@@ -146,8 +146,11 @@ text = await go(pp, `/finder?${wide}`);
 const wideTotal = matched(text);
 if (wideTotal > 25) {
   check(/Page 1 of/.test(text), `paging: ${wideTotal} matches are paged`);
+  // Clicking a link starts a navigation; wait for it to land before reading
+  // the page, rather than reading the one being left behind.
   await pp.getByRole("link", { name: "Next" }).click();
-  await pp.waitForLoadState("networkidle");
+  await pp.waitForURL(/page=2/, { timeout: 15000 }).catch(() => {});
+  await hydrated(pp);
   check(/Page 2 of/.test(await main(pp)), "paging: Next moves a page");
 } else ok("paging: this catalogue has one page of Canadian courses");
 
@@ -188,7 +191,7 @@ check(inSearch === Number(sql(`select count(*) from programs p join universities
 
 // --- Shortlisting and comparing from the matches.
 await go(pp, `/finder?${base}&step=results`);
-await pp.waitForLoadState("networkidle");
+await hydrated(pp);
 const before = Number(sql(`select count(*) from shortlists where student_id = '${student}'`));
 await pp.getByRole("button", { name: /^Shortlist for/ }).first().click();
 check(await waitText(pp, /Shortlisted ✓/), "matches: a match goes onto the student's shortlist");
@@ -210,11 +213,11 @@ check(/any budget/.test(text) && /any offer turnaround/.test(text), "empty: offe
 const admin = await signIn("admin@medcityoverseas.test", "10.82.1.2");
 const ap = admin.page;
 await go(ap, "/admin/programs?country=IE");
-await ap.waitForLoadState("networkidle");
+await hydrated(ap);
 const irish = Number(sql("select count(*) from programs p join universities u on u.id = p.university_id join countries c on c.id = u.country_id where c.code = 'IE'"));
 await ap.locator('input[name="bulkTat"]').fill("6");
 await ap.getByRole("button", { name: "Set turnaround" }).click();
-await ap.waitForLoadState("networkidle");
+await hydrated(ap);
 let set = 0;
 for (let i = 0; i < 20 && set !== irish; i++) { set = Number(sql("select count(*) from programs p join universities u on u.id = p.university_id join countries c on c.id = u.country_id where c.code = 'IE' and p.offer_tat_days = 6")); if (set !== irish) await ap.waitForTimeout(500); }
 check(set === irish && irish > 0, `team: the turnaround reaches all ${irish} Irish programs (${set})`);
@@ -223,7 +226,7 @@ const pid = sql("select p.id from programs p join universities u on u.id = p.uni
 await go(ap, `/admin/programs/${pid}`);
 await ap.locator('input[name="offerTatDays"]').fill("2");
 await ap.getByRole("button", { name: "Save program" }).click();
-await ap.waitForLoadState("networkidle");
+await hydrated(ap);
 let one = "";
 for (let i = 0; i < 20 && one !== "2"; i++) { one = sql(`select coalesce(offer_tat_days::text, '') from programs where id = '${pid}'`); if (one !== "2") await ap.waitForTimeout(500); }
 check(one === "2", `team: one program's turnaround saved (${one})`);

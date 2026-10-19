@@ -3,7 +3,7 @@
 // status, provider and note, and is notified.
 // Wants the sample data (npm run db:seed).
 import { chromium } from "playwright";
-import { knownWarning } from "./_errors.mjs";
+import { hydrated, knownWarning } from "./_errors.mjs";
 import { clickInMenu } from "./_menu.mjs";
 import { studentIdByName } from "./_student.mjs";
 
@@ -39,7 +39,7 @@ await go(pp, "/search");
 const sid = await studentIdByName(pp, BASE, "Arathi Krishnan");
 let text = await go(pp, `/students/${sid}/services`);
 check(/Services \(0\)/.test(text) && /Nothing requested yet/.test(text), "student file: a Services tab, empty to start");
-await pp.waitForLoadState("networkidle");
+await hydrated(pp);
 await pp.getByRole("button", { name: "Send request" }).click();
 await pp.waitForTimeout(1000);
 check(/Choose a service/.test(await main(pp)), "request: the service is required");
@@ -63,7 +63,7 @@ await clickInMenu(ap, "Services");
 await ap.waitForURL(/\/admin\/services/);
 text = await main(ap);
 check(/1 new/.test(text) && /Arathi Krishnan/.test(text) && /INR 25 lakh/.test(text), "queue: the new request is there with its details");
-await ap.waitForLoadState("networkidle");
+await hydrated(ap);
 // The page carries two other things with a Save of their own now: the filter
 // bar above, and the "Who handles what" panel with one row per kind of
 // service. So the request's own form is found by the field only it has,

@@ -2,7 +2,7 @@
 // comparison on the student file, removal, who may change it, and isolation
 // between branches. Wants the real catalogue loaded and published.
 import { chromium } from "playwright";
-import { knownWarning } from "./_errors.mjs";
+import { hydrated, knownWarning } from "./_errors.mjs";
 import { studentIdByName } from "./_student.mjs";
 import fs from "node:fs";
 
@@ -62,7 +62,7 @@ await go(pp, "/search?q=Hull");
 }
 let text = await go(pp, `/search?q=Hull&student=${studentId}`);
 // The buttons are client components; a click before hydration does nothing.
-await pp.waitForLoadState("networkidle");
+await hydrated(pp);
 check(await pp.getByRole("button", { name: "Shortlist", exact: true }).count() > 1, "search: rows offer Shortlist once a student is picked");
 await pp.getByRole("button", { name: "Shortlist", exact: true }).first().click();
 check(await waitText(pp, /Shortlisted ✓/), "search: the first row flips to Shortlisted");
@@ -113,7 +113,7 @@ check(/Nothing shortlisted yet/.test(text) && /Search programs for this student/
 // The student sees what the counsellor shortlisted, read-only, in their own language.
 const fathimaId = await studentIdByName(pp, BASE, "Fathima Rahman");
 await go(pp, `/search?q=Mohawk&student=${fathimaId}`);
-await pp.waitForLoadState("networkidle");
+await hydrated(pp);
 await pp.getByRole("button", { name: "Shortlist", exact: true }).first().click();
 await waitText(pp, /Shortlisted ✓/);
 const student = await signIn("fathima.rahman@example.com", "10.80.1.4");

@@ -2,7 +2,7 @@
 // and enquiry form, the WhatsApp switches, and the sign-up question builder
 // with answers on the enquiry. Wants the plain seed.
 import { chromium } from "playwright";
-import { knownWarning } from "./_errors.mjs";
+import { hydrated, knownWarning } from "./_errors.mjs";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 
@@ -44,7 +44,7 @@ sql(`update organizations set public_form_enabled = true where id = '${org}'`);
 const owner = await signIn("kottayam@medcity.test", "10.101.1.1");
 const op = owner.page;
 await go(op, "/settings/students");
-await op.waitForLoadState("networkidle");
+await hydrated(op);
 const look = op.locator("form").filter({ has: op.getByRole("button", { name: "Save portal look" }) });
 await look.locator('[name="portalName"]').fill("Kottayam Study Abroad");
 await look.getByLabel("Use our own colour").check();

@@ -3,7 +3,7 @@
 // errors, and search and the universities index sort and filter by them.
 // Wants the real catalogue loaded and published (see programs.mjs).
 import { chromium } from "playwright";
-import { knownWarning } from "./_errors.mjs";
+import { hydrated, knownWarning } from "./_errors.mjs";
 
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const fails = [];
@@ -34,7 +34,7 @@ const admin = await signIn("admin@medcityoverseas.test", "10.76.1.1");
 const ap = admin.page;
 let text = await go(ap, "/admin/destinations");
 check(/United Kingdom/.test(text) && /GBP 10,539/.test(text) && /Canada/.test(text) && /CAD 23,448/.test(text), "admin: the seeded government figures are listed");
-await ap.waitForLoadState("networkidle");
+await hydrated(ap);
 await ap.fill('textarea[name="csv"]', "university,country_code,qs_rank,qs_year,the_rank,the_year\nUniversity of Hull,GB,=580,2026,501-600,2026\nMohawk College,CA,top ten,2026,,\nNo Such Place,GB,100,2026,,");
 await ap.getByRole("button", { name: "Save rankings" }).click();
 await ap.waitForTimeout(1500);

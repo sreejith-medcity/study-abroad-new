@@ -3,7 +3,7 @@
 // student sees the offer and visa in the portal.
 // Wants the sample data (npm run db:seed).
 import { chromium } from "playwright";
-import { knownWarning } from "./_errors.mjs";
+import { hydrated, knownWarning } from "./_errors.mjs";
 import { studentIdByName } from "./_student.mjs";
 import fs from "node:fs";
 
@@ -58,7 +58,7 @@ await go(ap, "/search");
 const sid = await studentIdByName(ap, BASE, "Fathima Rahman");
 await go(ap, `/students/${sid}/applications`);
 const appUrl = ap.url();
-await ap.waitForLoadState("networkidle");
+await hydrated(ap);
 check(/Offer and visa/.test(await main(ap)) && /No offer yet/.test(await main(ap)), "admin: the card shows no offer yet");
 
 // The panel is already open: go() unfolds everything on the way in, and
@@ -95,7 +95,7 @@ check(/Conditional offer recorded/.test(text), "partner: notified of the offer")
 
 // The visa, granted.
 await go(ap, appUrl.replace(BASE, ""));
-await ap.waitForLoadState("networkidle");
+await hydrated(ap);
 // Already open, same as above: go() unfolds on the way in.
 await ap.fill('input[name="confirmationNumber"]', "E4G1234567");
 await ap.fill('input[name="visaLodgedOn"]', iso(-10));

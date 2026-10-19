@@ -3,7 +3,7 @@
 // Updates page, and What's New carries a dot until it has been opened.
 // Wants the real catalogue loaded and published (see programs.mjs).
 import { chromium } from "playwright";
-import { knownWarning } from "./_errors.mjs";
+import { hydrated, knownWarning } from "./_errors.mjs";
 
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const fails = [];
@@ -35,7 +35,7 @@ const admin = await signIn("admin@medcityoverseas.test", "10.80.1.1");
 const ap = admin.page;
 async function publish(kind, title, body, extra = async () => {}) {
   await go(ap, "/admin/updates");
-  await ap.waitForLoadState("networkidle");
+  await hydrated(ap);
   await ap.selectOption('select[name="kind"]', kind);
   await ap.fill('input[name="title"]', title);
   await ap.fill('textarea[name="body"]', body);

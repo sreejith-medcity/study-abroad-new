@@ -1,4 +1,5 @@
 import { chromium } from "playwright";
+import { hydrated } from "./_errors.mjs";
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const fails = [];
 const ok = (m) => console.log("  ok  " + m);
@@ -8,7 +9,7 @@ const login = async (page, email, password) => {
   await page.fill('input[name="email"]', email);
   await page.fill('input[name="password"]', password);
   await page.click('button[type="submit"]');
-  await page.waitForLoadState("networkidle");
+  await hydrated(page);
 };
 const rowOf = (page, email) => page.locator("main li").filter({ hasText: email });
 /**
@@ -43,7 +44,7 @@ const ctx = await browser.newContext({ viewport: { width: 1500, height: 1000 } }
 const page = await ctx.newPage();
 await login(page, "sreejith@miak.in", "Password@123");
 await page.goto(`${BASE}/admin/partners`);
-await page.waitForLoadState("networkidle");
+await hydrated(page);
 await unfold(page);
 
 // 1. promote a desk admin to super admin, then back
@@ -83,7 +84,7 @@ if (temp) {
   await login(p2, "uk.docs@medcity.test", temp);
   p2.url().includes("/change-password") ? ok("forced to change password") : bad("landed on " + p2.url());
   await p2.goto(`${BASE}/students`);
-  await p2.waitForLoadState("networkidle");
+  await hydrated(p2);
   p2.url().includes("/change-password") ? ok("cannot use the app before changing it") : bad("reached " + p2.url());
   await p2.screenshot({ path: "/tmp/smoke-super/07-must-change.png" });
   await p2.fill('input[name="current"]', temp).catch(() => {});
@@ -121,7 +122,7 @@ if (temp) {
 
 // 3. the audit log records all of it
 await page.goto(`${BASE}/admin/audit`);
-await page.waitForLoadState("networkidle");
+await hydrated(page);
 const text = await page.locator("main").innerText();
 ["Role changed", "Password reset by admin"].forEach((label) =>
   text.includes(label) ? ok(`audit log shows "${label}"`) : bad(`audit log missing "${label}"`),

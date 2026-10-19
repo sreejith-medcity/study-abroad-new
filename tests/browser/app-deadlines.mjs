@@ -3,7 +3,7 @@
 // it, and ticks it off; an offer's accept-by date becomes a deadline by itself.
 // Wants the sample data (npm run db:seed).
 import { chromium } from "playwright";
-import { knownWarning } from "./_errors.mjs";
+import { hydrated, knownWarning } from "./_errors.mjs";
 import { reveal } from "./_reveal.mjs";
 import { studentIdByName } from "./_student.mjs";
 
@@ -53,7 +53,7 @@ await go(ap, "/search");
 const sid = await studentIdByName(ap, BASE, "Fathima Rahman");
 await go(ap, `/students/${sid}/applications`);
 const appUrl = ap.url();
-await ap.waitForLoadState("networkidle");
+await hydrated(ap);
 await ap.selectOption('select[name="type"]', "CAS_REQUEST");
 await ap.fill('input[name="dueOn"]', iso(2));
 await ap.fill('input[name="note"]', "Ask the university for the CAS");
@@ -72,7 +72,7 @@ text = await go(pp, "/deadlines?tab=applications");
 check(/Ask the university for the CAS/.test(text), "deadlines page: the applications tab lists it");
 
 await go(pp, appUrl.replace(BASE, ""));
-await pp.waitForLoadState("networkidle");
+await hydrated(pp);
 const before = await pp.getByRole("button", { name: "Mark done" }).count();
 await pp.getByRole("button", { name: "Mark done" }).first().click();
 await pp.waitForTimeout(1500);
@@ -80,7 +80,7 @@ check((await pp.getByRole("button", { name: "Reopen" }).count()) === 1 && (await
 check(!(await pp.getByRole("button", { name: "Add deadline" }).count()), "partner: cannot add deadlines");
 
 await go(ap, appUrl.replace(BASE, ""));
-await ap.waitForLoadState("networkidle");
+await hydrated(ap);
 await ap.getByText("Update offer and visa").click();
 // The offer and visa controls sit two folds deep on a file: a section,
 // and an "Update offer and visa" panel inside it.

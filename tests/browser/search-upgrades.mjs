@@ -4,7 +4,7 @@
 // the new program-page fields and the "Something's not right?" link.
 // Wants the real catalogue loaded and published, and psql on PATH.
 import { chromium } from "playwright";
-import { knownWarning } from "./_errors.mjs";
+import { hydrated, knownWarning } from "./_errors.mjs";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 
@@ -47,10 +47,10 @@ const admin = await signIn("admin@medcityoverseas.test", "10.95.1.1");
 const ap = admin.page;
 const gbTotal = live("c.code = 'GB'");
 await go(ap, "/admin/programs?country=GB");
-await ap.waitForLoadState("networkidle");
+await hydrated(ap);
 await ap.getByLabel("Label to apply").selectOption("STEM");
 await ap.getByRole("button", { name: "Add label" }).click();
-await ap.waitForLoadState("networkidle");
+await hydrated(ap);
 let stem = 0;
 for (let i = 0; i < 20 && stem === 0; i++) { stem = live("'STEM' = any(p.tags)"); if (!stem) await ap.waitForTimeout(500); }
 check(stem === gbTotal && gbTotal > 0, `admin: bulk label reaches all ${gbTotal} UK programs (${stem})`);
@@ -60,7 +60,7 @@ check(new RegExp(`${gbTotal}`).test(text), "admin: label filter finds them");
 const pid = sql("select p.id from programs p join universities u on u.id = p.university_id join countries c on c.id = u.country_id where c.code = 'GB' and p.min_ielts is not null order by p.name limit 1");
 const pname = sql(`select name from programs where id = '${pid}'`);
 await go(ap, `/admin/programs/${pid}`);
-await ap.waitForLoadState("networkidle");
+await hydrated(ap);
 await ap.getByLabel("Typical scholarship").fill("Up to 20% of first-year tuition");
 await ap.getByLabel("IELTS lowest band").fill("5.5");
 await ap.getByLabel("Program page on the institution's site").fill("javascript:alert(1)");

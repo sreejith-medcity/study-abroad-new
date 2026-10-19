@@ -2,7 +2,7 @@
 // what renders and what stays text, notification previews, prep courses and
 // their rules, the owner's switch, and an enquiry from the page. Wants the plain seed.
 import { chromium } from "playwright";
-import { knownWarning } from "./_errors.mjs";
+import { hydrated, knownWarning } from "./_errors.mjs";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 
@@ -45,7 +45,7 @@ const op = owner.page;
 const sid = sql("select id from students where first_name = 'Arathi'");
 const app = sql(`select id from applications where student_id = '${sid}' limit 1`);
 await go(op, `/students/${sid}/applications?app=${app}`);
-await op.waitForLoadState("networkidle");
+await hydrated(op);
 const box = op.locator("#body-TEAM");
 await op.locator("form").filter({ has: box }).getByRole("button", { name: "Bold" }).click();
 check((await box.inputValue()) === "**bold**", "format bar: bold inserts its markers");
@@ -64,7 +64,7 @@ check(!note || !note.includes("**"), "comment: notification preview without mark
 const admin = await signIn("admin@medcityoverseas.test", "10.102.1.2");
 const ap = admin.page;
 await go(ap, "/admin/prep");
-await ap.waitForLoadState("networkidle");
+await hydrated(ap);
 await ap.locator('[name="test"]').selectOption("IELTS");
 await ap.locator('[name="title"]').fill("IELTS Academic, evening batch");
 await ap.locator('[name="summary"]').fill("All four modules with weekly mock tests on the practice platform.");
@@ -85,7 +85,7 @@ let res = await pub.goto(`${BASE}/prep/${slug}`);
 check(res.status() === 404, "prep page: off until the owner switches it on");
 
 await go(op, "/settings/students");
-await op.waitForLoadState("networkidle");
+await hydrated(op);
 await op.getByRole("button", { name: "Switch the prep page on" }).click();
 await op.getByRole("button", { name: "Switch the prep page off" }).waitFor({ timeout: 10000 }).catch(() => {});
 check(new RegExp(`/prep/${slug}`).test(await op.locator("main").innerText()), "settings: the prep link is shown");
@@ -108,7 +108,7 @@ check(enq.includes("IELTS Academic, evening batch (IELTS)") && enq.endsWith("|WE
 check(sql(`select count(*) from notifications n join users u on u.id = n.user_id where u.email = 'kottayam@medcity.test' and n.title = 'New test prep enquiry'`) !== "0", "prep page: the branch is told");
 
 await go(op, "/settings/students");
-await op.waitForLoadState("networkidle");
+await hydrated(op);
 await op.getByRole("button", { name: "Switch the prep page off" }).click();
 await op.getByRole("button", { name: "Switch the prep page on" }).waitFor({ timeout: 10000 }).catch(() => {});
 res = await pub.goto(`${BASE}/prep/${slug}`);

@@ -3,7 +3,7 @@
 // is told, the partner pages and dashboard cards, and the owner's commission
 // switch. Wants the plain seed.
 import { chromium } from "playwright";
-import { knownWarning } from "./_errors.mjs";
+import { hydrated, knownWarning } from "./_errors.mjs";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 
@@ -43,7 +43,7 @@ sql("delete from notifications where title like 'New scheme:%'; delete from prom
 const admin = await signIn("admin@medcityoverseas.test", "10.100.1.1");
 const ap = admin.page;
 await go(ap, "/admin/contacts");
-await ap.waitForLoadState("networkidle");
+await hydrated(ap);
 const newC = ap.locator("form").filter({ has: ap.getByRole("button", { name: "Add contact" }) });
 await newC.locator('[name="area"]').fill("Visa");
 await newC.locator('[name="name"]').fill("Test Visa Officer");
@@ -56,7 +56,7 @@ await toast(ap, /Contact added/);
 const cid = sql("select id from team_contacts where name = 'Test Visa Officer'");
 check(!!cid, "contacts: added");
 await go(ap, `/admin/contacts?edit=${cid}`);
-await ap.waitForLoadState("networkidle");
+await hydrated(ap);
 const editC = ap.locator("li").filter({ hasText: "Test Visa Officer" }).locator("form").filter({ has: ap.getByRole("button", { name: "Save contact" }) });
 await editC.locator('[name="title"]').fill("Visa desk");
 await editC.getByRole("button", { name: "Save contact" }).click();
@@ -75,7 +75,7 @@ await toast(ap, /Link added/);
 // Kottayam hides commission from counsellors before the scheme goes out.
 sql("update organizations set counsellors_see_commission = false where name = 'Medcity Kottayam'");
 await go(ap, "/admin/promotions");
-await ap.waitForLoadState("networkidle");
+await hydrated(ap);
 await ap.locator('[name="title"]').fill("UK January push");
 await ap.locator('[name="summary"]').fill("₹10,000 extra per UK January visa");
 await ap.locator('[name="terms"]').fill("Applies to visas granted for the January 2027 intake at UK universities with a commission rule. Paid with the regular commission.");
@@ -118,7 +118,7 @@ sql("update organizations set counsellors_see_commission = true");
 
 // Withdrawn schemes disappear.
 await go(ap, "/admin/promotions");
-await ap.waitForLoadState("networkidle");
+await hydrated(ap);
 await ap.locator("li").filter({ hasText: "UK January push" }).getByRole("button", { name: "Withdraw" }).click();
 await ap.locator("li").filter({ hasText: "UK January push" }).getByRole("button", { name: "Republish" }).waitFor({ timeout: 10000 }).catch(() => {});
 text = await go(pp, "/promotions");

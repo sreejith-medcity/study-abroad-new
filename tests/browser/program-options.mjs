@@ -4,7 +4,7 @@
 // marksheets and can be linked to the student later.
 // Wants the real catalogue loaded and published (see programs.mjs).
 import { chromium } from "playwright";
-import { knownWarning } from "./_errors.mjs";
+import { hydrated, knownWarning } from "./_errors.mjs";
 import fs from "node:fs";
 
 const BASE = process.env.BASE ?? "http://localhost:3000";
@@ -38,7 +38,7 @@ const partner = await signIn("kottayam@medcity.test", "10.79.1.1");
 const pp = partner.page;
 await pp.getByRole("link", { name: "Request program options" }).first().click();
 await pp.waitForURL(/\/program-options\/new/);
-await pp.waitForLoadState("networkidle");
+await hydrated(pp);
 // Someone not registered yet: marksheets are required.
 await pp.fill('input[name="studentName"]', "Nikhil Varma");
 await pp.selectOption('select[name="highestLevel"]', "Bachelor's");
@@ -57,7 +57,7 @@ const nikhilUrl = pp.url();
 
 // A registered student.
 await go(pp, "/program-options/new");
-await pp.waitForLoadState("networkidle");
+await hydrated(pp);
 await pp.getByText("A student already registered").click();
 const arathi = await pp.locator('select[name="studentId"] option', { hasText: "Arathi Krishnan" }).getAttribute("value");
 await pp.selectOption('select[name="studentId"]', arathi);
@@ -78,7 +78,7 @@ const ap = admin.page;
 text = await go(ap, "/notifications");
 check(/Program options requested: Arathi Krishnan/.test(text), "admin: notified");
 await go(ap, arathiUrl.replace(BASE, "").replace("?", "?pq=Hull&"));
-await ap.waitForLoadState("networkidle");
+await hydrated(ap);
 for (let i = 0; i < 2; i++) { await ap.getByRole("button", { name: "Add", exact: true }).first().click(); await ap.waitForTimeout(1200); }
 text = await main(ap);
 check(/Recommended programs \(2\)/.test(text), "admin: two programs added from the finder");
@@ -89,7 +89,7 @@ check(/Program options sent/.test(await main(ap)), "admin: the list is sent");
 text = await go(pp, "/notifications");
 check(/2 program options for Arathi Krishnan/.test(text), "partner: notified the options are ready");
 await go(pp, arathiUrl.replace(BASE, ""));
-await pp.waitForLoadState("networkidle");
+await hydrated(pp);
 check((await pp.getByRole("link", { name: "Apply" }).count()) === 2, "partner: each option can be applied to");
 await pp.fill('textarea[name="body"]', "Thanks, can you add one in Ireland?");
 await pp.getByRole("button", { name: "Send", exact: true }).click();
@@ -101,7 +101,7 @@ check(/University of Hull/.test(await main(pp)), "shortlist: holds the team's op
 
 // Link the new-student request once the student is registered (Arathi stands in).
 await go(pp, nikhilUrl.replace(BASE, ""));
-await pp.waitForLoadState("networkidle");
+await hydrated(pp);
 await pp.selectOption('select[name="studentId"]', arathi);
 await pp.getByRole("button", { name: "Link" }).click();
 await pp.waitForTimeout(1500);

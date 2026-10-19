@@ -3,7 +3,7 @@
 // shares one file, the student sees and opens only what was shared or what
 // they uploaded, and stopping the share takes it away again. Wants the plain seed.
 import { chromium } from "playwright";
-import { knownWarning } from "./_errors.mjs";
+import { hydrated, knownWarning } from "./_errors.mjs";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 
@@ -44,7 +44,7 @@ sql(`update documents set shared_with_student = false; update document_types set
 const admin = await signIn("admin@medcityoverseas.test", "10.98.1.1");
 const ap = admin.page;
 await go(ap, "/admin/documents?tab=types");
-await ap.waitForLoadState("networkidle");
+await hydrated(ap);
 const sopCard = ap.locator("form").filter({ has: ap.getByLabel("Guidance for Statement of purpose") });
 await sopCard.getByLabel("Guidance for Statement of purpose").fill("One to two pages, in the student's own words: why this course, why this country, and the plan after.");
 await sopCard.locator('input[type="file"]').setInputFiles({ name: "notes.txt", mimeType: "text/plain", buffer: Buffer.from("hello") });
@@ -61,7 +61,7 @@ const pp = partner.page;
 let res = await pp.request.get(`${BASE}/api/document-samples/SOP`);
 check(res.status() === 200 && res.headers()["content-type"] === "application/pdf", "partner: the sample opens");
 await go(pp, `/students/${sid}/documents`);
-await pp.waitForLoadState("networkidle");
+await hydrated(pp);
 const up = pp.locator("div.rounded-md.border-dashed").filter({ hasText: "Upload another document" });
 await up.locator("select").selectOption("SOP");
 await up.locator('input[type="file"]').setInputFiles({ name: "fathima-sop.pdf", mimeType: "application/pdf", buffer: PDF.buffer });
@@ -97,7 +97,7 @@ await sp.screenshot({ path: `${OUT}/portal.png`, fullPage: true });
 
 // Stop sharing.
 await go(pp, `/students/${sid}/documents`);
-await pp.waitForLoadState("networkidle");
+await hydrated(pp);
 await pp.getByRole("button", { name: "Stop sharing fathima-sop.pdf" }).click();
 await pp.getByRole("button", { name: "Share fathima-sop.pdf with the student" }).waitFor({ timeout: 10000 }).catch(() => {});
 res = await sp.request.get(`${BASE}/api/documents/${docId}`);

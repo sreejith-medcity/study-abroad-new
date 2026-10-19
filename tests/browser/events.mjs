@@ -3,7 +3,7 @@
 // cancelled event disappears from their list.
 // Wants the sample data (npm run db:seed).
 import { chromium } from "playwright";
-import { knownWarning } from "./_errors.mjs";
+import { hydrated, knownWarning } from "./_errors.mjs";
 import { clickInMenu } from "./_menu.mjs";
 
 const BASE = process.env.BASE ?? "http://localhost:3000";
@@ -37,7 +37,7 @@ const admin = await signIn("admin@medcityoverseas.test", "10.75.1.1");
 const ap = admin.page;
 await clickInMenu(ap, "Events");
 await ap.waitForURL(/\/admin\/events/);
-await ap.waitForLoadState("networkidle");
+await hydrated(ap);
 await ap.fill('input[name="title"]', "Studying in the UK: the 2027 intakes");
 await ap.selectOption('select[name="kind"]', "WEBINAR");
 await ap.fill('input[name="startsAt"]', `${tomorrow}T18:30`);
@@ -63,13 +63,13 @@ await pp.waitForURL(/\/events/);
 text = await main(pp);
 check(/Studying in the UK/.test(text) && /6:30 pm/i.test(text) && /3 seats left/.test(text), "events: shown in IST with its seats");
 check(!(await pp.getByRole("link", { name: /Join link/ }).count()) && /join link appears once you are on the list/.test(text), "events: the join link waits for a seat");
-await pp.waitForLoadState("networkidle");
+await hydrated(pp);
 await pp.getByRole("button", { name: "I'll attend" }).click();
 check(await toast(pp, /on the list/), "events: a partner takes a seat");
 await pp.reload();
 text = await main(pp);
 check(/2 seats left/.test(text) && (await pp.getByRole("link", { name: /Join link/ }).count()) === 1, "events: the seat is counted and the join link shows");
-await pp.waitForLoadState("networkidle");
+await hydrated(pp);
 const opt = await pp.locator('select[name="studentId"] option', { hasText: "Arathi Krishnan" }).getAttribute("value");
 await pp.selectOption('select[name="studentId"]', opt);
 await pp.getByRole("button", { name: "Register student" }).click();

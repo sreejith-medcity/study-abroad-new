@@ -3,7 +3,7 @@
 // get a warning in the apply form when an intake's deadline has passed.
 // Wants the real catalogue loaded and published (see programs.mjs).
 import { chromium } from "playwright";
-import { knownWarning } from "./_errors.mjs";
+import { hydrated, knownWarning } from "./_errors.mjs";
 import { studentIdByName } from "./_student.mjs";
 import fs from "node:fs";
 
@@ -49,7 +49,7 @@ await go(ap, "/admin/programs?q=MSc+Business+Management");
 await ap.getByRole("link", { name: "MSc Business Management" }).first().click();
 await ap.waitForURL(/\/admin\/programs\/[^?]+$/);
 const programId = ap.url().split("/").pop();
-await ap.waitForLoadState("networkidle");
+await hydrated(ap);
 // The first option can be this month's intake, whose deadline has usually gone; start after it.
 const intakes = await ap.locator('select[name="intake"] option').evaluateAll((els) => els.slice(2).map((e) => ({ value: e.value, label: e.textContent })));
 check(intakes.length >= 2, `admin: the deadline form offers the program's intakes (${intakes.map((i) => i.label).join(", ")})`);
@@ -99,7 +99,7 @@ await pp.screenshot({ path: `${OUT}/deadlines.png`, fullPage: true });
 // Shortlist it for a student, and the page's own filter finds it.
 const sid = await studentIdByName(pp, BASE, "Arathi Krishnan");
 await go(pp, `/programs/${programId}?student=${sid}`);
-await pp.waitForLoadState("networkidle");
+await hydrated(pp);
 const sl = pp.getByRole("button", { name: "Add to shortlist", exact: true });
 if (await sl.count()) { await sl.first().click(); await pp.waitForTimeout(1500); }
 text = await go(pp, "/deadlines?mine=1");
@@ -107,7 +107,7 @@ check(/MSc Business Management/.test(text) && /Arathi Krishnan/.test(text), "dea
 
 // The apply form warns on the intake whose deadline has passed.
 await go(pp, `/students/${sid}/applications?tab=apply&program=${programId}`);
-await pp.waitForLoadState("networkidle");
+await hydrated(pp);
 // The course picker is a type-ahead now, and ?program= fills it in, so there
 // is nothing to choose here: wait for the hidden input the form actually
 // posts, and for the intakes that follow from it.
