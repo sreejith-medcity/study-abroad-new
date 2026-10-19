@@ -33,7 +33,7 @@ export function RegistryForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-3">
-      <p className="text-[13px] leading-relaxed text-muted">
+      <p className="text-sm leading-relaxed text-muted">
         Institutions from a public register, so a counsellor can find a university that is not on the list yet. Nothing is renamed, nothing is deleted, and a
         city or website somebody has already checked is left alone.
       </p>
@@ -51,14 +51,14 @@ export function RegistryForm() {
         <input type="hidden" name="source" value={key} />
       )}
       {chosen && (
-        <p className="text-[13px] leading-relaxed text-muted">
+        <p className="text-sm leading-relaxed text-muted">
           {chosen.blurb} <span className="whitespace-nowrap">Licence: {chosen.licence}.</span>
         </p>
       )}
       {state.error && <Alert tone="bad">{state.error}</Alert>}
       {state.ok && <Alert tone="ok">{state.ok}</Alert>}
       <Checkbox name="apply" label="Write the changes (leave this off to check first and write nothing)" />
-      <details className="text-[13px]">
+      <details className="text-sm">
         <summary className="cursor-pointer font-medium text-brand-600">Server cannot reach the register? Upload the file</summary>
         <div className="mt-2">
           <Field label="The register's CSV" htmlFor="reg-file">
@@ -74,7 +74,7 @@ export function RegistryForm() {
       <Button type="submit" variant="secondary" disabled={pending}>
         {pending ? "Working, this can take a minute…" : "Run"}
       </Button>
-      <details className="text-[13px]">
+      <details className="text-sm">
         <summary className="cursor-pointer text-muted">Registers deliberately left out</summary>
         <ul className="mt-2 space-y-1 text-xs text-muted">
           {BARRED.map(([name, why]) => (

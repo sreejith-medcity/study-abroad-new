@@ -74,7 +74,7 @@ export function PortalUploadForm({
           name="file"
           accept={UPLOAD_ACCEPT}
           aria-label={`${chooseLabel}: ${label}`}
-          className="max-w-64 py-1.5 text-[13px]"
+          className="max-w-64 py-1.5 text-sm"
           onChange={() => setError(null)}
         />
         <Button type="submit" variant="secondary" size="sm" disabled={busy}>{uploadLabel}</Button>

@@ -127,7 +127,7 @@ export default async function UniversitiesPage({ searchParams }: { searchParams:
             <option value="500">Top 500</option>
             <option value="1000">Top 1,000</option>
           </Select>
-          <label className="flex items-center gap-2 text-[13px] text-ink-soft sm:col-span-2">
+          <label className="flex items-center gap-2 text-sm text-ink-soft sm:col-span-2">
             <input type="checkbox" name="scholarship" value="1" defaultChecked={!!f.scholarship} className="size-4 accent-brand-600" />
             Has an open scholarship
           </label>
@@ -157,12 +157,12 @@ export default async function UniversitiesPage({ searchParams }: { searchParams:
                       {r.scholarships > 0 && <Chip tone="ok" className="ml-1.5">Scholarship</Chip>}
                     </p>
                   </Td>
-                  <Td className="text-[13px]">{r.city ? `${r.city}, ` : ""}{r.country}</Td>
+                  <Td className="text-sm">{r.city ? `${r.city}, ` : ""}{r.country}</Td>
                   <Td className="tabular">{r.programs.toLocaleString("en-IN")}</Td>
-                  <Td className="text-[13px] text-ink-soft">{LEVELS.filter((l) => r.levels.includes(l)).map((l) => LEVEL_LABEL[l] ?? l).join(", ")}</Td>
+                  <Td className="text-sm text-ink-soft">{LEVELS.filter((l) => r.levels.includes(l)).map((l) => LEVEL_LABEL[l] ?? l).join(", ")}</Td>
                   <Td className="tabular">{r.eligible ? r.eligible.toLocaleString("en-IN") : <span className="text-muted">None confirmed</span>}</Td>
                   <Td className="text-right">
-                    <Link prefetch={false} href={`/search?${new URLSearchParams({ q: r.name, ...(f.level ? { level: f.level } : {}) })}`} className="whitespace-nowrap text-[13px] font-medium text-brand-600 hover:underline">
+                    <Link prefetch={false} href={`/search?${new URLSearchParams({ q: r.name, ...(f.level ? { level: f.level } : {}) })}`} className="whitespace-nowrap text-sm font-medium text-brand-600 hover:underline">
                       Search its programs
                     </Link>
                   </Td>
@@ -172,7 +172,7 @@ export default async function UniversitiesPage({ searchParams }: { searchParams:
           </Table>
         )}
         {(page > 1 || hasNext) && (
-          <div className="flex items-center justify-between border-t border-line px-4 py-3 text-[13px]">
+          <div className="flex items-center justify-between border-t border-line px-4 py-3 text-sm">
             <span className="text-muted">Page {page} of {Math.max(1, Math.ceil(total / PAGE))}</span>
             <div className="flex gap-2">
               {page > 1 && <LinkButton prefetch={false} variant="secondary" size="sm" href={qs({ page: String(page - 1) })}>Previous</LinkButton>}

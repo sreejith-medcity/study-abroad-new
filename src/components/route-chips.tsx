@@ -24,8 +24,8 @@ export function RouteChips({ routes, showCommission, money }: { routes: RouteChi
           // road is ours without reading the order.
           className={
             r.isDirect
-              ? "inline-flex items-center gap-1 rounded-full border border-good-500/40 bg-good-50 px-2 py-0.5 text-[11px] font-semibold text-good-700"
-              : "inline-flex items-center gap-1 rounded-full border border-line-strong bg-surface px-2 py-0.5 text-[11px] font-semibold text-ink-soft"
+              ? "inline-flex items-center gap-1 rounded-full border border-good-500/40 bg-good-50 px-2 py-0.5 text-2xs font-semibold text-good-700"
+              : "inline-flex items-center gap-1 rounded-full border border-line-strong bg-surface px-2 py-0.5 text-2xs font-semibold text-ink-soft"
           }
         >
           <span className="size-2.5 rounded-sm" style={{ background: r.colour }} aria-hidden="true" />

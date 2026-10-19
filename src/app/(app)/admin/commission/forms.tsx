@@ -95,12 +95,12 @@ export function MoveCommissionForm({
     <ActionForm action={moveCommissionAction} hideSubmit className="space-y-2">
       <input type="hidden" name="commissionId" value={commissionId} />
       <div className="flex items-center gap-1.5">
-        <Select name="status" aria-label="Move to" className="w-36 py-1.5 text-[13px]">
+        <Select name="status" aria-label="Move to" className="w-36 py-1.5 text-sm">
           {options.map((o) => (
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </Select>
-        <Input name="invoiceRef" placeholder="Ref" aria-label="Reference" className="w-24 py-1.5 text-[13px]" />
+        <Input name="invoiceRef" placeholder="Ref" aria-label="Reference" className="w-24 py-1.5 text-sm" />
         {(status === "RECEIVED" || status === "INVOICED") && (
           <Input
             name="partnerAmountInr"
@@ -109,7 +109,7 @@ export function MoveCommissionForm({
             placeholder="Share in rupees"
             aria-label="Partner share in rupees"
             defaultValue={suggestedInr ?? ""}
-            className="w-28 py-1.5 text-[13px]"
+            className="w-28 py-1.5 text-sm"
           />
         )}
         <Button type="submit" variant="secondary" size="sm">Apply</Button>
@@ -121,7 +121,7 @@ export function MoveCommissionForm({
 export function AccrueForm() {
   return (
     <ActionForm action={accrueMissingAction} submitLabel="Find missing commissions" pendingLabel="Scanning…" submitVariant="secondary">
-      <p className="text-[13px] text-muted">
+      <p className="text-sm text-muted">
         Scans every placement that reached a visa or enrolment and adds the commission where a rule matches and none exists yet.
       </p>
     </ActionForm>
@@ -167,12 +167,12 @@ export function DecidePayoutForm({ payoutId, status }: { payoutId: string; statu
     <ActionForm action={decidePayoutAction} hideSubmit className="space-y-2">
       <input type="hidden" name="payoutId" value={payoutId} />
       <div className="flex flex-wrap items-center gap-1.5">
-        <Select name="decision" aria-label="Decision" className="w-32 py-1.5 text-[13px]">
+        <Select name="decision" aria-label="Decision" className="w-32 py-1.5 text-sm">
           {options.map((o) => (
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </Select>
-        <Input name="reference" placeholder="UTR or cheque" aria-label="Reference" className="w-36 py-1.5 text-[13px]" />
+        <Input name="reference" placeholder="UTR or cheque" aria-label="Reference" className="w-36 py-1.5 text-sm" />
         <Button type="submit" variant="secondary" size="sm">Apply</Button>
       </div>
     </ActionForm>

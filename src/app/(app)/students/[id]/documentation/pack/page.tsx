@@ -48,7 +48,7 @@ export default async function PackPage({ params, searchParams }: { params: Promi
       <PageHeader
         title={`Submission pack for ${student.firstName}`}
         subtitle="Everything accepted, gathered for the university or the vendor, with a sheet at the front listing what is in it and what is not."
-        actions={<Link href={`/students/${id}/documentation`} className="text-[13px] font-medium text-brand-600 hover:underline">Back to the list</Link>}
+        actions={<Link href={`/students/${id}/documentation`} className="text-sm font-medium text-brand-600 hover:underline">Back to the list</Link>}
       />
 
       {apps.length > 1 && (
@@ -144,7 +144,7 @@ export default async function PackPage({ params, searchParams }: { params: Promi
           </Table>
         )}
         {contents?.application.vendor?.extraDocuments && (
-          <p className="border-t border-line px-4 py-3 text-[13px] text-muted">
+          <p className="border-t border-line px-4 py-3 text-sm text-muted">
             {contents.application.vendor.name} asks for this beyond the university&rsquo;s own list: {contents.application.vendor.extraDocuments}
           </p>
         )}
@@ -168,7 +168,7 @@ export default async function PackPage({ params, searchParams }: { params: Promi
           <CardHeader title="Built before" subtitle="Who packed this application, when, and what was missing at the time." />
           <ul className="divide-y divide-line">
             {built.map((b) => (
-              <li key={b.id} className="px-4 py-3 text-[13px]">
+              <li key={b.id} className="px-4 py-3 text-sm">
                 <div className="flex flex-wrap items-center gap-2">
                   <Chip>{b.itemCount} document{b.itemCount === 1 ? "" : "s"}</Chip>
                   <span className="text-muted">{fmtDateTime(b.createdAt)} · {b.builtBy ? (b.builtBy.deskLabel ?? b.builtBy.name) : "unknown"}</span>

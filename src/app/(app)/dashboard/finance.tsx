@@ -111,7 +111,7 @@ export default async function FinanceDashboard({ user }: { user: SessionUser }) 
       />
 
       {unpriced > 0 && (
-        <Card className="border-warn-500/25 bg-warn-50/60 p-4 text-[13px]">
+        <Card className="border-warn-500/25 bg-warn-50/60 p-4 text-sm">
           <span className="font-medium">{unpriced} placement{unpriced === 1 ? " has" : "s have"} no rate on their route.</span> Those can never be invoiced until
           somebody records what the route pays. The terms live on Vendors and routes, which is an admin&rsquo;s screen, so this one is for them rather than you.
         </Card>
@@ -141,7 +141,7 @@ export default async function FinanceDashboard({ user }: { user: SessionUser }) 
               })}
             </tbody>
           </Table>
-          <p className="border-t border-line px-4 py-2.5 text-[13px]">
+          <p className="border-t border-line px-4 py-2.5 text-sm">
             <a href="/api/invoices/ageing-export" className="font-medium text-brand-600 hover:underline">Download the open invoices</a>
           </p>
         </Card>
@@ -181,13 +181,13 @@ export default async function FinanceDashboard({ user }: { user: SessionUser }) 
       </div>
 
       {credited > 0 && (
-        <Card className="p-4 text-[13px] text-muted">
+        <Card className="p-4 text-sm text-muted">
           <span className="font-medium text-ink">Credited back across every invoice: {credited.toLocaleString("en-IN")}</span> in the currencies they were raised
           in. A credit note says part of an invoice was never owed, which is not the same as money arriving, and the two are kept apart on purpose.
         </Card>
       )}
 
-      <p className="text-[13px] text-muted">
+      <p className="text-sm text-muted">
         Signed in as {user.deskLabel ?? user.name}. Students, applications and documents are not part of this role.
       </p>
     </div>

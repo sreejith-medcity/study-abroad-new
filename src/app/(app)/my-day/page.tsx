@@ -95,7 +95,7 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
                         {t.source !== "by hand" ? ` · raised by ${t.source}` : ""}
                         {!mine || t.assignedToId !== user.id ? ` · for ${t.assignedTo}` : ""}
                       </p>
-                      {t.detail && <p className="mt-0.5 text-[13px] text-muted">{t.detail}</p>}
+                      {t.detail && <p className="mt-0.5 text-sm text-muted">{t.detail}</p>}
                     </div>
                     {user.role !== "MANAGEMENT" && <TaskRowActions task={{ id: t.id }} done={false} />}
                   </li>
@@ -113,7 +113,7 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
           </div>
           <ul className="divide-y divide-line">
             {done.slice(0, 50).map((t) => (
-              <li key={t.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5 text-[13px]">
+              <li key={t.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5 text-sm">
                 <span className="text-muted line-through">{t.title}</span>
                 {t.studentName && <span className="text-xs text-muted">{t.studentName}</span>}
                 <span className="ml-auto text-xs text-muted">{t.doneAt ? fmtDate(t.doneAt) : ""}</span>

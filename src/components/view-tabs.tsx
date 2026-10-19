@@ -45,7 +45,7 @@ export function ViewTabs({ scope, views, canShareWithEverybody }: { scope: strin
 
   const tab = (on: boolean) =>
     cn(
-      "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[13px] transition",
+      "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition",
       on ? "border-brand-600 bg-brand-600 text-white" : "border-line bg-surface text-ink-soft hover:border-brand-300 hover:text-brand-700",
     );
 
@@ -65,12 +65,12 @@ export function ViewTabs({ scope, views, canShareWithEverybody }: { scope: strin
         ))}
 
         {worthSaving && (
-          <button type="button" onClick={() => setSaving((x) => !x)} className="rounded-full border border-dashed border-line-strong px-3 py-1 text-[13px] text-muted hover:border-brand-300 hover:text-brand-700">
+          <button type="button" onClick={() => setSaving((x) => !x)} className="rounded-full border border-dashed border-line-strong px-3 py-1 text-sm text-muted hover:border-brand-300 hover:text-brand-700">
             {saving ? "Cancel" : "Save this view"}
           </button>
         )}
         {(rest.length > 0 || views.some((v) => v.mine)) && (
-          <button type="button" onClick={() => setManaging((x) => !x)} className="rounded-full px-2 py-1 text-[13px] text-muted hover:text-brand-700">
+          <button type="button" onClick={() => setManaging((x) => !x)} className="rounded-full px-2 py-1 text-sm text-muted hover:text-brand-700">
             {managing ? "Done" : `All views${rest.length ? ` (${views.length})` : ""}`}
           </button>
         )}
@@ -83,9 +83,9 @@ export function ViewTabs({ scope, views, canShareWithEverybody }: { scope: strin
             <input type="hidden" name="query" value={here} />
             <div className="flex flex-wrap items-center gap-2">
               <label htmlFor="view-name" className="sr-only">What to call this view</label>
-              <Input id="view-name" name="name" placeholder="My Germany files" className="w-56 py-1.5 text-[13px]" />
+              <Input id="view-name" name="name" placeholder="My Germany files" className="w-56 py-1.5 text-sm" />
               <label htmlFor="view-shared" className="sr-only">Who else sees it</label>
-              <Select id="view-shared" name="shared" defaultValue="PRIVATE" className="w-40 py-1.5 text-[13px]">
+              <Select id="view-shared" name="shared" defaultValue="PRIVATE" className="w-40 py-1.5 text-sm">
                 <option value="PRIVATE">Only you</option>
                 <option value="ORG">Your branch</option>
                 {canShareWithEverybody && <option value="EVERYONE">Everybody</option>}
@@ -98,7 +98,7 @@ export function ViewTabs({ scope, views, canShareWithEverybody }: { scope: strin
       )}
 
       {managing && (
-        <ul className="divide-y divide-line rounded-xl border border-line bg-surface text-[13px]">
+        <ul className="divide-y divide-line rounded-xl border border-line bg-surface text-sm">
           {views.length === 0 && <li className="px-3 py-2.5 text-muted">No views yet. Filter a list and save it.</li>}
           {views.map((v) => (
             <li key={v.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5">

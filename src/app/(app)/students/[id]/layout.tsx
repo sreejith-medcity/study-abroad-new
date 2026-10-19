@@ -57,22 +57,22 @@ export default async function StudentLayout({ children, params }: { children: Re
             {student.profileLocked && <Chip tone="warn">Profile locked</Chip>}
           </div>
           {student.medcityId ? (
-            <p className="mt-1 font-mono text-[13px] font-medium tracking-tight text-brand-700">{student.medcityId}</p>
+            <p className="mt-1 font-mono text-sm font-medium tracking-tight text-brand-700">{student.medcityId}</p>
           ) : !canWork ? (
-            <p className="mt-1 text-[13px] text-muted">No Medcity ID yet</p>
+            <p className="mt-1 text-sm text-muted">No Medcity ID yet</p>
           ) : (
             <form action={assignStudentIdAction} className="mt-1 flex items-center gap-2" data-print="hide">
               <input type="hidden" name="studentId" value={id} />
-              <span className="text-[13px] text-muted">No Medcity ID yet</span>
+              <span className="text-sm text-muted">No Medcity ID yet</span>
               <Button variant="quiet" className="py-0.5 text-xs">Give one</Button>
             </form>
           )}
           <p className="mt-1 break-all text-muted">{student.email ?? "No email on file"}</p>
           <p className="text-muted tabular">{student.phone}{student.whatsappOptIn && <span className="ml-2 text-xs text-good-700">WhatsApp on</span>}</p>
-          <Link href={findHref} data-print="hide" className="mt-2 inline-block text-[13px] font-medium text-brand-600 hover:underline">
+          <Link href={findHref} data-print="hide" className="mt-2 inline-block text-sm font-medium text-brand-600 hover:underline">
             Find programs for {student.firstName}{preferred ? ` in ${preferred.name}` : ""}
           </Link>
-          <Link href={`/program-options/new?student=${id}`} data-print="hide" className="ml-3 mt-2 inline-block text-[13px] font-medium text-brand-600 hover:underline">
+          <Link href={`/program-options/new?student=${id}`} data-print="hide" className="ml-3 mt-2 inline-block text-sm font-medium text-brand-600 hover:underline">
             Ask the team for options
           </Link>
           {canWork && (

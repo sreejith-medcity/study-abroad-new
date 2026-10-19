@@ -16,8 +16,8 @@ export default async function PortalProfile() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="font-display text-[24px] font-semibold text-ink">{t("profileTitle")}</h1>
-        <p className="mt-1 text-[14px] leading-relaxed text-muted">{t("profileIntro")}</p>
+        <h1 className="font-display text-[1.5rem] font-semibold text-ink">{t("profileTitle")}</h1>
+        <p className="mt-1 text-md leading-relaxed text-muted">{t("profileIntro")}</p>
       </div>
 
       <Card>
@@ -40,39 +40,39 @@ export default async function PortalProfile() {
       <Card className="p-4">
         <h2 className="font-semibold text-ink">{t("whoCanSee")}</h2>
         {guardians.length === 0 ? (
-          <p className="mt-2 text-[13px] text-muted">{t("nobodyElse")}</p>
+          <p className="mt-2 text-sm text-muted">{t("nobodyElse")}</p>
         ) : (
           <>
             <ul className="mt-2.5 divide-y divide-line">
               {guardians.map((g) => (
-                <li key={g.id} className="py-2 text-[13px]">
+                <li key={g.id} className="py-2 text-sm">
                   <p className="font-medium text-ink">
                     {g.name} <span className="font-normal text-muted">· {g.relation}</span>
                   </p>
-                  <p className="text-[12px] text-muted">
+                  <p className="text-xs text-muted">
                     {t("addedOn")} {fmtDate(g.createdAt)} · {t("readsOnly")}
                     {g.seesMoney ? ` · ${t("alsoSeesFees")}` : ""}
                   </p>
                 </li>
               ))}
             </ul>
-            <p className="mt-2.5 text-[12.5px] leading-relaxed text-muted">{t("askToRemove")}</p>
+            <p className="mt-2.5 text-xs leading-relaxed text-muted">{t("askToRemove")}</p>
           </>
         )}
       </Card>
 
       <Card className="p-4">
-        <p className="text-[13px] leading-relaxed text-muted">{t("callUs")}</p>
-        <Link href="/portal/messages" className="mt-2 inline-block text-[13px] font-medium text-brand-600 hover:underline">
+        <p className="text-sm leading-relaxed text-muted">{t("callUs")}</p>
+        <Link href="/portal/messages" className="mt-2 inline-block text-sm font-medium text-brand-600 hover:underline">
           {t("askCorrection")}
         </Link>
       </Card>
 
       <Card className="p-4">
-        <p className="text-[13px] text-muted">
+        <p className="text-sm text-muted">
           {t("signedInAs")} {session.email}
         </p>
-        <Link href="/change-password" className="mt-2 inline-block text-[13px] font-medium text-brand-600 hover:underline">
+        <Link href="/change-password" className="mt-2 inline-block text-sm font-medium text-brand-600 hover:underline">
           {t("changePassword")}
         </Link>
       </Card>

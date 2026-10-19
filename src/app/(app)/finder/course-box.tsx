@@ -87,7 +87,7 @@ export function CourseBox({ q, field }: { q?: string; field?: string }) {
                   }
                   setOpen(false);
                 }}
-                className={cn("flex w-full items-center justify-between gap-3 px-3 py-1.5 text-left text-[13px] hover:bg-surface-2", s.area && "font-medium text-brand-700")}
+                className={cn("flex w-full items-center justify-between gap-3 px-3 py-1.5 text-left text-sm hover:bg-surface-2", s.area && "font-medium text-brand-700")}
               >
                 <span className="truncate">{s.area ? `${s.value} (field of study)` : s.value}</span>
                 <span className="tabular shrink-0 text-xs text-muted">{groupInr(s.n)}</span>

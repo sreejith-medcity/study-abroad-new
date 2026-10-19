@@ -97,7 +97,7 @@ export function AddUserForm({
           hint="Free text, shown beside their name"
         />
       </div>
-      <p className="rounded-lg bg-surface-2 px-3 py-2 text-[13px] leading-relaxed text-muted">{roleBlurb[role]}</p>
+      <p className="rounded-lg bg-surface-2 px-3 py-2 text-sm leading-relaxed text-muted">{roleBlurb[role]}</p>
       {hq && !canCreateStaff && (
         <p className="text-xs text-muted">Only a super admin or an ops manager can create Medcity Overseas accounts.</p>
       )}
@@ -130,7 +130,7 @@ export function RoleForm({
       <input type="hidden" name="userId" value={userId} />
       <div className="flex items-center gap-1.5">
         <label htmlFor={`role-${userId}`} className="sr-only">Change role</label>
-        <Select id={`role-${userId}`} name="role" aria-label="Change role" defaultValue={role} className="w-44 py-1.5 text-[13px]">
+        <Select id={`role-${userId}`} name="role" aria-label="Change role" defaultValue={role} className="w-44 py-1.5 text-sm">
           {options.map((value) => (
             <option key={value} value={value} disabled={value === "SUPER_ADMIN" && !canSetSuperAdmin}>
               {roleLabel[value]}
@@ -156,7 +156,7 @@ export function TitleForm({ userId, title }: { userId: string; title: string | n
           defaultValue={title ?? ""}
           placeholder="Job title"
           aria-label="Job title"
-          className="w-40 py-1.5 text-[13px]"
+          className="w-40 py-1.5 text-sm"
         />
         <Button type="submit" variant="quiet" size="sm">Save title</Button>
       </div>

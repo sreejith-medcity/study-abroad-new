@@ -34,7 +34,7 @@ export function DashboardFilters({
   return (
     <Toolbar>
       <form className={compact ? "grid gap-2.5 [&>*]:min-w-0" : "grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4 [&>*]:min-w-0"}>
-        {compact && <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">Filter the numbers</p>}
+        {compact && <p className="text-2xs font-semibold uppercase tracking-wider text-muted">Filter the numbers</p>}
         {/* A bare date box shows only its format placeholder, so both get a small label. */}
         <div className={compact ? "grid grid-cols-2 gap-2 [&>*]:min-w-0" : "flex gap-2 sm:col-span-2 [&>*]:min-w-0"}>
           <DateInput label="Created from" name="from" defaultValue={f.from} className="flex-1" />
@@ -60,7 +60,7 @@ export function DashboardFilters({
         </Select>
         <div className={compact ? "flex items-center justify-end gap-2" : "flex items-center justify-end gap-2 sm:col-span-2 xl:col-span-3"}>
           {active > 0 && (
-            <span className="mr-auto text-[12px] text-muted">
+            <span className="mr-auto text-xs text-muted">
               {active} {active === 1 ? "filter" : "filters"} on
             </span>
           )}
@@ -92,7 +92,7 @@ export function RecentChangesCard({ rows, showOrg = false, title = "Latest movem
       <CardHeader
         title={title}
         subtitle="Newest status change first"
-        action={<Link href="/applications" className="text-[13px] font-medium text-brand-600 hover:underline">All applications</Link>}
+        action={<Link href="/applications" className="text-sm font-medium text-brand-600 hover:underline">All applications</Link>}
       />
       <ul>
         {rows.map((r) => (
@@ -101,8 +101,8 @@ export function RecentChangesCard({ rows, showOrg = false, title = "Latest movem
               {r.ackNo}
             </Link>
             <span className="font-medium">{fullName(r)}</span>
-            <span className="text-[13px] text-muted">{intakeLabel(r.intakeMonth, r.intakeYear)}</span>
-            {showOrg && r.orgName && <span className="text-[13px] text-muted">· {r.orgName}</span>}
+            <span className="text-sm text-muted">{intakeLabel(r.intakeMonth, r.intakeYear)}</span>
+            {showOrg && r.orgName && <span className="text-sm text-muted">· {r.orgName}</span>}
             <span className="ml-auto flex items-center gap-2">
               <StatusBadge group={r.statusGroup} label={r.statusLabel} />
               <span className="text-xs text-muted">{fmtDate(r.changedAt)}</span>
@@ -124,7 +124,7 @@ export function DeadlinesCard({
 }) {
   return (
     <Card>
-      <CardHeader title="Upcoming deadlines" action={<Link href="/deadlines?tab=applications" className="text-[13px] font-medium text-brand-600 hover:underline">View all</Link>} />
+      <CardHeader title="Upcoming deadlines" action={<Link href="/deadlines?tab=applications" className="text-sm font-medium text-brand-600 hover:underline">View all</Link>} />
       <div className="flex flex-wrap gap-1.5 border-b border-line px-4 pb-3">
         {DEADLINE_WINDOWS.map(([key, label]) => (
           <Link key={key} href={`/dashboard?dw=${key}`} scroll={false} className={cn("rounded-full border px-2.5 py-0.5 text-xs font-medium", window === key ? "border-brand-600 bg-brand-600 text-white" : "border-line-strong text-ink-soft")}>{label}</Link>
@@ -147,7 +147,7 @@ export function DeadlinesCard({
         {rows.length === 0 && <li className="px-4 py-6 text-center text-muted">Nothing due in this window.</li>}
       </ul>
       <div className="border-t border-line px-4 py-2.5">
-        <Link href="/deadlines?mine=1" className="text-[13px] font-medium text-brand-600 hover:underline">Institution deadlines on your students&apos; shortlists</Link>
+        <Link href="/deadlines?mine=1" className="text-sm font-medium text-brand-600 hover:underline">Institution deadlines on your students&apos; shortlists</Link>
       </div>
     </Card>
   );
@@ -235,7 +235,7 @@ export async function AgingCard({
                   </Td>
                   {showOrg && (
                     <Td>
-                      <span className="text-[13px]">{r.orgName}</span>
+                      <span className="text-sm">{r.orgName}</span>
                       {r.officerName && <p className="text-xs text-muted">{r.officerName}</p>}
                     </Td>
                   )}

@@ -41,10 +41,11 @@ fs.mkdirSync(shots, { recursive: true });
 
 await page.goto(`${BASE}/settings`);
 await settle();
-// Scoped to the page's own content: the menu's put-away toggle in the
-// sidebar carries aria-pressed too, and counting it made this suite fail
-// for a reason that had nothing to do with appearance.
-const surfaces = page.locator('main button[aria-pressed]');
+// Named rather than counted: the menu's put-away toggle carries
+// aria-pressed too, and so does the reading-size picker that sits under
+// this one, and counting them all made this suite fail for reasons that
+// had nothing to do with appearance.
+const surfaces = page.locator('[data-testid="skin-swatch"]');
 check((await surfaces.count()) === 3, `Settings offers three surfaces, found ${await surfaces.count()}`);
 
 const skinOf = () => page.evaluate(() => document.documentElement.getAttribute("data-skin"));
@@ -58,7 +59,7 @@ const cardBg = () =>
 for (const [i, want] of [[1, "glass"], [2, "night"], [0, "soft"]]) {
   await page.goto(`${BASE}/settings`);
   await settle();
-  await page.locator("main button[aria-pressed]").nth(i).click();
+  await page.locator('[data-testid="skin-swatch"]').nth(i).click();
   await page.waitForFunction((w) => document.documentElement.getAttribute("data-skin") === w, want, { timeout: 10000 }).catch(() => {});
   check((await skinOf()) === want, `Picking ${want} paints the page in it`);
   check(sql(`select skin from users where email = '${email}'`) === want, `Picking ${want} is remembered`);
@@ -128,6 +129,42 @@ const zeros = await page.locator('[class*="border-l-"] p.tabular').evaluateAll((
 check(zeros === 0, `No tile is drawn at nought, found ${zeros}`);
 check((await tiles.count()) > 0 || (await page.getByText(/Nothing is open|Every account is in order|Nothing needs you/).count()) > 0, "Either there are tiles or the page says there is nothing");
 await page.screenshot({ path: `${shots}/dashboard-kit.png` });
+
+/* ---------------- Reading size ---------------- */
+
+// The same shape as the surface above it: four samples, picking one saves,
+// and what it moves is the document's own font size, which every size in
+// the portal is a multiple of.
+const wasSize = sql(`select text_size from users where email = '${email}'`);
+await page.goto(`${BASE}/settings`);
+await settle();
+const sizeCards = page.locator('[data-testid="size-swatch"]');
+check((await sizeCards.count()) === 4, `Settings offers four reading sizes, found ${await sizeCards.count()}`);
+const rootPx = () => page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize));
+const normalPx = await rootPx();
+check(normalPx === 16, `The everyday size is sixteen pixels, got ${normalPx}`);
+
+await page.getByLabel("Large", { exact: true }).click();
+await page.waitForFunction(() => document.documentElement.dataset.text === "large", null, { timeout: 10000 }).catch(() => {});
+check(sql(`select text_size from users where email = '${email}'`) === "large", "Picking a size is remembered");
+const largePx = await rootPx();
+check(largePx > normalPx, `Large is larger, ${normalPx} to ${largePx}`);
+
+// It follows the person rather than the page they were on.
+await page.goto(`${BASE}/students`);
+await settle();
+check((await rootPx()) === largePx, "and it holds on the next screen");
+// The widest list in the portal still fits its card at the everyday size,
+// and scrolls rather than spilling when it does not.
+const spill = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+check(spill === 0, `The page does not spill sideways at the larger size, over by ${spill}`);
+
+await page.goto(`${BASE}/settings`);
+await settle();
+await page.getByLabel("Compact", { exact: true }).click();
+await page.waitForFunction(() => document.documentElement.dataset.text === "compact", null, { timeout: 10000 }).catch(() => {});
+check((await rootPx()) < normalPx, "Compact is smaller again");
+sql(`update users set text_size = '${wasSize}' where email = '${email}'`);
 
 sql(`update users set skin = '${before}' where email = '${email}'`);
 await browser.close();

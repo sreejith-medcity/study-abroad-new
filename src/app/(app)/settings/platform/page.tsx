@@ -55,8 +55,8 @@ export default async function PlatformSettingsPage() {
           />
           {[...usage].length > 0 && (
             <div>
-              <p className="mb-1 text-[13px] font-medium text-ink-soft">This month</p>
-              <ul className="text-[13px] text-muted">
+              <p className="mb-1 text-sm font-medium text-ink-soft">This month</p>
+              <ul className="text-sm text-muted">
                 {[...usage].map((u) => <li key={u.name}>{u.name}: {u.n} requests, {u.tokens.toLocaleString("en-IN")} tokens</li>)}
               </ul>
             </div>

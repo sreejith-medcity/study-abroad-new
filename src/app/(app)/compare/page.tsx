@@ -118,10 +118,10 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
   return (
     <>
       <PageHeader title="Compare programs" subtitle="Blank figures have not been verified with the institution." />
-      {tooMany && <p className="mb-3 text-[13px] text-warn-700">Only the first {MAX} ticked programs are shown.</p>}
+      {tooMany && <p className="mb-3 text-sm text-warn-700">Only the first {MAX} ticked programs are shown.</p>}
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
-          <h2 className="font-display text-[15px] font-semibold">
+          <h2 className="font-display text-base font-semibold">
             {programs.length} program{programs.length === 1 ? "" : "s"}<span data-print="only" className="font-normal">, prepared {fmtDate(new Date())}</span>
           </h2>
           <div className="flex flex-wrap gap-2" data-print="hide">
@@ -130,7 +130,7 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
           </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-[13px]" style={{ minWidth: `${180 + cols.length * 240}px` }}>
+          <table className="w-full border-collapse text-sm" style={{ minWidth: `${180 + cols.length * 240}px` }}>
             <thead>
               <tr>
                 <th className="sticky left-0 z-10 w-[180px] bg-surface" />
@@ -145,7 +145,7 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
             <tbody>
               {rows.map((r) => (
                 <tr key={r.label} className="border-t border-line" data-print={r.hidePrint ? "hide" : undefined}>
-                  <th scope="row" className="sticky left-0 z-10 bg-surface px-4 py-2.5 text-left align-top text-[11px] font-semibold uppercase tracking-wider text-muted">{r.label}</th>
+                  <th scope="row" className="sticky left-0 z-10 bg-surface px-4 py-2.5 text-left align-top text-2xs font-semibold uppercase tracking-wider text-muted">{r.label}</th>
                   {cols.map((c) => (
                     <td key={c.p.id} className="border-l border-line px-4 py-2.5 align-top">{r.cell(c)}</td>
                   ))}

@@ -195,7 +195,7 @@ export default async function InsightsPage({ searchParams }: { searchParams: Pro
             <Card>
               <CardHeader title="Enquiry sources" subtitle="How many became students" />
               {sources.length === 0 ? (
-                <p className="px-4 py-8 text-center text-[13px] text-muted">No enquiries logged yet.</p>
+                <p className="px-4 py-8 text-center text-sm text-muted">No enquiries logged yet.</p>
               ) : (
                 <Table>
                   <thead>

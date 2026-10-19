@@ -28,7 +28,7 @@ export default async function CoursePage({ params, searchParams }: { params: Pro
   return (
     <>
       <PageHeader
-        eyebrow={<Link href="/training" className="text-[13px] font-medium text-brand-600 hover:underline">← Training</Link>}
+        eyebrow={<Link href="/training" className="text-sm font-medium text-brand-600 hover:underline">← Training</Link>}
         title={course.title}
         subtitle={`${course.questions.length} questions · pass mark ${course.passMark}%`}
       />
@@ -49,7 +49,7 @@ export default async function CoursePage({ params, searchParams }: { params: Pro
         <Card className="self-start">
           <CardHeader title="Read first" subtitle={course.description ?? undefined} />
           {reading.length ? (
-            <ul className="divide-y divide-line text-[13px]">
+            <ul className="divide-y divide-line text-sm">
               {reading.map((r) => (
                 <li key={r.id} className="px-4 py-2.5">
                   <a href={r.storageKey ? `/api/resources/${r.id}` : (r.url ?? "#")} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:underline">{r.title} ↗</a>
@@ -57,7 +57,7 @@ export default async function CoursePage({ params, searchParams }: { params: Pro
               ))}
             </ul>
           ) : (
-            <p className="px-4 pb-4 text-[13px] text-muted">No reading attached.</p>
+            <p className="px-4 pb-4 text-sm text-muted">No reading attached.</p>
           )}
         </Card>
       </div>

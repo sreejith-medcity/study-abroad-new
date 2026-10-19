@@ -61,13 +61,13 @@ export default async function UniversityPage({
     <>
       <PageHeader
         eyebrow={
-          <Link href={`/search?country=${university.country.code}`} className="text-[13px] font-medium text-brand-600 hover:underline">
+          <Link href={`/search?country=${university.country.code}`} className="text-sm font-medium text-brand-600 hover:underline">
             ← {university.country.name} programs
           </Link>
         }
         title={university.name}
         actions={university.website ? (
-          <a href={university.website.startsWith("http") ? university.website : `https://${university.website}`} target="_blank" rel="noopener noreferrer" className="text-[13px] font-medium text-brand-600 hover:underline">
+          <a href={university.website.startsWith("http") ? university.website : `https://${university.website}`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-brand-600 hover:underline">
             Official website ↗
           </a>
         ) : undefined}
@@ -110,9 +110,9 @@ export default async function UniversityPage({
                         {p.status !== "LIVE" && <Chip tone="warn" className="ml-1.5">{p.status === "DRAFT" ? "Draft" : "Archived"}</Chip>}
                       </p>
                     </Td>
-                    <Td className="whitespace-nowrap text-[13px]">{durationText(p.durationMonths)}</Td>
-                    <Td className="whitespace-nowrap text-[13px]">{intakesText(p.intakeMonths)}</Td>
-                    <Td className={cn("whitespace-nowrap tabular text-[13px]", p.tuitionPerYear == null && p.tuitionTotal == null && "text-muted")}>
+                    <Td className="whitespace-nowrap text-sm">{durationText(p.durationMonths)}</Td>
+                    <Td className="whitespace-nowrap text-sm">{intakesText(p.intakeMonths)}</Td>
+                    <Td className={cn("whitespace-nowrap tabular text-sm", p.tuitionPerYear == null && p.tuitionTotal == null && "text-muted")}>
                       {tuitionText(p.tuitionPerYear, p.tuitionTotal, cur)}
                     </Td>
                     <Td>
@@ -126,7 +126,7 @@ export default async function UniversityPage({
             </Table>
           )}
           {pages > 1 && (
-            <div className="flex items-center justify-between border-t border-line px-4 py-3 text-[13px]">
+            <div className="flex items-center justify-between border-t border-line px-4 py-3 text-sm">
               <span className="text-muted">Page {page} of {pages}</span>
               <div className="flex gap-2">
                 {page > 1 && <Link prefetch={false} href={pageHref(page - 1)} className="font-medium text-brand-600 hover:underline">Previous</Link>}

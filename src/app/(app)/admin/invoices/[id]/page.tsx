@@ -98,7 +98,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
           <div>
             <p className="font-display text-lg font-semibold">{company?.legalName ?? "No billing company chosen"}</p>
             {company && (
-              <p className="mt-1 max-w-xs whitespace-pre-line text-[13px] leading-relaxed text-muted">
+              <p className="mt-1 max-w-xs whitespace-pre-line text-sm leading-relaxed text-muted">
                 {company.address}
                 {"\n"}
                 {company.state}
@@ -110,17 +110,17 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
           <div className="text-right">
             <p className="text-xs uppercase tracking-wide text-muted">Invoice</p>
             <p className="font-display text-lg font-semibold tabular">{invoice.number}</p>
-            <p className="text-[13px] text-muted">Raised {invoice.raisedOn ? fmtDate(invoice.raisedOn) : "not yet"}</p>
-            <p className="text-[13px] text-muted">Due {invoice.dueOn ? fmtDate(invoice.dueOn) : "not recorded"}</p>
+            <p className="text-sm text-muted">Raised {invoice.raisedOn ? fmtDate(invoice.raisedOn) : "not yet"}</p>
+            <p className="text-sm text-muted">Due {invoice.dueOn ? fmtDate(invoice.dueOn) : "not recorded"}</p>
           </div>
         </div>
 
         <div className="mt-6 border-t border-line pt-4">
           <p className="text-xs uppercase tracking-wide text-muted">To</p>
           <p className="font-semibold">{invoice.vendor.billingName ?? invoice.vendor.name}</p>
-          {invoice.vendor.billingAddress && <p className="max-w-sm whitespace-pre-line text-[13px] text-muted">{invoice.vendor.billingAddress}</p>}
-          {invoice.vendor.gstin && <p className="text-[13px] text-muted">GSTIN {invoice.vendor.gstin}</p>}
-          {!invoice.vendor.billingAddress && <p className="text-[13px] text-muted">No billing address on record for this vendor.</p>}
+          {invoice.vendor.billingAddress && <p className="max-w-sm whitespace-pre-line text-sm text-muted">{invoice.vendor.billingAddress}</p>}
+          {invoice.vendor.gstin && <p className="text-sm text-muted">GSTIN {invoice.vendor.gstin}</p>}
+          {!invoice.vendor.billingAddress && <p className="text-sm text-muted">No billing address on record for this vendor.</p>}
         </div>
 
         <div className="mt-6">
@@ -150,7 +150,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
           </Table>
         </div>
 
-        <div className="mt-4 flex flex-col items-end gap-1 border-t border-line pt-4 text-[13px]">
+        <div className="mt-4 flex flex-col items-end gap-1 border-t border-line pt-4 text-sm">
           <p>
             <span className="text-muted">Net </span>
             <span className="tabular font-medium">{fmtMoney(invoice.money.net, invoice.currency)}</span>
@@ -170,7 +170,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
           )}
         </div>
 
-        <div className="mt-6 border-t border-line pt-4 text-[13px] text-muted">
+        <div className="mt-6 border-t border-line pt-4 text-sm text-muted">
           <p>{invoice.taxTreatment ?? invoice.tax.treatment}. {invoice.tax.note}</p>
           {company && (
             <p className="mt-2">
@@ -203,7 +203,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
                   <Td className="whitespace-nowrap font-medium tabular">{n.number}</Td>
                   <Td className="whitespace-nowrap text-xs tabular">{fmtDate(n.issuedOn)}</Td>
                   <Td className="whitespace-nowrap text-right tabular">{fmtMoney(n.amount, n.currency)}</Td>
-                  <Td className="text-[13px]">
+                  <Td className="text-sm">
                     {n.reason}
                     {n.lines.length > 0 && (
                       <span className="block text-xs text-muted">
@@ -254,7 +254,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
 
         <Card className="p-4">
           <h2 className="mb-2 font-semibold">How it stands</h2>
-          <dl className="space-y-1.5 text-[13px]">
+          <dl className="space-y-1.5 text-sm">
             <div className="flex justify-between gap-4">
               <dt className="text-muted">Total</dt>
               <dd className="tabular font-medium">{fmtMoney(invoice.money.total, invoice.currency)}</dd>

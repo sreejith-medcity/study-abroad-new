@@ -112,7 +112,7 @@ async function Activity({ filters }: { filters: ReturnType<typeof readEventFilte
               </option>
             ))}
           </Select>
-          <button className="rounded-lg border border-line-strong px-3 py-2 text-sm font-medium hover:bg-surface-2">Filter</button>
+          <button className="rounded-lg border border-line-strong px-3 py-2 text-md font-medium hover:bg-surface-2">Filter</button>
         </form>
       </Toolbar>
 
@@ -137,7 +137,7 @@ async function Activity({ filters }: { filters: ReturnType<typeof readEventFilte
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id}>
-                  <Td className="whitespace-nowrap tabular text-[13px] text-muted">{fmtDateTime(r.createdAt)}</Td>
+                  <Td className="whitespace-nowrap tabular text-sm text-muted">{fmtDateTime(r.createdAt)}</Td>
                   <Td>
                     <Chip tone={r.direction === "IN" ? "info" : "neutral"}>{r.direction === "IN" ? "In" : "Out"}</Chip>
                     <span className="ml-1.5 font-medium text-ink">{r.kind}</span>
@@ -159,12 +159,12 @@ async function Activity({ filters }: { filters: ReturnType<typeof readEventFilte
                     {r.attempts > 1 && <span className="block text-xs text-muted">{r.attempts} attempts</span>}
                     {r.nextAttemptAt && <span className="block text-xs text-muted">again {fmtDateTime(r.nextAttemptAt)}</span>}
                   </Td>
-                  <Td className="text-[13px]">
+                  <Td className="text-sm">
                     {r.responseStatus ?? <span className="text-muted">none</span>}
                     {r.error && <span className="block max-w-[14rem] text-xs text-stop-700">{r.error}</span>}
                   </Td>
                   <Td>
-                    <pre className="max-h-24 max-w-[22rem] overflow-auto whitespace-pre-wrap break-all rounded bg-surface-2 p-2 text-[11px] leading-relaxed text-ink-soft">
+                    <pre className="max-h-24 max-w-[22rem] overflow-auto whitespace-pre-wrap break-all rounded bg-surface-2 p-2 text-2xs leading-relaxed text-ink-soft">
                       {JSON.stringify(r.payload, null, 1).slice(0, 600)}
                     </pre>
                   </Td>
@@ -204,13 +204,13 @@ async function Attention() {
                 <IgnoreButton eventId={r.id} />
               </div>
             </div>
-            <p className="mt-1 text-[13px] leading-relaxed text-ink-soft">{r.needsAPersonBecause ?? r.error}</p>
+            <p className="mt-1 text-sm leading-relaxed text-ink-soft">{r.needsAPersonBecause ?? r.error}</p>
             {r.entityType === "student" && r.entityId && (
-              <Link href={`/students/${r.entityId}/profile`} className="mt-1 inline-block text-[13px] font-medium text-brand-600 hover:underline">
+              <Link href={`/students/${r.entityId}/profile`} className="mt-1 inline-block text-sm font-medium text-brand-600 hover:underline">
                 Open the student
               </Link>
             )}
-            <pre className="mt-2 max-h-28 overflow-auto whitespace-pre-wrap break-all rounded bg-surface-2 p-2 text-[11px] leading-relaxed text-ink-soft">
+            <pre className="mt-2 max-h-28 overflow-auto whitespace-pre-wrap break-all rounded bg-surface-2 p-2 text-2xs leading-relaxed text-ink-soft">
               {JSON.stringify(r.payload, null, 1).slice(0, 900)}
             </pre>
           </li>
@@ -254,7 +254,7 @@ async function Keys({ superAdmin }: { superAdmin: boolean }) {
                   <span className={k.revokedAt ? "text-muted line-through" : "font-medium"}>{k.name}</span>
                   <span className="block text-xs text-muted">made {fmtDate(k.createdAt)} by {k.createdBy?.name ?? "unknown"}</span>
                 </Td>
-                <Td className="font-mono text-[12px]">{k.keyId}</Td>
+                <Td className="font-mono text-xs">{k.keyId}</Td>
                 <Td>
                   {k.revokedAt ? (
                     <Chip tone="bad">Revoked {fmtDate(k.revokedAt)}</Chip>
@@ -264,8 +264,8 @@ async function Keys({ superAdmin }: { superAdmin: boolean }) {
                     <Chip tone="warn">A bearer token</Chip>
                   )}
                 </Td>
-                <Td className="text-[13px] text-muted">{k.scopes.length === 0 ? "Everything" : k.scopes.join(", ")}</Td>
-                <Td className="whitespace-nowrap text-[13px] text-muted">{k.lastUsedAt ? fmtDateTime(k.lastUsedAt) : "Never"}</Td>
+                <Td className="text-sm text-muted">{k.scopes.length === 0 ? "Everything" : k.scopes.join(", ")}</Td>
+                <Td className="whitespace-nowrap text-sm text-muted">{k.lastUsedAt ? fmtDateTime(k.lastUsedAt) : "Never"}</Td>
                 {superAdmin && <Td>{!k.revokedAt && <KeyRowActions keyId={k.id} signing={k.signatureRequired} canSign={!!k.secretBox} />}</Td>}
               </tr>
             ))}
@@ -283,14 +283,14 @@ async function Sending({ settings, superAdmin }: { settings: Awaited<ReturnType<
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
       <Card className="p-4">
         <h2 className="mb-1 font-semibold text-ink">Where events go</h2>
-        <p className="mb-3 text-[12.5px] leading-relaxed text-muted">
+        <p className="mb-3 text-xs leading-relaxed text-muted">
           Settings rather than code, on purpose: when the vendor says what shape they want, this changes without a deploy. A counsellor moving a student does not
           wait on their server, so events are queued here and sent on a schedule, with retries.
         </p>
         {superAdmin ? (
           <TargetForm url={settings.crmWebhookUrl} enabled={settings.crmWebhookEnabled} kinds={settings.crmWebhookKinds} hasSecret={!!settings.crmWebhookSecretBox} />
         ) : (
-          <dl className="space-y-2 text-[13px]">
+          <dl className="space-y-2 text-sm">
             <div>
               <dt className="text-muted">Post to</dt>
               <dd className="break-all font-medium">{settings.crmWebhookUrl ?? "Not set"}</dd>
@@ -310,10 +310,10 @@ async function Sending({ settings, superAdmin }: { settings: Awaited<ReturnType<
       <div className="space-y-5">
         <Card className="p-4">
           <h2 className="mb-2 font-semibold text-ink">Try it</h2>
-          {superAdmin ? <TestEventForm /> : <p className="text-[13px] text-muted">A super admin sends the test event.</p>}
+          {superAdmin ? <TestEventForm /> : <p className="text-sm text-muted">A super admin sends the test event.</p>}
           <div className="mt-3 border-t border-line pt-3">
             <DrainNowButton />
-            <p className="mt-1.5 text-[12px] text-muted">
+            <p className="mt-1.5 text-xs text-muted">
               The queue is drained by a scheduler calling <code>POST /api/cron/crm</code> with the cron secret. This button does the same thing now.
             </p>
           </div>
@@ -321,7 +321,7 @@ async function Sending({ settings, superAdmin }: { settings: Awaited<ReturnType<
 
         <Card className="p-4">
           <h2 className="mb-2 font-semibold text-ink">What can be sent</h2>
-          <dl className="space-y-1.5 text-[12.5px]">
+          <dl className="space-y-1.5 text-xs">
             {(Object.keys(OUTBOUND_KINDS) as (keyof typeof OUTBOUND_KINDS)[]).map((k) => (
               <div key={k}>
                 <dt className="font-medium text-ink">{k}</dt>
@@ -329,7 +329,7 @@ async function Sending({ settings, superAdmin }: { settings: Awaited<ReturnType<
               </div>
             ))}
           </dl>
-          <p className="mt-3 text-[12px] leading-relaxed text-muted">
+          <p className="mt-3 text-xs leading-relaxed text-muted">
             A send that times out or gets a 500 is tried again after a growing wait, up to {MAX_ATTEMPTS} times. A refusal the CRM meant, such as a 400, is not
             retried at all: the same bad payload six times is noise, and somebody has to look at it.
           </p>
@@ -368,12 +368,12 @@ function ForTheVendor() {
   return (
     <div className="space-y-5">
       <Card className="p-5">
-        <h2 className="font-display text-[17px] font-semibold text-ink">What the portal accepts</h2>
-        <p className="mt-1 text-[13px] leading-relaxed text-muted">
+        <h2 className="font-display text-lg font-semibold text-ink">What the portal accepts</h2>
+        <p className="mt-1 text-sm leading-relaxed text-muted">
           Three endpoints. Send this page to whoever is building the CRM; everything on it is read from the code that enforces it, so it cannot go out of date.
         </p>
 
-        <dl className="mt-4 space-y-4 text-[13px]">
+        <dl className="mt-4 space-y-4 text-sm">
           <div>
             <dt className="font-mono font-semibold text-ink">POST /api/crm/students</dt>
             <dd className="mt-1 leading-relaxed text-ink-soft">
@@ -400,8 +400,8 @@ function ForTheVendor() {
       </Card>
 
       <Card className="p-5">
-        <h2 className="font-display text-[17px] font-semibold text-ink">Which edit wins</h2>
-        <p className="mt-1 text-[13px] leading-relaxed text-ink-soft">
+        <h2 className="font-display text-lg font-semibold text-ink">Which edit wins</h2>
+        <p className="mt-1 text-sm leading-relaxed text-ink-soft">
           The later one. <code>updatedAt</code> is your own last-changed time for that record, and it is required: without it there is no way to tell which edit
           is later, and a message from last week would undo a correction a counsellor made this morning. Where your copy is the older one, nothing is written,
           and the answer lists every field that was left alone with both values in it, so you can show your own user the same thing. A blank from you never
@@ -410,32 +410,32 @@ function ForTheVendor() {
       </Card>
 
       <Card className="p-5">
-        <h2 className="font-display text-[17px] font-semibold text-ink">Proving who you are</h2>
-        <p className="mt-1 text-[13px] leading-relaxed text-ink-soft">
+        <h2 className="font-display text-lg font-semibold text-ink">Proving who you are</h2>
+        <p className="mt-1 text-sm leading-relaxed text-ink-soft">
           Every request carries <code>{KEY_HEADER}</code> with the key id. Then either the secret as <code>authorization: Bearer …</code>, which is simpler to
           start on, or a signature, which is better and is what to use once you are live.
         </p>
-        <p className="mt-2 text-[13px] leading-relaxed text-ink-soft">
+        <p className="mt-2 text-sm leading-relaxed text-ink-soft">
           To sign: take the method, the path, the timestamp and the exact body you are sending, join them with newlines in that order, and HMAC-SHA256 them under
           the secret, hex encoded. Send it as <code>{SIGNATURE_HEADER}</code> with <code>{TIMESTAMP_HEADER}</code> set to seconds since the epoch. A timestamp
           more than {SIGNATURE_WINDOW_SECONDS} seconds out is refused, so a signature copied off the wire is no use later.
         </p>
-        <pre className="mt-3 overflow-x-auto rounded-lg bg-surface-2 p-3 text-[11.5px] leading-relaxed text-ink-soft">
+        <pre className="mt-3 overflow-x-auto rounded-lg bg-surface-2 p-3 text-2xs leading-relaxed text-ink-soft">
           {`METHOD\\npath\\ntimestamp\\nbody`}
         </pre>
       </Card>
 
       <Card className="p-5">
-        <h2 className="font-display text-[17px] font-semibold text-ink">Retrying safely</h2>
-        <p className="mt-1 text-[13px] leading-relaxed text-ink-soft">
+        <h2 className="font-display text-lg font-semibold text-ink">Retrying safely</h2>
+        <p className="mt-1 text-sm leading-relaxed text-ink-soft">
           Send <code>idempotency-key</code> with anything of your own on every write. Repeating it hands back the first answer rather than doing the work twice,
           so a retry after a timeout cannot register the same student twice. The answer carries <code>x-medcity-replay: 1</code> when that is what happened.
         </p>
       </Card>
 
       <Card className="p-5">
-        <h2 className="font-display text-[17px] font-semibold text-ink">One to copy</h2>
-        <pre className="mt-2 overflow-x-auto rounded-lg bg-surface-2 p-3 text-[11.5px] leading-relaxed text-ink-soft">{CURL}</pre>
+        <h2 className="font-display text-lg font-semibold text-ink">One to copy</h2>
+        <pre className="mt-2 overflow-x-auto rounded-lg bg-surface-2 p-3 text-2xs leading-relaxed text-ink-soft">{CURL}</pre>
       </Card>
     </div>
   );

@@ -110,7 +110,7 @@ export function FilterBar({
             type="button"
             onClick={() => setOpenRest((v) => !v)}
             aria-expanded={showRest}
-            className="rounded-lg border border-line-strong px-2.5 py-2 text-[13px] font-medium text-ink-soft transition hover:border-brand-300 hover:text-brand-700"
+            className="rounded-lg border border-line-strong px-2.5 py-2 text-sm font-medium text-ink-soft transition hover:border-brand-300 hover:text-brand-700"
           >
             {showRest ? "Fewer filters" : `More filters (${rest.length})`}
           </button>
@@ -128,7 +128,7 @@ export function FilterBar({
 
       {on.length > 0 && (
         <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t border-line pt-2.5">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+          <span className="text-2xs font-semibold uppercase tracking-wider text-muted">
             {on.length} {on.length === 1 ? "filter" : "filters"} on
           </span>
           {on.map((c) => (
@@ -136,11 +136,11 @@ export function FilterBar({
               key={c.name}
               type="button"
               onClick={() => set(c.name, "")}
-              className="inline-flex items-center gap-1 rounded-full border border-brand-200 bg-brand-50 px-2.5 py-0.5 text-[12px] text-brand-700 transition hover:border-brand-400"
+              className="inline-flex items-center gap-1 rounded-full border border-brand-200 bg-brand-50 px-2.5 py-0.5 text-xs text-brand-700 transition hover:border-brand-400"
               aria-label={`Remove the ${c.label.toLowerCase()} filter`}
             >
               <span className="font-medium">{c.label}:</span> {c.shown}
-              <span aria-hidden className="text-[13px] leading-none">&times;</span>
+              <span aria-hidden className="text-sm leading-none">&times;</span>
             </button>
           ))}
           <button
@@ -150,7 +150,7 @@ export function FilterBar({
                 for (const k of [...p.keys()]) if (!held.has(k)) p.delete(k);
               })
             }
-            className="ml-1 text-[12px] font-medium text-muted underline underline-offset-2 hover:text-ink"
+            className="ml-1 text-xs font-medium text-muted underline underline-offset-2 hover:text-ink"
           >
             Clear {kept.length > 0 ? "the filters" : "all"}
           </button>
@@ -195,7 +195,7 @@ function SearchBox({
 
   return (
     <label className="min-w-0 flex-1 basis-56">
-      <span className="mb-0.5 block text-[11px] font-medium text-muted">{field.label}</span>
+      <span className="mb-0.5 block text-2xs font-medium text-muted">{field.label}</span>
       <Input
         name={field.name}
         value={text}
@@ -231,7 +231,7 @@ function Control({
   }
   return (
     <label className="min-w-0">
-      <span className="mb-0.5 block text-[11px] font-medium text-muted">{field.label}</span>
+      <span className="mb-0.5 block text-2xs font-medium text-muted">{field.label}</span>
       {field.kind === "date" ? (
         <Input
           type="date"

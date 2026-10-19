@@ -21,10 +21,10 @@ export function BulletinList({ rows, openId, countryName }: { rows: BulletinRow[
                 {b.university && <span>{b.university.name}</span>}
                 {b.intakes && <span>· {b.intakes}</span>}
               </p>
-              <p className="mt-1 line-clamp-2 text-[13px] text-ink-soft group-open:hidden">{b.body}</p>
+              <p className="mt-1 line-clamp-2 text-sm text-ink-soft group-open:hidden">{b.body}</p>
             </summary>
-            <p className="mt-2 whitespace-pre-wrap text-[13px] text-ink-soft">{b.body}</p>
-            <div className="mt-2 flex flex-wrap gap-3 text-[13px]">
+            <p className="mt-2 whitespace-pre-wrap text-sm text-ink-soft">{b.body}</p>
+            <div className="mt-2 flex flex-wrap gap-3 text-sm">
               {b.university && <Link href={`/universities/${b.university.id}`} className="font-medium text-brand-600 hover:underline">University page</Link>}
               {b.ctaLabel && b.ctaUrl && (
                 <a href={b.ctaUrl} {...(b.ctaUrl.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {})} className="rounded-md bg-brand-600 px-3 py-1 font-medium text-white hover:bg-brand-700">

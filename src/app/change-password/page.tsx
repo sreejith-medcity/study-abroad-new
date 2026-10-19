@@ -22,7 +22,7 @@ export default async function ChangePasswordPage() {
           <ChangePasswordForm />
         </Card>
         <form action={logoutAction} className="mt-4 text-center">
-          <button className="text-sm text-muted hover:text-ink">Sign out instead</button>
+          <button className="text-md text-muted hover:text-ink">Sign out instead</button>
         </form>
       </div>
     </main>

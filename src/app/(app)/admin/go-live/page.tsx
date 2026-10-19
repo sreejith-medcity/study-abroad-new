@@ -117,7 +117,7 @@ async function SampleData() {
                 .filter(([, n]) => Number(n) > 0)
                 .map(([key, n]) => ({ label: LABEL[key] ?? key, value: Number(n), tone: "warn" as const }))}
             />
-            {total === 0 && <p className="px-4 py-6 text-center text-[13px] text-muted">This portal already holds only real records.</p>}
+            {total === 0 && <p className="px-4 py-6 text-center text-sm text-muted">This portal already holds only real records.</p>}
           </Card>
 
           {inventory.organisations.length > 0 && (
@@ -181,7 +181,7 @@ async function SampleData() {
               <Alert tone="warn" title="This cannot be undone">
                 It runs as one step: either all of it goes or none of it does. Take a Supabase backup first if you want a way back.
               </Alert>
-              <p className="text-[13px] leading-relaxed text-muted">
+              <p className="text-sm leading-relaxed text-muted">
                 A real record that one of these accounts happened to touch keeps its own row and loses only the pointer. A learning
                 resource cannot be left without an owner, so any of those pass to you. Notifications are cleared, because they all
                 point at records that are about to go.

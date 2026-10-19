@@ -22,8 +22,8 @@ export default async function PortalDocuments({ searchParams }: { searchParams: 
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="font-display text-[24px] font-semibold text-ink">{t("documentsTitle")}</h1>
-        <p className="mt-1 text-[14px] leading-relaxed text-muted">{t("documentsIntro")}</p>
+        <h1 className="font-display text-[1.5rem] font-semibold text-ink">{t("documentsTitle")}</h1>
+        <p className="mt-1 text-md leading-relaxed text-muted">{t("documentsIntro")}</p>
       </div>
 
       {justUploaded && (
@@ -36,7 +36,7 @@ export default async function PortalDocuments({ searchParams }: { searchParams: 
         <Card>
           <CardHeader title={t("needFromYou")} subtitle={`${list.outstanding.length}`} />
           {list.outstanding.length === 0 ? (
-            <p className="flex items-center gap-2 px-4 py-6 text-[14px] text-good-700">
+            <p className="flex items-center gap-2 px-4 py-6 text-md text-good-700">
               <IconCheck className="size-4" /> {t("allDocumentsIn")}
             </p>
           ) : (
@@ -44,9 +44,9 @@ export default async function PortalDocuments({ searchParams }: { searchParams: 
               {list.outstanding.map((r) => (
                 <li key={r.code} className="px-4 py-3.5">
                   <p className="font-medium">{r.label}</p>
-                  {r.sentBack && <p className="mt-0.5 text-[13px] font-medium text-stop-700">{t("sendAgain")}</p>}
-                  {r.reason && <p className="mt-0.5 text-[13px] leading-relaxed text-muted">{r.reason}</p>}
-                  {r.dueOn && <p className="mt-0.5 text-[13px] text-muted">{t("wantedBy")} {fmtDate(r.dueOn)}</p>}
+                  {r.sentBack && <p className="mt-0.5 text-sm font-medium text-stop-700">{t("sendAgain")}</p>}
+                  {r.reason && <p className="mt-0.5 text-sm leading-relaxed text-muted">{r.reason}</p>}
+                  {r.dueOn && <p className="mt-0.5 text-sm text-muted">{t("wantedBy")} {fmtDate(r.dueOn)}</p>}
                   <div className="mt-2">
                     <PortalUploadForm typeCode={r.code} label={r.label} chooseLabel={t("chooseFile")} uploadLabel={r.sentBack ? t("uploadAgain") : t("upload")} />
                   </div>
@@ -55,7 +55,7 @@ export default async function PortalDocuments({ searchParams }: { searchParams: 
             </ul>
           )}
           {(list.withUs.length > 0 || list.done.length > 0) && (
-            <div className="space-y-1 border-t border-line px-4 py-3 text-[13px] text-muted">
+            <div className="space-y-1 border-t border-line px-4 py-3 text-sm text-muted">
               {list.withUs.length > 0 && <p>{t("beingChecked")}: {list.withUs.join(", ")}</p>}
               {list.done.length > 0 && <p>{t("alreadyDone")}: {list.done.join(", ")}</p>}
             </div>
@@ -70,7 +70,7 @@ export default async function PortalDocuments({ searchParams }: { searchParams: 
           subtitle={`${docs.missing.length}`}
         />
         {docs.missing.length === 0 ? (
-          <p className="flex items-center gap-2 px-4 py-6 text-[14px] text-good-700">
+          <p className="flex items-center gap-2 px-4 py-6 text-md text-good-700">
             <IconCheck className="size-4" /> {t("allDocumentsIn")}
           </p>
         ) : (
@@ -80,9 +80,9 @@ export default async function PortalDocuments({ searchParams }: { searchParams: 
               .map((r) => (
                 <li key={r.code} className="px-4 py-3.5">
                   <p className="font-medium">{r.label}</p>
-                  {r.guidance && <p className="mt-0.5 text-[13px] leading-relaxed text-muted">{r.guidance}</p>}
+                  {r.guidance && <p className="mt-0.5 text-sm leading-relaxed text-muted">{r.guidance}</p>}
                   {r.hasSample && (
-                    <a href={`/api/document-samples/${r.code}`} target="_blank" rel="noreferrer" className="text-[13px] font-medium text-brand-600 hover:underline">
+                    <a href={`/api/document-samples/${r.code}`} target="_blank" rel="noreferrer" className="text-sm font-medium text-brand-600 hover:underline">
                       {t("seeSample")}
                     </a>
                   )}
@@ -104,7 +104,7 @@ export default async function PortalDocuments({ searchParams }: { searchParams: 
               <li key={d.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
                 <span className="font-medium">{d.label ?? d.fileName}</span>
                 <span className="text-xs text-muted">{fmtDate(d.createdAt)}</span>
-                <a href={`/api/documents/${d.id}`} target="_blank" rel="noreferrer" className="ml-auto text-[13px] font-medium text-brand-600 hover:underline">
+                <a href={`/api/documents/${d.id}`} target="_blank" rel="noreferrer" className="ml-auto text-sm font-medium text-brand-600 hover:underline">
                   {t("openFile")}
                 </a>
               </li>
@@ -135,7 +135,7 @@ export default async function PortalDocuments({ searchParams }: { searchParams: 
                 )}
               </li>
             ))}
-          {docs.rows.length === 0 && <li className="px-4 py-6 text-center text-[13px] text-muted">{t("nothingYet")}</li>}
+          {docs.rows.length === 0 && <li className="px-4 py-6 text-center text-sm text-muted">{t("nothingYet")}</li>}
         </ul>
       </Card>
     </div>

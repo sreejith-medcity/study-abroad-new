@@ -42,7 +42,7 @@ export default async function EnquiryPage({ params }: { params: Promise<{ id: st
     <>
       <PageHeader
         eyebrow={
-          <Link href="/enquiries" className="text-[13px] font-medium text-brand-600 hover:underline">
+          <Link href="/enquiries" className="text-sm font-medium text-brand-600 hover:underline">
             ← All enquiries
           </Link>
         }
@@ -90,7 +90,7 @@ export default async function EnquiryPage({ params }: { params: Promise<{ id: st
           <Card>
             <CardHeader title="History" subtitle={`${notes.length} entr${notes.length === 1 ? "y" : "ies"}`} />
             {notes.length === 0 ? (
-              <p className="px-4 py-8 text-center text-[13px] text-muted">Nothing logged yet.</p>
+              <p className="px-4 py-8 text-center text-sm text-muted">Nothing logged yet.</p>
             ) : (
               <ol className="relative px-4 py-3">
                 {notes.map((n) => (
@@ -98,11 +98,11 @@ export default async function EnquiryPage({ params }: { params: Promise<{ id: st
                     <span className="absolute -left-[5px] top-1.5 size-2.5 rounded-full bg-brand-600 ring-4 ring-surface" />
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-baseline gap-2">
-                        <span className="text-[13px] font-medium">{n.author?.name ?? "System"}</span>
+                        <span className="text-sm font-medium">{n.author?.name ?? "System"}</span>
                         {n.stageAfter && <Chip tone={STAGE_TONE[n.stageAfter]}>{STAGE_LABEL[n.stageAfter]}</Chip>}
                         <span className="ml-auto text-xs text-muted">{fmtDateTime(n.createdAt)}</span>
                       </div>
-                      <p className="mt-0.5 whitespace-pre-wrap text-[13px] leading-relaxed text-ink-soft">{n.body}</p>
+                      <p className="mt-0.5 whitespace-pre-wrap text-sm leading-relaxed text-ink-soft">{n.body}</p>
                     </div>
                   </li>
                 ))}
@@ -162,7 +162,7 @@ export default async function EnquiryPage({ params }: { params: Promise<{ id: st
               <div className="space-y-2 border-t border-line p-4">
                 <form action={setEnquiryStageAction} className="flex gap-2">
                   <input type="hidden" name="enquiryId" value={enquiry.id} />
-                  <Select name="stage" defaultValue={enquiry.stage} aria-label="Stage" className="py-1.5 text-[13px]">
+                  <Select name="stage" defaultValue={enquiry.stage} aria-label="Stage" className="py-1.5 text-sm">
                     <option value="NEW">New</option>
                     <option value="CONTACTED">Contacted</option>
                     <option value="QUALIFIED">Qualified</option>
@@ -193,8 +193,8 @@ export default async function EnquiryPage({ params }: { params: Promise<{ id: st
 
           {enquiry.stage === "CONVERTED" && enquiry.student && (
             <Card className="p-4">
-              <h2 className="font-display text-[15px] font-semibold">Became a student</h2>
-              <p className="mt-1 text-[13px] text-muted">
+              <h2 className="font-display text-base font-semibold">Became a student</h2>
+              <p className="mt-1 text-sm text-muted">
                 {enquiry.student.firstName} {enquiry.student.lastName} was registered from this enquiry.
               </p>
               <LinkButton href={`/students/${enquiry.student.id}/profile`} variant="secondary" size="sm" className="mt-3">

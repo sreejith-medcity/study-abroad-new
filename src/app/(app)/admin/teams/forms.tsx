@@ -22,7 +22,7 @@ export function AddMemberForm({ teamId, people }: { teamId: string; people: { id
         <label htmlFor={`add-${teamId}`} className="sr-only">
           Somebody to add
         </label>
-        <Select id={`add-${teamId}`} name="userId" defaultValue="" className="w-56 py-1.5 text-[13px]">
+        <Select id={`add-${teamId}`} name="userId" defaultValue="" className="w-56 py-1.5 text-sm">
           <option value="" disabled>
             Add somebody
           </option>
@@ -32,7 +32,7 @@ export function AddMemberForm({ teamId, people }: { teamId: string; people: { id
             </option>
           ))}
         </Select>
-        <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">
+        <label className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-wider text-muted">
           <input type="checkbox" name="lead" value="1" className="size-4 rounded border-line-strong accent-brand-600" />
           Leads it
         </label>

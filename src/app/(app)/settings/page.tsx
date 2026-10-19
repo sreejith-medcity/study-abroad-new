@@ -6,6 +6,7 @@ import { fmtDateTime } from "@/lib/format";
 import { Card, CardHeader, DataList } from "@/components/ui";
 import { ProfileForm } from "./forms";
 import { AppearancePicker } from "./appearance";
+import { TextSizePicker } from "./text-size";
 
 export const metadata = { title: "Profile settings" };
 
@@ -32,6 +33,14 @@ export default async function ProfileSettingsPage() {
       <Card>
         <CardHeader title="Appearance" subtitle="Which surface the portal is painted on. Yours only: it changes nothing for anybody else." />
         <AppearancePicker current={user.skin} />
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="Reading size"
+          subtitle="How large the portal reads. Yours only, and it follows your sign-in rather than the machine you are at."
+        />
+        <TextSizePicker current={user.textSize} />
       </Card>
 
       <Card>

@@ -7,7 +7,7 @@ export function RemoveLine({ lineId }: { lineId: string }) {
   return (
     <form action={removeInvoiceLineAction} className="inline">
       <input type="hidden" name="lineId" value={lineId} />
-      <button type="submit" className="text-[13px] text-muted hover:text-ink">Take it off</button>
+      <button type="submit" className="text-sm text-muted hover:text-ink">Take it off</button>
     </form>
   );
 }

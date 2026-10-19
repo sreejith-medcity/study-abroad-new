@@ -62,7 +62,7 @@ export default async function VendorsPage() {
                         <p className="mt-0.5 text-xs text-muted">Packs: {packRulesLine({ shape: vendor.packShape, naming: vendor.packNaming, limitMb: vendor.packLimitMb })}</p>
                         <EditVendor vendor={{ ...vendor, payableOn: vendor.payableOn as string }} />
                       </Td>
-                      <Td className="text-[13px]">
+                      <Td className="text-sm">
                         Paid once {PAYABLE_ON[vendor.payableOn as keyof typeof PAYABLE_ON]},<br />
                         then within {vendor.daysToPay} days, in {vendor.currency}
                       </Td>
@@ -70,10 +70,10 @@ export default async function VendorsPage() {
                         {routes.toLocaleString("en-IN")}
                         {allRoutes > routes && <span className="text-muted"> of {allRoutes.toLocaleString("en-IN")}</span>}
                       </Td>
-                      <Td className="text-[13px]">
+                      <Td className="text-sm">
                         {reach ? `${reach.programs.toLocaleString("en-IN")} live courses in ${reach.countries} ${reach.countries === 1 ? "country" : "countries"}` : <span className="text-muted">No live courses yet</span>}
                       </Td>
-                      <Td className="text-[13px]">
+                      <Td className="text-sm">
                         {vendor.termsConfirmedAt ? fmtDate(vendor.termsConfirmedAt) : <span className="text-muted">Never</span>}
                         {age.stale && <p className="text-xs font-medium text-warn-700">{vendor.termsConfirmedAt ? "Older than six months" : "Not confirmed yet"}</p>}
                       </Td>

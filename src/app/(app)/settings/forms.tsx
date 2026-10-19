@@ -94,7 +94,7 @@ export function PasswordForm() {
 export function SignOutEverywhereForm() {
   return (
     <ActionForm action={signOutEverywhereAction} submitLabel="Sign out everywhere else" submitVariant="secondary">
-      <p className="text-sm text-ink-soft">
+      <p className="text-md text-ink-soft">
         Ends every signed-in session for your account on other browsers and devices. Use this if you signed in on a shared
         computer, or if you think somebody else has your password. You stay signed in here.
       </p>
@@ -246,7 +246,7 @@ export type PlatformValues = {
 function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
     <fieldset className="space-y-3 rounded-xl border border-line bg-surface-2/40 p-4">
-      <legend className="px-1 font-display text-sm font-semibold">{title}</legend>
+      <legend className="px-1 font-display text-md font-semibold">{title}</legend>
       {hint && <p className="-mt-1 text-xs text-muted">{hint}</p>}
       {children}
     </fieldset>
@@ -260,7 +260,7 @@ function NumberField({ label, name, defaultValue }: { label: string; name: strin
 function ColorField({ label, name, value, onChange }: { label: string; name: string; value: string; onChange: (v: string) => void }) {
   return (
     <label className="block space-y-1.5">
-      <span className="text-[13px] font-medium text-ink-soft">{label}</span>
+      <span className="text-sm font-medium text-ink-soft">{label}</span>
       <span className="flex items-center gap-2">
         <input
           type="color"
@@ -274,7 +274,7 @@ function ColorField({ label, name, value, onChange }: { label: string; name: str
           value={value}
           onChange={(e) => onChange(e.target.value)}
           spellCheck={false}
-          className="w-full rounded-lg border border-line bg-surface px-3 py-2 font-mono text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+          className="w-full rounded-lg border border-line bg-surface px-3 py-2 font-mono text-md outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
         />
       </span>
     </label>
@@ -292,8 +292,8 @@ function Preview({ brand, deep, accent, info, name }: { brand: string; deep: str
         className="flex items-center gap-2 px-4 py-3 text-white"
         style={{ background: `linear-gradient(135deg, ${deep} 0%, ${brand} 100%)` }}
       >
-        <span className="font-display text-sm font-semibold">{name || "Portal"}</span>
-        <span className="ml-auto rounded-full px-2 py-0.5 text-[11px] font-bold text-ink" style={{ background: accent }}>
+        <span className="font-display text-md font-semibold">{name || "Portal"}</span>
+        <span className="ml-auto rounded-full px-2 py-0.5 text-2xs font-bold text-ink" style={{ background: accent }}>
           12
         </span>
       </div>
@@ -302,7 +302,7 @@ function Preview({ brand, deep, accent, info, name }: { brand: string; deep: str
           Primary button
         </Button>
         <span
-          className="rounded-lg px-2.5 py-1 text-[13px] font-medium"
+          className="rounded-lg px-2.5 py-1 text-sm font-medium"
           style={{ background: `color-mix(in oklab, ${brand} 12%, white)`, color: `color-mix(in oklab, ${brand} 80%, black)` }}
         >
           Active tab

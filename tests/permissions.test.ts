@@ -44,6 +44,7 @@ const as = (role: SessionUser["role"], orgId = "org-1"): SessionUser => ({
   orgType: role === "PARTNER" || role === "COUNSELLOR" ? "BRANCH" : "HQ",
   deskLabel: null,
   skin: "soft",
+  textSize: "normal",
   studentId: null,
   locale: "en",
   mustChangePassword: false,

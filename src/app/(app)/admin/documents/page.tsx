@@ -53,7 +53,7 @@ export default async function DocumentsAdminPage({ searchParams }: { searchParam
 
       {tab === "types" && (
         <div className="space-y-3">
-          <p className="text-[13px] text-muted">{types.length} types · {withSample} with a sample. A sample must not carry a real person&rsquo;s details: use a blanked or made-up one.</p>
+          <p className="text-sm text-muted">{types.length} types · {withSample} with a sample. A sample must not carry a real person&rsquo;s details: use a blanked or made-up one.</p>
           {types.map((t) => (
             <Card key={t.code} className="p-4">
               <div className="mb-2 flex flex-wrap items-center gap-2">

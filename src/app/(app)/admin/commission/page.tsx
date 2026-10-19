@@ -116,8 +116,8 @@ export default async function AdminCommissionPage({ searchParams }: { searchPara
             href={tabHref(t.key)}
             className={
               tab === t.key
-                ? "rounded-lg bg-brand-600 px-3 py-1.5 text-[13px] font-medium text-white"
-                : "rounded-lg border border-line px-3 py-1.5 text-[13px] font-medium text-ink-soft hover:border-brand-300 hover:text-brand-700"
+                ? "rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white"
+                : "rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-ink-soft hover:border-brand-300 hover:text-brand-700"
             }
           >
             {t.label}
@@ -191,9 +191,9 @@ export default async function AdminCommissionPage({ searchParams }: { searchPara
                           </Link>
                           <p className="ack text-xs text-muted">{r.ackNo} · {intakeLabel(r.intakeMonth, r.intakeYear)}</p>
                         </Td>
-                        <Td className="text-[13px]">{r.orgName}</Td>
+                        <Td className="text-sm">{r.orgName}</Td>
                         <Td>
-                          <p className="text-[13px]">{r.universityName}</p>
+                          <p className="text-sm">{r.universityName}</p>
                           <p className="text-xs text-muted">{r.countryName}{r.ruleName ? ` · ${r.ruleName}` : ""}</p>
                         </Td>
                         <Td className="whitespace-nowrap text-right tabular">{money(r.grossAmount, r.currency)}</Td>
@@ -273,11 +273,11 @@ export default async function AdminCommissionPage({ searchParams }: { searchPara
                         <p className={r.active ? "font-medium" : "text-muted line-through"}>{r.name}</p>
                         {r.notes && <p className="text-xs text-muted">{r.notes}</p>}
                       </Td>
-                      <Td className="text-[13px]">
+                      <Td className="text-sm">
                         {r.programName ?? r.universityName ?? r.countryName ?? "Everything"}
                         <p className="text-xs text-muted">{r.intakeYear ? `${r.intakeYear} intakes` : "Any intake"}</p>
                       </Td>
-                      <Td className="whitespace-nowrap text-[13px] tabular">
+                      <Td className="whitespace-nowrap text-sm tabular">
                         {r.basis === "FLAT" ? money(r.flatAmount, r.currency) : `${r.percentOfTuition}% of tuition`}
                       </Td>
                       <Td className="tabular">{r.partnerSharePercent}%</Td>
@@ -298,14 +298,14 @@ export default async function AdminCommissionPage({ searchParams }: { searchPara
           </Card>
           {canAct ? (
             <Card className="h-fit p-4">
-              <h2 className="mb-1 font-display text-[15px] font-semibold">Add a rule</h2>
-              <p className="mb-3 text-[13px] text-muted">Point it at a country or a university, set what Medcity earns and what the partner keeps.</p>
+              <h2 className="mb-1 font-display text-base font-semibold">Add a rule</h2>
+              <p className="mb-3 text-sm text-muted">Point it at a country or a university, set what Medcity earns and what the partner keeps.</p>
               <RuleForm countries={countries} universities={universities} />
             </Card>
           ) : (
             <Card className="h-fit p-4">
-              <h2 className="font-display text-[15px] font-semibold">Read only</h2>
-              <p className="mt-1 text-[13px] text-muted">Management sees the rules and the numbers. Changing them is an admin job.</p>
+              <h2 className="font-display text-base font-semibold">Read only</h2>
+              <p className="mt-1 text-sm text-muted">Management sees the rules and the numbers. Changing them is an admin job.</p>
             </Card>
           )}
         </div>
@@ -346,8 +346,8 @@ export default async function AdminCommissionPage({ searchParams }: { searchPara
                       )}
                     </Td>
                     <Td className="whitespace-nowrap text-right font-semibold tabular">{inr(p.amountInr)}</Td>
-                    <Td className="whitespace-nowrap text-[13px] text-muted">{fmtDate(p.createdAt)}</Td>
-                    <Td className="text-[13px] text-muted">{p.note ?? "None"}</Td>
+                    <Td className="whitespace-nowrap text-sm text-muted">{fmtDate(p.createdAt)}</Td>
+                    <Td className="text-sm text-muted">{p.note ?? "None"}</Td>
                     <Td>
                       <Chip tone={p.status === "PAID" ? "ok" : p.status === "REJECTED" ? "bad" : p.status === "APPROVED" ? "info" : "warn"}>
                         {p.status.charAt(0) + p.status.slice(1).toLowerCase()}
@@ -391,8 +391,8 @@ export default async function AdminCommissionPage({ searchParams }: { searchPara
           <div className="space-y-5">
             {canAct && (
               <Card className="p-4">
-                <h2 className="mb-1 font-display text-[15px] font-semibold">Post a bonus or adjustment</h2>
-                <p className="mb-3 text-[13px] text-muted">Credits a partner&apos;s wallet straight away. Use a negative amount to correct a mistake.</p>
+                <h2 className="mb-1 font-display text-base font-semibold">Post a bonus or adjustment</h2>
+                <p className="mb-3 text-sm text-muted">Credits a partner&apos;s wallet straight away. Use a negative amount to correct a mistake.</p>
                 <AdjustWalletForm orgs={orgs} />
               </Card>
             )}

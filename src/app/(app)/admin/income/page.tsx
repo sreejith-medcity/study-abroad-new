@@ -232,7 +232,7 @@ export default async function IncomeAdminPage({ searchParams }: { searchParams: 
                   <tr key={r.studentId}>
                     <Td className="whitespace-nowrap text-xs tabular">
                       {intakeLabel(r.intakeMonth, r.intakeYear)}
-                      {!r.visaDecided && <span className="block text-[11px] text-muted">no visa recorded</span>}
+                      {!r.visaDecided && <span className="block text-2xs text-muted">no visa recorded</span>}
                     </Td>
                     <Td>
                       <Link href={`/students/${r.studentId}/income`} className="font-medium text-brand-600 hover:underline">{r.name}</Link>
@@ -253,7 +253,7 @@ export default async function IncomeAdminPage({ searchParams }: { searchParams: 
                       </span>
                     </Td>
                     <Td>
-                      <Link href={`/students/${r.studentId}/income`} className="text-[13px] font-medium text-brand-600 hover:underline">The sheet</Link>
+                      <Link href={`/students/${r.studentId}/income`} className="text-sm font-medium text-brand-600 hover:underline">The sheet</Link>
                     </Td>
                   </tr>
                 ))}

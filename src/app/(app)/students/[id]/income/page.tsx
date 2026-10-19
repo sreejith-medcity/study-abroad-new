@@ -134,7 +134,7 @@ export default async function StudentIncomePage({ params }: { params: Promise<{ 
                       <span className="inline-flex items-center gap-1">
                         {row.vendorCode && (
                           <span
-                            className="rounded px-1 py-0.5 text-[10px] font-semibold text-white"
+                            className="rounded px-1 py-0.5 text-3xs font-semibold text-white"
                             style={{ backgroundColor: row.vendorColour ?? "#475569" }}
                           >
                             {row.vendorCode}

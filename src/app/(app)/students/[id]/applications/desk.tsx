@@ -25,7 +25,7 @@ export function DeskStageChip({ stage, assumed }: { stage: DeskStage; assumed: b
   return (
     <span className="inline-flex items-center gap-1.5" title={DESK_STAGE_MEANS[stage]}>
       <Chip tone={tone}>{DESK_STAGE_LABEL[stage]}</Chip>
-      {assumed && <span className="text-[11px] text-muted">worked out from the status, not recorded at the time</span>}
+      {assumed && <span className="text-2xs text-muted">worked out from the status, not recorded at the time</span>}
     </span>
   );
 }
@@ -34,11 +34,11 @@ export function DeskStageChip({ stage, assumed }: { stage: DeskStage; assumed: b
 export function HandOver({ applicationId, ready, why }: { applicationId: string; ready: boolean; why: string | null }) {
   const [open, setOpen] = useState(false);
   if (!ready) {
-    return <span className="text-[13px] text-warn-700">{why}</span>;
+    return <span className="text-sm text-warn-700">{why}</span>;
   }
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="rounded-lg bg-brand-600 px-3 py-1.5 text-[13px] font-medium text-white">
+      <button type="button" onClick={() => setOpen(true)} className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white">
         Hand it to the Overseas desk
       </button>
       <Modal
@@ -62,7 +62,7 @@ export function HandOver({ applicationId, ready, why }: { applicationId: string;
 export function ChooseRoute({ applicationId, routes, current }: { applicationId: string; routes: RouteChoice[]; current: string | null }) {
   if (routes.length === 0) {
     return (
-      <p className="text-[13px] text-warn-700">
+      <p className="text-sm text-warn-700">
         No route is recorded for this course, so there is nothing to choose from. Add one under Vendors and routes, or lodge it directly and record that.
       </p>
     );
@@ -209,7 +209,7 @@ export function ReturnToBranch({ applicationId }: { applicationId: string }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="text-[13px] text-muted hover:text-ink">
+      <button type="button" onClick={() => setOpen(true)} className="text-sm text-muted hover:text-ink">
         Send it back to the branch
       </button>
       <Modal open={open} onClose={() => setOpen(false)} title="Send it back" description="The reason goes to the counsellor and the branch owner, and stays on the application.">

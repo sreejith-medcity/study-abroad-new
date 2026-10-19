@@ -126,33 +126,33 @@ export default async function PartnersPage() {
                 {!hq && (
                   <form action={updateOrgAction} className="flex flex-wrap items-end gap-2 border-b border-line px-4 py-3">
                     <input type="hidden" name="orgId" value={o.id} />
-                    <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                    <label className="text-2xs font-semibold uppercase tracking-wider text-muted">
                       Tier
-                      <Select name="tier" defaultValue={o.tier} className="mt-1 w-28 py-1.5 text-[13px]">
+                      <Select name="tier" defaultValue={o.tier} className="mt-1 w-28 py-1.5 text-sm">
                         <option>SILVER</option>
                         <option>GOLD</option>
                         <option>ELITE</option>
                         <option>PLATINUM</option>
                       </Select>
                     </label>
-                    <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                    <label className="text-2xs font-semibold uppercase tracking-wider text-muted">
                       Seats ({seatsUsed} used)
-                      <Input name="counsellorSeats" type="number" min={1} defaultValue={o.counsellorSeats} className="mt-1 w-20 py-1.5 text-[13px]" />
+                      <Input name="counsellorSeats" type="number" min={1} defaultValue={o.counsellorSeats} className="mt-1 w-20 py-1.5 text-sm" />
                     </label>
-                    <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                    <label className="text-2xs font-semibold uppercase tracking-wider text-muted">
                       ID code
-                      <Input name="idCode" defaultValue={o.idCode ?? ""} maxLength={4} placeholder="KTM" className="mt-1 w-20 py-1.5 font-mono text-[13px] uppercase" />
+                      <Input name="idCode" defaultValue={o.idCode ?? ""} maxLength={4} placeholder="KTM" className="mt-1 w-20 py-1.5 font-mono text-sm uppercase" />
                     </label>
-                    <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                    <label className="text-2xs font-semibold uppercase tracking-wider text-muted">
                       Relationship manager
-                      <Select name="relationshipManagerId" defaultValue={o.relationshipManagerId ?? ""} className="mt-1 w-40 py-1.5 text-[13px]">
+                      <Select name="relationshipManagerId" defaultValue={o.relationshipManagerId ?? ""} className="mt-1 w-40 py-1.5 text-sm">
                         <option value="">None</option>
                         {admins.map((a) => (
                           <option key={a.id} value={a.id}>{a.name}</option>
                         ))}
                       </Select>
                     </label>
-                    <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">
+                    <label className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-wider text-muted">
                       <input
                         type="checkbox"
                         name="checksOwnDocuments"
@@ -163,7 +163,7 @@ export default async function PartnersPage() {
                       Checks its own documents
                     </label>
                     <Button variant="secondary" size="sm">Save</Button>
-                    <p className="w-full text-[11px] text-muted">
+                    <p className="w-full text-2xs text-muted">
                       The ID code is the branch&rsquo;s letters in every Medcity ID it mints. It can be changed until the first student carries it. A branch
                       that checks its own documents does the first pass on its students; the desk reviews what it decided under &ldquo;Checked by a
                       branch&rdquo; rather than checking all of it again.
@@ -214,7 +214,7 @@ export default async function PartnersPage() {
                   </p>
                 )}
                 <details className="border-t border-line px-4 py-3">
-                  <summary className="cursor-pointer text-[13px] font-medium text-brand-600">Add user to {o.name}</summary>
+                  <summary className="cursor-pointer text-sm font-medium text-brand-600">Add user to {o.name}</summary>
                   <div className="mt-3">
                     <AddUserForm
                       orgId={o.id}
@@ -233,10 +233,10 @@ export default async function PartnersPage() {
         </OrgList>
 
         <Card className="h-fit p-4">
-          <h2 className="mb-1 flex items-center gap-2 font-display text-[15px] font-semibold">
+          <h2 className="mb-1 flex items-center gap-2 font-display text-base font-semibold">
             <IconPartners className="size-4 text-brand-600" /> Invite a partner
           </h2>
-          <p className="mb-3 text-[13px] text-muted">Creates the organisation and its owner account with a one-time password.</p>
+          <p className="mb-3 text-sm text-muted">Creates the organisation and its owner account with a one-time password.</p>
           <InvitePartnerForm />
         </Card>
       </div>

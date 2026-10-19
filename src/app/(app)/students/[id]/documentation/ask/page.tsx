@@ -26,7 +26,7 @@ export default async function AskPage({ params }: { params: Promise<{ id: string
       <PageHeader
         title={`Ask ${student.firstName} for what is missing`}
         subtitle="Everything outstanding is ticked. Untick whatever you will collect yourself. One message goes out, with one link, and every reminder afterwards is the same list, shorter."
-        actions={<Link href={`/students/${id}/documentation`} className="text-[13px] font-medium text-brand-600 hover:underline">Back to the list</Link>}
+        actions={<Link href={`/students/${id}/documentation`} className="text-sm font-medium text-brand-600 hover:underline">Back to the list</Link>}
       />
 
       {items.length === 0 ? (
@@ -70,7 +70,7 @@ export default async function AskPage({ params }: { params: Promise<{ id: string
                     {r.locale === "ml" ? " · in Malayalam" : ""}
                   </span>
                 </div>
-                <p className="mt-1 whitespace-pre-wrap text-[13px] leading-relaxed text-muted">{r.body}</p>
+                <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-muted">{r.body}</p>
               </li>
             ))}
           </ul>

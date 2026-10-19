@@ -41,7 +41,7 @@ export default async function AdminTrainingPage() {
                   }
                 />
                 {c.questions.length > 0 && (
-                  <ol className="divide-y divide-line border-b border-line text-[13px]">
+                  <ol className="divide-y divide-line border-b border-line text-sm">
                     {c.questions.map((q, n) => (
                       <li key={q.id} className="flex items-start justify-between gap-2 px-4 py-2.5">
                         <div>
@@ -57,7 +57,7 @@ export default async function AdminTrainingPage() {
                   </ol>
                 )}
                 <details className="px-4 py-3">
-                  <summary className="cursor-pointer text-[13px] font-medium text-brand-600">Add a question</summary>
+                  <summary className="cursor-pointer text-sm font-medium text-brand-600">Add a question</summary>
                   <div className="mt-2"><QuestionForm courseId={c.id} /></div>
                 </details>
               </Card>

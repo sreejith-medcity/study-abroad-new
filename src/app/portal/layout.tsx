@@ -36,7 +36,7 @@ export default async function PortalLayout({ children }: { children: React.React
           <Link href="/portal" className="rounded-lg py-1">
             <OrgBrandLogo org={student.org} />
           </Link>
-          <span className="hidden text-[13px] text-white/70 sm:inline">{t("portal")}</span>
+          <span className="hidden text-sm text-white/70 sm:inline">{t("portal")}</span>
 
           <div className="ml-auto flex items-center gap-2">
             <form action={setLocaleAction} className="flex items-center gap-1 rounded-full bg-white/12 p-0.5">
@@ -46,7 +46,7 @@ export default async function PortalLayout({ children }: { children: React.React
                   name="locale"
                   value={code}
                   className={cn(
-                    "rounded-full px-2.5 py-1 text-[12px] font-medium transition-colors",
+                    "rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
                     locale === code ? "bg-white text-brand-700" : "text-white/80 hover:text-white",
                   )}
                   aria-current={locale === code ? "true" : undefined}
@@ -56,7 +56,7 @@ export default async function PortalLayout({ children }: { children: React.React
               ))}
             </form>
             <form action={logoutAction}>
-              <button className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] font-medium text-white/90 hover:bg-white/10">
+              <button className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-white/90 hover:bg-white/10">
                 <IconLogout className="size-4" />
                 <span className="hidden sm:inline">{t("signOut")}</span>
               </button>
@@ -71,7 +71,7 @@ export default async function PortalLayout({ children }: { children: React.React
             <li key={item.href}>
               <Link
                 href={item.href}
-                className="flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-[13px] font-medium text-ink-soft hover:bg-brand-50 hover:text-brand-700"
+                className="flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium text-ink-soft hover:bg-brand-50 hover:text-brand-700"
               >
                 <item.icon className="size-4" />
                 {t(item.key)}
@@ -83,7 +83,7 @@ export default async function PortalLayout({ children }: { children: React.React
 
       <main className="mx-auto max-w-4xl px-4 py-6 md:px-6 md:py-8">{children}</main>
 
-      <footer className="mx-auto max-w-4xl px-4 pb-10 text-center text-[12px] text-muted md:px-6">
+      <footer className="mx-auto max-w-4xl px-4 pb-10 text-center text-xs text-muted md:px-6">
         {student.org.name} · {settings.organisationName}
       </footer>
     </div>

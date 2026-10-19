@@ -114,11 +114,11 @@ export default async function DocumentationPage({ params, searchParams }: { para
         </div>
         {canWrite && (
           <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-line pt-3">
-            <Link href={`/students/${id}/documentation/ask`} className="rounded-lg bg-brand-600 px-3 py-1.5 text-[13px] font-medium text-white">
+            <Link href={`/students/${id}/documentation/ask`} className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white">
               Ask {student.firstName} for what is missing
             </Link>
             {apps.length > 0 && (
-              <Link href={`/students/${id}/documentation/pack`} className="rounded-lg border border-line px-3 py-1.5 text-[13px] font-medium text-ink">
+              <Link href={`/students/${id}/documentation/pack`} className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-ink">
                 Build a submission pack
               </Link>
             )}
@@ -146,7 +146,7 @@ export default async function DocumentationPage({ params, searchParams }: { para
       {overrides.length > 0 && (
         <Alert tone="info" title="Let through with a reason">
           {overrides.map((o) => (
-            <p key={o.id} className="text-[13px]">
+            <p key={o.id} className="text-sm">
               {stageLabel(o.stage)}: {o.reason} — {o.actor?.name ?? "somebody"}, {fmtDate(o.createdAt)}. Missing at the time: {o.missing.join(", ") || "nothing recorded"}.
             </p>
           ))}
@@ -208,7 +208,7 @@ export default async function DocumentationPage({ params, searchParams }: { para
                   <Td className="whitespace-nowrap text-xs tabular">
                     {row.validTo ? fmtDate(row.validTo) : "—"}
                     {expiresInDays != null && standing !== "DONE" && standing !== "SKIPPED" && row.validTo && (
-                      <span className="block text-[11px] text-muted">{expiresInDays < 0 ? "Out of date" : `${expiresInDays} days left`}</span>
+                      <span className="block text-2xs text-muted">{expiresInDays < 0 ? "Out of date" : `${expiresInDays} days left`}</span>
                     )}
                   </Td>
                   <Td>

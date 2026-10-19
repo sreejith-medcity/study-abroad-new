@@ -69,19 +69,19 @@ export function BriefBox({ keys, step = "" }: { keys: readonly string[]; step?: 
       {!read.length && !notes.length && (
         <div className="flex flex-wrap gap-2">
           {EXAMPLES.map((e) => (
-            <button key={e} type="button" onClick={() => run(e)} className="rounded-full border border-line-strong px-3 py-1 text-left text-[13px] text-ink-soft hover:border-brand-300 hover:text-brand-700">
+            <button key={e} type="button" onClick={() => run(e)} className="rounded-full border border-line-strong px-3 py-1 text-left text-sm text-ink-soft hover:border-brand-300 hover:text-brand-700">
               {e}
             </button>
           ))}
         </div>
       )}
       {read.length > 0 && (
-        <p className="text-[13px] text-ink-soft" data-testid="brief-read">
+        <p className="text-sm text-ink-soft" data-testid="brief-read">
           Taken from that: <span className="font-medium text-ink">{read.join(" · ")}</span>. The fields below are filled in; correct anything that is wrong.
         </p>
       )}
       {notes.map((n) => (
-        <p key={n} className="text-[13px] text-warn-700" data-testid="brief-note">{n}</p>
+        <p key={n} className="text-sm text-warn-700" data-testid="brief-note">{n}</p>
       ))}
     </div>
   );

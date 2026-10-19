@@ -38,7 +38,7 @@ export default async function DestinationsPage() {
                   )}
                 </div>
                 <details>
-                  <summary className="cursor-pointer text-[13px] font-medium text-brand-600">Edit</summary>
+                  <summary className="cursor-pointer text-sm font-medium text-brand-600">Edit</summary>
                   <div className="mt-2"><LivingFundsForm countryId={c.id} currency={c.currency} amount={c.visaLivingFunds} note={c.visaLivingNote} source={c.visaLivingSource} /></div>
                 </details>
               </li>
@@ -48,12 +48,12 @@ export default async function DestinationsPage() {
         <div className="space-y-5 self-start">
           <Card className="p-4">
             <h2 className="mb-1 font-semibold">University rankings</h2>
-            <p className="mb-3 text-[13px] text-muted">From the QS and THE sites themselves, with the edition year. A later file replaces what is there for the universities it lists.</p>
+            <p className="mb-3 text-sm text-muted">From the QS and THE sites themselves, with the edition year. A later file replaces what is there for the universities it lists.</p>
             <RankingsImportForm />
           </Card>
           <Card>
             <CardHeader title="Ranked universities" subtitle={`${ranked.length} with a ranking`} />
-            <ul className="max-h-[480px] divide-y divide-line overflow-y-auto text-[13px]">
+            <ul className="max-h-[480px] divide-y divide-line overflow-y-auto text-sm">
               {ranked.map((u) => (
                 <li key={u.id} className="flex items-center justify-between gap-2 px-4 py-2">
                   <Link href={`/universities/${u.id}`} className="hover:underline">{u.name}</Link>

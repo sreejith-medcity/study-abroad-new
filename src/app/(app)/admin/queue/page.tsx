@@ -74,7 +74,7 @@ export default async function QueuePage({ searchParams }: { searchParams: Promis
       <PageHeader
         title={mine ? "My queue" : "All applications queue"}
         subtitle="Oldest first within each lane. Unassigned applications show in everyone's queue."
-        actions={breaches > 0 ? <Chip tone="bad" className="px-3 py-1 text-sm">{breaches} past SLA</Chip> : <Chip tone="ok" className="px-3 py-1 text-sm">All within SLA</Chip>}
+        actions={breaches > 0 ? <Chip tone="bad" className="px-3 py-1 text-md">{breaches} past SLA</Chip> : <Chip tone="ok" className="px-3 py-1 text-md">All within SLA</Chip>}
       />
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="flex rounded-md border border-line bg-surface p-1" role="tablist" aria-label="Pathway">
@@ -133,7 +133,7 @@ export default async function QueuePage({ searchParams }: { searchParams: Promis
                                 name="officerId"
                                 value={r.officerId ?? ""}
                                 label={`Officer for ${r.ackNo}`}
-                                className="w-full min-w-0 py-1 text-[12px]"
+                                className="w-full min-w-0 py-1 text-xs"
                               >
                                 <option value="">Nobody yet</option>
                                 {officers.map((o) => <option key={o.id} value={o.id}>{o.deskLabel ?? o.name}</option>)}

@@ -58,9 +58,9 @@ export default async function ScholarshipsPage({ searchParams }: { searchParams:
                         {r.eligibility && <p className="text-xs text-muted">{r.eligibility}</p>}
                       </Td>
                       <Td><Link prefetch={false} href={`/universities/${r.universityId}`} className="hover:underline">{r.university}</Link><p className="text-xs text-muted">{r.country}</p></Td>
-                      <Td className="text-[13px]">{r.amount}</Td>
+                      <Td className="text-sm">{r.amount}</Td>
                       <Td className="text-xs">{r.levels.length ? r.levels.map((l) => LEVEL_LABEL[l] ?? l).join(", ") : "All levels"}</Td>
-                      <Td className="whitespace-nowrap text-[13px]">
+                      <Td className="whitespace-nowrap text-sm">
                         {r.deadline ? fmtDate(r.deadline) : "Open"}
                         {expired && <Chip tone="warn" className="ml-1">Passed</Chip>}
                         {!r.active && <Chip className="ml-1">Paused</Chip>}

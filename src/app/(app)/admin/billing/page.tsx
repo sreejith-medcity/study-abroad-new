@@ -94,7 +94,7 @@ export default async function AdminBillingPage({ searchParams }: { searchParams:
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold text-ink">{c.legalName}</span>
                     {c.isDefault && <Chip tone="ok">Default</Chip>}
-                    <span className="ml-auto flex items-center gap-3 text-[13px]">
+                    <span className="ml-auto flex items-center gap-3 text-sm">
                       <a href={`/admin/billing?edit=${c.id}`} className="font-medium text-brand-600 hover:underline">Edit</a>
                       {!c.isDefault && (
                         <form action={setDefaultBillingCompanyAction} className="inline">
@@ -105,16 +105,16 @@ export default async function AdminBillingPage({ searchParams }: { searchParams:
                       <RemoveBillingCompany id={c.id} name={c.legalName} />
                     </span>
                   </div>
-                  <p className="mt-0.5 text-[13px] text-muted">
+                  <p className="mt-0.5 text-sm text-muted">
                     {c.address}, {c.state}
                   </p>
-                  <p className="mt-0.5 text-[13px] tabular text-muted">
+                  <p className="mt-0.5 text-sm tabular text-muted">
                     PAN {c.pan} · GSTIN {c.gstin ?? "Not recorded"} · LUT {c.lutNumber ? `${c.lutNumber} to ${c.lutValidUntil ? fmtDate(c.lutValidUntil) : "a date not recorded"}` : "Not recorded"}
                   </p>
-                  <p className="mt-0.5 text-[13px] text-muted">
+                  <p className="mt-0.5 text-sm text-muted">
                     {c.bankAccountName} · {maskAccount(c.bankAccountNumber)} · {c.ifsc}
                   </p>
-                  <p className={`mt-1 text-[13px] ${tax.percent > 0 ? "font-medium text-warn-700" : "text-good-700"}`}>
+                  <p className={`mt-1 text-sm ${tax.percent > 0 ? "font-medium text-warn-700" : "text-good-700"}`}>
                     An invoice raised today: {tax.treatment}
                     {tax.note ? `. ${tax.note}` : ""}
                   </p>

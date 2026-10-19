@@ -16,7 +16,7 @@ export function PackForm({ applicationId, disabled, candidates }: { applicationI
       <input type="hidden" name="applicationId" value={applicationId} />
       {candidates.length > 0 && (
         <fieldset className="rounded-lg border border-line bg-surface-2/40 p-3">
-          <legend className="px-1 text-[13px] font-medium text-brand-700">Send something the desk has not accepted</legend>
+          <legend className="px-1 text-sm font-medium text-brand-700">Send something the desk has not accepted</legend>
           <p className="mb-2 text-xs text-muted">
             These stay out unless you say otherwise. Tick one only when the vendor has asked for it as it stands: the front sheet marks it as not
             checked, so nobody at the other end reads it as accepted.

@@ -149,7 +149,7 @@ export function RequirementForm({
         <Checkbox name="active" defaultChecked={row ? row.active : true} label="In use" />
       </div>
       {onDone && (
-        <button type="button" onClick={onDone} className="text-[13px] text-muted hover:text-ink">Close</button>
+        <button type="button" onClick={onDone} className="text-sm text-muted hover:text-ink">Close</button>
       )}
     </ActionForm>
   );
@@ -161,13 +161,13 @@ export function RequirementRowActions({ row, types, countries, vendors, universi
   return (
     <div className="text-right">
       <div className="flex items-center justify-end gap-3">
-        <button type="button" className="text-[13px] font-medium text-brand-600 hover:underline" onClick={() => setOpen((v) => !v)}>
+        <button type="button" className="text-sm font-medium text-brand-600 hover:underline" onClick={() => setOpen((v) => !v)}>
           {open ? "Close" : "Edit"}
         </button>
         <form action={setRequirementActiveAction} className="inline">
           <input type="hidden" name="requirementId" value={row.id} />
           <input type="hidden" name="active" value={row.active ? "0" : "1"} />
-          <button type="submit" className="text-[13px] text-muted hover:text-ink">{row.active ? "Pause" : "Use again"}</button>
+          <button type="submit" className="text-sm text-muted hover:text-ink">{row.active ? "Pause" : "Use again"}</button>
         </form>
       </div>
       {open && (
@@ -196,7 +196,7 @@ export function ReasonToggle({ code, active }: { code: string; active: boolean }
     <form action={setReasonActiveAction} className="inline">
       <input type="hidden" name="code" value={code} />
       <input type="hidden" name="active" value={active ? "0" : "1"} />
-      <button type="submit" className="text-[13px] text-muted hover:text-ink">{active ? "Retire" : "Use again"}</button>
+      <button type="submit" className="text-sm text-muted hover:text-ink">{active ? "Retire" : "Use again"}</button>
     </form>
   );
 }

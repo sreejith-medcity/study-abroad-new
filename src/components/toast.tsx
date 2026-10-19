@@ -50,7 +50,7 @@ export function ToastHost() {
         <div
           key={t.id}
           className={cn(
-            "pointer-events-auto flex w-full max-w-sm items-start gap-2.5 rounded-xl border px-3.5 py-2.5 text-[13px] shadow-pop motion-safe:animate-[toast-in_180ms_ease-out]",
+            "pointer-events-auto flex w-full max-w-sm items-start gap-2.5 rounded-xl border px-3.5 py-2.5 text-sm shadow-pop motion-safe:animate-[toast-in_180ms_ease-out]",
             TONE[t.tone],
           )}
         >

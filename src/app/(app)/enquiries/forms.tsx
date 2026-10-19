@@ -136,7 +136,7 @@ export function FollowUpForm({ enquiryId, stage }: { enquiryId: string; stage: s
       <input type="hidden" name="enquiryId" value={enquiryId} />
       <Textarea name="body" rows={3} placeholder="Called, asked about Germany intakes, sending the fee structure." aria-label="What happened" />
       <div className="grid gap-2 sm:grid-cols-2">
-        <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+        <label className="text-2xs font-semibold uppercase tracking-wider text-muted">
           Stage after this
           <Select name="stage" defaultValue={stage} className="mt-1">
             {STAGES.map(([v, l]) => (
@@ -144,7 +144,7 @@ export function FollowUpForm({ enquiryId, stage }: { enquiryId: string; stage: s
             ))}
           </Select>
         </label>
-        <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+        <label className="text-2xs font-semibold uppercase tracking-wider text-muted">
           Next follow up
           <Input type="date" name="nextFollowUpAt" className="mt-1" />
         </label>

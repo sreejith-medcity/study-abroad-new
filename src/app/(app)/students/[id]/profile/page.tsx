@@ -164,7 +164,7 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
                 <Chip>Not invited</Chip>
               )}
             </h2>
-            <p className="mt-1 max-w-xl text-[13px] leading-relaxed text-muted">
+            <p className="mt-1 max-w-xl text-sm leading-relaxed text-muted">
               {portalAccount
                 ? `${portalAccount.email} can sign in to see this application, upload what is missing and message the branch. ${
                     portalAccount.lastSignInAt ? `Last signed in ${fmtDate(portalAccount.lastSignInAt)}.` : "Has not signed in yet."
@@ -191,7 +191,7 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
               Family access
               {liveGuardians.length > 0 ? <Chip tone="ok">{liveGuardians.length} can read this file</Chip> : <Chip>Nobody added</Chip>}
             </h2>
-            <p className="mt-1 max-w-xl text-[13px] leading-relaxed text-muted">
+            <p className="mt-1 max-w-xl text-sm leading-relaxed text-muted">
               A parent or sponsor signs in to a view of their own: which step {student.firstName} is on, what is still wanted, and the dates that matter. They cannot
               change anything, send messages or open the files. {student.firstName} is told on WhatsApp whenever somebody is added, because it is their file.
             </p>
@@ -234,14 +234,14 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
           </div>
         )}
         {liveGuardians.length >= GUARDIAN_LIMIT && (
-          <p className="mt-3 text-[13px] text-muted">{GUARDIAN_LIMIT} family sign-ins is the limit. Remove one to add another.</p>
+          <p className="mt-3 text-sm text-muted">{GUARDIAN_LIMIT} family sign-ins is the limit. Remove one to add another.</p>
         )}
       </Card>
 
       {autofill && !readOnly && readable.length > 0 && (
         <Card className="p-4" id="autofill">
           <h2 className="font-semibold">Fill from a document</h2>
-          <p className="mb-3 text-[13px] text-muted">The file is sent to an AI service to be read. You check what it found before anything is saved.</p>
+          <p className="mb-3 text-sm text-muted">The file is sent to an AI service to be read. You check what it found before anything is saved.</p>
           <AutofillPanel studentId={id} docs={readable.map((d) => ({ id: d.id, label: d.type?.label ?? d.fileName }))} />
         </Card>
       )}
@@ -258,7 +258,7 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
           defaultOpen={false}
           bodyClassName=""
         >
-          <dl className="grid gap-x-6 gap-y-2 px-4 py-3 text-[13px] sm:grid-cols-2">
+          <dl className="grid gap-x-6 gap-y-2 px-4 py-3 text-sm sm:grid-cols-2">
             {[
               ["What they asked about", [enquiry.interestCountry, enquiry.interestPathway].filter(Boolean).join(" · ") || "Not recorded"],
               ["Intake", enquiry.intakeMonth || enquiry.intakeYear ? `${enquiry.intakeMonth ?? ""} ${enquiry.intakeYear ?? ""}`.trim() : "Not recorded"],
@@ -275,7 +275,7 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
           {enquiry.answers.length > 0 && (
             <div className="border-t border-line px-4 py-3">
               <p className="mb-2 text-xs uppercase tracking-wider text-muted">What the branch asked them</p>
-              <ul className="space-y-1.5 text-[13px]">
+              <ul className="space-y-1.5 text-sm">
                 {enquiry.answers.map((a, i) => (
                   <li key={i}>
                     <span className="text-muted">{a.question}</span> {a.answer}
@@ -288,7 +288,7 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
           {enquiry.notes.length > 0 && (
             <ul className="divide-y divide-line border-t border-line">
               {enquiry.notes.map((n) => (
-                <li key={n.id} className="px-4 py-2.5 text-[13px]">
+                <li key={n.id} className="px-4 py-2.5 text-sm">
                   <p className="whitespace-pre-wrap">{n.body}</p>
                   <p className="mt-0.5 text-xs text-muted">{fmtDateTime(n.createdAt)}</p>
                 </li>
@@ -297,7 +297,7 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
           )}
 
           {enquiry.notes.length === 0 && enquiry.answers.length === 0 && (
-            <p className="border-t border-line px-4 py-3 text-[13px] text-muted">
+            <p className="border-t border-line px-4 py-3 text-sm text-muted">
               Nothing was written down on the enquiry beyond what it asked for.
             </p>
           )}
@@ -318,13 +318,13 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
           {staffHere && (
           <form action={setStudentTeamAction} className="flex flex-wrap items-end gap-2 border-b border-line px-4 py-3">
             <input type="hidden" name="studentId" value={id} />
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+            <label className="text-2xs font-semibold uppercase tracking-wider text-muted">
               Team carrying this file
               <select
                 name="teamId"
                 defaultValue={student.teamId ?? ""}
                 disabled={!mayAssign}
-                className="mt-1 block w-52 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[13px]"
+                className="mt-1 block w-52 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm"
               >
                 <option value="">No team</option>
                 {teams.map((t) => (
@@ -333,7 +333,7 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
               </select>
             </label>
             {mayAssign && <Button variant="secondary" size="sm">Save</Button>}
-            <p className="w-full text-[11px] text-muted">
+            <p className="w-full text-2xs text-muted">
               Which part of the business carries this student: Ausbildung, Austria, the UK desk. The queues can be read one team at a time.
             </p>
           </form>
@@ -341,12 +341,12 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
 
           <ul className="divide-y divide-line">
             {onFile.length === 0 && (
-              <li className="px-4 py-3 text-[13px] text-muted">
+              <li className="px-4 py-3 text-sm text-muted">
                 Only the counsellor this file is assigned to. Add whoever else is working on it, and what they do.
               </li>
             )}
             {onFile.map((row) => (
-              <li key={row.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-[13px]">
+              <li key={row.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-sm">
                 <span className="font-medium">{row.user?.deskLabel ?? row.user?.name}</span>
                 <Chip tone="info">{row.part}</Chip>
                 <span className="text-xs text-muted">{ROLE_LABEL[row.user?.role ?? ""] ?? row.user?.role}</span>
@@ -429,9 +429,9 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
       </Section>
 
       <Section id="background" title="Background" state={state.background} defaultOpen={wants(state.background)}>
-        <p className="mb-3 text-[13px] text-muted">Institutions and visa forms ask these of every applicant. Answer once here; a yes needs the details.</p>
+        <p className="mb-3 text-sm text-muted">Institutions and visa forms ask these of every applicant. Answer once here; a yes needs the details.</p>
         {readOnly ? (
-          <ul className="space-y-2 text-sm">
+          <ul className="space-y-2 text-md">
             {BACKGROUND_QUESTIONS.map((q) => {
               const a = student.background[q.key];
               return (

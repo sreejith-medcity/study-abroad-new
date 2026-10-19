@@ -29,7 +29,7 @@ export async function PublicFormPanel({
 
   return (
     <details className="border-t border-line px-4 py-3" open={enabled && enquiries === 0}>
-      <summary className="flex cursor-pointer items-center gap-2 text-[13px] font-medium text-brand-600">
+      <summary className="flex cursor-pointer items-center gap-2 text-sm font-medium text-brand-600">
         <IconGlobe className="size-4" /> Public enquiry form
         {enabled ? <Chip tone="ok">Open</Chip> : <Chip>Closed</Chip>}
       </summary>
@@ -43,11 +43,11 @@ export async function PublicFormPanel({
               dangerouslySetInnerHTML={{ __html: svg }}
             />
             <div className="min-w-48 flex-1 space-y-2">
-              <p className="text-[13px] text-muted">
+              <p className="text-sm text-muted">
                 Print this for the {orgName} counter. Anyone who scans it lands on a form that files an enquiry straight into this
                 branch, with a follow-up due the next day.
               </p>
-              <Link href={url} target="_blank" className="block break-all font-mono text-[12px] text-brand-600 hover:underline">
+              <Link href={url} target="_blank" className="block break-all font-mono text-xs text-brand-600 hover:underline">
                 {url}
               </Link>
               <p className="text-xs text-muted">{enquiries} enquiries have come in through the form.</p>
@@ -67,7 +67,7 @@ export async function PublicFormPanel({
           </>
         ) : (
           <div className="space-y-2">
-            <p className="max-w-lg text-[13px] text-muted">
+            <p className="max-w-lg text-sm text-muted">
               Opening the form gives {orgName} a link and a QR code for its counter, posters and WhatsApp. Submissions arrive as
               enquiries owned by this branch. No sign in, and nothing else about the branch is exposed.
             </p>

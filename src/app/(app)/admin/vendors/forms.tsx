@@ -59,7 +59,7 @@ export function VendorForm({ vendor, onDone }: { vendor?: EditableVendor; onDone
               type="button"
               onClick={() => setColour(c.value)}
               aria-pressed={colour === c.value}
-              className={cn("flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[13px]", colour === c.value ? "border-ink text-ink" : "border-line-strong text-muted")}
+              className={cn("flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-sm", colour === c.value ? "border-ink text-ink" : "border-line-strong text-muted")}
             >
               <span className="size-3 rounded-sm" style={{ background: c.value }} /> {c.label}
             </button>
@@ -69,7 +69,7 @@ export function VendorForm({ vendor, onDone }: { vendor?: EditableVendor; onDone
       </Field>
       <Checkbox name="isDirect" label="Medcity's own agreement with the university, not a vendor" defaultChecked={vendor?.isDirect} />
       <fieldset className="rounded-lg border border-line p-3">
-        <legend className="px-1 text-[13px] font-medium text-brand-700">How they want a submission pack</legend>
+        <legend className="px-1 text-sm font-medium text-brand-700">How they want a submission pack</legend>
         <p className="mb-3 text-xs text-muted">
           Theirs to dictate, not ours. A pack sent in the wrong shape or under the wrong names is a pack that comes back, so it is recorded here once
           instead of remembered every time.
@@ -127,7 +127,7 @@ export function VendorForm({ vendor, onDone }: { vendor?: EditableVendor; onDone
       </div>
       <Field label="Notes" htmlFor="vendor-notes"><Textarea id="vendor-notes" name="notes" rows={2} defaultValue={v(vendor?.notes ?? "")} /></Field>
       {onDone && (
-        <button type="button" onClick={onDone} className="text-[13px] text-muted hover:text-ink">
+        <button type="button" onClick={onDone} className="text-sm text-muted hover:text-ink">
           Cancel
         </button>
       )}
@@ -140,7 +140,7 @@ export function EditVendor({ vendor }: { vendor: EditableVendor }) {
   const [open, setOpen] = useState(false);
   if (!open)
     return (
-      <button type="button" onClick={() => setOpen(true)} className="text-[13px] font-medium text-brand-600 hover:underline">
+      <button type="button" onClick={() => setOpen(true)} className="text-sm font-medium text-brand-600 hover:underline">
         Edit
       </button>
     );

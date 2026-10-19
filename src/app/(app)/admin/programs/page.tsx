@@ -72,10 +72,10 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
               <LinkButton href="/admin/programs/new" variant="secondary" size="sm">Add a course</LinkButton>
               <form action={bulkStatusAction} className="flex flex-wrap items-center gap-2">
                 {PROGRAM_FILTER_KEYS.map((k) => <input key={k} type="hidden" name={k} value={f[k] ?? ""} />)}
-                <a href={`/api/programs/export?${new URLSearchParams(Object.entries(f).filter(([k, v]) => v && (PROGRAM_FILTER_KEYS as readonly string[]).includes(k)))}`} className="mr-2 text-[13px] font-medium text-brand-600 hover:underline">
+                <a href={`/api/programs/export?${new URLSearchParams(Object.entries(f).filter(([k, v]) => v && (PROGRAM_FILTER_KEYS as readonly string[]).includes(k)))}`} className="mr-2 text-sm font-medium text-brand-600 hover:underline">
                   Export CSV
                 </a>
-                <span className="text-[13px] text-muted">All {total} matching:</span>
+                <span className="text-sm text-muted">All {total} matching:</span>
                 <BulkStatusButtons total={total} />
               </form>
             </div>
@@ -85,7 +85,7 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
         }
       />
       {total > 0 && (
-        <form action={bulkTagAction} className="-mt-2 mb-4 flex flex-wrap items-center justify-end gap-2 text-[13px]">
+        <form action={bulkTagAction} className="-mt-2 mb-4 flex flex-wrap items-center justify-end gap-2 text-sm">
           {PROGRAM_FILTER_KEYS.map((k) => <input key={k} type="hidden" name={k} value={f[k] ?? ""} />)}
           <span className="text-muted">Label all {total} matching:</span>
           <Select name="bulkTag" aria-label="Label to apply" defaultValue="" className="w-56 py-1 text-xs">
@@ -97,7 +97,7 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
         </form>
       )}
       {total > 0 && (
-        <form action={bulkTurnaroundAction} className="-mt-2 mb-4 flex flex-wrap items-center justify-end gap-2 text-[13px]">
+        <form action={bulkTurnaroundAction} className="-mt-2 mb-4 flex flex-wrap items-center justify-end gap-2 text-sm">
           {PROGRAM_FILTER_KEYS.map((k) => <input key={k} type="hidden" name={k} value={f[k] ?? ""} />)}
           <span className="text-muted">Offer turnaround for all {total} matching:</span>
           <Input name="bulkTat" aria-label="Offer turnaround in days" inputMode="numeric" placeholder="Days, or blank to clear" className="w-56 py-1 text-xs" />
@@ -184,7 +184,7 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
             )}
             {(page > 1 || page < lastPage) && (
               <div className="flex items-center justify-between border-t border-line px-4 py-3">
-                <span className="text-[13px] text-muted">
+                <span className="text-sm text-muted">
                   Showing {(page - 1) * PAGE + 1} to {(page - 1) * PAGE + rows.length} of {total}
                 </span>
                 <div className="flex gap-2">

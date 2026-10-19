@@ -28,7 +28,7 @@ export default async function AdminContactsPage({ searchParams }: { searchParams
             ) : (
               <ul className="divide-y divide-line">
                 {contacts.map((c) => (
-                  <li key={c.id} className="px-4 py-3 text-[13px]">
+                  <li key={c.id} className="px-4 py-3 text-sm">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <p className="font-medium text-ink">{c.name}{c.title ? `, ${c.title}` : ""}</p>
@@ -55,7 +55,7 @@ export default async function AdminContactsPage({ searchParams }: { searchParams
             {links.length > 0 && (
               <ul className="divide-y divide-line">
                 {links.map((l) => (
-                  <li key={l.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-[13px]">
+                  <li key={l.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm">
                     <div>
                       <a href={l.url} target="_blank" rel="noopener noreferrer" className="font-medium text-brand-600 hover:underline">{l.label}</a>
                       {l.note && <p className="text-muted">{l.note}</p>}

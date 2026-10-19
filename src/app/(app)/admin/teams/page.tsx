@@ -54,21 +54,21 @@ export default async function TeamsPage() {
               <Section key={t.id} id={`team-${t.id}`} title={t.name} meta={meta} defaultOpen={members.length === 0} bodyClassName="">
                 <form action={renameTeamAction} className="flex flex-wrap items-end gap-2 border-b border-line px-4 py-3">
                   <input type="hidden" name="teamId" value={t.id} />
-                  <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                  <label className="text-2xs font-semibold uppercase tracking-wider text-muted">
                     Name
-                    <Input name="name" defaultValue={t.name} className="mt-1 w-44 py-1.5 text-[13px]" />
+                    <Input name="name" defaultValue={t.name} className="mt-1 w-44 py-1.5 text-sm" />
                   </label>
-                  <label className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                  <label className="text-2xs font-semibold uppercase tracking-wider text-muted">
                     What it covers
-                    <Input name="note" defaultValue={t.note ?? ""} className="mt-1 w-72 py-1.5 text-[13px]" />
+                    <Input name="note" defaultValue={t.note ?? ""} className="mt-1 w-72 py-1.5 text-sm" />
                   </label>
                   <Button variant="secondary" size="sm">Save</Button>
                 </form>
 
                 <ul className="divide-y divide-line">
-                  {members.length === 0 && <li className="px-4 py-3 text-[13px] text-muted">Nobody is in this team yet.</li>}
+                  {members.length === 0 && <li className="px-4 py-3 text-sm text-muted">Nobody is in this team yet.</li>}
                   {members.map((m) => (
-                    <li key={m.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-[13px]">
+                    <li key={m.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-sm">
                       <span className="font-medium">{m.user?.deskLabel ?? m.user?.name}</span>
                       {m.user?.deskLabel && <span className="text-xs text-muted">{m.user?.name}</span>}
                       <Chip>{ROLE_LABEL[m.user?.role ?? ""] ?? m.user?.role}</Chip>
@@ -108,10 +108,10 @@ export default async function TeamsPage() {
         </div>
 
         <Card className="h-fit p-4">
-          <h2 className="mb-1 flex items-center gap-2 font-display text-[15px] font-semibold">
+          <h2 className="mb-1 flex items-center gap-2 font-display text-base font-semibold">
             <IconPartners className="size-4 text-brand-600" /> Add a team
           </h2>
-          <p className="mb-3 text-[13px] text-muted">A pathway, a destination, or whatever the work actually divides into.</p>
+          <p className="mb-3 text-sm text-muted">A pathway, a destination, or whatever the work actually divides into.</p>
           <NewTeamForm />
         </Card>
       </div>

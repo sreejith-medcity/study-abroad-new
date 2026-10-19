@@ -31,7 +31,7 @@ export function OrgList({ count, children }: { count: number; children: ReactNod
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Find a branch, a sub-agent or a person"
-          className="max-w-xs py-2 text-[13px]"
+          className="max-w-xs py-2 text-sm"
         />
         <p className="text-xs text-muted">
           {count} {count === 1 ? "organisation" : "organisations"}. Open one to see its people.

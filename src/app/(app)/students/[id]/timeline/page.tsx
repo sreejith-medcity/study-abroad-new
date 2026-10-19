@@ -103,7 +103,7 @@ export default async function TimelinePage({ params, searchParams }: { params: P
                   <Td className="whitespace-nowrap text-xs tabular">{fmtDateTime(c.happenedAt)}</Td>
                   <Td className="text-xs">{CHANNEL_LABEL[c.channel]}{c.inbound ? " in" : ""}</Td>
                   <Td><Chip tone={c.outcome === "NO_ANSWER" || c.outcome === "WRONG_NUMBER" ? "warn" : c.outcome === "NOT_INTERESTED" ? "bad" : "ok"}>{OUTCOME_LABEL[c.outcome]}</Chip></Td>
-                  <Td className="max-w-sm text-[13px]">{c.note ?? "—"}</Td>
+                  <Td className="max-w-sm text-sm">{c.note ?? "—"}</Td>
                   <Td className="whitespace-nowrap text-xs">{c.nextActionOn ? `${fmtDate(c.nextActionOn)}${c.nextActionNote ? `: ${c.nextActionNote}` : ""}` : "—"}</Td>
                   <Td className="text-xs">{c.by ? (c.by.deskLabel ?? c.by.name) : "—"}</Td>
                 </tr>
@@ -145,7 +145,7 @@ export default async function TimelinePage({ params, searchParams }: { params: P
                       e.title
                     )}
                   </p>
-                  {e.detail && <p className="mt-0.5 text-[13px] text-muted">{e.detail}</p>}
+                  {e.detail && <p className="mt-0.5 text-sm text-muted">{e.detail}</p>}
                 </div>
                 {e.who && <span className="shrink-0 text-xs text-muted">{e.who}</span>}
               </li>

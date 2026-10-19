@@ -14,7 +14,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
   }, [error]);
   return (
     <html lang="en">
-      <body className="min-h-screen text-[15px] antialiased">
+      <body className="min-h-screen text-base antialiased">
         <Crash error={error} reset={reset} />
       </body>
     </html>

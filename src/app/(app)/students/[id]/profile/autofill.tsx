@@ -32,10 +32,10 @@ export function AutofillPanel({ studentId, docs }: { studentId: string; docs: { 
           </li>
         ))}
       </ul>
-      {result && !result.ok && <p className="text-[13px] text-stop-700" role="alert">{result.error}</p>}
+      {result && !result.ok && <p className="text-sm text-stop-700" role="alert">{result.error}</p>}
       {result?.ok && (
         <div className="rounded-lg border border-brand-200 bg-brand-50/40 p-3" data-testid="autofill-review">
-          <p className="mb-2 text-[13px] font-medium">Check every box against the document, then save. Blank means it could not be read clearly.</p>
+          <p className="mb-2 text-sm font-medium">Check every box against the document, then save. Blank means it could not be read clearly.</p>
           {result.kind === "passport" && (
             <ActionForm action={applyPassportAction} submitLabel="Save passport details">
               <input type="hidden" name="studentId" value={studentId} />

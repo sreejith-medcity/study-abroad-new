@@ -38,17 +38,17 @@ export function NewKeyForm() {
         <ActionForm action={createIntegrationKeyAction} submitLabel="Make the key" pendingLabel="Making it…">
           <TextField label="What it is for" name="name" required placeholder="Medcity CRM, staging" />
           <fieldset className="space-y-1.5">
-            <legend className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted">What it may do</legend>
+            <legend className="mb-1 text-2xs font-semibold uppercase tracking-wider text-muted">What it may do</legend>
             <Checkbox name="scopes" value="register" defaultChecked label="Register and update students" />
             <Checkbox name="scopes" value="lookup" defaultChecked label="Look a student up" />
             <Checkbox name="scopes" value="enquiry" defaultChecked label="Send leads in" />
-            <p className="text-[12px] text-muted">Untick everything to allow all three, which is the same thing said two ways. Ticking some is narrower, and narrower is better.</p>
+            <p className="text-xs text-muted">Untick everything to allow all three, which is the same thing said two ways. Ticking some is narrower, and narrower is better.</p>
           </fieldset>
           <Checkbox
             name="signatureRequired"
             label="This key must sign every request"
             />
-          <p className="text-[12px] leading-relaxed text-muted">
+          <p className="text-xs leading-relaxed text-muted">
             With signing on, the secret never leaves the vendor's server: they send a signature over the body instead, so a request copied off the wire is no use
             later. With it off, the secret is sent as a bearer token, which is simpler to get started on. It can be switched on afterwards without a new key.
           </p>
@@ -89,7 +89,7 @@ export function TargetForm({ url, enabled, kinds, hasSecret }: { url: string | n
         <Input id="crm-secret" name="secret" type="password" autoComplete="off" placeholder={hasSecret ? "Stored" : "Not set"} />
       </Field>
       <fieldset className="space-y-1.5">
-        <legend className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted">What to send</legend>
+        <legend className="mb-1 text-2xs font-semibold uppercase tracking-wider text-muted">What to send</legend>
         {(Object.keys(OUTBOUND_KINDS) as (keyof typeof OUTBOUND_KINDS)[]).map((k) => (
           <Checkbox key={k} name="kinds" value={k} defaultChecked={kinds.includes(k)} label={`${OUTBOUND_KINDS[k]} (${k})`} />
         ))}
@@ -103,7 +103,7 @@ export function TargetForm({ url, enabled, kinds, hasSecret }: { url: string | n
 export function TestEventForm() {
   return (
     <ActionForm action={sendTestEventAction} submitLabel="Send a test event" pendingLabel="Sending…" submitVariant="secondary">
-      <p className="text-[12.5px] leading-relaxed text-muted">
+      <p className="text-xs leading-relaxed text-muted">
         Queued and sent exactly as a real event is, so what arrives carries the same shape and the same headers. It is marked <code>test: true</code> so nothing
         on their side mistakes it for a student.
       </p>

@@ -63,7 +63,7 @@ export default async function ServicesPage({ searchParams }: { searchParams: Pro
           defaultOpen={named === 0}
           bodyClassName=""
         >
-          <p className="border-b border-line px-4 py-2.5 text-[13px] text-muted">
+          <p className="border-b border-line px-4 py-2.5 text-sm text-muted">
             A request of each kind lands on the person named here, and they are told about it. Anything left as nobody goes to the whole desk,
             which is how all of it worked before.
           </p>
@@ -104,11 +104,11 @@ export default async function ServicesPage({ searchParams }: { searchParams: Pro
                     <p className="font-medium">{SERVICE_LABEL[r.type]}</p>
                     <Chip tone={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Chip>
                   </div>
-                  <p className="text-[13px]">
+                  <p className="text-sm">
                     <Link href={`/students/${r.student.id}/services`} className="font-medium text-brand-600 hover:underline">{fullName(r.student)}</Link>
                     <span className="text-muted"> · {r.org.name}</span>
                   </p>
-                  <p className="whitespace-pre-wrap text-[13px] text-ink-soft">{r.details}</p>
+                  <p className="whitespace-pre-wrap text-sm text-ink-soft">{r.details}</p>
                   <p className="text-xs text-muted">
                     Asked {fmtDateTime(r.createdAt)}{r.requestedBy ? ` by ${r.requestedBy.name}` : ""}
                     {r.owner ? ` · Handled by ${r.owner.name}` : ""}
@@ -120,7 +120,7 @@ export default async function ServicesPage({ searchParams }: { searchParams: Pro
           </ul>
         )}
         {(page > 1 || page * PAGE < total) && (
-          <div className="flex items-center justify-between border-t border-line px-4 py-3 text-[13px]">
+          <div className="flex items-center justify-between border-t border-line px-4 py-3 text-sm">
             <span className="text-muted">Page {page} of {Math.ceil(total / PAGE)}</span>
             <div className="flex gap-2">
               {page > 1 && <LinkButton variant="secondary" size="sm" href={qs({ page: String(page - 1) })}>Previous</LinkButton>}

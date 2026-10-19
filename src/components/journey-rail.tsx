@@ -23,11 +23,11 @@ export function JourneyRail({ current, locale }: { current: JourneyStage; locale
     <Card className="overflow-hidden">
       <div className="brand-wash grain relative px-4 py-4 md:px-5">
         <div className="relative z-10">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/70">
+          <p className="text-2xs font-semibold uppercase tracking-[0.16em] text-white/70">
             {t("stepOf")} {now.number} {t("outOf")} {steps.length}
           </p>
-          <h2 className="mt-0.5 font-display text-[22px] font-semibold text-white">{now.title}</h2>
-          <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-white/85">{now.now}</p>
+          <h2 className="mt-0.5 font-display text-[1.375rem] font-semibold text-white">{now.title}</h2>
+          <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-white/85">{now.now}</p>
         </div>
       </div>
 
@@ -37,7 +37,7 @@ export function JourneyRail({ current, locale }: { current: JourneyStage; locale
             <span
               aria-hidden="true"
               className={cn(
-                "mt-0.5 grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-semibold",
+                "mt-0.5 grid size-6 shrink-0 place-items-center rounded-full text-2xs font-semibold",
                 s.position === "DONE" && "bg-good-500 text-white",
                 s.position === "NOW" && "bg-brand-600 text-white",
                 s.position === "AHEAD" && "border border-line bg-surface text-muted",
@@ -46,8 +46,8 @@ export function JourneyRail({ current, locale }: { current: JourneyStage; locale
               {s.position === "DONE" ? <IconCheck className="size-3.5" /> : s.number}
             </span>
             <div className="min-w-0 flex-1">
-              <p className={cn("text-[14px]", s.position === "AHEAD" ? "text-muted" : "font-medium text-ink")}>{s.title}</p>
-              {s.position === "NOW" && <p className="mt-0.5 text-[12.5px] leading-relaxed text-ink-soft">{s.now}</p>}
+              <p className={cn("text-md", s.position === "AHEAD" ? "text-muted" : "font-medium text-ink")}>{s.title}</p>
+              {s.position === "NOW" && <p className="mt-0.5 text-xs leading-relaxed text-ink-soft">{s.now}</p>}
             </div>
             <span className="shrink-0 pt-0.5">
               {s.position === "DONE" && <Chip tone="ok">{t("stepDone")}</Chip>}
@@ -95,14 +95,14 @@ export function DatesAhead({ dates, locale }: { dates: DateAhead[]; locale: Loca
         {t("datesToKeep")}
       </h2>
       {dates.length === 0 ? (
-        <p className="mt-2 text-[13px] text-muted">{t("noDates")}</p>
+        <p className="mt-2 text-sm text-muted">{t("noDates")}</p>
       ) : (
         <ul className="mt-2.5 space-y-2">
           {dates.map((d, i) => (
             <li key={`${d.kind}-${d.about ?? ""}-${i}`} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-              <span className="tabular text-[13px] font-medium text-ink">{fmtDate(d.on)}</span>
-              <span className="text-[13px] text-ink-soft">{label(d)}</span>
-              <span className={cn("ml-auto text-[12px]", d.inDays < 0 ? "font-medium text-stop-700" : isSoon(d) ? "font-medium text-warn-700" : "text-muted")}>
+              <span className="tabular text-sm font-medium text-ink">{fmtDate(d.on)}</span>
+              <span className="text-sm text-ink-soft">{label(d)}</span>
+              <span className={cn("ml-auto text-xs", d.inDays < 0 ? "font-medium text-stop-700" : isSoon(d) ? "font-medium text-warn-700" : "text-muted")}>
                 {whenText(d, locale)}
               </span>
             </li>

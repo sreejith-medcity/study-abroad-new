@@ -17,9 +17,9 @@ export default async function FamilyDocuments() {
   return (
     <div className="space-y-5">
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-600">{t("familyView")}</p>
-        <h1 className="mt-1 font-display text-[26px] font-semibold text-ink">{t("documentsTitle")}</h1>
-        <p className="mt-1 text-[13px] text-muted">{t("onlyStudentUploads")}</p>
+        <p className="text-2xs font-semibold uppercase tracking-[0.16em] text-brand-600">{t("familyView")}</p>
+        <h1 className="mt-1 font-display text-[1.625rem] font-semibold text-ink">{t("documentsTitle")}</h1>
+        <p className="mt-1 text-sm text-muted">{t("onlyStudentUploads")}</p>
       </div>
 
       {checklist.outstanding.length === 0 ? (
@@ -31,11 +31,11 @@ export default async function FamilyDocuments() {
             {checklist.outstanding.map((o) => (
               <li key={o.code} className="px-4 py-3">
                 <div className="flex flex-wrap items-baseline gap-x-2">
-                  <span className="text-[14px] font-medium text-ink">{o.label}</span>
+                  <span className="text-md font-medium text-ink">{o.label}</span>
                   {o.sentBack ? <Chip tone="bad">{t("sendAgain")}</Chip> : o.asked ? <Chip tone="warn">{t("askedFor")}</Chip> : null}
-                  {o.dueOn && <span className="ml-auto tabular text-[12px] text-muted">{t("dueBy")} {fmtDate(o.dueOn)}</span>}
+                  {o.dueOn && <span className="ml-auto tabular text-xs text-muted">{t("dueBy")} {fmtDate(o.dueOn)}</span>}
                 </div>
-                {o.reason && <p className="mt-1 text-[12.5px] leading-relaxed text-ink-soft">{o.reason}</p>}
+                {o.reason && <p className="mt-1 text-xs leading-relaxed text-ink-soft">{o.reason}</p>}
               </li>
             ))}
           </ul>

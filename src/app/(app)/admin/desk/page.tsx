@@ -104,7 +104,7 @@ export default async function DeskPage({ searchParams }: { searchParams: Promise
                 <tr key={r.id} className={r.quiet ? "bg-warn-50/60" : undefined}>
                   <Td className="whitespace-nowrap text-xs tabular">
                     {waited(r.deskStage === "SUBMITTED" ? (r.lastUpdateAt ?? r.submittedToVendorAt) : r.handedOverAt)}
-                    {r.quiet && <span className="block text-[11px] font-medium text-warn-700">Quiet {r.quietDays} days</span>}
+                    {r.quiet && <span className="block text-2xs font-medium text-warn-700">Quiet {r.quietDays} days</span>}
                   </Td>
                   <Td>
                     <Link href={`/students/${r.studentId}/applications?app=${r.id}`} className="font-medium text-brand-600 hover:underline">{r.studentName}</Link>
@@ -140,7 +140,7 @@ export default async function DeskPage({ searchParams }: { searchParams: Promise
                     )}
                   </Td>
                   <Td>
-                    <Link href={`/students/${r.studentId}/applications?app=${r.id}`} className="text-[13px] font-medium text-brand-600 hover:underline">Work it</Link>
+                    <Link href={`/students/${r.studentId}/applications?app=${r.id}`} className="text-sm font-medium text-brand-600 hover:underline">Work it</Link>
                   </Td>
                 </tr>
               ))}

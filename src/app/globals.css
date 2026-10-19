@@ -62,6 +62,32 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
+  /*
+    The reading sizes, one step up from what the portal shipped with.
+
+    Most of this interface sat at thirteen pixels with labels at eleven,
+    which is fine for a screen somebody glances at and tiring for one a
+    counsellor reads all day. Everything moved up a step: thirteen became
+    fourteen, the labels twelve, the body sixteen.
+
+    All of it is in rem rather than pixels, because rem is a multiple of
+    whatever the document's own size is, which is what lets the reading-size
+    setting in a person's profile move the whole interface at once. A pixel
+    cannot be moved that way, which is why there are none left.
+  */
+  --text-3xs: 0.6875rem; /* 11px: the smallest thing on the screen */
+  --text-3xs--line-height: 1.45;
+  --text-2xs: 0.75rem; /*    12px: a label over a figure */
+  --text-2xs--line-height: 1.45;
+  --text-xs: 0.8125rem; /*   13px: a note beside something */
+  --text-xs--line-height: 1.45;
+  --text-sm: 0.875rem; /*    14px: most of the interface */
+  --text-sm--line-height: 1.5;
+  --text-md: 0.9375rem; /*   15px: a line meant to be read, not scanned */
+  --text-md--line-height: 1.55;
+  --text-base: 1rem; /*      16px: the body */
+  --text-base--line-height: 1.55;
+
   /* Two steps of depth only: cards sit on the page, pop-overs float above it. */
   --shadow-card: 0 1px 1px rgba(28, 20, 32, 0.03), 0 1px 3px rgba(28, 20, 32, 0.05);
   --shadow-lift: 0 1px 1px rgba(28, 20, 32, 0.03), 0 10px 24px -14px rgba(28, 20, 32, 0.3);
@@ -69,8 +95,23 @@
   --shadow-hero: 0 20px 44px -28px rgba(99, 26, 51, 0.55);
 }
 
+/*
+  The reading size a person chose, written on the html element so every size
+  in the portal, which is a multiple of this one, moves with it. Signed out
+  there is no choice to read and the everyday size is used.
+*/
 html {
   -webkit-text-size-adjust: 100%;
+  font-size: 100%;
+}
+html[data-text="compact"] {
+  font-size: 93.75%;
+}
+html[data-text="large"] {
+  font-size: 112.5%;
+}
+html[data-text="largest"] {
+  font-size: 125%;
 }
 
 body {

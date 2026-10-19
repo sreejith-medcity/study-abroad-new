@@ -29,7 +29,7 @@ export default async function CheckPage({ params }: { params: Promise<{ id: stri
       <PageHeader
         title={`Ready to submit? ${app.ackNo}`}
         subtitle={`${fullName(app.student)} · ${app.program.name}, ${app.program.university.name} · ${intakeLabel(app.intakeMonth, app.intakeYear)} · ${app.org.name}`}
-        actions={<StatusBadge group={app.status.group} label={app.status.label} className="text-sm" />}
+        actions={<StatusBadge group={app.status.group} label={app.status.label} className="text-md" />}
       />
       <Card className="p-5">
         <div className="mb-4 flex items-center gap-2">

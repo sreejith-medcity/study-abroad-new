@@ -133,7 +133,7 @@ export default async function ProgramPage({
     <>
       <PageHeader
         eyebrow={
-          <Link href="/search" className="text-[13px] font-medium text-brand-600 hover:underline">
+          <Link href="/search" className="text-sm font-medium text-brand-600 hover:underline">
             ← Search programs
           </Link>
         }
@@ -213,9 +213,9 @@ export default async function ProgramPage({
                 subtitle={routes.length === 1 ? "The road this application takes, and what it means for the student" : "The same course, more than one road. What differs is the turnaround, the fee and what each asks for."}
               />
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[620px] text-[13px]">
+                <table className="w-full min-w-[620px] text-sm">
                   <thead>
-                    <tr className="border-b border-line text-left text-[11px] uppercase tracking-wide text-muted">
+                    <tr className="border-b border-line text-left text-2xs uppercase tracking-wide text-muted">
                       <th className="px-4 py-2 font-semibold">Route</th>
                       <th className="px-4 py-2 font-semibold">Offer in</th>
                       <th className="px-4 py-2 font-semibold">Application fee</th>
@@ -287,7 +287,7 @@ export default async function ProgramPage({
 
           <Card>
             <CardHeader title="Post-study work" subtitle="Only marked eligible where the institution or an official register says so" />
-            <div className="p-4 text-[13px]">
+            <div className="p-4 text-sm">
               {program.workRights === "ELIGIBLE" && (
                 <p className="flex items-start gap-2"><Chip tone="ok"><IconCheck className="size-3.5" /> Eligible</Chip></p>
               )}
@@ -309,14 +309,14 @@ export default async function ProgramPage({
             <DataList rows={requirements} />
             {program.entryRequirements && (
               <div className="border-t border-line p-4">
-                <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">In the institution&apos;s words</p>
-                <p className="whitespace-pre-line text-[13px] leading-relaxed text-ink-soft">{program.entryRequirements}</p>
+                <p className="mb-1.5 text-2xs font-semibold uppercase tracking-wider text-muted">In the institution&apos;s words</p>
+                <p className="whitespace-pre-line text-sm leading-relaxed text-ink-soft">{program.entryRequirements}</p>
               </div>
             )}
             {program.requiredDocs.length > 0 && (
               <div className="border-t border-line p-4">
-                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted">Documents for the application</p>
-                <ul className="grid gap-1 text-[13px] sm:grid-cols-2">
+                <p className="mb-2 text-2xs font-semibold uppercase tracking-wider text-muted">Documents for the application</p>
+                <ul className="grid gap-1 text-sm sm:grid-cols-2">
                   {program.requiredDocs.map((d) => (
                     <li key={d} className="flex items-center gap-1.5"><IconCheck className="size-3.5 text-good-700" /> {DOC_LABEL.get(d) ?? d}</li>
                   ))}
@@ -339,7 +339,7 @@ export default async function ProgramPage({
               <Button type="submit" variant="secondary" size="sm">Check</Button>
             </form>
             {student && fit && (
-              <div className="border-t border-line p-4 text-[13px]">
+              <div className="border-t border-line p-4 text-sm">
                 <p className="mb-2">
                   {fit.verdict === "eligible" && <Chip tone="ok"><IconCheck className="size-3.5" /> Eligible</Chip>}
                   {fit.verdict === "on-track" && <Chip tone="warn"><IconClock className="size-3.5" /> On track</Chip>}
@@ -389,7 +389,7 @@ export default async function ProgramPage({
               <ul className="divide-y divide-line">
                 {siblings.map((x) => (
                   <li key={x.id}>
-                    <Link prefetch={false} href={`/programs/${x.id}`} className="block px-4 py-2.5 text-[13px] hover:bg-surface-2/60">
+                    <Link prefetch={false} href={`/programs/${x.id}`} className="block px-4 py-2.5 text-sm hover:bg-surface-2/60">
                       <span className="font-medium text-ink">{x.name}</span>
                       <span className="block text-xs text-muted">{LEVEL_LABEL[x.level] ?? x.level}{x.studyArea ? ` · ${x.studyArea}` : ""}</span>
                     </Link>
@@ -398,13 +398,13 @@ export default async function ProgramPage({
               </ul>
             )}
             <div className="border-t border-line px-4 py-3">
-              <Link href={`/universities/${university.id}`} className="flex items-center gap-1.5 text-[13px] font-medium text-brand-600 hover:underline">
+              <Link href={`/universities/${university.id}`} className="flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:underline">
                 <IconGlobe className="size-4" /> University page
               </Link>
             </div>
           </Card>
 
-          <p className="px-1 text-[13px] text-muted">
+          <p className="px-1 text-sm text-muted">
             Something&apos;s not right?{" "}
             <Link
               prefetch={false}
@@ -421,7 +421,7 @@ export default async function ProgramPage({
               <ul className="divide-y divide-line">
                 {similar.map((x) => (
                   <li key={x.id}>
-                    <Link prefetch={false} href={`/programs/${x.id}${student ? `?student=${student.id}` : ""}`} className="block px-4 py-2.5 text-[13px] hover:bg-surface-2/60">
+                    <Link prefetch={false} href={`/programs/${x.id}${student ? `?student=${student.id}` : ""}`} className="block px-4 py-2.5 text-sm hover:bg-surface-2/60">
                       <span className="font-medium text-ink">{x.name}</span>
                       <span className="block text-xs text-muted">
                         {x.university} · {tuitionText(x.perYear, x.total, cur)}
@@ -432,7 +432,7 @@ export default async function ProgramPage({
                 ))}
               </ul>
               <div className="border-t border-line px-4 py-3">
-                <Link prefetch={false} href={`/search?${new URLSearchParams({ country: country.code, level: program.level, field: program.studyArea!, ...(student ? { student: student.id } : {}) })}`} className="text-[13px] font-medium text-brand-600 hover:underline">
+                <Link prefetch={false} href={`/search?${new URLSearchParams({ country: country.code, level: program.level, field: program.studyArea!, ...(student ? { student: student.id } : {}) })}`} className="text-sm font-medium text-brand-600 hover:underline">
                   See them all in search
                 </Link>
               </div>

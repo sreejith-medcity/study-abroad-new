@@ -24,7 +24,7 @@ export function FormatBar({ target }: { target: string }) {
     el.dispatchEvent(new Event("input", { bubbles: true }));
     el.focus();
   };
-  const btn = "rounded px-2 py-0.5 text-[13px] text-ink-soft hover:bg-surface-2";
+  const btn = "rounded px-2 py-0.5 text-sm text-ink-soft hover:bg-surface-2";
   return (
     <div className="flex items-center gap-0.5" role="toolbar" aria-label="Formatting">
       <button type="button" className={`${btn} font-bold`} onClick={() => apply("b")} aria-label="Bold">B</button>

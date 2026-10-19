@@ -37,7 +37,7 @@ const TESTS = [
 ] as const;
 const SCORE_KEYS = [...TESTS.map(([k]) => k as string), "ae_12", "ae_ug", "ae_backlogs", "ae_gap"];
 
-const pill = "inline-flex cursor-pointer items-center gap-2 rounded-full border border-line-strong px-3 py-1.5 text-[13px] has-[:checked]:border-brand-600 has-[:checked]:bg-brand-50 has-[:checked]:text-brand-700";
+const pill = "inline-flex cursor-pointer items-center gap-2 rounded-full border border-line-strong px-3 py-1.5 text-sm has-[:checked]:border-brand-600 has-[:checked]:bg-brand-50 has-[:checked]:text-brand-700";
 
 export default async function FinderPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const user = await requireUser([...APP_ROLES]);
@@ -99,7 +99,7 @@ export default async function FinderPage({ searchParams }: { searchParams: Promi
     <fieldset>
       <details open={picked.length === 0} className="rounded-xl border border-line">
         <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2">
-          <span className="text-[13px] font-semibold text-ink">Destinations</span>
+          <span className="text-sm font-semibold text-ink">Destinations</span>
           <span className="text-xs text-muted">
             {picked.length === 0
               ? "anywhere"
@@ -122,7 +122,7 @@ export default async function FinderPage({ searchParams }: { searchParams: Promi
   );
   const levelPills = (
     <fieldset>
-      <legend className="mb-1.5 text-[13px] font-semibold text-ink">Level</legend>
+      <legend className="mb-1.5 text-sm font-semibold text-ink">Level</legend>
       <div className="flex flex-wrap gap-2">
         {LEVELS.map(([key, label]) => (
           <label key={key} className={pill}>
@@ -176,7 +176,7 @@ export default async function FinderPage({ searchParams }: { searchParams: Promi
   );
   const seasonPills = (
     <fieldset>
-      <legend className="mb-1.5 text-[13px] font-semibold text-ink">Intake</legend>
+      <legend className="mb-1.5 text-sm font-semibold text-ink">Intake</legend>
       <div className="flex flex-wrap gap-2">
         {Object.entries(SEASON_LABEL).map(([key, label]) => (
           <label key={key} className={pill}>
@@ -198,7 +198,7 @@ export default async function FinderPage({ searchParams }: { searchParams: Promi
       />
 
       {guided || step === "results" ? (
-        <nav aria-label="Steps" className="mb-4 flex flex-wrap items-center gap-1.5 text-[13px]">
+        <nav aria-label="Steps" className="mb-4 flex flex-wrap items-center gap-1.5 text-sm">
           <Link href={`/finder?${qs({})}`} className="inline-flex items-center gap-1.5 rounded-full border border-line-strong bg-surface px-3 py-1 font-medium text-ink-soft hover:border-brand-300 hover:text-brand-700">
             One screen
           </Link>
@@ -219,7 +219,7 @@ export default async function FinderPage({ searchParams }: { searchParams: Promi
       ) : null}
 
       {summary.length > 0 && step !== "results" && (
-        <p className="mb-3 text-[13px] text-muted" data-testid="finder-summary">So far: <span className="font-medium text-ink">{summary.join(" · ")}</span></p>
+        <p className="mb-3 text-sm text-muted" data-testid="finder-summary">So far: <span className="font-medium text-ink">{summary.join(" · ")}</span></p>
       )}
 
       {step === "" && (
@@ -237,7 +237,7 @@ export default async function FinderPage({ searchParams }: { searchParams: Promi
             {carry(["q", "field", "student", "country", "level", "season", "budget", "durFrom", "durTo", ...PREF_KEYS, ...SCORE_KEYS])}
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <p className="mb-1.5 text-[13px] font-semibold text-ink">Course or field of study</p>
+                <p className="mb-1.5 text-sm font-semibold text-ink">Course or field of study</p>
                 <CourseBox q={f.q} field={f.field} />
               </div>
               <Field label="A student's file" htmlFor="student" hint="Their recorded marks and results are used, practice scores included.">
@@ -249,7 +249,7 @@ export default async function FinderPage({ searchParams }: { searchParams: Promi
             </div>
             {narrowRow}
             <fieldset className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
-              <legend className="mb-1 text-[13px] font-semibold text-ink">Scores as they stand</legend>
+              <legend className="mb-1 text-sm font-semibold text-ink">Scores as they stand</legend>
               {TESTS.map(([key, label, hint]) => (
                 <Field key={key} label={label} htmlFor={key}>
                   <Input id={key} name={key} defaultValue={f[key] ?? ""} inputMode="decimal" placeholder={hint} />
@@ -283,7 +283,7 @@ export default async function FinderPage({ searchParams }: { searchParams: Promi
               </Field>
             </div>
             <fieldset>
-              <legend className="mb-1.5 text-[13px] font-semibold text-ink">What matters most</legend>
+              <legend className="mb-1.5 text-sm font-semibold text-ink">What matters most</legend>
               <div className="flex flex-wrap gap-2">
                 {QUICK.filter((q) => PREF_KEYS.includes(q.key)).map((q) => (
                   <label key={q.key} className={pill}>
@@ -315,7 +315,7 @@ export default async function FinderPage({ searchParams }: { searchParams: Promi
               </Select>
             </Field>
             <fieldset className="grid gap-3 sm:grid-cols-3">
-              <legend className="mb-1 text-[13px] font-semibold text-ink">Or the scores as they stand</legend>
+              <legend className="mb-1 text-sm font-semibold text-ink">Or the scores as they stand</legend>
               {TESTS.map(([key, label, hint]) => (
                 <Field key={key} label={label} htmlFor={key}>
                   <Input id={key} name={key} defaultValue={f[key] ?? ""} inputMode="decimal" placeholder={hint} />
@@ -386,7 +386,7 @@ export default async function FinderPage({ searchParams }: { searchParams: Promi
               ))}
             </div>
             {checker && (
-              <label className="flex items-start gap-2 text-[13px]">
+              <label className="flex items-start gap-2 text-sm">
                 <input type="checkbox" name="fit" value="1" defaultChecked={!!f.fit} className="mt-0.5 size-4" />
                 <span>Leave out anything {student ? student.firstName : "these scores"} cannot meet yet. Programs still within reach, such as one that takes an MOI letter, stay in.</span>
               </label>

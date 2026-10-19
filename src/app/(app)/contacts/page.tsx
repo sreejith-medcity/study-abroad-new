@@ -28,10 +28,10 @@ export default async function ContactsPage() {
         <div className="space-y-4">
           {rm && org?.type !== "HQ" && (
             <Card className="p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">Your relationship manager</p>
+              <p className="text-2xs font-semibold uppercase tracking-wider text-muted">Your relationship manager</p>
               <p className="mt-1 font-semibold text-ink">{rm.name}</p>
-              <p className="text-[13px] text-muted">{[rm.deskLabel, rm.phone].filter(Boolean).join(" · ")}</p>
-              <a href={`mailto:${rm.email}`} className="text-[13px] text-brand-600 hover:underline">{rm.email}</a>
+              <p className="text-sm text-muted">{[rm.deskLabel, rm.phone].filter(Boolean).join(" · ")}</p>
+              <a href={`mailto:${rm.email}`} className="text-sm text-brand-600 hover:underline">{rm.email}</a>
             </Card>
           )}
           {areas.length === 0 ? (
@@ -46,7 +46,7 @@ export default async function ContactsPage() {
                   {contacts
                     .filter((c) => c.area === area)
                     .map((c) => (
-                      <li key={c.id} className="flex flex-wrap items-start justify-between gap-3 px-4 py-3 text-[13px]">
+                      <li key={c.id} className="flex flex-wrap items-start justify-between gap-3 px-4 py-3 text-sm">
                         <div>
                           <p className="font-medium text-ink">{c.name}{c.title ? <span className="font-normal text-muted">, {c.title}</span> : null}</p>
                           {c.hours && <p className="text-xs text-muted">{c.hours}</p>}
@@ -67,11 +67,11 @@ export default async function ContactsPage() {
         <Card className="h-fit">
           <CardHeader title="Quick links" subtitle="Opened in a new tab" />
           {links.length === 0 ? (
-            <p className="px-4 pb-4 text-[13px] text-muted">None yet.</p>
+            <p className="px-4 pb-4 text-sm text-muted">None yet.</p>
           ) : (
             <ul className="divide-y divide-line">
               {links.map((l) => (
-                <li key={l.id} className="px-4 py-2.5 text-[13px]">
+                <li key={l.id} className="px-4 py-2.5 text-sm">
                   <a href={l.url} target="_blank" rel="noopener noreferrer" className="font-medium text-brand-600 hover:underline">{l.label} ↗</a>
                   {l.note && <p className="text-xs text-muted">{l.note}</p>}
                 </li>

@@ -91,7 +91,7 @@ export default async function AccessPage() {
         </Table>
       </Card>
 
-      <p className="mt-3 text-[13px] leading-relaxed text-muted">
+      <p className="mt-3 text-sm leading-relaxed text-muted">
         A tick here reaches every person with that role, at every branch. It never overrides the rules that are not Medcity&rsquo;s to
         choose: nobody passes a document they uploaded themselves, every passport reveal is in the audit log, and a branch
         owner&rsquo;s own switches still sit on top of this.

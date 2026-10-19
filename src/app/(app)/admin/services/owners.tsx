@@ -25,11 +25,11 @@ export function ServiceOwners({
         <ActionForm key={type} action={setServiceOwnerAction} hideSubmit className="space-y-0">
           <input type="hidden" name="type" value={type} />
           <div className="flex flex-wrap items-center gap-2 px-4 py-2.5">
-            <span className="min-w-44 text-[13px] font-medium">{SERVICE_LABEL[type as ServiceType]}</span>
+            <span className="min-w-44 text-sm font-medium">{SERVICE_LABEL[type as ServiceType]}</span>
             <label htmlFor={`owner-${type}`} className="sr-only">
               Who handles {SERVICE_LABEL[type as ServiceType]}
             </label>
-            <Select id={`owner-${type}`} name="userId" defaultValue={owners[type]?.id ?? ""} className="w-56 py-1.5 text-[13px]">
+            <Select id={`owner-${type}`} name="userId" defaultValue={owners[type]?.id ?? ""} className="w-56 py-1.5 text-sm">
               <option value="">Nobody, it goes to the whole desk</option>
               {people.map((p) => (
                 <option key={p.id} value={p.id}>

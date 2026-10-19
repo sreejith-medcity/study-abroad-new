@@ -122,11 +122,11 @@ export function CommandPalette({ groups }: { groups: NavGroup[] }) {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Search the portal"
-        className="hidden items-center gap-2 rounded-lg bg-white/12 px-2.5 py-1.5 text-[13px] text-white/75 ring-1 ring-inset ring-white/15 transition-colors hover:bg-white/20 hover:text-white sm:flex"
+        className="hidden items-center gap-2 rounded-lg bg-white/12 px-2.5 py-1.5 text-sm text-white/75 ring-1 ring-inset ring-white/15 transition-colors hover:bg-white/20 hover:text-white sm:flex"
       >
         <IconSearch className="size-4" />
         <span>Search</span>
-        <kbd className="rounded bg-white/15 px-1.5 py-0.5 font-sans text-[10px] font-semibold tracking-wide">⌘K</kbd>
+        <kbd className="rounded bg-white/15 px-1.5 py-0.5 font-sans text-3xs font-semibold tracking-wide">⌘K</kbd>
       </button>
     );
   }
@@ -156,7 +156,7 @@ export function CommandPalette({ groups }: { groups: NavGroup[] }) {
               }
             }}
             placeholder="Search a student, a program, a university or a screen"
-            className="w-full bg-transparent py-3.5 text-[15px] outline-none focus-visible:outline-none placeholder:text-muted/70"
+            className="w-full bg-transparent py-3.5 text-base outline-none focus-visible:outline-none placeholder:text-muted/70"
           />
           {busy && <span className="size-3.5 shrink-0 animate-spin rounded-full border-2 border-line border-t-brand-600" aria-hidden="true" />}
           <button type="button" onClick={() => setOpen(false)} className="shrink-0 rounded px-1.5 text-xs font-medium text-muted hover:text-ink">
@@ -166,7 +166,7 @@ export function CommandPalette({ groups }: { groups: NavGroup[] }) {
 
         <ul className="thin-scroll max-h-[22rem] overflow-y-auto py-1.5">
           {rows.length === 0 ? (
-            <li className="px-4 py-8 text-center text-[13px] text-muted">
+            <li className="px-4 py-8 text-center text-sm text-muted">
               {query.trim().length < 2 ? "Type at least two letters." : "Nothing matched that."}
             </li>
           ) : (
@@ -175,14 +175,14 @@ export function CommandPalette({ groups }: { groups: NavGroup[] }) {
               return (
                 <li key={row.key}>
                   {newGroup && (
-                    <p className="px-4 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted/70">{row.group}</p>
+                    <p className="px-4 pb-1 pt-2 text-3xs font-semibold uppercase tracking-[0.16em] text-muted/70">{row.group}</p>
                   )}
                   <button
                     type="button"
                     onMouseEnter={() => setCursor(i)}
                     onClick={() => go(row)}
                     className={cn(
-                      "flex w-full items-center gap-3 px-4 py-2 text-left text-sm",
+                      "flex w-full items-center gap-3 px-4 py-2 text-left text-md",
                       i === cursor ? "bg-brand-50 text-brand-700" : "hover:bg-surface-2",
                     )}
                   >
@@ -195,7 +195,7 @@ export function CommandPalette({ groups }: { groups: NavGroup[] }) {
           )}
         </ul>
 
-        <p className="border-t border-line px-4 py-2 text-[11px] text-muted">
+        <p className="border-t border-line px-4 py-2 text-2xs text-muted">
           Up and down to move, Enter to open, Esc to close.
         </p>
       </div>

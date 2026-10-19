@@ -7,7 +7,7 @@ export function DeleteRate({ rateCardId }: { rateCardId: string }) {
   return (
     <form action={deleteRateCardAction} className="inline">
       <input type="hidden" name="rateCardId" value={rateCardId} />
-      <button type="submit" className="text-[13px] text-muted hover:text-ink">Remove</button>
+      <button type="submit" className="text-sm text-muted hover:text-ink">Remove</button>
     </form>
   );
 }

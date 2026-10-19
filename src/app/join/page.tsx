@@ -34,8 +34,8 @@ export default async function JoinPage() {
       <div className="mx-auto max-w-2xl">
         <div className="mb-8 text-center">
           <Logo className="mx-auto" />
-          <h1 className="mt-6 font-display text-[30px] font-semibold leading-tight text-ink">Work with Medcity Overseas</h1>
-          <p className="mt-2 text-[15px] leading-relaxed text-muted">
+          <h1 className="mt-6 font-display text-[1.875rem] font-semibold leading-tight text-ink">Work with Medcity Overseas</h1>
+          <p className="mt-2 text-base leading-relaxed text-muted">
             Send us the students you cannot place yourself, and we will take them from the first conversation to the airport.
           </p>
         </div>
@@ -43,7 +43,7 @@ export default async function JoinPage() {
         <Card className="mb-5 p-5">
           <ul className="space-y-2.5">
             {POINTS.map((p) => (
-              <li key={p} className="flex gap-2.5 text-[14px] leading-relaxed text-ink-soft">
+              <li key={p} className="flex gap-2.5 text-md leading-relaxed text-ink-soft">
                 <span aria-hidden="true" className="mt-1.5 size-1.5 shrink-0 rounded-full bg-brand-600" />
                 {p}
               </li>
@@ -53,8 +53,8 @@ export default async function JoinPage() {
 
         {settings.agentSignupOpen ? (
           <Card className="p-5">
-            <h2 className="mb-1 font-display text-[17px] font-semibold text-ink">Tell us about yourself</h2>
-            <p className="mb-4 text-[13px] text-muted">
+            <h2 className="mb-1 font-display text-lg font-semibold text-ink">Tell us about yourself</h2>
+            <p className="mb-4 text-sm text-muted">
               Somebody from the Overseas team will call you. Nothing here commits you to anything: the agreement comes later, in writing, and you read it before you accept it.
             </p>
             <JoinForm branches={branches.filter((b): b is { slug: string; name: string } => !!b.slug)} />
@@ -65,7 +65,7 @@ export default async function JoinPage() {
           </Alert>
         )}
 
-        <p className="mt-6 text-center text-[12px] text-muted">
+        <p className="mt-6 text-center text-xs text-muted">
           {settings.organisationName}
           {settings.supportPhone ? ` · ${settings.supportPhone}` : ""}
           {settings.supportEmail ? ` · ${settings.supportEmail}` : ""}

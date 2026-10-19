@@ -22,9 +22,9 @@ export function PaymentTable({ rows, showOrg }: { rows: Row[]; showOrg: boolean 
       <tbody>
         {rows.map((r) => (
           <tr key={r.id}>
-            <Td className="whitespace-nowrap text-[13px] text-muted">{fmtDateTime(r.paidAt ?? r.createdAt)}</Td>
-            {showOrg && <Td className="text-[13px]">{r.orgName}</Td>}
-            <Td className="text-[13px]">
+            <Td className="whitespace-nowrap text-sm text-muted">{fmtDateTime(r.paidAt ?? r.createdAt)}</Td>
+            {showOrg && <Td className="text-sm">{r.orgName}</Td>}
+            <Td className="text-sm">
               Application fee
               {r.ackNo && r.studentId && (
                 <Link href={`/students/${r.studentId}/applications?app=${r.applicationId}`} className="ml-1 text-brand-600 hover:underline">{r.ackNo}</Link>
@@ -35,7 +35,7 @@ export function PaymentTable({ rows, showOrg }: { rows: Row[]; showOrg: boolean 
               {r.status === "PAID" ? <Chip tone="ok">Paid</Chip> : r.status === "FAILED" ? <Chip tone="bad">Failed</Chip> : <Chip>Not completed</Chip>}
               {r.failureReason && <p className="mt-1 text-xs text-muted">{r.failureReason}</p>}
             </Td>
-            <Td className="font-mono text-[11px] text-muted">{r.paymentId ?? r.orderId}</Td>
+            <Td className="font-mono text-2xs text-muted">{r.paymentId ?? r.orderId}</Td>
           </tr>
         ))}
       </tbody>

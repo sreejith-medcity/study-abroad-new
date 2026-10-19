@@ -8,9 +8,9 @@ export function DocumentTypeForm({ code, label, guidance, sampleFileName }: { co
   return (
     <ActionForm action={saveDocumentTypeAction} submitLabel={`Save ${label}`} pendingLabel="Saving…" submitVariant="secondary">
       <input type="hidden" name="code" value={code} />
-      <label htmlFor={`g-${code}`} className="text-[13px] font-medium text-ink-soft">Guidance for {label}</label>
+      <label htmlFor={`g-${code}`} className="text-sm font-medium text-ink-soft">Guidance for {label}</label>
       <Textarea id={`g-${code}`} name="guidance" rows={2} defaultValue={guidance ?? ""} placeholder="What a good one looks like: who issues it, what it must show, how recent it must be" className="mt-1" />
-      <div className="mt-2 flex flex-wrap items-center gap-3 text-[13px]">
+      <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
         <label htmlFor={`s-${code}`} className="font-medium text-ink-soft">{sampleFileName ? "Replace the sample" : "Sample file"}</label>
         <input id={`s-${code}`} type="file" name="sample" accept=".pdf,.jpg,.jpeg,.png,.webp" className="text-xs" />
         {sampleFileName && (

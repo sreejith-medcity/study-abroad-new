@@ -24,8 +24,8 @@ export function BulletinForm({ countries }: { countries: { code: string; name: s
         <FieldError name="body" />
       </Field>
       <fieldset>
-        <legend className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">Countries it concerns</legend>
-        <div className="grid grid-cols-2 gap-1 text-[13px]">
+        <legend className="mb-1.5 text-2xs font-semibold uppercase tracking-wider text-muted">Countries it concerns</legend>
+        <div className="grid grid-cols-2 gap-1 text-sm">
           {countries.map((c) => (
             <label key={c.code} className="flex items-center gap-2"><input type="checkbox" name="country" value={c.code} className="accent-brand-600" /> {c.name}</label>
           ))}

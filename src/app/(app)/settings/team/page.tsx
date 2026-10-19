@@ -40,7 +40,7 @@ export default async function TeamPage() {
         <CardHeader title="Your team" subtitle={`${used} of ${org.counsellorSeats} seats in use on the ${org.tier.charAt(0) + org.tier.slice(1).toLowerCase()} tier. Switching someone off moves their students to you and signs them out at once.`} />
         <ul className="divide-y divide-line">
           {people.map((p) => (
-            <li key={p.id} className="px-4 py-3 text-[13px]" data-testid={`member-${p.email}`}>
+            <li key={p.id} className="px-4 py-3 text-sm" data-testid={`member-${p.email}`}>
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <p className="font-medium text-ink">
@@ -62,7 +62,7 @@ export default async function TeamPage() {
               </div>
               {p.role === "COUNSELLOR" && p.active && (
                 <details className="mt-2">
-                  <summary className="cursor-pointer text-[13px] font-medium text-brand-600">Desk and password</summary>
+                  <summary className="cursor-pointer text-sm font-medium text-brand-600">Desk and password</summary>
                   <div className="mt-2 grid gap-3 sm:grid-cols-2">
                     <DeskLabelForm userId={p.id} label={p.deskLabel} />
                     <ResetPasswordForm userId={p.id} name={p.name} />

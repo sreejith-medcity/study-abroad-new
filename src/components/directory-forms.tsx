@@ -25,7 +25,7 @@ export function TeamContactForm({ values }: { values?: Contact }) {
         <TextField id={f("email")} label="Email" name="email" type="email" defaultValue={v?.email ?? ""} />
         <TextField id={f("hours")} label="Hours" name="hours" defaultValue={v?.hours ?? ""} placeholder="Mon to Sat, 9.30 to 6 IST" />
         <TextField id={f("sort")} label="Order" name="sortOrder" type="number" min={0} max={999} defaultValue={String(v?.sortOrder ?? 100)} />
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex items-center gap-2 text-md">
           <input type="checkbox" name="whatsapp" defaultChecked={v?.whatsapp} className="size-4" /> Reachable on WhatsApp
         </label>
       </div>
@@ -57,8 +57,8 @@ export function PromotionForm({ countries }: { countries: { code: string; name: 
         <TextField id="pr-end" label="Ends" name="endsOn" type="date" required />
       </div>
       <fieldset>
-        <legend className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">Destinations it covers (none means all)</legend>
-        <div className="grid grid-cols-2 gap-1 text-[13px]">
+        <legend className="mb-1.5 text-2xs font-semibold uppercase tracking-wider text-muted">Destinations it covers (none means all)</legend>
+        <div className="grid grid-cols-2 gap-1 text-sm">
           {countries.map((c) => (
             <label key={c.code} className="flex items-center gap-2"><input type="checkbox" name="country" value={c.code} className="accent-brand-600" /> {c.name}</label>
           ))}

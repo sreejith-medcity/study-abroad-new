@@ -71,7 +71,7 @@ export function TaskForm({
         </Field>
       )}
       {onDone && (
-        <button type="button" onClick={onDone} className="text-[13px] text-muted hover:text-ink">Close</button>
+        <button type="button" onClick={onDone} className="text-sm text-muted hover:text-ink">Close</button>
       )}
     </ActionForm>
   );
@@ -84,7 +84,7 @@ export function TaskRowActions({ task, done }: { task: { id: string }; done: boo
     return (
       <form action={reopenTaskAction} className="inline">
         <input type="hidden" name="taskId" value={task.id} />
-        <button type="submit" className="text-[13px] text-muted hover:text-ink">Put it back</button>
+        <button type="submit" className="text-sm text-muted hover:text-ink">Put it back</button>
       </form>
     );
   }
@@ -92,26 +92,26 @@ export function TaskRowActions({ task, done }: { task: { id: string }; done: boo
     <span className="flex flex-wrap items-center justify-end gap-3 whitespace-nowrap">
       <form action={finishTaskAction} className="inline">
         <input type="hidden" name="taskId" value={task.id} />
-        <button type="submit" className="text-[13px] font-medium text-brand-600 hover:underline">Done</button>
+        <button type="submit" className="text-sm font-medium text-brand-600 hover:underline">Done</button>
       </form>
       <form action={pushTaskAction} className="inline">
         <input type="hidden" name="taskId" value={task.id} />
         <input type="hidden" name="days" value="1" />
-        <button type="submit" className="text-[13px] text-muted hover:text-ink">Tomorrow</button>
+        <button type="submit" className="text-sm text-muted hover:text-ink">Tomorrow</button>
       </form>
       <form action={pushTaskAction} className="inline">
         <input type="hidden" name="taskId" value={task.id} />
         <input type="hidden" name="days" value="7" />
-        <button type="submit" className="text-[13px] text-muted hover:text-ink">Next week</button>
+        <button type="submit" className="text-sm text-muted hover:text-ink">Next week</button>
       </form>
-      <button type="button" onClick={() => setOpen(true)} className="text-[13px] text-muted hover:text-ink">Note</button>
+      <button type="button" onClick={() => setOpen(true)} className="text-sm text-muted hover:text-ink">Note</button>
       <Modal open={open} onClose={() => setOpen(false)} title="Finish it with a note" description="The note is for whoever reads the file next.">
         <form action={finishTaskAction} className="space-y-3">
           <input type="hidden" name="taskId" value={task.id} />
           <Field label="What happened" htmlFor={`done-${task.id}`}>
             <Input id={`done-${task.id}`} name="doneNote" />
           </Field>
-          <button type="submit" className="rounded-lg bg-brand-600 px-3 py-1.5 text-[13px] font-medium text-white">Done</button>
+          <button type="submit" className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white">Done</button>
         </form>
       </Modal>
     </span>
@@ -129,7 +129,7 @@ export function LogContact({ studentId, studentName }: { studentId: string; stud
   const [next, setNext] = useState<string>(() => suggestedFollowUp("REACHED") ?? "");
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="rounded-lg border border-line px-3 py-1.5 text-[13px] font-medium text-ink">
+      <button type="button" onClick={() => setOpen(true)} className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-ink">
         Log a call
       </button>
       <Modal open={open} onClose={() => setOpen(false)} title={`Log a conversation with ${studentName}`} description="Two clicks. The next action goes on somebody's desk by itself." className="max-w-xl">
@@ -185,7 +185,7 @@ export function AddTask({ people, defaultAssignee, studentId, applicationId }: {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="rounded-lg bg-brand-600 px-3 py-1.5 text-[13px] font-medium text-white">
+      <button type="button" onClick={() => setOpen(true)} className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white">
         Add a task
       </button>
       <Modal open={open} onClose={() => setOpen(false)} title="Add a task" description="On a day, for a person. It shows up on their My day until it is done." className="max-w-xl">

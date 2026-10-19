@@ -90,7 +90,7 @@ function Artwork({ kind, uploaded, version }: { kind: Kind; uploaded: boolean; v
 
   return (
     <div className="rounded-xl border border-line bg-surface-2/50 p-3.5">
-      <p className="font-display text-sm font-semibold text-ink">{copy.title}</p>
+      <p className="font-display text-md font-semibold text-ink">{copy.title}</p>
       <p className="mt-0.5 text-xs leading-relaxed text-muted">{copy.blurb}</p>
 
       <div className={cn("mt-3 grid place-items-center rounded-lg border border-dashed border-line-strong bg-surface p-2", copy.frame)}>
@@ -163,7 +163,7 @@ function UploadForm({ kind, onDone }: { kind: Kind; onDone: () => void }) {
             <img src={preview} alt="What you are about to upload" className="h-28 w-full object-contain" />
           </div>
         ) : (
-          <p className="text-[13px] text-muted">Drop a file here, or choose one below.</p>
+          <p className="text-sm text-muted">Drop a file here, or choose one below.</p>
         )}
         {name && <p className="mt-2 text-xs text-muted">{name}</p>}
         <input
@@ -174,7 +174,7 @@ function UploadForm({ kind, onDone }: { kind: Kind; onDone: () => void }) {
           required
           onChange={(e) => void choose(e.target.files?.[0])}
           aria-label={`${kind === "logo" ? "Logo" : "Favicon"} file`}
-          className="mt-3 block w-full text-[13px] file:mr-3 file:rounded-lg file:border-0 file:bg-brand-600 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-brand-700"
+          className="mt-3 block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-brand-600 file:px-3 file:py-1.5 file:text-md file:font-medium file:text-white hover:file:bg-brand-700"
         />
       </div>
 

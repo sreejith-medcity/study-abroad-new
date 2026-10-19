@@ -33,6 +33,8 @@ export type SessionUser = {
   locale: string;
   /** The surface this person reads the portal on: soft, glass or night. */
   skin: string;
+  /** How large they read it: compact, normal, large or largest. */
+  textSize: string;
   mustChangePassword: boolean;
 };
 
@@ -172,6 +174,7 @@ export const getSession = cache(async (): Promise<SessionUser | null> => {
       studentId: user.studentId,
       locale: user.locale,
       skin: user.skin,
+      textSize: user.textSize,
       mustChangePassword: user.mustChangePassword,
     };
   } catch {

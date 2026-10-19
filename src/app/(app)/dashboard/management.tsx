@@ -147,7 +147,7 @@ export default async function ManagementDashboard({ user, f }: { user: SessionUs
             ]}
           />
 
-          <h2 className="pt-1 text-[11px] font-semibold uppercase tracking-[0.13em] text-muted">More detail</h2>
+          <h2 className="pt-1 text-2xs font-semibold uppercase tracking-[0.13em] text-muted">More detail</h2>
 
           <Section id="trend" title="Twelve month trend" meta="applications created against visas received" defaultOpen={false}>
             <TrendChart points={points} aLabel="Applications" bLabel="Visas" />

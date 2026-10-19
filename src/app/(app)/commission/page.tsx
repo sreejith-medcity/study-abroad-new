@@ -140,10 +140,10 @@ export default async function CommissionPage({ searchParams }: { searchParams: P
                         <p className="ack text-xs text-muted">{r.ackNo}</p>
                       </Td>
                       <Td>
-                        <p className="text-[13px]">{r.universityName}</p>
+                        <p className="text-sm">{r.universityName}</p>
                         <p className="text-xs text-muted">{r.programName} · {r.countryName}</p>
                       </Td>
-                      <Td className="whitespace-nowrap text-[13px]">{intakeLabel(r.intakeMonth, r.intakeYear)}</Td>
+                      <Td className="whitespace-nowrap text-sm">{intakeLabel(r.intakeMonth, r.intakeYear)}</Td>
                       <Td className="whitespace-nowrap text-right">
                         <p className="font-semibold tabular">{r.partnerAmountInr ? inr(r.partnerAmountInr) : money(r.partnerAmount, r.currency)}</p>
                         <p className="text-xs text-muted">of {money(r.grossAmount, r.currency)}</p>
@@ -174,14 +174,14 @@ export default async function CommissionPage({ searchParams }: { searchParams: P
           </Card>
 
           <Card className="p-4">
-            <h2 className="font-display text-[15px] font-semibold">How this works</h2>
-            <ol className="mt-2 space-y-2 text-[13px] leading-relaxed text-muted">
+            <h2 className="font-display text-base font-semibold">How this works</h2>
+            <ol className="mt-2 space-y-2 text-sm leading-relaxed text-muted">
               <li><span className="font-medium text-ink">Expected</span> as soon as your student gets a visa or enrols.</li>
               <li><span className="font-medium text-ink">Invoiced</span> when Medcity bills the institution.</li>
               <li><span className="font-medium text-ink">Received</span> when the institution pays Medcity.</li>
               <li><span className="font-medium text-ink">Paid to you</span> credits your wallet, which you can withdraw.</li>
             </ol>
-            <p className="mt-3 text-[13px] text-muted">
+            <p className="mt-3 text-sm text-muted">
               Amounts in another currency are converted to rupees when your share is settled.
             </p>
           </Card>

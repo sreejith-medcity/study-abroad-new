@@ -41,7 +41,7 @@ function MoneyTable({
     <Card>
       <CardHeader title={title} subtitle={subtitle} />
       {rows.length === 0 ? (
-        <p className="p-4 text-[13px] text-muted">Nothing recorded in this year yet.</p>
+        <p className="p-4 text-sm text-muted">Nothing recorded in this year yet.</p>
       ) : (
         <Table tableClassName="min-w-[640px]">
           <thead>
@@ -107,13 +107,13 @@ export async function MondayRead({
   return (
     <>
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <span className="text-[13px] text-muted">Financial year</span>
+        <span className="text-sm text-muted">Financial year</span>
         {financialYears(today).map((fy) => (
           <Link
             key={fy.key}
             href={`/admin/income?tab=monday&fy=${fy.key}&cur=${showing}`}
             className={cn(
-              "rounded-md px-2.5 py-1 text-[13px] font-medium ring-1 ring-inset",
+              "rounded-md px-2.5 py-1 text-sm font-medium ring-1 ring-inset",
               fy.key === year.key ? "bg-brand-50 text-brand-700 ring-brand-200" : "text-muted ring-line hover:text-ink",
             )}
           >
@@ -124,20 +124,20 @@ export async function MondayRead({
 
       {currencies.length > 1 && (
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          <span className="text-[13px] text-muted">Currency</span>
+          <span className="text-sm text-muted">Currency</span>
           {currencies.map((c) => (
             <Link
               key={c}
               href={`/admin/income?tab=monday&fy=${year.key}&cur=${c}`}
               className={cn(
-                "rounded-md px-2.5 py-1 text-[13px] font-medium ring-1 ring-inset",
+                "rounded-md px-2.5 py-1 text-sm font-medium ring-1 ring-inset",
                 c === showing ? "bg-brand-50 text-brand-700 ring-brand-200" : "text-muted ring-line hover:text-ink",
               )}
             >
               {c}
             </Link>
           ))}
-          <span className="text-[13px] text-muted">Nothing is converted, so every figure matches the bank it came from.</span>
+          <span className="text-sm text-muted">Nothing is converted, so every figure matches the bank it came from.</span>
         </div>
       )}
 
@@ -184,7 +184,7 @@ export async function MondayRead({
         />
       </div>
 
-      <p className="mt-4 text-[13px] leading-relaxed text-muted">
+      <p className="mt-4 text-sm leading-relaxed text-muted">
         A line belongs to the year its money arrived, or, where it has not arrived, the year it was due. Written-off lines are counted
         nowhere{report.setAside.writtenOff > 0 ? `, and ${report.setAside.writtenOff} of them fell in this year` : ""}.
         {report.setAside.otherCurrency > 0

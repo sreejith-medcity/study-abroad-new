@@ -163,14 +163,14 @@ export default async function EnquiriesPage({ searchParams }: { searchParams: Pr
                           {staff && <p className="text-xs text-muted">{r.orgName}</p>}
                         </Td>
                         <Td>
-                          <p className="text-[13px]">{r.interestCountry ?? "Not decided"}</p>
+                          <p className="text-sm">{r.interestCountry ?? "Not decided"}</p>
                           <p className="text-xs text-muted">
                             {r.interestPathway === "AUSBILDUNG" ? "Ausbildung" : r.interestPathway === "NURSING" ? "Nursing" : r.interestPathway === "DEGREE" ? "Degree" : "Pathway open"}
                             {r.intakeMonth && r.intakeYear ? ` · ${intakeLabel(r.intakeMonth, r.intakeYear)}` : ""}
                           </p>
                         </Td>
-                        <Td className="text-[13px]">{SOURCE_LABEL[r.source]}</Td>
-                        <Td className="text-[13px]">{r.assignedToName ?? <span className="text-muted">Unassigned</span>}</Td>
+                        <Td className="text-sm">{SOURCE_LABEL[r.source]}</Td>
+                        <Td className="text-sm">{r.assignedToName ?? <span className="text-muted">Unassigned</span>}</Td>
                         <Td>
                           <Chip tone={STAGE_TONE[r.stage]}>{STAGE_LABEL[r.stage]}</Chip>
                           {r.studentId && (
@@ -195,7 +195,7 @@ export default async function EnquiriesPage({ searchParams }: { searchParams: Pr
               </Table>
             )}
             {(page > 1 || hasNext) && (
-              <div className="flex items-center justify-between border-t border-line px-4 py-3 text-sm">
+              <div className="flex items-center justify-between border-t border-line px-4 py-3 text-md">
                 <span className="text-muted">Page {page}</span>
                 <div className="flex gap-2">
                   {page > 1 && <LinkButton variant="secondary" href={`/enquiries?${qs({ page: String(page - 1) })}`}>Previous</LinkButton>}

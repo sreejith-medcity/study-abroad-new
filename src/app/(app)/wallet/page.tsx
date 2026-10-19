@@ -77,7 +77,7 @@ export default async function WalletPage() {
           <CardHeader
             title="Ledger"
             subtitle="Every credit and payout, newest first"
-            action={<Link href="/commission" className="text-[13px] font-medium text-brand-600 hover:underline">Commission statement</Link>}
+            action={<Link href="/commission" className="text-sm font-medium text-brand-600 hover:underline">Commission statement</Link>}
           />
           {ledger.length === 0 ? (
             <EmptyState title="Nothing in the wallet yet" icon={<IconWallet className="size-5" />}>
@@ -101,7 +101,7 @@ export default async function WalletPage() {
                       <Chip tone={l.amountInr >= 0 ? "ok" : "neutral"}>{KIND_LABEL[l.kind] ?? l.kind}</Chip>
                       {l.note && <p className="mt-1 text-xs text-muted">{l.note}</p>}
                     </Td>
-                    <Td className="text-[13px] text-muted">{l.reference ?? "None"}</Td>
+                    <Td className="text-sm text-muted">{l.reference ?? "None"}</Td>
                     <Td className={`whitespace-nowrap text-right font-semibold tabular ${l.amountInr >= 0 ? "text-good-700" : "text-ink"}`}>
                       {l.amountInr >= 0 ? "+" : "-"}
                       {inr(Math.abs(l.amountInr))}
@@ -132,16 +132,16 @@ export default async function WalletPage() {
                   {heldToEveryCondition(user.orgType) && (
                     <ul className="mb-4 space-y-1.5">
                       {conditions.map((c) => (
-                        <li key={c.key} className="flex items-start gap-2 text-[13px]">
+                        <li key={c.key} className="flex items-start gap-2 text-sm">
                           <span
                             aria-hidden="true"
-                            className={cn("mt-0.5 grid size-4 shrink-0 place-items-center rounded-full text-[10px] font-bold text-white", c.met ? "bg-good-600" : "bg-warn-500")}
+                            className={cn("mt-0.5 grid size-4 shrink-0 place-items-center rounded-full text-3xs font-bold text-white", c.met ? "bg-good-600" : "bg-warn-500")}
                           >
                             {c.met ? "✓" : "!"}
                           </span>
                           <span className="min-w-0">
                             <span className={c.met ? "text-muted" : "font-medium text-ink"}>{c.what}</span>
-                            {!c.met && c.fix && <span className="block text-[12px] text-muted">{c.fix}</span>}
+                            {!c.met && c.fix && <span className="block text-xs text-muted">{c.fix}</span>}
                           </span>
                         </li>
                       ))}
@@ -168,7 +168,7 @@ export default async function WalletPage() {
                   )}
                 </>
               ) : (
-                <p className="text-[13px] text-muted">Ask {org?.name ?? "your branch"}'s owner to request the transfer.</p>
+                <p className="text-sm text-muted">Ask {org?.name ?? "your branch"}'s owner to request the transfer.</p>
               )}
             </div>
           </Card>
@@ -188,7 +188,7 @@ export default async function WalletPage() {
           <Card>
             <CardHeader title="Payout history" subtitle="Last ten requests" />
             {payouts.length === 0 ? (
-              <p className="px-4 py-8 text-center text-[13px] text-muted">No payouts requested yet.</p>
+              <p className="px-4 py-8 text-center text-sm text-muted">No payouts requested yet.</p>
             ) : (
               <ul>
                 {payouts.map((p) => (

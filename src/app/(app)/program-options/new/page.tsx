@@ -23,7 +23,7 @@ export default async function NewOptionRequestPage({ searchParams }: { searchPar
   return (
     <>
       <PageHeader
-        eyebrow={<Link href="/program-options" className="text-[13px] font-medium text-brand-600 hover:underline">← Program options</Link>}
+        eyebrow={<Link href="/program-options" className="text-sm font-medium text-brand-600 hover:underline">← Program options</Link>}
         title="Request program options"
         subtitle="Tell the Overseas team about the student and they send back programs that fit. You can shortlist or apply straight from their list."
       />

@@ -93,21 +93,21 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
         <div className="space-y-4">
           {vendors.length > 0 && (
             <Card className="flex flex-wrap items-center gap-x-6 gap-y-2 p-4">
-              <span className="text-[13px]">
+              <span className="text-sm">
                 <span className="tabular text-lg font-semibold">{readyAltogether.toLocaleString("en-IN")}</span>{" "}
                 <span className="text-muted">ready to invoice, worth {amounts(readyMoney)}</span>
               </span>
               {waitingAltogether > 0 && (
-                <span className="text-[13px] text-muted">
+                <span className="text-sm text-muted">
                   <span className="tabular font-semibold text-ink">{waitingAltogether.toLocaleString("en-IN")}</span> waiting on a milestone
                 </span>
               )}
               {unpricedAltogether > 0 && (
-                <span className="text-[13px] text-muted">
+                <span className="text-sm text-muted">
                   <span className="tabular font-semibold text-ink">{unpricedAltogether.toLocaleString("en-IN")}</span> with no rate recorded, which can never be invoiced until it is
                 </span>
               )}
-              <span className="ml-auto text-[13px] text-muted">
+              <span className="ml-auto text-sm text-muted">
                 across {vendors.length} vendor{vendors.length === 1 ? "" : "s"}
               </span>
             </Card>
@@ -262,7 +262,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
               subtitle="Paid and written-off invoices are out of it. A disputed one stays in, because it is still money we are owed until somebody agrees otherwise, and so does one part-credited, for the part still owed."
               action={
                 aged.invoices.length > 0 ? (
-                  <a href="/api/invoices/ageing-export" className="text-[13px] font-medium text-brand-600 hover:underline">
+                  <a href="/api/invoices/ageing-export" className="text-sm font-medium text-brand-600 hover:underline">
                     Download the {aged.invoices.length.toLocaleString("en-IN")} open invoice{aged.invoices.length === 1 ? "" : "s"}
                   </a>
                 ) : undefined

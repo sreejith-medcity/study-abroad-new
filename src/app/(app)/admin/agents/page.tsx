@@ -65,7 +65,7 @@ export default async function AgentsPage({ searchParams }: { searchParams: Promi
         title="Sub-agents"
         subtitle="People who send Medcity students rather than working them. They apply, accept the agreement, refer, and are paid once Medcity has been paid."
         actions={
-          <Link href="/join" className="text-[13px] font-medium text-brand-600 hover:underline">
+          <Link href="/join" className="text-sm font-medium text-brand-600 hover:underline">
             See the public form
           </Link>
         }
@@ -167,19 +167,19 @@ async function Applications({
                     <span className="block text-xs text-muted tabular">{r.phone}</span>
                     <span className="block break-all text-xs text-muted">{r.email}</span>
                   </Td>
-                  <Td className="text-[13px] text-muted">
+                  <Td className="text-sm text-muted">
                     {[r.city, r.state].filter(Boolean).join(", ") || "Not given"}
                     {r.referredBy && <span className="block text-xs">Via {r.referredBy}</span>}
                     <span className="block text-xs">Applied {fmtDate(r.createdAt)}</span>
                   </Td>
-                  <Td className="max-w-[22rem] text-[12.5px] leading-relaxed text-ink-soft">{r.aboutThem ?? <span className="text-muted">Nothing written</span>}</Td>
+                  <Td className="max-w-[22rem] text-xs leading-relaxed text-ink-soft">{r.aboutThem ?? <span className="text-muted">Nothing written</span>}</Td>
                   {/*
                     What the applicant said about the firm and its owner. Nothing
                     here is verified by the portal: it is what they typed, shown
                     so the desk can check it against the papers before approving.
                     The identity number follows the same rule as a passport.
                   */}
-                  <Td className="max-w-[18rem] text-[12.5px] leading-relaxed">
+                  <Td className="max-w-[18rem] text-xs leading-relaxed">
                     {r.companyLegalName || r.gstin || r.companyPan || r.companyRegistrationNo || r.ownerIdNumber ? (
                       <>
                         {r.companyLegalName && <span className="block font-medium text-ink">{r.companyLegalName}</span>}
@@ -260,10 +260,10 @@ async function Agents() {
                 <tr key={r.id}>
                   <Td>
                     <span className={r.active ? "font-medium text-ink" : "text-muted line-through"}>{r.name}</span>
-                    {r.idCode && <span className="ml-1.5 font-mono text-[11px] text-muted">{r.idCode}</span>}
+                    {r.idCode && <span className="ml-1.5 font-mono text-2xs text-muted">{r.idCode}</span>}
                     {r.city && <span className="block text-xs text-muted">{r.city}</span>}
                   </Td>
-                  <Td className="text-[13px] text-muted">{r.parentName ?? "Nobody in particular"}</Td>
+                  <Td className="text-sm text-muted">{r.parentName ?? "Nobody in particular"}</Td>
                   <Td className="text-right tabular">{r.referrals}</Td>
                   <Td className="text-right tabular">{r.registered}</Td>
                   <Td className="text-right tabular">{inr(r.earned)}</Td>
@@ -287,7 +287,7 @@ async function Agents() {
             </Alert>
           )}
           {rates.length === 0 ? (
-            <p className="px-4 py-3 text-[13px] text-muted">Nothing set yet.</p>
+            <p className="px-4 py-3 text-sm text-muted">Nothing set yet.</p>
           ) : (
             <Table tableClassName="min-w-[620px]">
               <thead>
@@ -302,13 +302,13 @@ async function Agents() {
                 {rates.map((r) => (
                   <tr key={r.id}>
                     <Td className="font-medium">{r.org?.name ?? "Every sub-agent"}</Td>
-                    <Td className="text-[13px]">
+                    <Td className="text-sm">
                       {rateText({ id: r.id, orgId: r.orgId, kind: r.kind, percent: r.percent, flatAmountInr: r.flatAmountInr, activeFrom: r.activeFrom })}
                       <span className="block text-xs text-muted">{FEE_KIND_LABEL[r.kind]}</span>
                       {r.note && <span className="block text-xs text-muted">{r.note}</span>}
                     </Td>
-                    <Td className="whitespace-nowrap tabular text-[13px]">{fmtDate(r.activeFrom)}</Td>
-                    <Td className="text-[13px] text-muted">{r.createdBy?.name ?? "Unknown"}</Td>
+                    <Td className="whitespace-nowrap tabular text-sm">{fmtDate(r.activeFrom)}</Td>
+                    <Td className="text-sm text-muted">{r.createdBy?.name ?? "Unknown"}</Td>
                   </tr>
                 ))}
               </tbody>
@@ -318,7 +318,7 @@ async function Agents() {
 
         <Card className="p-4">
           <h2 className="mb-1 font-semibold text-ink">Add a rate</h2>
-          <p className="mb-3 text-[12.5px] leading-relaxed text-muted">
+          <p className="mb-3 text-xs leading-relaxed text-muted">
             A share is taken of the commission Medcity received for that student. A rate for one sub-agent beats the platform rate, however old it is.
           </p>
           <RateForm agents={(await subAgents()).map((a) => ({ id: a.id, name: a.name }))} />
@@ -342,7 +342,7 @@ async function Referrals({ branches }: { branches: { id: string; name: string; c
           subtitle={`${waiting.length} · a referral the desk has not passed on is a referral nobody is working`}
         />
         {waiting.length === 0 ? (
-          <p className="px-4 py-3 text-[13px] text-muted">Everything a sub-agent has sent is with a branch.</p>
+          <p className="px-4 py-3 text-sm text-muted">Everything a sub-agent has sent is with a branch.</p>
         ) : (
           <Table tableClassName="min-w-[860px]">
             <thead>
@@ -361,8 +361,8 @@ async function Referrals({ branches }: { branches: { id: string; name: string; c
                     <span className="block text-xs text-muted tabular">{r.phone}</span>
                     <span className="block text-xs text-muted">Sent {fmtDate(r.createdAt)}</span>
                   </Td>
-                  <Td className="text-[13px]">{r.agentName}</Td>
-                  <Td className="max-w-[20rem] text-[12.5px] text-ink-soft">
+                  <Td className="text-sm">{r.agentName}</Td>
+                  <Td className="max-w-[20rem] text-xs text-ink-soft">
                     {[r.interestCountry, r.interestPathway].filter(Boolean).join(" · ") || "Not said"}
                     {r.notes && <span className="block text-muted">{r.notes}</span>}
                   </Td>
@@ -379,7 +379,7 @@ async function Referrals({ branches }: { branches: { id: string; name: string; c
       <Card>
         <CardHeader title="Earnings with no figure on them" subtitle={`${unpriced.length} · a sub-agent reads these as "Not recorded" until somebody sets them`} />
         {unpriced.length === 0 ? (
-          <p className="px-4 py-3 text-[13px] text-muted">Every referral earning has an amount.</p>
+          <p className="px-4 py-3 text-sm text-muted">Every referral earning has an amount.</p>
         ) : (
           <Table tableClassName="min-w-[760px]">
             <thead>
@@ -396,7 +396,7 @@ async function Referrals({ branches }: { branches: { id: string; name: string; c
                   <Td className="font-medium">{e.orgName}</Td>
                   <Td>
                     {e.studentName}
-                    {e.medcityId && <span className="block font-mono text-[11px] text-muted">{e.medcityId}</span>}
+                    {e.medcityId && <span className="block font-mono text-2xs text-muted">{e.medcityId}</span>}
                   </Td>
                   <Td>
                     <Chip tone={e.state === "PAYABLE" ? "ok" : "neutral"}>{EARNING_STATE_LABEL[e.state]}</Chip>
@@ -417,7 +417,7 @@ async function Referrals({ branches }: { branches: { id: string; name: string; c
       <Card>
         <CardHeader title="Everything referred" subtitle={`${queue.length}`} />
         {queue.length === 0 ? (
-          <p className="px-4 py-3 text-[13px] text-muted">No sub-agent has sent anybody yet.</p>
+          <p className="px-4 py-3 text-sm text-muted">No sub-agent has sent anybody yet.</p>
         ) : (
           <Table tableClassName="min-w-[820px]">
             <thead>
@@ -443,12 +443,12 @@ async function Referrals({ branches }: { branches: { id: string; name: string; c
                     )}
                     <span className="block text-xs text-muted tabular">{r.phone}</span>
                   </Td>
-                  <Td className="text-[13px]">{r.agentName}</Td>
-                  <Td className="text-[13px] text-muted">
+                  <Td className="text-sm">{r.agentName}</Td>
+                  <Td className="text-sm text-muted">
                     {r.ownerName}
                     {r.withTheDesk && <Chip tone="warn" className="ml-1.5">The desk</Chip>}
                   </Td>
-                  <Td className="text-[13px]">{REFERRAL_STAGE_LABEL[r.stage] ?? r.stage}</Td>
+                  <Td className="text-sm">{REFERRAL_STAGE_LABEL[r.stage] ?? r.stage}</Td>
                 </tr>
               ))}
             </tbody>
@@ -499,8 +499,8 @@ async function Agreement({ superAdmin, settings }: { superAdmin: boolean; settin
                       </Chip>
                     )}
                   </Td>
-                  <Td className="text-[13px]">{v.title}</Td>
-                  <Td className="whitespace-nowrap tabular text-[13px]">{v.effectiveFrom ? fmtDate(v.effectiveFrom) : "Not said"}</Td>
+                  <Td className="text-sm">{v.title}</Td>
+                  <Td className="whitespace-nowrap tabular text-sm">{v.effectiveFrom ? fmtDate(v.effectiveFrom) : "Not said"}</Td>
                   <Td className="text-right tabular">{acceptedCounts[v.id] ?? 0}</Td>
                   <Td>
                     {!v.active && superAdmin && (
@@ -526,7 +526,7 @@ async function Agreement({ superAdmin, settings }: { superAdmin: boolean; settin
             subtitle={standings.version ? `${standings.version.version} · ${notAccepted.length} still to accept` : "Nothing is being asked for"}
           />
           {standings.rows.length === 0 ? (
-            <p className="px-4 py-3 text-[13px] text-muted">No sub-agents yet.</p>
+            <p className="px-4 py-3 text-sm text-muted">No sub-agents yet.</p>
           ) : (
             <Table tableClassName="min-w-[520px]">
               <thead>
@@ -540,10 +540,10 @@ async function Agreement({ superAdmin, settings }: { superAdmin: boolean; settin
                 {standings.rows.map((r) => (
                   <tr key={r.id}>
                     <Td className={r.active ? "font-medium" : "text-muted line-through"}>{r.name}</Td>
-                    <Td className="whitespace-nowrap text-[13px]">
+                    <Td className="whitespace-nowrap text-sm">
                       {r.acceptedAt ? <span className="tabular">{fmtDateTime(r.acceptedAt)}</span> : <Chip tone="warn">Not yet</Chip>}
                     </Td>
-                    <Td className="text-[13px] text-muted">{r.acceptedName ?? "—"}</Td>
+                    <Td className="text-sm text-muted">{r.acceptedName ?? "—"}</Td>
                   </tr>
                 ))}
               </tbody>
@@ -553,13 +553,13 @@ async function Agreement({ superAdmin, settings }: { superAdmin: boolean; settin
 
         <Card className="p-4">
           <h2 className="mb-1 font-semibold text-ink">How the module behaves</h2>
-          <p className="mb-3 text-[12.5px] leading-relaxed text-muted">
+          <p className="mb-3 text-xs leading-relaxed text-muted">
             {superAdmin ? "Only a super admin changes these." : "A super admin changes these."}
           </p>
           {superAdmin ? (
             <AgentSettingsForm signupOpen={settings.agentSignupOpen} requireMou={settings.requireMouBeforePortal} minimum={settings.minWithdrawalInr} />
           ) : (
-            <dl className="space-y-2 text-[13px]">
+            <dl className="space-y-2 text-sm">
               <div>
                 <dt className="text-muted">The application form</dt>
                 <dd className="font-medium">{settings.agentSignupOpen ? "Answers" : "Shut"}</dd>

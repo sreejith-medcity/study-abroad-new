@@ -21,7 +21,7 @@ export default async function ImportsPage({ searchParams }: { searchParams: Prom
       <PageHeader title="Bulk upload" subtitle={team ? "Upload a CSV or Excel sheet for any branch. Every upload is checked first and recorded in the audit log." : "Upload a CSV or Excel sheet for your branch. Every upload is checked first, and nothing is saved until you confirm."} />
       <div className="mb-4 flex flex-wrap gap-2" role="tablist">
         {kinds.map((k) => (
-          <Link key={k} href={`/imports?kind=${k}`} role="tab" aria-selected={k === kind} className={cn("rounded-full border px-3 py-1 text-[13px] font-medium", k === kind ? "border-brand-600 bg-brand-600 text-white" : "border-line-strong text-ink-soft hover:border-brand-300")}>
+          <Link key={k} href={`/imports?kind=${k}`} role="tab" aria-selected={k === kind} className={cn("rounded-full border px-3 py-1 text-sm font-medium", k === kind ? "border-brand-600 bg-brand-600 text-white" : "border-line-strong text-ink-soft hover:border-brand-300")}>
             {IMPORT_KINDS[k].label}
           </Link>
         ))}
@@ -37,9 +37,9 @@ export default async function ImportsPage({ searchParams }: { searchParams: Prom
           <CardHeader
             title="Columns"
             subtitle="The first row holds these names. Leave out any you do not have."
-            action={<a href={`/api/imports/template/${kind}`} className="text-[13px] font-medium text-brand-600 hover:underline">Download the template</a>}
+            action={<a href={`/api/imports/template/${kind}`} className="text-sm font-medium text-brand-600 hover:underline">Download the template</a>}
           />
-          <dl className="divide-y divide-line text-[13px]">
+          <dl className="divide-y divide-line text-sm">
             {columns.map(([c, d]) => (
               <div key={c} className="px-4 py-2">
                 <dt className="font-mono text-xs text-ink">{c}</dt>

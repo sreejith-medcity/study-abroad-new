@@ -42,15 +42,15 @@ export async function RegistrationQr({
         dangerouslySetInnerHTML={{ __html: svg }}
       />
       <div className="min-w-48 flex-1">
-        <p className="font-display text-[15px] font-semibold text-ink">Student registration code</p>
-        <p className="mt-0.5 text-[13px] leading-relaxed text-muted">
+        <p className="font-display text-base font-semibold text-ink">Student registration code</p>
+        <p className="mt-0.5 text-sm leading-relaxed text-muted">
           Print it for the {orgName} counter. Whoever scans it fills in their own details, and the enquiry lands here with a
           follow-up due the next day.
         </p>
         <Link
           href={url}
           target="_blank"
-          className="mt-1.5 inline-flex items-center gap-1.5 break-all font-mono text-[12px] text-brand-600 hover:underline"
+          className="mt-1.5 inline-flex items-center gap-1.5 break-all font-mono text-xs text-brand-600 hover:underline"
         >
           <IconGlobe className="size-3.5 shrink-0" />
           {url}

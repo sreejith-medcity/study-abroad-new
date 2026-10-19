@@ -52,8 +52,8 @@ export default async function AdminEventsPage() {
                     </div>
                     {ev.registrations.length > 0 && (
                       <details className="mt-2">
-                        <summary className="cursor-pointer text-[13px] font-medium text-brand-600">Who is coming</summary>
-                        <ul className="mt-1.5 space-y-0.5 text-[13px]">
+                        <summary className="cursor-pointer text-sm font-medium text-brand-600">Who is coming</summary>
+                        <ul className="mt-1.5 space-y-0.5 text-sm">
                           {ev.registrations.map((r) => (
                             <li key={r.id}>{r.student ? `${fullName(r.student)} (student, via ${r.user.name})` : r.user.name}<span className="text-xs text-muted"> · {r.user.org?.name}</span></li>
                           ))}

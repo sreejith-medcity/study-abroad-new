@@ -46,7 +46,7 @@ export default async function EditProgramPage({ params }: { params: Promise<{ id
     <>
       <PageHeader
         eyebrow={
-          <Link href="/admin/programs" className="text-[13px] font-medium text-brand-600 hover:underline">
+          <Link href="/admin/programs" className="text-sm font-medium text-brand-600 hover:underline">
             ← Programs
           </Link>
         }
@@ -62,7 +62,7 @@ export default async function EditProgramPage({ params }: { params: Promise<{ id
         <Card>
           <CardHeader title="Routes" subtitle="Who this course can be applied through, and what each pays." />
           {routes.length > 0 && (
-            <ul className="divide-y divide-line border-b border-line text-[13px]">
+            <ul className="divide-y divide-line border-b border-line text-sm">
               {routes.map(({ route, vendor, commission }) => {
                 const terms = routeTerms(route, vendor);
                 return (
@@ -101,7 +101,7 @@ export default async function EditProgramPage({ params }: { params: Promise<{ id
         <Card>
           <CardHeader title="Application deadlines" subtitle={`Intakes: ${intakesText(program.intakeMonths)}. Only dates the institution publishes.`} />
           {deadlines.length > 0 && (
-            <ul className="divide-y divide-line border-b border-line text-[13px]">
+            <ul className="divide-y divide-line border-b border-line text-sm">
               {deadlines.map((d) => (
                 <li key={d.id} className="flex items-start justify-between gap-2 px-4 py-2.5">
                   <div>
@@ -121,9 +121,9 @@ export default async function EditProgramPage({ params }: { params: Promise<{ id
         <Card>
           <CardHeader title="Changes" subtitle="Most recent first" />
           {history.length === 0 ? (
-            <p className="px-4 py-6 text-center text-[13px] text-muted">No edits recorded yet.</p>
+            <p className="px-4 py-6 text-center text-sm text-muted">No edits recorded yet.</p>
           ) : (
-            <ul className="divide-y divide-line text-[13px]">
+            <ul className="divide-y divide-line text-sm">
               {history.map((h) => {
                 const changed = (h.meta as { changed?: Record<string, unknown> } | null)?.changed;
                 return (

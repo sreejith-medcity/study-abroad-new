@@ -28,13 +28,13 @@ export default async function PromotionsPage() {
             <Card key={p.id} id={p.id} className="scroll-mt-20">
               <div className="flex flex-wrap items-start justify-between gap-2 px-4 pt-4">
                 <div>
-                  <h2 className="font-display text-[17px] font-semibold text-ink">{p.title}</h2>
-                  <p className="text-[14px] font-medium text-good-700">{p.summary}</p>
+                  <h2 className="font-display text-lg font-semibold text-ink">{p.title}</h2>
+                  <p className="text-md font-medium text-good-700">{p.summary}</p>
                 </div>
                 {st === "running" ? <Chip tone={left <= 7 ? "warn" : "ok"}>{left === 1 ? "Last day" : `${left} days left`}</Chip> : <Chip tone="info">Starts soon</Chip>}
               </div>
               <p className="px-4 pt-1 text-xs text-muted">{rangeText(p.startsOn, p.endsOn)} · {p.countries.length ? p.countries.join(", ") : "All destinations"}</p>
-              <div className="m-4 whitespace-pre-line rounded-lg bg-surface-2 p-3 text-[13px] leading-relaxed text-ink-soft">{p.terms}</div>
+              <div className="m-4 whitespace-pre-line rounded-lg bg-surface-2 p-3 text-sm leading-relaxed text-ink-soft">{p.terms}</div>
             </Card>
           );
         })}
@@ -43,7 +43,7 @@ export default async function PromotionsPage() {
             <CardHeader title="Ended in the last year" />
             <ul className="divide-y divide-line">
               {past.map((p) => (
-                <li key={p.id} className="px-4 py-2.5 text-[13px]">
+                <li key={p.id} className="px-4 py-2.5 text-sm">
                   <p className="font-medium text-ink">{p.title}</p>
                   <p className="text-muted">{p.summary} · {rangeText(p.startsOn, p.endsOn)}</p>
                 </li>

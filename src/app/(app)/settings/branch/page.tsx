@@ -43,12 +43,12 @@ export default async function BranchSettingsPage({ searchParams }: { searchParam
           title="Billing companies"
           subtitle={`The companies you invoice Medcity Overseas from, up to ${MAX_BILLING_COMPANIES}. Payouts go to the one you pick when you request them.`}
         />
-        {companies.length === 0 && !sp.add && <p className="px-4 pb-2 text-[13px] text-muted">None yet. Add one before your first payout request.</p>}
+        {companies.length === 0 && !sp.add && <p className="px-4 pb-2 text-sm text-muted">None yet. Add one before your first payout request.</p>}
         <ul className="divide-y divide-line">
           {companies.map((c) => {
             const lut = lutState(c.lutValidUntil);
             return (
-              <li key={c.id} className="px-4 py-3 text-[13px]">
+              <li key={c.id} className="px-4 py-3 text-sm">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-semibold text-ink">{c.legalName}</span>
                   {c.isDefault && <Chip tone="brand">Default</Chip>}
@@ -95,7 +95,7 @@ export default async function BranchSettingsPage({ searchParams }: { searchParam
 
       <Card>
         <CardHeader title="Commission and counsellors" subtitle="Only you, as the branch owner, can change this." />
-        <div className="flex flex-wrap items-center justify-between gap-3 p-4 text-[13px]">
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4 text-sm">
           <p className="max-w-lg">
             {org.counsellorsSeeCommission
               ? "Counsellors see commission figures in search and on program pages, and can open Commission and Wallet."

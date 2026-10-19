@@ -112,7 +112,7 @@ function Badge({ item, rail }: { item: NavItem; rail: boolean }) {
     );
   }
   return (
-    <span className={cn("ml-auto min-w-[1.35rem] rounded-full px-1.5 py-px text-center text-[11px] font-bold tabular", badgeTone[tone])}>
+    <span className={cn("ml-auto min-w-[1.35rem] rounded-full px-1.5 py-px text-center text-2xs font-bold tabular", badgeTone[tone])}>
       {item.count > 99 ? "99+" : item.count}
     </span>
   );
@@ -124,14 +124,14 @@ function Item({ item, isActive, rail, onNavigate }: { item: NavItem; isActive: b
   if (item.soon) {
     return (
       <span
-        className={cn("flex cursor-default items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-muted/60", rail && "justify-center px-0")}
+        className={cn("flex cursor-default items-center gap-2.5 rounded-lg px-2.5 py-2 text-md text-muted/60", rail && "justify-center px-0")}
         title={`${item.label} — planned for phase ${item.soon.replace("P", "")}`}
       >
         <Icon className="size-[18px] shrink-0" />
         {!rail && (
           <>
             <span className="flex-1 truncate">{item.label}</span>
-            <span className="rounded bg-surface-2 px-1.5 py-0.5 text-[10px] font-semibold text-muted">{item.soon}</span>
+            <span className="rounded bg-surface-2 px-1.5 py-0.5 text-3xs font-semibold text-muted">{item.soon}</span>
           </>
         )}
       </span>
@@ -145,7 +145,7 @@ function Item({ item, isActive, rail, onNavigate }: { item: NavItem; isActive: b
       title={rail ? `${item.label}${waiting}` : undefined}
       aria-label={rail ? `${item.label}${waiting}` : undefined}
       className={cn(
-        "group relative flex items-center gap-2.5 rounded-lg text-sm font-medium transition-colors",
+        "group relative flex items-center gap-2.5 rounded-lg text-md font-medium transition-colors",
         rail ? "mx-auto size-10 justify-center" : "py-2 pl-3 pr-2",
         isActive
           ? rail
@@ -266,7 +266,7 @@ function Groups({ groups, rail, onNavigate }: { groups: NavGroup[]; rail: boolea
           >
             <summary
               className={cn(
-                "flex cursor-pointer list-none items-center gap-2 rounded-lg px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] transition-colors",
+                "flex cursor-pointer list-none items-center gap-2 rounded-lg px-3 py-1.5 text-3xs font-semibold uppercase tracking-[0.16em] transition-colors",
                 here ? "text-brand-700" : "text-muted/70 hover:text-ink-soft",
               )}
             >
@@ -275,14 +275,14 @@ function Groups({ groups, rail, onNavigate }: { groups: NavGroup[]; rail: boolea
               {waiting > 0 && !open && (
                 <span
                   className={cn(
-                    "rounded-full px-1.5 py-px text-[10px] font-bold tabular tracking-normal",
+                    "rounded-full px-1.5 py-px text-3xs font-bold tabular tracking-normal",
                     urgent ? "bg-stop-500 text-white" : "bg-surface-2 text-ink-soft ring-1 ring-inset ring-line-strong",
                   )}
                 >
                   {waiting > 99 ? "99+" : waiting}
                 </span>
               )}
-              <span aria-hidden="true" className="ml-auto text-[13px] leading-none transition-transform group-open/fold:rotate-90">
+              <span aria-hidden="true" className="ml-auto text-sm leading-none transition-transform group-open/fold:rotate-90">
                 &rsaquo;
               </span>
             </summary>
@@ -394,11 +394,11 @@ export function SideNav({ groups }: { groups: NavGroup[] }) {
           aria-pressed={rail}
           title={rail ? "Keep the menu open" : "Put the menu away"}
           className={cn(
-            "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[12px] font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink",
+            "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink",
             !open && "px-0",
           )}
         >
-          <span aria-hidden="true" className={cn("text-[14px] leading-none transition-transform", rail && "rotate-180")}>
+          <span aria-hidden="true" className={cn("text-md leading-none transition-transform", rail && "rotate-180")}>
             &lsaquo;&lsaquo;
           </span>
           {open && <span>{rail ? "Keep the menu open" : "Put the menu away"}</span>}
@@ -437,8 +437,8 @@ export function MobileNav({ groups }: { groups: NavGroup[] }) {
           <button type="button" aria-label="Close menu" onClick={() => setOpen(false)} className="absolute inset-0 bg-ink/40" />
           <div className="absolute inset-y-0 left-0 w-72 max-w-[85%] overflow-y-auto bg-surface shadow-pop">
             <div className="flex items-center justify-between border-b border-line px-4 py-3">
-              <span className="font-display text-sm font-semibold">Menu</span>
-              <button type="button" onClick={() => setOpen(false)} className="rounded-lg px-2 py-1 text-sm text-muted hover:bg-surface-2">
+              <span className="font-display text-md font-semibold">Menu</span>
+              <button type="button" onClick={() => setOpen(false)} className="rounded-lg px-2 py-1 text-md text-muted hover:bg-surface-2">
                 Close
               </button>
             </div>

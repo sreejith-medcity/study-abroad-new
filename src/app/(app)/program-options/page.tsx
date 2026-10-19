@@ -78,8 +78,8 @@ export default async function ProgramOptionsPage({ searchParams }: { searchParam
       <div className="grid gap-5 lg:grid-cols-[340px_minmax(0,1fr)]">
         <div className="space-y-3">
           <div className="flex gap-2">
-            <Link href={href({ tab: undefined, id: undefined })} className={cn("rounded-full border px-3 py-1 text-[13px] font-medium", !archived ? "border-brand-600 bg-brand-600 text-white" : "border-line-strong text-ink-soft")}>Requested</Link>
-            <Link href={href({ tab: "archived", id: undefined })} className={cn("rounded-full border px-3 py-1 text-[13px] font-medium", archived ? "border-brand-600 bg-brand-600 text-white" : "border-line-strong text-ink-soft")}>Archived</Link>
+            <Link href={href({ tab: undefined, id: undefined })} className={cn("rounded-full border px-3 py-1 text-sm font-medium", !archived ? "border-brand-600 bg-brand-600 text-white" : "border-line-strong text-ink-soft")}>Requested</Link>
+            <Link href={href({ tab: "archived", id: undefined })} className={cn("rounded-full border px-3 py-1 text-sm font-medium", archived ? "border-brand-600 bg-brand-600 text-white" : "border-line-strong text-ink-soft")}>Archived</Link>
           </div>
           <form className="flex gap-2">
             {archived && <input type="hidden" name="tab" value="archived" />}
@@ -116,7 +116,7 @@ export default async function ProgramOptionsPage({ searchParams }: { searchParam
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <p className="text-lg font-semibold">{detail.studentName}</p>
-                  <p className="text-[13px] text-muted">{detail.requestNo} · asked {fmtDateTime(detail.createdAt)} by {detail.requestedBy?.name ?? "someone who has left"}{staff ? ` · ${detail.org.name}` : ""}</p>
+                  <p className="text-sm text-muted">{detail.requestNo} · asked {fmtDateTime(detail.createdAt)} by {detail.requestedBy?.name ?? "someone who has left"}{staff ? ` · ${detail.org.name}` : ""}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Chip tone={OPTIONS_STATUS_TONE[detail.status]}>{OPTIONS_STATUS_LABEL[detail.status]}</Chip>
@@ -127,7 +127,7 @@ export default async function ProgramOptionsPage({ searchParams }: { searchParam
                   </form>
                 </div>
               </div>
-              <dl className="mt-3 grid gap-x-4 gap-y-2 text-[13px] sm:grid-cols-3">
+              <dl className="mt-3 grid gap-x-4 gap-y-2 text-sm sm:grid-cols-3">
                 <div><dt className="text-muted">Educated in</dt><dd>{detail.educationCountry ?? "Not given"}</dd></div>
                 <div><dt className="text-muted">Highest level</dt><dd>{detail.highestLevel}</dd></div>
                 <div><dt className="text-muted">Destinations</dt><dd>{detail.destinations.map((c) => countries.get(c) ?? c).join(", ")}</dd></div>
@@ -135,13 +135,13 @@ export default async function ProgramOptionsPage({ searchParams }: { searchParam
                 <div><dt className="text-muted">Areas</dt><dd>{detail.studyAreas.join(", ")}</dd></div>
                 <div><dt className="text-muted">With the team</dt><dd>{detail.assignedTo ? `${detail.assignedTo.name}${detail.assignedTo.phone ? ` · ${detail.assignedTo.phone}` : ""}` : "Not picked up yet"}</dd></div>
               </dl>
-              {detail.additionalInfo && <p className="mt-3 whitespace-pre-wrap rounded-md bg-ground/60 px-3 py-2 text-[13px]">{detail.additionalInfo}</p>}
+              {detail.additionalInfo && <p className="mt-3 whitespace-pre-wrap rounded-md bg-ground/60 px-3 py-2 text-sm">{detail.additionalInfo}</p>}
               {detail.files.length > 0 && (
-                <p className="mt-3 flex flex-wrap gap-2 text-[13px]">
+                <p className="mt-3 flex flex-wrap gap-2 text-sm">
                   {detail.files.map((f) => <a key={f.id} href={`/api/option-files/${f.id}`} target="_blank" rel="noopener noreferrer" className="rounded border border-line px-2 py-0.5 text-brand-600 hover:underline">{f.fileName}</a>)}
                 </p>
               )}
-              <div className="mt-3 border-t border-line pt-3 text-[13px]">
+              <div className="mt-3 border-t border-line pt-3 text-sm">
                 {detail.student ? (
                   <p>Student file: <Link href={`/students/${detail.student.id}/profile`} className="font-medium text-brand-600 hover:underline">{fullName(detail.student)}</Link></p>
                 ) : (
@@ -175,7 +175,7 @@ export default async function ProgramOptionsPage({ searchParams }: { searchParam
                 )}
               </div>
               {detail.programs.length === 0 ? (
-                <p className="px-4 py-6 text-center text-[13px] text-muted">{staff ? "Add programs below, then send the list." : "The Overseas team is working on it. You are notified when the list is ready."}</p>
+                <p className="px-4 py-6 text-center text-sm text-muted">{staff ? "Add programs below, then send the list." : "The Overseas team is working on it. You are notified when the list is ready."}</p>
               ) : (
                 <ul className="divide-y divide-line">
                   {detail.programs.map((x) => (
@@ -209,7 +209,7 @@ export default async function ProgramOptionsPage({ searchParams }: { searchParam
                   {finder.length > 0 && (
                     <ul className="mt-3 divide-y divide-line rounded-md border border-line">
                       {finder.filter((p) => !detail.programs.some((x) => x.program.id === p.id)).map((p) => (
-                        <li key={p.id} className="flex items-center justify-between gap-2 px-3 py-2 text-[13px]">
+                        <li key={p.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
                           <span className="min-w-0"><span className="font-medium">{p.name}</span><span className="block text-xs text-muted">{p.university} · {p.country} · {LEVEL_LABEL[p.level] ?? p.level} · {tuitionText(p.perYear, p.total, p.currency)}</span></span>
                           <form action={addOptionAction}>
                             <input type="hidden" name="requestId" value={detail.id} />
@@ -231,15 +231,15 @@ export default async function ProgramOptionsPage({ searchParams }: { searchParam
                   const team = m.author ? !(PARTNER_ROLES as readonly string[]).includes(m.author.role) : false;
                   return (
                     <li key={m.id} className={cn("flex", team ? "justify-start" : "justify-end")}>
-                      <div className={cn("max-w-[85%] rounded-lg px-3 py-2 text-[13px]", team ? "bg-brand-50" : "bg-surface-2")}>
+                      <div className={cn("max-w-[85%] rounded-lg px-3 py-2 text-sm", team ? "bg-brand-50" : "bg-surface-2")}>
                         <p className="text-xs font-semibold">{m.author?.name ?? "Former user"}{team && <span className="font-normal text-brand-700"> · Overseas team</span>}</p>
                         <RichText text={m.body} />
-                        <p className="text-[11px] text-muted">{fmtDateTime(m.createdAt)}</p>
+                        <p className="text-2xs text-muted">{fmtDateTime(m.createdAt)}</p>
                       </div>
                     </li>
                   );
                 })}
-                {detail.messages.length === 0 && <li className="text-[13px] text-muted">No messages yet.</li>}
+                {detail.messages.length === 0 && <li className="text-sm text-muted">No messages yet.</li>}
               </ul>
               <OptionMessageForm requestId={detail.id} />
             </Card>

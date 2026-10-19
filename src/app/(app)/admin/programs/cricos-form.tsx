@@ -25,7 +25,7 @@ export function CricosForm({ lastSync }: { lastSync: string | null }) {
   }
   return (
     <form onSubmit={onSubmit} className="space-y-3">
-      <p className="text-[13px] leading-relaxed text-muted">
+      <p className="text-sm leading-relaxed text-muted">
         Every course Australia registers for international students, from the government&apos;s CRICOS register on data.gov.au:
         provider, campus, level, field, duration and whole-course tuition. Entry requirements and intakes are not in the register, so
         they stay blank. Safe to run again: courses update by their CRICOS code and anything added by hand is kept.
@@ -34,7 +34,7 @@ export function CricosForm({ lastSync }: { lastSync: string | null }) {
       {state.error && <Alert tone="bad">{state.error}</Alert>}
       {state.ok && <Alert tone="ok">{state.ok}</Alert>}
       <Checkbox name="publish" label="Publish new courses straight away (otherwise they land as drafts)" />
-      <details className="text-[13px]">
+      <details className="text-sm">
         <summary className="cursor-pointer font-medium text-brand-600">Server cannot reach data.gov.au? Upload the files</summary>
         <div className="mt-2 space-y-2">
           <Field label="CRICOS Institutions.csv" htmlFor="cr-inst"><input id="cr-inst" type="file" name="institutions" accept=".csv" className="text-xs" /></Field>

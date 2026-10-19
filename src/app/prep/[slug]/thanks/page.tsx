@@ -17,8 +17,8 @@ export default async function PrepThanksPage({ params }: { params: Promise<{ slu
         <span className="mx-auto grid size-12 place-items-center rounded-full bg-good-50 text-good-700">
           <IconCheck className="size-6" />
         </span>
-        <h1 className="mt-4 font-display text-[22px] font-semibold text-ink">We have your details</h1>
-        <p className="mt-2 text-[14px] leading-relaxed text-muted">
+        <h1 className="mt-4 font-display text-[1.375rem] font-semibold text-ink">We have your details</h1>
+        <p className="mt-2 text-md leading-relaxed text-muted">
           Someone from {org.portalName ?? org.name}{org.city ? `, ${org.city}` : ""} will call you within a working day about batches and dates.
         </p>
         <div className="mt-6 flex justify-center border-t border-line pt-5">

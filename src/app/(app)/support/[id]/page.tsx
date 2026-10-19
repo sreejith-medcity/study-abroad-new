@@ -29,7 +29,7 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
   return (
     <>
       <PageHeader
-        eyebrow={<Link href="/support" className="text-[13px] font-medium text-brand-600 hover:underline">← Help desk</Link>}
+        eyebrow={<Link href="/support" className="text-sm font-medium text-brand-600 hover:underline">← Help desk</Link>}
         title={ticket.subject}
         subtitle={`${CATEGORY_LABEL[ticket.category]}${staff ? ` · ${ticket.org.name}` : ""} · opened ${fmtDateTime(ticket.createdAt)}${ticket.owner ? ` · with ${ticket.owner.name}` : ""}`}
         actions={<Chip tone={TICKET_STATUS_TONE[ticket.status]}>{staff && ticket.status === "WAITING_PARTNER" ? "Waiting on the partner" : staff && ticket.status === "OPEN" ? "Waiting on the team" : TICKET_STATUS_LABEL[ticket.status]}</Chip>}
@@ -42,8 +42,8 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
               <li key={m.id} className={cn("flex", fromTeam ? "justify-start" : "justify-end")}>
                 <div className={cn("max-w-[85%] rounded-lg px-3 py-2", fromTeam ? "bg-brand-50" : "bg-surface-2")}>
                   <p className="text-xs font-semibold">{m.author?.name ?? "Former user"}{fromTeam && <span className="font-normal text-brand-700"> · Overseas team</span>}</p>
-                  <RichText text={m.body} className="text-[13px]" />
-                  <p className="mt-1 text-[11px] text-muted">{fmtDateTime(m.createdAt)}</p>
+                  <RichText text={m.body} className="text-sm" />
+                  <p className="mt-1 text-2xs text-muted">{fmtDateTime(m.createdAt)}</p>
                 </div>
               </li>
             );

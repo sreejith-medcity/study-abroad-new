@@ -54,7 +54,7 @@ export default async function AgreementPage() {
             {standing.accepted ? (
               <Card className="p-4">
                 <h2 className="font-semibold text-ink">You have accepted this version</h2>
-                <dl className="mt-2 space-y-1 text-[13px]">
+                <dl className="mt-2 space-y-1 text-sm">
                   <div>
                     <dt className="text-muted">Accepted by</dt>
                     <dd className="font-medium">{standing.acceptance!.acceptedName}</dd>
@@ -68,7 +68,7 @@ export default async function AgreementPage() {
                     <dd className="tabular">{fmtDateTime(standing.acceptance!.createdAt)}</dd>
                   </div>
                 </dl>
-                <p className="mt-3 text-[12.5px] leading-relaxed text-muted">
+                <p className="mt-3 text-xs leading-relaxed text-muted">
                   This is a record that somebody with your sign-in accepted these words on that day. It is not an electronic signature, and it does not replace a
                   document either side asks you to sign on paper.
                 </p>
@@ -76,7 +76,7 @@ export default async function AgreementPage() {
             ) : canAccept ? (
               <Card className="p-4">
                 <h2 className="mb-1 font-semibold text-ink">Accept it</h2>
-                <p className="mb-3 text-[12.5px] leading-relaxed text-muted">
+                <p className="mb-3 text-xs leading-relaxed text-muted">
                   Read the whole thing first. Your name, your account and the date are kept against this version. Money cannot be withdrawn until this is done.
                 </p>
                 <AcceptMouForm versionId={standing.version.id} version={standing.version.version} />
@@ -90,7 +90,7 @@ export default async function AgreementPage() {
             <Card>
               <CardHeader title="What you have accepted before" subtitle={`${history.length}`} />
               {history.length === 0 ? (
-                <p className="px-4 py-3 text-[13px] text-muted">Nothing yet.</p>
+                <p className="px-4 py-3 text-sm text-muted">Nothing yet.</p>
               ) : (
                 <Table>
                   <thead>
@@ -104,8 +104,8 @@ export default async function AgreementPage() {
                     {history.map((h) => (
                       <tr key={h.id}>
                         <Td className="font-medium">{h.version?.version}</Td>
-                        <Td className="text-[13px]">{h.acceptedName}</Td>
-                        <Td className="whitespace-nowrap tabular text-[13px]">{fmtDate(h.createdAt)}</Td>
+                        <Td className="text-sm">{h.acceptedName}</Td>
+                        <Td className="whitespace-nowrap tabular text-sm">{fmtDate(h.createdAt)}</Td>
                       </tr>
                     ))}
                   </tbody>

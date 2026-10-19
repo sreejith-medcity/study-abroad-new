@@ -66,7 +66,7 @@ export function PublicEnquiryForm({ slug, countries, questions = [] }: { slug: s
       <TextareaField label="Anything you want us to know" name="message" rows={3} hint="Your qualification, your IELTS score, a question" />
 
       <div className="rounded-lg border border-line bg-surface-2/60 p-3.5">
-        <label className="flex items-start gap-2.5 text-[13px] leading-relaxed">
+        <label className="flex items-start gap-2.5 text-sm leading-relaxed">
           <input type="checkbox" name="consent" className="mt-0.5 size-4 shrink-0 accent-brand-600" />
           <span>{CONSENT}</span>
         </label>

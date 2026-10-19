@@ -27,7 +27,7 @@ export function NewProgramForm({ countries }: { countries: { code: string; name:
           <Field label="University" htmlFor="newUniversity" required hint="Its full official name. Check the list first, so the catalogue does not end up with two spellings of one university.">
             <Input id="newUniversity" name="newUniversity" placeholder="Teesside University" />
             <FieldError name="newUniversity" />
-            <button type="button" onClick={() => setAdding(false)} className="mt-1 text-[13px] font-medium text-brand-700 hover:underline">
+            <button type="button" onClick={() => setAdding(false)} className="mt-1 text-sm font-medium text-brand-700 hover:underline">
               Search the ones already here instead
             </button>
           </Field>
@@ -44,7 +44,7 @@ export function NewProgramForm({ countries }: { countries: { code: string; name:
             />
             <FieldError name="universityId" />
             {!university && (
-              <button type="button" onClick={() => setAdding(true)} className="mt-1 text-[13px] font-medium text-brand-700 hover:underline">
+              <button type="button" onClick={() => setAdding(true)} className="mt-1 text-sm font-medium text-brand-700 hover:underline">
                 It is not in the list, add it
               </button>
             )}

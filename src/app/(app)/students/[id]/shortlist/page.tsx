@@ -124,8 +124,8 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
     <Card>
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
         <div>
-          <h2 className="font-display text-[15px] font-semibold">Shortlist<span data-print="only" className="font-normal"> for {student.firstName} {student.lastName}, prepared {fmtDate(new Date())}</span></h2>
-          <p className="text-[13px] text-muted">
+          <h2 className="font-display text-base font-semibold">Shortlist<span data-print="only" className="font-normal"> for {student.firstName} {student.lastName}, prepared {fmtDate(new Date())}</span></h2>
+          <p className="text-sm text-muted">
             {items.length} of {SHORTLIST_LIMIT} · blank figures have not been verified with the institution
           </p>
         </div>
@@ -135,7 +135,7 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
         </div>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-[13px]" style={{ minWidth: `${180 + cols.length * 240}px` }}>
+        <table className="w-full border-collapse text-sm" style={{ minWidth: `${180 + cols.length * 240}px` }}>
           <thead>
             <tr>
               <th className="sticky left-0 z-10 w-[180px] bg-surface" />
@@ -151,7 +151,7 @@ export default async function ShortlistPage({ params }: { params: Promise<{ id: 
           <tbody>
             {rows.map((r) => (
               <tr key={r.label} className="border-t border-line" data-print={r.hidePrint ? "hide" : undefined}>
-                <th scope="row" className="sticky left-0 z-10 bg-surface px-4 py-2.5 text-left align-top text-[11px] font-semibold uppercase tracking-wider text-muted">{r.label}</th>
+                <th scope="row" className="sticky left-0 z-10 bg-surface px-4 py-2.5 text-left align-top text-2xs font-semibold uppercase tracking-wider text-muted">{r.label}</th>
                 {cols.map((c) => (
                   <td key={c.p.id} className="border-l border-line px-4 py-2.5 align-top">{r.cell(c)}</td>
                 ))}

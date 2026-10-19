@@ -119,7 +119,7 @@ export function LineForm({
         <Textarea id={`i-note-${key}`} name="note" rows={2} defaultValue={line?.note ?? ""} />
       </Field>
       {onDone && (
-        <button type="button" onClick={onDone} className="text-[13px] text-muted hover:text-ink">Close</button>
+        <button type="button" onClick={onDone} className="text-sm text-muted hover:text-ink">Close</button>
       )}
     </ActionForm>
   );
@@ -130,7 +130,7 @@ export function AddLine({ studentId, applications, vendors }: { studentId: strin
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="rounded-lg bg-brand-600 px-3 py-1.5 text-[13px] font-medium text-white">
+      <button type="button" onClick={() => setOpen(true)} className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white">
         Add a line
       </button>
       <Modal open={open} onClose={() => setOpen(false)} title="Add a line of income" description="What Medcity earns on this student, and who pays it." className="max-w-2xl">
@@ -160,18 +160,18 @@ export function LineActions({
   return (
     <span className="flex flex-wrap items-center justify-end gap-3 whitespace-nowrap">
       {!settled && (
-        <button type="button" onClick={() => setOpen("received")} className="text-[13px] font-medium text-brand-600 hover:underline">Money in</button>
+        <button type="button" onClick={() => setOpen("received")} className="text-sm font-medium text-brand-600 hover:underline">Money in</button>
       )}
       {line.state !== "WRITTEN_OFF" && (
-        <button type="button" onClick={() => setOpen("edit")} className="text-[13px] text-muted hover:text-ink">Edit</button>
+        <button type="button" onClick={() => setOpen("edit")} className="text-sm text-muted hover:text-ink">Edit</button>
       )}
       {canWriteOff && !settled && (
-        <button type="button" onClick={() => setOpen("off")} className="text-[13px] text-muted hover:text-ink">Write off</button>
+        <button type="button" onClick={() => setOpen("off")} className="text-sm text-muted hover:text-ink">Write off</button>
       )}
       {line.expectedAmount == null && line.invoicedAmount == null && line.receivedAmount == null && (
         <form action={deleteIncomeLineAction} className="inline">
           <input type="hidden" name="lineId" value={line.id} />
-          <button type="submit" className="text-[13px] text-muted hover:text-ink">Remove</button>
+          <button type="submit" className="text-sm text-muted hover:text-ink">Remove</button>
         </form>
       )}
 
@@ -213,7 +213,7 @@ export function LayOutLines({ studentId, missing }: { studentId: string; missing
   if (missing.length === 0) return null;
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="rounded-lg border border-line px-3 py-1.5 text-[13px] font-medium text-ink">
+      <button type="button" onClick={() => setOpen(true)} className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-ink">
         Lay out the usual lines
       </button>
       <Modal

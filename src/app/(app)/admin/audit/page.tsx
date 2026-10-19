@@ -143,16 +143,16 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
                     </Td>
                     <Td>
                       <Chip tone={actionTone(r.action)}>{actionLabel(r.action)}</Chip>
-                      <p className="mt-1 font-mono text-[11px] text-muted/80">{r.action}</p>
+                      <p className="mt-1 font-mono text-2xs text-muted/80">{r.action}</p>
                     </Td>
                     <Td>
                       <p className="text-xs uppercase tracking-wide text-muted">{r.entityType.replace(/_/g, " ")}</p>
                       {href ? (
-                        <Link href={href} className="font-mono text-[11px] text-brand-600 hover:underline">
+                        <Link href={href} className="font-mono text-2xs text-brand-600 hover:underline">
                           {r.entityId.slice(0, 12)}
                         </Link>
                       ) : (
-                        <span className="font-mono text-[11px] text-muted">{r.entityId === "*" ? "all records" : r.entityId.slice(0, 12)}</span>
+                        <span className="font-mono text-2xs text-muted">{r.entityId === "*" ? "all records" : r.entityId.slice(0, 12)}</span>
                       )}
                     </Td>
                     <Td>
@@ -171,7 +171,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
           </Table>
         )}
         {(page > 1 || hasNext) && (
-          <div className="flex items-center justify-between border-t border-line px-4 py-3 text-sm">
+          <div className="flex items-center justify-between border-t border-line px-4 py-3 text-md">
             <span className="text-muted">
               Page {page} of the newest entries first{total ? ` · ${total} total` : ""}
             </span>

@@ -41,21 +41,21 @@ export function AssistantChat({ left }: { left: number | null }) {
       <div className="flex-1 space-y-3 p-4" aria-live="polite">
         {turns.length === 0 && (
           <div className="space-y-2">
-            <p className="text-[13px] text-muted">Ask about programs in the catalogue, entry requirements or the application process. Figures come only from the catalogue.</p>
+            <p className="text-sm text-muted">Ask about programs in the catalogue, entry requirements or the application process. Figures come only from the catalogue.</p>
             <div className="flex flex-wrap gap-2">
               {STARTERS.map((s) => (
-                <button key={s} type="button" onClick={() => send(s)} className="rounded-full border border-line-strong px-3 py-1 text-[13px] text-ink-soft hover:border-brand-300 hover:text-brand-700">{s}</button>
+                <button key={s} type="button" onClick={() => send(s)} className="rounded-full border border-line-strong px-3 py-1 text-sm text-ink-soft hover:border-brand-300 hover:text-brand-700">{s}</button>
               ))}
             </div>
           </div>
         )}
         {turns.map((t, i) => (
-          <div key={i} className={cn("max-w-[85%] rounded-xl px-3.5 py-2.5 text-[14px] leading-relaxed", t.role === "user" ? "ml-auto bg-brand-600 text-white" : "bg-surface-2 text-ink")} data-role={t.role}>
+          <div key={i} className={cn("max-w-[85%] rounded-xl px-3.5 py-2.5 text-md leading-relaxed", t.role === "user" ? "ml-auto bg-brand-600 text-white" : "bg-surface-2 text-ink")} data-role={t.role}>
             {t.role === "assistant" ? <RichText text={t.text} /> : t.text}
           </div>
         ))}
-        {busy && <p className="text-[13px] text-muted">Looking it up…</p>}
-        {error && <p className="text-[13px] text-stop-700" role="alert">{error}</p>}
+        {busy && <p className="text-sm text-muted">Looking it up…</p>}
+        {error && <p className="text-sm text-stop-700" role="alert">{error}</p>}
         <div ref={end} />
       </div>
       <form

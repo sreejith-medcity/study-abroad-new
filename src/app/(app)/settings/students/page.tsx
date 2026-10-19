@@ -24,7 +24,7 @@ export default async function StudentPlatformPage() {
       </Card>
       <Card>
         <CardHeader title="Test preparation page" subtitle="Medcity's IELTS, PTE, OET and German courses on a page of your own, in the look above. Enquiries from it come to your Enquiries." />
-        <div className="flex flex-wrap items-center justify-between gap-3 p-4 pt-0 text-[13px]">
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4 pt-0 text-sm">
           {org.prepPageEnabled && org.publicSlug ? (
             <p>
               On, at{" "}

@@ -76,8 +76,8 @@ export function Modal({
       >
         <div className="flex items-start justify-between gap-3 border-b border-line px-4 py-3">
           <div>
-            <h2 className="font-display text-[15px] font-semibold text-ink">{title}</h2>
-            {description && <p className="text-[13px] text-muted">{description}</p>}
+            <h2 className="font-display text-base font-semibold text-ink">{title}</h2>
+            {description && <p className="text-sm text-muted">{description}</p>}
           </div>
           <button
             type="button"

@@ -136,7 +136,7 @@ function KeepAlert({ message, onDismiss }: { message: string; onDismiss: () => v
   }
   return (
     <div className="rounded-xl border border-gold-500/40 bg-gold-300/20 p-3.5">
-      <p className="text-[13px] leading-relaxed text-ink">{message}</p>
+      <p className="text-sm leading-relaxed text-ink">{message}</p>
       <div className="mt-2.5 flex flex-wrap items-center gap-2">
         <Button type="button" size="sm" variant="secondary" onClick={copy}>
           {copied ? "Copied" : "Copy"}

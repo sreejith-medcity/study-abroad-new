@@ -28,10 +28,10 @@ export function Logo({
         <path d="M13 26c0-9 4.5-15.9 13-19.4-1 4.6-2.8 8.2-5.2 11C18.3 20.3 15.8 23 13 26z" fill={tone === "light" ? "#fff" : "var(--color-brand-600)"} />
       </svg>
       <span className="leading-none">
-        <span className={cn("block font-display text-[15px] font-bold tracking-tight", tone === "light" ? "text-white" : "text-ink")}>
+        <span className={cn("block font-display text-base font-bold tracking-tight", tone === "light" ? "text-white" : "text-ink")}>
           {primary.toUpperCase()}
         </span>
-        <span className={cn("block text-[10px] font-semibold tracking-[0.18em]", tone === "light" ? "text-white/80" : "text-brand-600")}>
+        <span className={cn("block text-3xs font-semibold tracking-[0.18em]", tone === "light" ? "text-white/80" : "text-brand-600")}>
           {secondary.toUpperCase()}
         </span>
       </span>
@@ -43,7 +43,7 @@ export function Logo({
 
 const btn = {
   base: "inline-flex items-center justify-center gap-1.5 rounded-lg font-medium whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-  size: { sm: "px-2.5 py-1.5 text-[13px]", md: "px-3.5 py-2 text-sm", lg: "px-5 py-2.5" },
+  size: { sm: "px-2.5 py-1.5 text-sm", md: "px-3.5 py-2 text-md", lg: "px-5 py-2.5" },
   variant: {
     primary: "bg-brand-600 text-white shadow-[0_1px_0_rgba(0,0,0,0.04)] hover:bg-brand-700",
     secondary: "border border-line-strong bg-surface text-ink hover:border-brand-300 hover:text-brand-700",
@@ -66,7 +66,7 @@ export function LinkButton({ variant = "primary", size = "md", className, ...pro
 /* ---------------- Form controls ---------------- */
 
 const field =
-  "block w-full min-w-0 rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-ink transition-colors placeholder:text-muted/60 hover:border-line-strong focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-100 disabled:bg-surface-2 disabled:text-muted";
+  "block w-full min-w-0 rounded-lg border border-line-strong bg-surface px-3 py-2 text-md text-ink transition-colors placeholder:text-muted/60 hover:border-line-strong focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-100 disabled:bg-surface-2 disabled:text-muted";
 
 export function Input({ className, ...props }: ComponentProps<"input">) {
   return <input className={cn(field, className)} {...props} />;
@@ -79,7 +79,7 @@ export function Input({ className, ...props }: ComponentProps<"input">) {
 export function DateInput({ label, name, defaultValue, className }: { label: string; name: string; defaultValue?: string; className?: string }) {
   return (
     <label className={cn("block min-w-0", className)}>
-      <span className="mb-1 block text-[11px] font-medium text-muted">{label}</span>
+      <span className="mb-1 block text-2xs font-medium text-muted">{label}</span>
       <Input type="date" name={name} aria-label={label} defaultValue={defaultValue} />
     </label>
   );
@@ -96,7 +96,7 @@ export function Textarea({ className, ...props }: ComponentProps<"textarea">) {
 export function Field({ label, htmlFor, children, hint, required }: { label: string; htmlFor: string; children: ReactNode; hint?: string; required?: boolean }) {
   return (
     <div className="space-y-1.5">
-      <label htmlFor={htmlFor} className="block text-[11px] font-semibold uppercase tracking-wider text-muted">
+      <label htmlFor={htmlFor} className="block text-2xs font-semibold uppercase tracking-wider text-muted">
         {label}
         {required && <span className="text-brand-600"> *</span>}
       </label>
@@ -108,7 +108,7 @@ export function Field({ label, htmlFor, children, hint, required }: { label: str
 
 export function Checkbox({ label, className, ...props }: ComponentProps<"input"> & { label: ReactNode }) {
   return (
-    <label className={cn("flex items-start gap-2.5 text-sm", className)}>
+    <label className={cn("flex items-start gap-2.5 text-md", className)}>
       <input type="checkbox" className="mt-0.5 size-4 shrink-0 rounded border-line-strong text-brand-600 accent-brand-600" {...props} />
       <span>{label}</span>
     </label>
@@ -125,8 +125,8 @@ export function CardHeader({ title, subtitle, action, className }: { title: Reac
   return (
     <div className={cn("flex flex-wrap items-start justify-between gap-3 border-b border-line px-4 py-3", className)}>
       <div>
-        <h2 className="font-display text-[15px] font-semibold text-ink">{title}</h2>
-        {subtitle && <p className="text-[13px] text-muted">{subtitle}</p>}
+        <h2 className="font-display text-base font-semibold text-ink">{title}</h2>
+        {subtitle && <p className="text-sm text-muted">{subtitle}</p>}
       </div>
       {action}
     </div>
@@ -137,7 +137,7 @@ export function PageHeader({ title, subtitle, actions, eyebrow }: { title: strin
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
       <div>
-        {eyebrow && <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-600">{eyebrow}</div>}
+        {eyebrow && <div className="mb-1 text-2xs font-semibold uppercase tracking-[0.14em] text-brand-600">{eyebrow}</div>}
         <h1 className="font-display text-2xl font-semibold text-ink">{title}</h1>
         {subtitle && <p className="mt-0.5 text-muted">{subtitle}</p>}
       </div>
@@ -203,7 +203,7 @@ export function Stat({ label, value, tone = "brand", href, icon }: { label: stri
   const body = (
     <>
       <div className="flex items-start justify-between gap-2">
-        <p className="text-[13px] font-medium text-muted">{label}</p>
+        <p className="text-sm font-medium text-muted">{label}</p>
         {icon && (
           <span className={cn("grid size-7 place-items-center rounded-lg transition-opacity", tones[tone], nothing && "opacity-45")}>
             {icon}
@@ -211,7 +211,7 @@ export function Stat({ label, value, tone = "brand", href, icon }: { label: stri
         )}
       </div>
       {/* A zero is dimmed so the eye lands on the figures that need attention. */}
-      <p className={cn("mt-2 font-display text-[26px] font-semibold leading-none tabular", nothing ? "text-muted/55" : "text-ink")}>{value}</p>
+      <p className={cn("mt-2 font-display text-[1.625rem] font-semibold leading-none tabular", nothing ? "text-muted/55" : "text-ink")}>{value}</p>
     </>
   );
   const shell = "rounded-xl border border-line bg-surface p-3.5 shadow-card";
@@ -243,29 +243,38 @@ export function EmptyState({
     <div className="px-6 py-14 text-center">
       {icon && <div className="mx-auto mb-3 grid size-11 place-items-center rounded-full bg-brand-50 text-brand-600">{icon}</div>}
       <p className="font-display text-base font-semibold text-ink">{title}</p>
-      {children && <div className="mx-auto mt-1 max-w-md text-[13px] text-muted">{children}</div>}
+      {children && <div className="mx-auto mt-1 max-w-md text-sm text-muted">{children}</div>}
       {action && <div className="mt-4 flex flex-wrap items-center justify-center gap-2">{action}</div>}
     </div>
   );
 }
 
+/**
+ * A table that scrolls sideways rather than squashing a column.
+ *
+ * The cells are a little tighter than the rest of the portal: the reading
+ * sizes went up a step and the widest list, students, came to within forty
+ * pixels of needing a sideways scroll it never needed before. Two pixels off
+ * each side of each cell buys that back, and is not something anybody will
+ * see.
+ */
 export function Table({ children, className, tableClassName }: { children: ReactNode; className?: string; tableClassName?: string }) {
   return (
     <div className={cn("thin-scroll overflow-x-auto", className)}>
-      <table className={cn("w-full border-collapse text-left text-sm", tableClassName)}>{children}</table>
+      <table className={cn("w-full border-collapse text-left text-md", tableClassName)}>{children}</table>
     </div>
   );
 }
 export function Th({ children, className }: { children?: ReactNode; className?: string }) {
   return (
-    <th className={cn("sticky top-0 z-10 whitespace-nowrap border-b border-line bg-surface-2/95 px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted backdrop-blur", className)}>
+    <th className={cn("sticky top-0 z-10 whitespace-nowrap border-b border-line bg-surface-2/95 px-2.5 py-2.5 text-2xs font-semibold uppercase tracking-wider text-muted backdrop-blur", className)}>
       {children}
     </th>
   );
 }
 export function Td({ children, className, title }: { children?: ReactNode; className?: string; title?: string }) {
   // `title` carries the full text for a cell that has to be truncated.
-  return <td title={title} className={cn("border-b border-line px-3 py-3 align-top", className)}>{children}</td>;
+  return <td title={title} className={cn("border-b border-line px-2.5 py-3 align-top", className)}>{children}</td>;
 }
 
 export function Alert({ tone = "info", children, title }: { tone?: "info" | "bad" | "ok" | "warn"; children: ReactNode; title?: string }) {
@@ -276,7 +285,7 @@ export function Alert({ tone = "info", children, title }: { tone?: "info" | "bad
     ok: "border-good-500/25 bg-good-50 text-good-700",
   };
   return (
-    <div role={tone === "bad" ? "alert" : "status"} className={cn("rounded-lg border px-3.5 py-2.5 text-sm", tones[tone])}>
+    <div role={tone === "bad" ? "alert" : "status"} className={cn("rounded-lg border px-3.5 py-2.5 text-md", tones[tone])}>
       {title && <p className="font-semibold">{title}</p>}
       {children}
     </div>
@@ -321,7 +330,7 @@ export function BarList({
   format?: (value: number) => string;
 }) {
   const max = Math.max(1, ...items.map((i) => i.value));
-  if (items.length === 0) return <p className="px-4 py-8 text-center text-[13px] text-muted">{empty}</p>;
+  if (items.length === 0) return <p className="px-4 py-8 text-center text-sm text-muted">{empty}</p>;
   return (
     <ul className="space-y-2.5 p-4">
       {items.map((item) => {
@@ -333,7 +342,7 @@ export function BarList({
         );
         return (
           <li key={item.label}>
-            <div className="flex items-baseline justify-between gap-3 text-[13px]">
+            <div className="flex items-baseline justify-between gap-3 text-sm">
               {item.href ? (
                 <Link href={item.href} className="min-w-0 hover:underline">{label}</Link>
               ) : (
@@ -393,7 +402,7 @@ export function StatGrid({
         </div>
       )}
       {empty.length > 0 && (
-        <p className="px-1 text-[13px] text-muted">
+        <p className="px-1 text-sm text-muted">
           {nothingYet}{" "}
           {empty.map((t, i) => (
             <span key={t.label}>
@@ -429,8 +438,8 @@ export function HeroBand({ figures }: { figures: { label: string; value: ReactNo
       {figures.map((f) => {
         const body = (
           <>
-            <dd className="font-display text-[23px] font-semibold leading-none tabular tracking-[-0.035em] text-white">{f.value}</dd>
-            <dt className="mt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/55">{f.label}</dt>
+            <dd className="font-display text-[1.4375rem] font-semibold leading-none tabular tracking-[-0.035em] text-white">{f.value}</dd>
+            <dt className="mt-1 text-3xs font-semibold uppercase tracking-[0.14em] text-white/55">{f.label}</dt>
           </>
         );
         return f.href ? (
@@ -484,16 +493,16 @@ export function KpiBoard({
         const nothing = t.value === 0 || t.value === "0";
         const body = (
           <>
-            <p className="truncate text-[12px] font-medium text-muted">{t.label}</p>
+            <p className="truncate text-xs font-medium text-muted">{t.label}</p>
             <p
               className={cn(
-                "mt-1.5 font-display text-[26px] font-semibold leading-none tabular tracking-[-0.03em]",
+                "mt-1.5 font-display text-[1.625rem] font-semibold leading-none tabular tracking-[-0.03em]",
                 nothing ? "text-muted/45" : "text-ink",
               )}
             >
               {t.value}
             </p>
-            {t.note && <p className="mt-1 truncate text-[11.5px] text-muted">{t.note}</p>}
+            {t.note && <p className="mt-1 truncate text-2xs text-muted">{t.note}</p>}
           </>
         );
         const shell = cn(
@@ -555,9 +564,9 @@ export function AlertTiles({
   if (shown.length === 0) {
     return (
       <Card className="px-4 py-5 text-center">
-        <p className="font-display text-[15px] font-semibold text-ink">{allClear}</p>
+        <p className="font-display text-base font-semibold text-ink">{allClear}</p>
         {empty.length > 0 && (
-          <p className="mt-1 text-[13px] text-muted">
+          <p className="mt-1 text-sm text-muted">
             Nothing {empty.map((t) => t.nothing ?? t.label.toLowerCase()).join(", ")}.
           </p>
         )}
@@ -570,9 +579,9 @@ export function AlertTiles({
         {shown.map((t) => {
           const body = (
             <>
-              <p className={cn("text-[10px] font-semibold uppercase tracking-[0.13em]", edgeText[t.tone])}>{t.label}</p>
-              <p className="mt-1.5 font-display text-[23px] font-semibold leading-none tabular tracking-[-0.035em] text-ink">{t.value}</p>
-              {t.note && <p className="mt-1 text-[12px] text-muted">{t.note}</p>}
+              <p className={cn("text-3xs font-semibold uppercase tracking-[0.13em]", edgeText[t.tone])}>{t.label}</p>
+              <p className="mt-1.5 font-display text-[1.4375rem] font-semibold leading-none tabular tracking-[-0.035em] text-ink">{t.value}</p>
+              {t.note && <p className="mt-1 text-xs text-muted">{t.note}</p>}
             </>
           );
           const shell = cn("rounded-xl border border-line border-l-[3px] bg-surface px-3.5 py-3 shadow-card", edgeTone[t.tone]);
@@ -588,7 +597,7 @@ export function AlertTiles({
         })}
       </div>
       {empty.length > 0 && (
-        <p className="px-1 text-[13px] text-muted">
+        <p className="px-1 text-sm text-muted">
           Nothing{" "}
           {empty.map((t, i) => (
             <span key={t.label}>
@@ -622,7 +631,7 @@ export function Avatar({ name, className }: { name: string; className?: string }
     <span
       aria-hidden
       className={cn(
-        "grid size-7 flex-none place-items-center rounded-lg bg-gradient-to-br from-brand-400 to-brand-700 text-[11px] font-bold leading-none text-white",
+        "grid size-7 flex-none place-items-center rounded-lg bg-gradient-to-br from-brand-400 to-brand-700 text-2xs font-bold leading-none text-white",
         className,
       )}
     >
@@ -655,13 +664,13 @@ export function PersonRow({
       <Avatar name={name} />
       <span className="min-w-0 flex-1">
         {href ? (
-          <Link href={href} className="block truncate text-[13.5px] font-semibold text-ink hover:text-brand-700 hover:underline">
+          <Link href={href} className="block truncate text-sm font-semibold text-ink hover:text-brand-700 hover:underline">
             {name}
           </Link>
         ) : (
-          <span className="block truncate text-[13.5px] font-semibold text-ink">{name}</span>
+          <span className="block truncate text-sm font-semibold text-ink">{name}</span>
         )}
-        {meta && <span className="block truncate text-[12px] text-muted">{meta}</span>}
+        {meta && <span className="block truncate text-xs text-muted">{meta}</span>}
       </span>
       {pill && <Chip tone={tone}>{pill}</Chip>}
     </li>
@@ -683,7 +692,7 @@ export function TrendChart({
 
   if (total === 0) {
     return (
-      <p className="px-4 py-8 text-center text-[13px] text-muted">
+      <p className="px-4 py-8 text-center text-sm text-muted">
         No {aLabel.toLowerCase()}{bLabel ? ` or ${bLabel.toLowerCase()}` : ""} in the last {months} months.
       </p>
     );
@@ -699,7 +708,7 @@ export function TrendChart({
       )}
       <div className="flex gap-2">
         {/* A bar with no scale beside it is a shape, not a number. */}
-        <div className="flex h-40 w-6 shrink-0 flex-col justify-between py-[2px] text-right text-[10px] tabular text-muted">
+        <div className="flex h-40 w-6 shrink-0 flex-col justify-between py-[2px] text-right text-3xs tabular text-muted">
           <span>{max}</span>
           <span>0</span>
         </div>
@@ -720,7 +729,7 @@ export function TrendChart({
               </div>
               {/* The numbers themselves, on the one the pointer is over. */}
               <span className="pointer-events-none absolute inset-x-0 -top-1 hidden justify-center group-hover:flex">
-                <span className="whitespace-nowrap rounded-md border border-line bg-surface px-1.5 py-0.5 text-[10px] tabular text-ink shadow-card">
+                <span className="whitespace-nowrap rounded-md border border-line bg-surface px-1.5 py-0.5 text-3xs tabular text-ink shadow-card">
                   {p.a} {aLabel.toLowerCase()}{bLabel ? ` · ${p.b ?? 0} ${bLabel.toLowerCase()}` : ""}
                 </span>
               </span>
@@ -732,7 +741,7 @@ export function TrendChart({
         <span className="w-6 shrink-0" />
         <div className="flex flex-1 gap-2">
           {points.map((p) => (
-            <span key={p.label} className="min-w-0 flex-1 truncate pt-1 text-center text-[10px] text-muted">{p.label}</span>
+            <span key={p.label} className="min-w-0 flex-1 truncate pt-1 text-center text-3xs text-muted">{p.label}</span>
           ))}
         </div>
       </div>
@@ -744,7 +753,7 @@ export function TrendChart({
 export function FunnelSteps({ steps }: { steps: { label: string; value: number; href?: string }[] }) {
   const top = Math.max(1, steps[0]?.value ?? 1);
   if (steps.every((s) => s.value === 0)) {
-    return <p className="px-4 py-8 text-center text-[13px] text-muted">Nothing has gone through these steps yet.</p>;
+    return <p className="px-4 py-8 text-center text-sm text-muted">Nothing has gone through these steps yet.</p>;
   }
   return (
     <ol className="space-y-2 p-4">
@@ -763,10 +772,10 @@ export function FunnelSteps({ steps }: { steps: { label: string; value: number; 
         const body = (
           <>
             <div className="flex items-baseline justify-between gap-3">
-              <span className="truncate text-[13px] font-medium text-ink">{step.label}</span>
+              <span className="truncate text-sm font-medium text-ink">{step.label}</span>
               <span className="flex shrink-0 items-baseline gap-2">
                 {ratio && <span className="text-xs text-muted tabular">{ratio}</span>}
-                <span className="font-display text-[15px] font-semibold tabular text-ink">{step.value}</span>
+                <span className="font-display text-base font-semibold tabular text-ink">{step.value}</span>
               </span>
             </div>
             <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-surface-2">
@@ -793,7 +802,7 @@ export function DataList({ rows }: { rows: { label: string; value: ReactNode; hr
   return (
     <dl className="divide-y divide-line">
       {rows.map((r) => (
-        <div key={r.label} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 px-4 py-2.5 text-[13px]">
+        <div key={r.label} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 px-4 py-2.5 text-sm">
           <dt className="min-w-0 truncate text-muted">{r.label}</dt>
           {/* Wraps onto its own line when the value is a sentence rather than a figure. */}
           <dd className={cn("min-w-0 max-w-full break-words font-semibold tabular sm:text-right", r.tone ? tones[r.tone] : "text-ink")}>
@@ -826,9 +835,9 @@ export function DashboardHero({
     <div className="brand-wash grain relative mb-5 overflow-hidden rounded-2xl px-5 py-5 shadow-hero ring-1 ring-inset ring-white/10 md:px-6 md:py-6">
       <div className="relative z-10 flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/70">{eyebrow}</p>
-          <h1 className="mt-1 font-display text-[26px] font-semibold leading-tight text-white md:text-[30px]">{title}</h1>
-          {subtitle && <p className="mt-1.5 max-w-2xl text-[14px] leading-relaxed text-white/80">{subtitle}</p>}
+          <p className="text-2xs font-semibold uppercase tracking-[0.16em] text-white/70">{eyebrow}</p>
+          <h1 className="mt-1 font-display text-[1.625rem] font-semibold leading-tight text-white md:text-[1.875rem]">{title}</h1>
+          {subtitle && <p className="mt-1.5 max-w-2xl text-md leading-relaxed text-white/80">{subtitle}</p>}
         </div>
         {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
       </div>

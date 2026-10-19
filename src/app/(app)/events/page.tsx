@@ -32,7 +32,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
       <PageHeader
         title="Events"
         subtitle="Webinars, university visits, training and fairs run by the Overseas team. Times are in IST."
-        actions={<Link href={past ? "/events" : "/events?past=1"} className="text-[13px] font-medium text-brand-600 hover:underline">{past ? "Upcoming events" : "Past events"}</Link>}
+        actions={<Link href={past ? "/events" : "/events?past=1"} className="text-sm font-medium text-brand-600 hover:underline">{past ? "Upcoming events" : "Past events"}</Link>}
       />
       {rows.length === 0 ? (
         <Card><EmptyState title={past ? "Nothing yet" : "Nothing scheduled"}>{past ? "Past events will be listed here." : "New events show up here, and you are notified when one is published."}</EmptyState></Card>
@@ -51,12 +51,12 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
                   {left != null && <Chip tone={left <= 0 ? "bad" : left <= 5 ? "warn" : "neutral"}>{left <= 0 ? "Full" : `${left} seat${left === 1 ? "" : "s"} left`}</Chip>}
                 </div>
                 <h2 className="mt-2 text-base font-semibold">{ev.title}</h2>
-                <p className="text-[13px] text-ink-soft">{istDateTime(ev.startsAt)}{ev.endsAt ? ` to ${istTime(ev.endsAt)}` : ""}</p>
-                {ev.location && <p className="text-[13px] text-muted">{ev.location}</p>}
-                {ev.university && <Link href={`/universities/${ev.university.id}`} className="text-[13px] text-brand-600 hover:underline">{ev.university.name}</Link>}
-                {ev.description && <p className="mt-2 whitespace-pre-wrap text-[13px] text-ink-soft">{ev.description}</p>}
+                <p className="text-sm text-ink-soft">{istDateTime(ev.startsAt)}{ev.endsAt ? ` to ${istTime(ev.endsAt)}` : ""}</p>
+                {ev.location && <p className="text-sm text-muted">{ev.location}</p>}
+                {ev.university && <Link href={`/universities/${ev.university.id}`} className="text-sm text-brand-600 hover:underline">{ev.university.name}</Link>}
+                {ev.description && <p className="mt-2 whitespace-pre-wrap text-sm text-ink-soft">{ev.description}</p>}
                 {ev.joinUrl && (mine || isStaff(user)) && !past && (
-                  <a href={ev.joinUrl} target="_blank" rel="noopener noreferrer" className="mt-2 text-[13px] font-medium text-brand-600 hover:underline">Join link ↗</a>
+                  <a href={ev.joinUrl} target="_blank" rel="noopener noreferrer" className="mt-2 text-sm font-medium text-brand-600 hover:underline">Join link ↗</a>
                 )}
                 {!past && canRegister && (
                   <div className="mt-3 space-y-3 border-t border-line pt-3">
@@ -69,8 +69,8 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
                 )}
                 {branch.length > 0 && (
                   <div className="mt-3 border-t border-line pt-3">
-                    <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">{isStaff(user) ? "Students registered" : "Your students registered"}</p>
-                    <ul className="space-y-1 text-[13px]">
+                    <p className="mb-1.5 text-2xs font-semibold uppercase tracking-wider text-muted">{isStaff(user) ? "Students registered" : "Your students registered"}</p>
+                    <ul className="space-y-1 text-sm">
                       {branch.map((r) => (
                         <li key={r.id} className="flex items-center justify-between gap-2">
                           <span>{r.student ? fullName(r.student) : ""}<span className="text-xs text-muted"> · by {r.user.name}</span></span>

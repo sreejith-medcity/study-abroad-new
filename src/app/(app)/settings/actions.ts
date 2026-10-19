@@ -8,6 +8,7 @@ import { hashPassword, issueSession, requireUser, verifyPassword } from "@/lib/a
 import { audit } from "@/lib/audit";
 import { isLocale } from "@/lib/i18n";
 import { readSkin } from "@/lib/skins";
+import { readTextSize } from "@/lib/text-size";
 import { canManageSettings, isPartner, isSuperAdmin } from "@/lib/permissions";
 import { getSettings } from "@/server/settings";
 import { UploadError, deleteUpload, saveBrandImage } from "@/server/storage";
@@ -59,6 +60,16 @@ export async function saveSkinAction(_: FormState, formData: FormData): Promise<
   await db.update(schema.users).set({ skin }).where(eq(schema.users.id, user.id));
   // The skin is read at the html element, above every route, so the whole
   // tree has to be re-rendered rather than just this page.
+  revalidatePath("/", "layout");
+  return { ok: "Saved." };
+}
+
+export async function saveTextSizeAction(_: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const textSize = readTextSize(String(formData.get("textSize") ?? ""));
+  await db.update(schema.users).set({ textSize }).where(eq(schema.users.id, user.id));
+  // Read at the html element, above every route, so the whole tree has to be
+  // re-rendered rather than just this page.
   revalidatePath("/", "layout");
   return { ok: "Saved." };
 }

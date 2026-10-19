@@ -15,7 +15,7 @@ export function ClearForm({ total }: { total: number }) {
       hideSubmit={total === 0}
     >
       {total === 0 ? (
-        <p className="text-[13px] text-muted">There is no sample data left to remove.</p>
+        <p className="text-sm text-muted">There is no sample data left to remove.</p>
       ) : (
         <TextField
           label="Type REMOVE to confirm"

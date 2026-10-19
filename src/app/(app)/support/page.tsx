@@ -29,7 +29,7 @@ export default async function SupportPage({ searchParams }: { searchParams: Prom
   const counts = await db.select({ status: t.status, n: count() }).from(t).where(staff ? undefined : eq(t.orgId, user.orgId)).groupBy(t.status);
   const n = (s: TicketStatus) => counts.find((c) => c.status === s)?.n ?? 0;
   const tab = (href: string, label: string, on: boolean) => (
-    <Link href={href} className={cn("rounded-full border px-3 py-1 text-[13px] font-medium", on ? "border-brand-600 bg-brand-600 text-white" : "border-line-strong text-ink-soft hover:border-brand-300")}>{label}</Link>
+    <Link href={href} className={cn("rounded-full border px-3 py-1 text-sm font-medium", on ? "border-brand-600 bg-brand-600 text-white" : "border-line-strong text-ink-soft hover:border-brand-300")}>{label}</Link>
   );
   const now = Date.now();
 

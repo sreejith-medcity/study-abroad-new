@@ -103,7 +103,7 @@ export function ApplyForm({
 
   if (!canApply) {
     return (
-      <div className="rounded-lg border border-line bg-surface-2/50 p-4 text-sm">
+      <div className="rounded-lg border border-line bg-surface-2/50 p-4 text-md">
         <p className="font-medium">Your role does not start applications</p>
         <p className="mt-1 text-muted">
           Build the file and collect the documents; whoever starts applications at your branch, or the Overseas desk, sends it from here.
@@ -163,7 +163,7 @@ export function ApplyForm({
         <FieldError name="programId" />
         {/* The dead end the branch kept hitting: the course the student wants
             is not in the catalogue and there was nothing to do about it. */}
-        <p className="mt-1 text-[13px] text-muted">
+        <p className="mt-1 text-sm text-muted">
           Not here?{" "}
           {canAddCourse ? (
             <Link href="/admin/programs/new" className="font-medium text-brand-700 hover:underline">Add the course to the catalogue</Link>
@@ -174,17 +174,17 @@ export function ApplyForm({
         </p>
       </Field>
       {program && (
-        <div className="rounded-md border border-line bg-ground/60 p-3 text-sm">
+        <div className="rounded-md border border-line bg-ground/60 p-3 text-md">
           <p className="font-medium">{program.name}</p>
           <p className="text-muted">{program.university}, {program.country} · {program.tuition}</p>
           {program.requirements && <p className="mt-1 text-muted">Requirements: {program.requirements}</p>}
         </div>
       )}
-      <p className="text-[13px] text-muted">
+      <p className="text-sm text-muted">
         Which vendor this goes through is the Overseas desk&rsquo;s decision, made once the documents are in. Build the file, collect the paper, then hand it over.
       </p>
       {gate && gate.missing.length > 0 && (
-        <div className="rounded-md border border-warn-500/25 bg-warn-50 p-3 text-[13px]">
+        <div className="rounded-md border border-warn-500/25 bg-warn-50 p-3 text-sm">
           <p className="font-medium text-warn-700">The profile documents are not complete</p>
           <p className="mt-0.5 text-warn-700">Still needed: {gate.missing.join(", ")}.</p>
           {gate.holds && gate.canOverride ? (
@@ -253,7 +253,7 @@ export function CommentComposer({ applicationId, channel, whatsapp }: { applicat
       <div className="flex items-center justify-between gap-2">
         <label htmlFor={`body-${channel}`} className="sr-only">Message</label>
         <FormatBar target={`body-${channel}`} />
-        <span className="text-[11px] text-muted">**bold**, *italic*, lines starting &quot;- &quot; for a list</span>
+        <span className="text-2xs text-muted">**bold**, *italic*, lines starting &quot;- &quot; for a list</span>
       </div>
       <Textarea id={`body-${channel}`} name="body" rows={3} placeholder={channel === "TEAM" ? "Message the Medcity Overseas team. The student can't see this." : whatsapp ? "Message the student. They'll also get it on WhatsApp." : "Message the student. They'll see it in their portal."} />
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted">

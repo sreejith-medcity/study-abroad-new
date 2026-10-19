@@ -47,7 +47,7 @@ export function RaiseInvoice({
   if (ready.length === 0) return null;
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="rounded-lg bg-brand-600 px-3 py-1.5 text-[13px] font-medium text-white">
+      <button type="button" onClick={() => setOpen(true)} className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white">
         Raise an invoice ({ready.length})
       </button>
       <Modal open={open} onClose={() => setOpen(false)} title={`Invoice ${vendorName}`} description="One invoice, as many students as you tick. Vendors settle in batches, so an invoice per placement is an invoice nobody pays." className="max-w-3xl">
@@ -106,7 +106,7 @@ export function SendInvoice({ invoiceId, suggested }: { invoiceId: string; sugge
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="rounded-lg bg-brand-600 px-3 py-1.5 text-[13px] font-medium text-white">
+      <button type="button" onClick={() => setOpen(true)} className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white">
         It has been sent
       </button>
       <Modal open={open} onClose={() => setOpen(false)} title="Record that it has gone" description="The portal does not email invoices: attach the document to your own mail, then record it here so the ageing report starts counting.">
@@ -127,7 +127,7 @@ export function RecordPayment({ invoiceId, currency, outstanding }: { invoiceId:
   const today = utcToday();
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="rounded-lg bg-brand-600 px-3 py-1.5 text-[13px] font-medium text-white">
+      <button type="button" onClick={() => setOpen(true)} className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white">
         Money in
       </button>
       <Modal open={open} onClose={() => setOpen(false)} title="Record a payment" description="Part payment is normal. Each one is kept as its own row, so nothing is overwritten.">
@@ -168,13 +168,13 @@ export function DisputeInvoice({ invoiceId, disputed }: { invoiceId: string; dis
     return (
       <form action={resolveDisputeAction} className="inline">
         <input type="hidden" name="invoiceId" value={invoiceId} />
-        <button type="submit" className="text-[13px] font-medium text-brand-600 hover:underline">It has been worked out</button>
+        <button type="submit" className="text-sm font-medium text-brand-600 hover:underline">It has been worked out</button>
       </form>
     );
   }
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="text-[13px] text-muted hover:text-ink">They have questioned it</button>
+      <button type="button" onClick={() => setOpen(true)} className="text-sm text-muted hover:text-ink">They have questioned it</button>
       <Modal open={open} onClose={() => setOpen(false)} title="Mark it disputed" description="A state, not a failure. It stays on the ageing report until it is settled.">
         <ActionForm action={disputeInvoiceAction} submitLabel="Mark it disputed" submitVariant="secondary">
           <input type="hidden" name="invoiceId" value={invoiceId} />
@@ -212,7 +212,7 @@ export function CreditInvoice({
   const fromLines = lines.filter((l) => ticked.includes(l.id)).reduce((sum, l) => sum + l.amount, 0);
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="text-[13px] text-muted hover:text-ink">Credit part of it</button>
+      <button type="button" onClick={() => setOpen(true)} className="text-sm text-muted hover:text-ink">Credit part of it</button>
       <Modal
         open={open}
         onClose={() => setOpen(false)}
@@ -223,7 +223,7 @@ export function CreditInvoice({
           <input type="hidden" name="invoiceId" value={invoiceId} />
           {lines.length > 0 && (
             <fieldset className="rounded-lg border border-line p-3">
-              <legend className="px-1 text-[13px] font-medium">Which students it covers</legend>
+              <legend className="px-1 text-sm font-medium">Which students it covers</legend>
               <p className="mb-2 text-xs text-muted">Tick them and the amount is their lines added up. Their income lines are written back with this note&rsquo;s number on them.</p>
               <div className="max-h-48 space-y-1.5 overflow-y-auto">
                 {lines.map((l) => (
@@ -239,7 +239,7 @@ export function CreditInvoice({
                       const on = e.currentTarget.checked;
                       setTicked((was) => (on ? [...was, l.id] : was.filter((x) => x !== l.id)));
                     }}
-                    label={<span className="text-[13px]">{l.description} <span className="tabular text-muted">{groupInr(l.amount)}</span></span>}
+                    label={<span className="text-sm">{l.description} <span className="tabular text-muted">{groupInr(l.amount)}</span></span>}
                   />
                 ))}
               </div>
@@ -287,7 +287,7 @@ export function WriteOffInvoice({ invoiceId }: { invoiceId: string }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="text-[13px] text-muted hover:text-ink">Write it off</button>
+      <button type="button" onClick={() => setOpen(true)} className="text-sm text-muted hover:text-ink">Write it off</button>
       <Modal open={open} onClose={() => setOpen(false)} title="Write it off" description="Every student's line on this invoice will say so too, and it is in the audit log. Money that stops being owed should never be quiet.">
         <ActionForm action={writeOffInvoiceAction} submitLabel="Write it off" submitVariant="secondary">
           <input type="hidden" name="invoiceId" value={invoiceId} />

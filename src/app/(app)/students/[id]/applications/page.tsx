@@ -201,7 +201,7 @@ async function ApplicationDetail({ appId, studentId, channel, canProcess, canChe
             <p className="text-muted">{app.program.university.name}, {app.program.university.country.name} · {intakeLabel(app.intakeMonth, app.intakeYear)}</p>
           </div>
           <div className="text-right">
-            <StatusBadge group={app.status.group} label={app.status.label} className="text-sm" />
+            <StatusBadge group={app.status.group} label={app.status.label} className="text-md" />
             <p className="mt-1 text-xs text-muted">since {fmtDate(app.statusChangedAt)}</p>
             {app.deadline && <p className="mt-1 text-xs text-stop-500">Deadline {fmtDate(app.deadline)}</p>}
           </div>
@@ -228,7 +228,7 @@ async function ApplicationDetail({ appId, studentId, channel, canProcess, canChe
           )}
           <span className="ml-auto text-muted">Officer: {app.officer ? `${app.officer.name}${app.officer.phone ? ` · ${app.officer.phone}` : ""}` : "not assigned yet"}</span>
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-line pt-3 text-[13px]">
+        <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-line pt-3 text-sm">
           <span className="text-muted">Where it is:</span>
           <DeskStageChip stage={app.deskStage} assumed={app.deskStageAssumed} />
           {app.handedOverAt && <span className="text-muted">Handed over {fmtDate(app.handedOverAt)}</span>}
@@ -239,15 +239,15 @@ async function ApplicationDetail({ appId, studentId, channel, canProcess, canChe
           )}
         </div>
         {app.deskStage === "RETURNED" && app.returnReason && (
-          <div className="mt-3 rounded-md border border-stop-500/25 bg-stop-50 p-3 text-[13px] text-stop-700">
+          <div className="mt-3 rounded-md border border-stop-500/25 bg-stop-50 p-3 text-sm text-stop-700">
             <p className="font-medium">The Overseas desk sent this back</p>
             <p className="mt-0.5">{app.returnReason}</p>
           </div>
         )}
         {app.handoverNote && app.deskStage !== "PREPARING" && (
-          <p className="mt-2 text-[13px] text-muted">From the branch: {app.handoverNote}</p>
+          <p className="mt-2 text-sm text-muted">From the branch: {app.handoverNote}</p>
         )}
-        <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-line pt-3 text-[13px]">
+        <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-line pt-3 text-sm">
           <span className="text-muted">Applied through:</span>
           {app.route ? (
             <span className="inline-flex items-center gap-1.5 font-semibold text-ink">
@@ -283,13 +283,13 @@ async function ApplicationDetail({ appId, studentId, channel, canProcess, canChe
           <div className="space-y-4">
             {(app.deskStage === "READY" || app.deskStage === "CHOSEN" || app.deskStage === "RETURNED") && (
               <section>
-                <h4 className="mb-2 text-[13px] font-semibold">Which road it goes down</h4>
+                <h4 className="mb-2 text-sm font-semibold">Which road it goes down</h4>
                 {/* A road that was moved says so on the file, not only in the
                     audit log, because the next person to open this is the one
                     who needs to know why the commission is not what they
                     expected. */}
                 {app.routeChangeReason && (
-                  <p className="mb-2 rounded-lg border border-line bg-surface-2/50 px-3 py-2 text-[13px]">
+                  <p className="mb-2 rounded-lg border border-line bg-surface-2/50 px-3 py-2 text-sm">
                     <span className="font-medium">Moved on {app.routeChosenAt ? fmtDate(app.routeChosenAt) : "a date not recorded"}:</span> {app.routeChangeReason}
                   </p>
                 )}
@@ -298,13 +298,13 @@ async function ApplicationDetail({ appId, studentId, channel, canProcess, canChe
             )}
             {app.deskStage === "CHOSEN" && (
               <section className="border-t border-line pt-3">
-                <h4 className="mb-2 text-[13px] font-semibold">Lodged in their portal</h4>
+                <h4 className="mb-2 text-sm font-semibold">Lodged in their portal</h4>
                 <RecordSubmission applicationId={app.id} reference={app.vendorReference} statuses={deskStatuses} defaultStatusId={submittedStatus} />
               </section>
             )}
             {app.deskStage === "SUBMITTED" && (
               <section className="border-t border-line pt-3">
-                <h4 className="mb-2 text-[13px] font-semibold">What they came back with</h4>
+                <h4 className="mb-2 text-sm font-semibold">What they came back with</h4>
                 <RecordUpdate applicationId={app.id} statuses={deskStatuses} />
               </section>
             )}
@@ -321,7 +321,7 @@ async function ApplicationDetail({ appId, studentId, channel, canProcess, canChe
           </div>
           <ul className="divide-y divide-line">
             {updates.map((u) => (
-              <li key={u.id} className="px-4 py-3 text-[13px]">
+              <li key={u.id} className="px-4 py-3 text-sm">
                 <div className="flex flex-wrap items-center gap-2">
                   <Chip tone={u.outcome === "REJECTED" ? "bad" : u.outcome === "OFFER_ISSUED" ? "ok" : u.outcome === "DOCUMENTS_ASKED" ? "warn" : "info"}>{OUTCOME_LABEL[u.outcome]}</Chip>
                   <span className="tabular text-muted">{fmtDate(u.happenedOn)}</span>
@@ -418,7 +418,7 @@ async function ApplicationDetail({ appId, studentId, channel, canProcess, canChe
                         )}
                       </div>
                     ))}
-                    <p className="mt-1 text-[11px] text-muted">{fmtDateTime(c.createdAt)}{c.deliveredAt ? " · delivered on WhatsApp" : ""}</p>
+                    <p className="mt-1 text-2xs text-muted">{fmtDateTime(c.createdAt)}{c.deliveredAt ? " · delivered on WhatsApp" : ""}</p>
                   </div>
                 </li>
               );
@@ -467,7 +467,7 @@ function OfferVisaCard({ app, currency, canEdit }: { app: OfferVisaApp; currency
       <DataList rows={rows} />
       {canEdit && (
         <details className="border-t border-line px-4 py-3">
-          <summary className="cursor-pointer text-[13px] font-medium text-brand-600">Update offer and visa</summary>
+          <summary className="cursor-pointer text-sm font-medium text-brand-600">Update offer and visa</summary>
           <div className="mt-3"><OfferVisaForm applicationId={app.id} values={app} currency={currency} confirmation={confirmation} /></div>
         </details>
       )}
@@ -490,7 +490,7 @@ async function DeadlinesPanel({ applicationId, canEdit, canTick }: { application
       bodyClassName=""
     >
       {rows.length > 0 && (
-        <ul className="divide-y divide-line border-b border-line text-[13px]">
+        <ul className="divide-y divide-line border-b border-line text-sm">
           {rows.map((r) => {
             const left = daysUntil(r.dueOn);
             return (

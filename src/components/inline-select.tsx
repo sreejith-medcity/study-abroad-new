@@ -70,7 +70,7 @@ export function InlineSelect({
         {children}
       </Select>
       {scripted ? (
-        <span className="w-11 shrink-0 text-[11px] text-muted" aria-live="polite">
+        <span className="w-11 shrink-0 text-2xs text-muted" aria-live="polite">
           {pending ? "Saving" : saved ? "Saved" : ""}
         </span>
       ) : (

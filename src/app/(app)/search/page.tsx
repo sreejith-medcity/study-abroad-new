@@ -278,7 +278,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   };
   const chipClass = (on: boolean) =>
     cn(
-      "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[13px] font-medium transition-colors",
+      "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition-colors",
       on ? "border-brand-600 bg-brand-600 text-white" : "border-line-strong bg-surface text-ink-soft hover:border-brand-300 hover:text-brand-700",
     );
   const countBadge = (n: number, on: boolean) => (
@@ -347,7 +347,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             filter you cannot see you have set is worse than one you have to
             open a fold to reach. */}
         <details data-testid="search-fold" open={foldedOn > 0} className="group">
-          <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-lg border border-line-strong px-2.5 py-2 text-[13px] font-medium text-ink-soft transition hover:border-brand-300 hover:text-brand-700">
+          <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-lg border border-line-strong px-2.5 py-2 text-sm font-medium text-ink-soft transition hover:border-brand-300 hover:text-brand-700">
             <span className="group-open:hidden">More filters{foldedOn > 0 ? ` (${foldedOn} on)` : ""}</span>
             <span className="hidden group-open:inline">Fewer filters</span>
           </summary>
@@ -409,7 +409,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       </Toolbar>
 
       <div className="mb-2 flex flex-wrap items-center gap-2">
-        <span className="text-[13px] font-medium text-muted">Quick filters</span>
+        <span className="text-sm font-medium text-muted">Quick filters</span>
         {QUICK.filter((q) => showCommission || q.key !== "commission").map((q) => {
           const on = !!f[q.key];
           const n = chipCount(q.key);
@@ -423,7 +423,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       </div>
       {TAG_KEYS.some((t) => tagsOn.includes(t) || chipCount(`tag_${t}`) > 0) && (
         <div className="mb-2 flex flex-wrap items-center gap-2" data-testid="label-chips">
-          <span className="text-[13px] font-medium text-muted">Labels</span>
+          <span className="text-sm font-medium text-muted">Labels</span>
           {TAG_KEYS.map((t) => {
             const on = tagsOn.includes(t);
             const n = chipCount(`tag_${t}`);
@@ -439,7 +439,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
       {!student && (
         <details className="mb-4 rounded-xl border border-line bg-surface" open={!!adhoc}>
-          <summary className="cursor-pointer px-4 py-2.5 text-[13px] font-medium text-brand-700">
+          <summary className="cursor-pointer px-4 py-2.5 text-sm font-medium text-brand-700">
             {adhoc ? `Checking scores: ${adhoc.label}` : "Check eligibility from scores, without a student file"}
           </summary>
           <form className="grid gap-2.5 border-t border-line p-4 sm:grid-cols-3 xl:grid-cols-5">
@@ -462,7 +462,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                 ["ae_gap", "Gap years", "1"],
               ] as const
             ).map(([k, label, step]) => (
-              <label key={k} className="text-[13px] font-medium text-ink-soft">
+              <label key={k} className="text-sm font-medium text-ink-soft">
                 {label}
                 <Input name={k} type="number" min="0" step={step} defaultValue={f[k]} className="mt-1" />
               </label>
@@ -480,7 +480,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
       {(student || adhoc) && (
         <Card className="mb-4 border-brand-200 bg-brand-50/50 p-3.5">
-          <p className="text-sm">
+          <p className="text-md">
             {student ? (
               <>
                 Checking against <span className="font-semibold">{fullName(student)}</span>
@@ -503,11 +503,11 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             )}
           </p>
           {student && (
-            <p className="mt-1 text-[13px] text-muted">
+            <p className="mt-1 text-sm text-muted">
               Practice scores come from Medcity&apos;s own test platform, so a student still in class shows as on track rather than blocked.
             </p>
           )}
-          <p className="mt-2 text-[13px]">
+          <p className="mt-2 text-sm">
             <Link prefetch={false} href={`/search?${qs({ fit: f.fit ? undefined : "1" })}`} className="font-medium text-brand-600 hover:underline">
               {f.fit ? "Show every program again" : student ? `Hide programs ${student.firstName} cannot meet yet` : "Hide programs these scores cannot meet"}
             </Link>
@@ -516,7 +516,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       )}
 
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="inline-flex rounded-lg border border-line-strong bg-surface p-0.5 text-[13px] font-medium" role="group" aria-label="Show">
+        <div className="inline-flex rounded-lg border border-line-strong bg-surface p-0.5 text-sm font-medium" role="group" aria-label="Show">
           <Link href={`/search?${qs({ view: undefined })}`} aria-current={view === "programs" ? "page" : undefined} className={cn("rounded-md px-3 py-1", view === "programs" ? "bg-brand-600 text-white" : "text-ink-soft hover:text-brand-700")}>
             Programs ({total.toLocaleString("en-IN")})
           </Link>
@@ -532,7 +532,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             <span className="text-xs text-muted">Ticked programs:</span>
             <Button type="submit" size="sm" variant="secondary">Compare</Button>
             <Button type="submit" size="sm" variant="secondary" formAction="/api/programs/search-export">Download ticked</Button>
-            <a href={`/api/programs/search-export?${exportQs}`} className="text-[13px] font-medium text-brand-600 hover:underline">
+            <a href={`/api/programs/search-export?${exportQs}`} className="text-sm font-medium text-brand-600 hover:underline">
               Download the top {Math.min(total, 500).toLocaleString("en-IN")}
             </a>
           </form>
@@ -541,7 +541,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
       {view === "routes" ? (
         <Card>
-          <p className="border-b border-line px-4 py-2.5 text-[13px] text-muted">
+          <p className="border-b border-line px-4 py-2.5 text-sm text-muted">
             One line per road, so two aggregators on the same course can be read side by side. Only live routes through live vendors are here; the route
             filter&rsquo;s &ldquo;No route recorded&rdquo; setting finds the courses that have none.
           </p>
@@ -591,7 +591,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                         <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium text-white" style={{ backgroundColor: r.colour }}>
                           {r.code}
                         </span>
-                        <span className="ml-1.5 text-[13px]">{r.vendor}</span>
+                        <span className="ml-1.5 text-sm">{r.vendor}</span>
                         {r.isDirect && <p className="mt-0.5"><Chip tone="ok">Our own agreement</Chip></p>}
                         {r.route.vendorCourseCode && <p className="mt-0.5 font-mono text-xs text-muted">{r.route.vendorCourseCode}</p>}
                         {r.route.interviewRequired && <p className="mt-0.5 text-xs text-muted">Interview in this route</p>}
@@ -619,11 +619,11 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                           <p className="max-w-[12rem] text-xs text-muted">{pays.known ? pays.basis : pays.reason}</p>
                         </Td>
                       )}
-                      <Td className="whitespace-nowrap text-[13px] tabular">
+                      <Td className="whitespace-nowrap text-sm tabular">
                         {tat == null ? <span className="text-muted">Not recorded</span> : `${tat} day${tat === 1 ? "" : "s"}`}
                         {r.route.offerTatDays == null && r.offerTatDays != null && <p className="text-xs text-muted">The course&rsquo;s own figure</p>}
                       </Td>
-                      <Td className={cn("whitespace-nowrap text-[13px]", !r.intakeMonths.length && "text-muted")}>
+                      <Td className={cn("whitespace-nowrap text-sm", !r.intakeMonths.length && "text-muted")}>
                         {intakesText(r.intakeMonths)}
                         {r.feeWaiver && <p className="text-xs font-medium text-good-700">Fee waiver</p>}
                       </Td>
@@ -631,7 +631,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                         {student ? (
                           <LinkButton size="sm" variant="secondary" href={`/students/${student.id}/applications?tab=apply&program=${r.programId}`}>Apply</LinkButton>
                         ) : (
-                          <Link prefetch={false} href={`/programs/${r.programId}`} className="text-[13px] font-medium text-brand-600 hover:underline">Open</Link>
+                          <Link prefetch={false} href={`/programs/${r.programId}`} className="text-sm font-medium text-brand-600 hover:underline">Open</Link>
                         )}
                       </Td>
                     </tr>
@@ -673,8 +673,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                       </Link>
                       {r.noAppFee > 0 && <p className="text-xs text-muted">{r.noAppFee} with no application fee</p>}
                     </Td>
-                    <Td className="text-[13px]">{r.levels.map((l) => LEVEL_LABEL[l] ?? l).join(", ")}</Td>
-                    <Td className={cn("text-[13px]", !r.intakes.length && "text-muted")}>{intakesText(r.intakes)}</Td>
+                    <Td className="text-sm">{r.levels.map((l) => LEVEL_LABEL[l] ?? l).join(", ")}</Td>
+                    <Td className={cn("text-sm", !r.intakes.length && "text-muted")}>{intakesText(r.intakes)}</Td>
                   </tr>
                 ))}
               </tbody>
@@ -685,7 +685,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       ) : (
       <Card>
         {f.uni && (
-          <p className="border-b border-line px-4 py-2.5 text-[13px]">
+          <p className="border-b border-line px-4 py-2.5 text-sm">
             Showing one university&apos;s programs. <Link href={`/search?${qs({ uni: undefined })}`} className="font-medium text-brand-600 hover:underline">Show every university</Link>
           </p>
         )}
@@ -761,7 +761,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                       </p>
                       {rankLabels(r).length > 0 && <p className="text-xs font-medium text-ink-soft">{rankLabels(r).join(" · ")}</p>}
                     </Td>
-                    <Td className={cn("whitespace-nowrap text-[13px]", !r.intakeMonths.length && "text-muted")}>
+                    <Td className={cn("whitespace-nowrap text-sm", !r.intakeMonths.length && "text-muted")}>
                       {intakesText(r.intakeMonths)}
                       {next.get(r.id) && (() => {
                         const d = next.get(r.id)!;
@@ -853,7 +853,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       )}
 
       {!student && !adhoc && (
-        <p className="mt-4 flex items-center gap-2 text-[13px] text-muted">
+        <p className="mt-4 flex items-center gap-2 text-sm text-muted">
           <IconSpark className="size-4 text-brand-600" />
           Pick a student in &ldquo;Check eligibility for…&rdquo;, or type scores above, to see which programs they already qualify for.
         </p>
@@ -864,7 +864,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   function pager(shown: number, of: number) {
     return (
       <div className="flex items-center justify-between border-t border-line px-4 py-3">
-        <span className="text-[13px] text-muted">
+        <span className="text-sm text-muted">
           Showing {(page - 1) * PAGE + 1} to {(page - 1) * PAGE + shown} of {of.toLocaleString("en-IN")}
         </span>
         <div className="flex gap-2">

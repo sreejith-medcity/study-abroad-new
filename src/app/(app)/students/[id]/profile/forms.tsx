@@ -65,7 +65,7 @@ function MailingAddress({ same: initial, address }: { same: boolean; address: st
   const [same, setSame] = useState(initial);
   return (
     <div className="sm:col-span-2 lg:col-span-3">
-      <label className="flex items-center gap-2 text-sm">
+      <label className="flex items-center gap-2 text-md">
         <input type="checkbox" name="mailingSameAsPermanent" checked={same} onChange={(e) => setSame(e.target.checked)} className="size-4" />
         Mailing address is the same as the permanent address
       </label>
@@ -88,8 +88,8 @@ export function BackgroundForm({ studentId, answers, disabled }: { studentId: st
           const a = answers[q.key];
           return (
             <div key={q.key} role="radiogroup" aria-label={q.text} className="rounded-lg border border-line p-3">
-              <p className="text-sm font-medium">{q.text}</p>
-              <div className="mt-2 flex gap-5 text-sm">
+              <p className="text-md font-medium">{q.text}</p>
+              <div className="mt-2 flex gap-5 text-md">
                 <label className="flex items-center gap-1.5">
                   <input type="radio" name={`bg_${q.key}`} value="yes" defaultChecked={a?.answer === true} onChange={() => setYes((y) => ({ ...y, [q.key]: true }))} /> Yes
                 </label>
@@ -122,7 +122,7 @@ export function ContactForm({ studentId }: { studentId: string }) {
         <TextField label="Contact name" name="name" id="contact-name" required />
         <TextField label="Contact phone" name="phone" id="contact-phone" />
         <TextField label="Contact email" name="email" id="contact-email" type="email" />
-        <label className="flex items-center gap-2 text-sm sm:col-span-4">
+        <label className="flex items-center gap-2 text-md sm:col-span-4">
           <input type="checkbox" name="emergency" className="size-4" /> Emergency contact
         </label>
       </div>
@@ -203,7 +203,7 @@ export function TestForm({ studentId, defaults = {}, idPrefix = "" }: { studentI
           )}
         </div>
       ) : (
-        <p className="text-[13px] text-muted">
+        <p className="text-sm text-muted">
           No score is recorded, so nothing is counted towards a course&rsquo;s English requirement until the result is in. Nobody has to type a nought to get past this.
         </p>
       )}

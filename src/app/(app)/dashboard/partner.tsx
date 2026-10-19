@@ -210,7 +210,7 @@ export default async function PartnerDashboard({
             <CardHeader
               title={toRing.length > 0 ? `Ring these ${toRing.length === 1 ? "one" : toRing.length}` : "Nobody to ring today"}
               subtitle={enquiries.overdue > 0 ? `${enquiries.overdue} overdue, oldest follow-up first` : "Oldest follow-up date first"}
-              action={<Link href="/enquiries" className="text-[13px] font-medium text-brand-600 hover:underline">All enquiries</Link>}
+              action={<Link href="/enquiries" className="text-sm font-medium text-brand-600 hover:underline">All enquiries</Link>}
             />
             {followUps.length === 0 ? (
               <EmptyState title="Nothing to chase" icon={<IconEnquiry className="size-5" />}>
@@ -278,7 +278,7 @@ export default async function PartnerDashboard({
               <CardHeader
                 title="Student replies"
                 subtitle="Messages that came in on WhatsApp and have not been read"
-                action={<Link href="/applications?group=PENDING_PARTNER" className="text-[13px] font-medium text-brand-600 hover:underline">Open thread list</Link>}
+                action={<Link href="/applications?group=PENDING_PARTNER" className="text-sm font-medium text-brand-600 hover:underline">Open thread list</Link>}
               />
               {work.replies.length === 0 ? (
                 <EmptyState title="No unread replies" icon={<IconChat className="size-5" />}>
@@ -294,7 +294,7 @@ export default async function PartnerDashboard({
                         </Link>
                         <span className="shrink-0 text-xs text-muted">{fmtDate(r.createdAt)}</span>
                       </div>
-                      <p className="mt-0.5 line-clamp-2 text-[13px] text-muted">{r.body}</p>
+                      <p className="mt-0.5 line-clamp-2 text-sm text-muted">{r.body}</p>
                     </li>
                   ))}
                 </ul>
@@ -330,7 +330,7 @@ export default async function PartnerDashboard({
               ) : (
                 <ul className="divide-y divide-line">
                   {toSend.map((r) => (
-                    <li key={r.id} className="px-4 py-2.5 text-[13px]">
+                    <li key={r.id} className="px-4 py-2.5 text-sm">
                       <Link href={`/students/${r.studentId}/applications?app=${r.id}`} className="font-medium text-brand-600 hover:underline">
                         {r.firstName} {r.lastName}
                       </Link>
@@ -351,7 +351,7 @@ export default async function PartnerDashboard({
               <CardHeader
                 title="What your firm has referred"
                 subtitle="Referrals and what they have earned. The rate and the agreement are on the Referrals screen."
-                action={<Link href="/referrals" className="text-[13px] font-medium text-brand-600 hover:underline">Open referrals</Link>}
+                action={<Link href="/referrals" className="text-sm font-medium text-brand-600 hover:underline">Open referrals</Link>}
               />
               <DataList
                 rows={[
@@ -371,7 +371,7 @@ export default async function PartnerDashboard({
               <CardHeader
                 title="Your team"
                 subtitle={`${seatsUsed} of ${org?.counsellorSeats ?? 0} counsellor seats in use`}
-                action={<span className="text-[13px] text-muted">Assign students from the student list</span>}
+                action={<span className="text-sm text-muted">Assign students from the student list</span>}
               />
               {team.length === 0 ? (
                 <EmptyState title="No counsellors yet">Ask your relationship manager to add seats.</EmptyState>
@@ -398,7 +398,7 @@ export default async function PartnerDashboard({
                         <Td className="tabular">{t.live}</Td>
                         <Td>{t.waiting > 0 ? <Chip tone="warn">{t.waiting}</Chip> : <span className="text-muted">0</span>}</Td>
                         <Td className="tabular">{t.won}</Td>
-                        <Td className="whitespace-nowrap text-[13px] text-muted">{t.lastSignInAt ? fmtDate(t.lastSignInAt) : "Never"}</Td>
+                        <Td className="whitespace-nowrap text-sm text-muted">{t.lastSignInAt ? fmtDate(t.lastSignInAt) : "Never"}</Td>
                       </tr>
                     ))}
                   </tbody>
@@ -417,18 +417,18 @@ export default async function PartnerDashboard({
               {variant === "owner" && (
               <>
               <div className="tier-wash grain relative px-4 py-3.5">
-                <p className="relative z-10 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/60">Benefits level</p>
+                <p className="relative z-10 text-2xs font-semibold uppercase tracking-[0.14em] text-white/60">Benefits level</p>
                 <p className="relative z-10 font-display text-xl font-semibold text-gold-300">
                   {org.tier.charAt(0) + org.tier.slice(1).toLowerCase()}
                 </p>
               </div>
               <div className="p-4">
                 <Progress value={Number(visas12m)} max={targets[org.tier]} tone="gold" />
-                <p className="mt-2 text-[13px] text-muted">
+                <p className="mt-2 text-sm text-muted">
                   <span className="font-semibold text-ink tabular">{Number(visas12m)}</span> students with a visa in the last 12 months
                 </p>
                 {NEXT_TIER[org.tier] && (
-                  <p className="mt-1 text-[13px] text-muted">
+                  <p className="mt-1 text-sm text-muted">
                     {Math.max(0, targets[org.tier] - Number(visas12m))} more to unlock {NEXT_TIER[org.tier]}
                   </p>
                 )}
@@ -462,7 +462,7 @@ export default async function PartnerDashboard({
 
           {org?.relationshipManager && (
             <Card className="p-4">
-              <h2 className="flex items-center gap-1.5 font-display text-[15px] font-semibold">
+              <h2 className="flex items-center gap-1.5 font-display text-base font-semibold">
                 <IconSpark className="size-4 text-brand-600" /> Your relationship manager
               </h2>
               <p className="mt-2 font-medium">{org.relationshipManager.name}</p>
@@ -471,7 +471,7 @@ export default async function PartnerDashboard({
               <a href={`mailto:${org.relationshipManager.email}`} className="text-brand-600 hover:underline">
                 {org.relationshipManager.email}
               </a>
-              <Link href="/contacts" className="mt-2 block text-[13px] font-medium text-brand-600 hover:underline">Everyone to contact</Link>
+              <Link href="/contacts" className="mt-2 block text-sm font-medium text-brand-600 hover:underline">Everyone to contact</Link>
             </Card>
           )}
 
@@ -480,7 +480,7 @@ export default async function PartnerDashboard({
               <CardHeader title="Schemes running" subtitle="On top of the usual commission" />
               <ul className="divide-y divide-line">
                 {schemes.slice(0, 3).map((p) => (
-                  <li key={p.id} className="px-4 py-2.5 text-[13px]">
+                  <li key={p.id} className="px-4 py-2.5 text-sm">
                     <Link href={`/promotions#${p.id}`} className="font-medium text-ink hover:text-brand-700 hover:underline">{p.title}</Link>
                     <p className="text-good-700">{p.summary}</p>
                     <p className="text-xs text-muted">{promotionState(p.startsOn, p.endsOn) === "running" ? `Until ${rangeText(p.startsOn, p.endsOn).split(" to ")[1]}` : `From ${rangeText(p.startsOn, p.endsOn).split(" to ")[0]}`}</p>
@@ -495,7 +495,7 @@ export default async function PartnerDashboard({
               <CardHeader title="Quick links" />
               <ul className="divide-y divide-line">
                 {links.slice(0, 6).map((l) => (
-                  <li key={l.id} className="px-4 py-2 text-[13px]">
+                  <li key={l.id} className="px-4 py-2 text-sm">
                     <a href={l.url} target="_blank" rel="noopener noreferrer" className="font-medium text-brand-600 hover:underline">{l.label} ↗</a>
                   </li>
                 ))}

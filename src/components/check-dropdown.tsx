@@ -41,7 +41,7 @@ export function CheckDropdown({
     <details ref={ref} className="relative" data-testid={testId}>
       <summary
         aria-label={label}
-        className="flex h-10 cursor-pointer list-none items-center justify-between rounded-lg border border-line-strong bg-surface px-3 text-sm [&::-webkit-details-marker]:hidden"
+        className="flex h-10 cursor-pointer list-none items-center justify-between rounded-lg border border-line-strong bg-surface px-3 text-md [&::-webkit-details-marker]:hidden"
       >
         <span className={cn("truncate", !summary && "text-muted")}>{summary ?? label}</span>
         <span aria-hidden className="text-muted">▾</span>
@@ -49,7 +49,7 @@ export function CheckDropdown({
       <fieldset className="absolute z-20 mt-1 w-full min-w-[14rem] space-y-1 rounded-lg border border-line bg-surface p-2 shadow-lg">
         <legend className="sr-only">{label}</legend>
         {options.map(([k, text]) => (
-          <label key={k} className="flex items-center gap-2 rounded px-1.5 py-1 text-sm hover:bg-surface-2">
+          <label key={k} className="flex items-center gap-2 rounded px-1.5 py-1 text-md hover:bg-surface-2">
             <input type="checkbox" name={name} value={k} defaultChecked={selected.includes(k)} /> {text}
           </label>
         ))}

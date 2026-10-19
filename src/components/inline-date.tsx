@@ -61,10 +61,10 @@ export function InlineDate({
         aria-label={label}
         disabled={pending}
         onChange={scripted ? fileIt : undefined}
-        className="w-36 px-2 py-1 text-[12px]"
+        className="w-36 px-2 py-1 text-xs"
       />
       {scripted ? (
-        <span className="w-11 shrink-0 text-[11px] text-muted" aria-live="polite">
+        <span className="w-11 shrink-0 text-2xs text-muted" aria-live="polite">
           {pending ? "Saving" : saved ? "Saved" : ""}
         </span>
       ) : (

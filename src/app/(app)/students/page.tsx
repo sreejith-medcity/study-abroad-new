@@ -195,13 +195,13 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                       {r.source !== "partner" && <Chip className="ml-1">{r.source.toUpperCase()}</Chip>}
                     </span>
                     {staff && (
-                      <span className="block text-[11px] text-muted">{r.createdByDesk ?? "Not recorded"}</span>
+                      <span className="block text-2xs text-muted">{r.createdByDesk ?? "Not recorded"}</span>
                     )}
                   </Td>
                   <Td className="whitespace-nowrap tabular">{fmtDate(r.createdAt)}</Td>
                   <Td>
                     <Link href={`/students/${r.id}/profile`} className="whitespace-nowrap font-medium text-ink hover:text-brand-600 hover:underline">{fullName(r)}</Link>
-                    {r.medcityId && <span className="block font-mono text-[11px] text-muted">{r.medcityId}</span>}
+                    {r.medcityId && <span className="block font-mono text-2xs text-muted">{r.medcityId}</span>}
                   </Td>
                   {/* A counsellor works this list with the phone in the other
                       hand. The address and the number were text to read out;
@@ -256,7 +256,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                         quiet. A blue pill on every row of a new branch's list
                         reads as eight things to look at. */}
                     {r.appCount === 0 ? (
-                      <span className="whitespace-nowrap text-[12px] text-muted/70">No applications</span>
+                      <span className="whitespace-nowrap text-xs text-muted/70">No applications</span>
                     ) : r.pendingCount > 0 ? (
                       <Chip tone="warn">{r.pendingCount} need action</Chip>
                     ) : r.submittedCount > 0 ? (

@@ -52,7 +52,7 @@ export function ResourceForm({ countries }: { countries: { id: string; name: str
         <Input id="file" name="file" type="file" accept={RESOURCE_ACCEPT} className="py-1.5" />
       </Field>
       <fieldset>
-        <legend className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">Who can see it</legend>
+        <legend className="mb-1.5 text-2xs font-semibold uppercase tracking-wider text-muted">Who can see it</legend>
         <div className="grid gap-1.5 sm:grid-cols-2">
           {AUDIENCES.map(([value, label]) => (
             <Checkbox key={value} name={`audience_${value}`} label={label} defaultChecked={value === "PARTNER" || value === "COUNSELLOR"} />

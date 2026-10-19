@@ -45,7 +45,7 @@ export function ImportPanel({ kind }: { kind: string }) {
           <input id={`file-${kind}`} type="file" name="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="text-xs" />
         </div>
         {kind === "students" && (
-          <label className="flex items-start gap-2 text-[13px]" htmlFor={`consent-${kind}`}>
+          <label className="flex items-start gap-2 text-sm" htmlFor={`consent-${kind}`}>
             <input id={`consent-${kind}`} type="checkbox" name="consentAll" defaultChecked={mine.consentAll} className="mt-0.5 size-4 shrink-0" />
             <span>
               I confirm this branch has each student&apos;s consent to hold their personal details and documents. It stands for every row in the file, and is recorded against my name.
@@ -66,7 +66,7 @@ export function ImportPanel({ kind }: { kind: string }) {
       </form>
       {mine.error && <Alert tone="bad">{mine.error}</Alert>}
       {r && (
-        <div className="rounded-md border border-line p-3 text-[13px]" data-testid="import-result">
+        <div className="rounded-md border border-line p-3 text-sm" data-testid="import-result">
           {mine.committed ? (
             <p className="mb-2 font-medium text-good-700">Imported from {mine.fileName}.</p>
           ) : (

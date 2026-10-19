@@ -14,14 +14,14 @@ export default async function PortalMessages() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="font-display text-[24px] font-semibold text-ink">{t("messagesTitle")}</h1>
-        <p className="mt-1 text-[14px] leading-relaxed text-muted">{t("messagesIntro")}</p>
+        <h1 className="font-display text-[1.5rem] font-semibold text-ink">{t("messagesTitle")}</h1>
+        <p className="mt-1 text-md leading-relaxed text-muted">{t("messagesIntro")}</p>
       </div>
 
       <Card>
         <CardHeader title={t("messagesTitle")} subtitle={student.org.name} />
         {thread.length === 0 ? (
-          <p className="px-4 py-10 text-center text-[13px] text-muted">{t("noMessages")}</p>
+          <p className="px-4 py-10 text-center text-sm text-muted">{t("noMessages")}</p>
         ) : (
           <ul className="space-y-3 p-4">
             {thread.map((m) => {
@@ -30,15 +30,15 @@ export default async function PortalMessages() {
                 <li key={m.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
                   <div
                     className={cn(
-                      "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-[14px] leading-relaxed",
+                      "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-md leading-relaxed",
                       mine ? "bg-brand-600 text-white" : "bg-surface-2 text-ink",
                     )}
                   >
-                    <p className={cn("mb-0.5 text-[11px] font-semibold", mine ? "text-white/70" : "text-muted")}>
+                    <p className={cn("mb-0.5 text-2xs font-semibold", mine ? "text-white/70" : "text-muted")}>
                       {mine ? t("you") : (m.authorName ?? t("team"))}
                     </p>
                     <RichText text={m.body} />
-                    <p className={cn("mt-1 text-[11px]", mine ? "text-white/60" : "text-muted")}>{fmtDateTime(m.createdAt)}</p>
+                    <p className={cn("mt-1 text-2xs", mine ? "text-white/60" : "text-muted")}>{fmtDateTime(m.createdAt)}</p>
                   </div>
                 </li>
               );

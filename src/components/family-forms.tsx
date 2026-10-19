@@ -27,7 +27,7 @@ export function AddGuardianForm({ studentId }: { studentId: string }) {
         <TextField label="Email" name="email" type="email" required hint="They sign in with this address." />
         <TextField label="Mobile" name="phone" hint="Optional. Not used for sign-in." />
       </div>
-      <label className="mt-1 flex items-start gap-2 text-[13px]">
+      <label className="mt-1 flex items-start gap-2 text-sm">
         <input type="checkbox" name="seesMoney" className="mt-0.5 size-4 rounded border-line-strong" />
         <span>
           <span className="font-medium">Also let them see the fees</span>

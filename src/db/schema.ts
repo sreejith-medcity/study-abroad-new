@@ -397,6 +397,11 @@ export const users = pgTable(
      * list will grow and an enum costs a migration each time.
      */
     skin: text("skin").notNull().default("soft"),
+    /**
+     * How large this person wants the portal to read: "compact", "normal",
+     * "large" or "largest". Text for the same reason as the skin.
+     */
+    textSize: text("text_size").notNull().default("normal"),
     /** Raised to end every signed-in session for this account at once. */
     sessionVersion: integer("session_version").notNull().default(1),
     active: boolean("active").notNull().default(true),

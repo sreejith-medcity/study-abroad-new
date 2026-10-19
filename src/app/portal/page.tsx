@@ -44,16 +44,16 @@ export default async function PortalHome() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-600">{t("portal")}</p>
-          <h1 className="mt-1 font-display text-[26px] font-semibold text-ink">
+          <p className="text-2xs font-semibold uppercase tracking-[0.16em] text-brand-600">{t("portal")}</p>
+          <h1 className="mt-1 font-display text-[1.625rem] font-semibold text-ink">
             {t("greeting")}, {student.firstName}
           </h1>
         </div>
         {student.medcityId && (
           <div className="text-right">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">{t("medcityId")}</p>
-            <p className="font-mono text-[15px] font-semibold text-brand-700">{student.medcityId}</p>
-            <p className="text-[11px] text-muted">{t("quoteIdNote")}</p>
+            <p className="text-2xs font-semibold uppercase tracking-wider text-muted">{t("medcityId")}</p>
+            <p className="font-mono text-base font-semibold text-brand-700">{student.medcityId}</p>
+            <p className="text-2xs text-muted">{t("quoteIdNote")}</p>
           </div>
         )}
       </div>
@@ -66,17 +66,17 @@ export default async function PortalHome() {
             title={t("needFromYou")}
             subtitle={`${checklist.outstanding.length}`}
             action={
-              <Link href="/portal/documents" className="text-[13px] font-medium text-brand-600 hover:underline">
+              <Link href="/portal/documents" className="text-sm font-medium text-brand-600 hover:underline">
                 {t("uploadHere")}
               </Link>
             }
           />
           <ul className="divide-y divide-line/60">
             {checklist.outstanding.map((o) => (
-              <li key={o.code} className="flex flex-wrap items-baseline gap-x-2 px-4 py-2 text-[13px]">
+              <li key={o.code} className="flex flex-wrap items-baseline gap-x-2 px-4 py-2 text-sm">
                 <span className="font-medium text-ink">{o.label}</span>
                 {o.sentBack && <Chip tone="bad">{t("sendAgain")}</Chip>}
-                {o.dueOn && <span className="ml-auto tabular text-[12px] text-muted">{t("dueBy")} {fmtDate(o.dueOn)}</span>}
+                {o.dueOn && <span className="ml-auto tabular text-xs text-muted">{t("dueBy")} {fmtDate(o.dueOn)}</span>}
               </li>
             ))}
           </ul>
@@ -91,7 +91,7 @@ export default async function PortalHome() {
             title={t("needFromYou")}
             subtitle={`${docs.missing.length}`}
             action={
-              <Link href="/portal/documents" className="text-[13px] font-medium text-brand-600 hover:underline">
+              <Link href="/portal/documents" className="text-sm font-medium text-brand-600 hover:underline">
                 {t("uploadHere")}
               </Link>
             }
@@ -107,7 +107,7 @@ export default async function PortalHome() {
       )}
 
       <section className="space-y-4">
-        <h2 className="font-display text-[15px] font-semibold text-ink">{t("yourApplications")}</h2>
+        <h2 className="font-display text-base font-semibold text-ink">{t("yourApplications")}</h2>
         {apps.length === 0 ? (
           <Card>
             <EmptyState title={t("yourApplications")} icon={<IconApplications className="size-5" />}>
@@ -124,7 +124,7 @@ export default async function PortalHome() {
                   subtitle={`${a.program} · ${a.country}`}
                   action={<StatusBadge group={a.statusGroup} label={a.statusLabel} />}
                 />
-                <dl className="grid grid-cols-2 gap-x-4 gap-y-3 border-b border-line px-4 py-3 text-[13px] sm:grid-cols-3">
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-3 border-b border-line px-4 py-3 text-sm sm:grid-cols-3">
                   <div>
                     <dt className="text-muted">{t("intake")}</dt>
                     <dd className="font-medium">{intakeLabel(a.intakeMonth, a.intakeYear)}</dd>
@@ -139,7 +139,7 @@ export default async function PortalHome() {
                   </div>
                 </dl>
                 {(a.offerType || a.visaLodgedOn || a.visaDecision) && (
-                  <dl className="grid gap-x-4 gap-y-3 border-b border-line px-4 py-3 text-[13px] sm:grid-cols-2">
+                  <dl className="grid gap-x-4 gap-y-3 border-b border-line px-4 py-3 text-sm sm:grid-cols-2">
                     {a.offerType && (
                       <div>
                         <dt className="text-muted">{t(a.offerType === "UNCONDITIONAL" ? "unconditionalOffer" : "conditionalOffer")}</dt>
@@ -158,9 +158,9 @@ export default async function PortalHome() {
                   </dl>
                 )}
                 <div className="p-4">
-                  <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted">{t("milestones")}</p>
+                  <p className="mb-2.5 text-2xs font-semibold uppercase tracking-wider text-muted">{t("milestones")}</p>
                   {steps.length === 0 ? (
-                    <p className="text-[13px] text-muted">{t("nothingYet")}</p>
+                    <p className="text-sm text-muted">{t("nothingYet")}</p>
                   ) : (
                     <ol className="space-y-2.5">
                       {steps.map((s) => (
@@ -173,7 +173,7 @@ export default async function PortalHome() {
                             {s.group === "SUCCESS" ? <IconCheck className="size-3" /> : <IconClock className="size-3" />}
                           </span>
                           <span className="min-w-0">
-                            <span className="block text-[13px] font-medium text-ink">{s.label}</span>
+                            <span className="block text-sm font-medium text-ink">{s.label}</span>
                             <span className="block text-xs text-muted">{fmtDate(s.createdAt)}</span>
                           </span>
                         </li>
@@ -190,16 +190,16 @@ export default async function PortalHome() {
       {shortlist.length > 0 && (
         <section className="space-y-3">
           <div>
-            <h2 className="font-display text-[15px] font-semibold text-ink">{t("shortlistTitle")}</h2>
-            <p className="text-[13px] text-muted">{t("shortlistNote")}</p>
+            <h2 className="font-display text-base font-semibold text-ink">{t("shortlistTitle")}</h2>
+            <p className="text-sm text-muted">{t("shortlistNote")}</p>
           </div>
           <Card>
             <ul className="divide-y divide-line">
               {shortlist.map((x) => (
                 <li key={x.id} className="px-4 py-3">
                   <p className="font-medium text-ink">{x.name}</p>
-                  <p className="text-[13px] text-muted">{x.university}{x.campus ? `, ${x.campus}` : ""} · {x.country}</p>
-                  <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[13px]">
+                  <p className="text-sm text-muted">{x.university}{x.campus ? `, ${x.campus}` : ""} · {x.country}</p>
+                  <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm">
                     <span><span className="text-muted">{t("tuition")}:</span> {fee(x)}{inr(x) && <span className="text-muted"> ({inr(x)})</span>}</span>
                     {x.durationMonths && <span><span className="text-muted">{t("duration")}:</span> {x.durationMonths} {t("months")}</span>}
                     {x.workRights === "ELIGIBLE" && <Chip tone="ok">{t("postStudyWork")}</Chip>}
@@ -212,16 +212,16 @@ export default async function PortalHome() {
       )}
 
       <Card className="p-4">
-        <h2 className="flex items-center gap-1.5 font-display text-[15px] font-semibold">
+        <h2 className="flex items-center gap-1.5 font-display text-base font-semibold">
           <IconDoc className="size-4 text-brand-600" /> {t("counsellor")}
         </h2>
         <p className="mt-2 font-medium">{student.assignedTo?.name ?? student.org.name}</p>
-        <p className="text-[13px] text-muted">
+        <p className="text-sm text-muted">
           {t("branch")}: {student.org.name}
           {student.org.city ? `, ${student.org.city}` : ""}
         </p>
-        <p className="mt-2 text-[13px] leading-relaxed text-muted">{t("callUs")}</p>
-        <Link href="/portal/messages" className="mt-2 inline-block text-[13px] font-medium text-brand-600 hover:underline">
+        <p className="mt-2 text-sm leading-relaxed text-muted">{t("callUs")}</p>
+        <Link href="/portal/messages" className="mt-2 inline-block text-sm font-medium text-brand-600 hover:underline">
           {t("messages")}
         </Link>
       </Card>

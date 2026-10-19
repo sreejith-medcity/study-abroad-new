@@ -95,7 +95,7 @@ export default async function BoardPage({ searchParams }: { searchParams: Promis
       <PageHeader
         title="Students by stage"
         subtitle="Where everybody is, and which files nobody has touched in a fortnight. A student moves along on their own file, where the gate and its reasons are."
-        actions={<Link href="/students" className="text-[13px] font-medium text-brand-600 hover:underline">The list instead</Link>}
+        actions={<Link href="/students" className="text-sm font-medium text-brand-600 hover:underline">The list instead</Link>}
       />
 
       {/* Nineteen branches and a counsellor each made a wall of pills three
@@ -136,10 +136,10 @@ export default async function BoardPage({ searchParams }: { searchParams: Promis
               return (
                 <div key={s.value} className="w-72 shrink-0">
                   <div className="mb-2 flex items-center gap-2">
-                    <h2 className="text-[13px] font-semibold">{s.number}. {s.label}</h2>
+                    <h2 className="text-sm font-semibold">{s.number}. {s.label}</h2>
                     <Chip>{here.length}</Chip>
                   </div>
-                  <p className="mb-2 text-[11px] leading-snug text-muted">{s.blurb}</p>
+                  <p className="mb-2 text-2xs leading-snug text-muted">{s.blurb}</p>
                   <div className="space-y-2">
                     {here.map((c) => (
                       <Link
@@ -148,20 +148,20 @@ export default async function BoardPage({ searchParams }: { searchParams: Promis
                         className="block rounded-lg border border-line bg-surface p-2.5 hover:border-brand-300"
                       >
                         <p className="font-medium">{c.firstName} {c.lastName}</p>
-                        <p className="mt-0.5 text-[11px] text-muted">
+                        <p className="mt-0.5 text-2xs text-muted">
                           {isStaff(user) ? `${c.branch} · ` : ""}
                           {c.assignedToDesk ?? c.assignedTo ?? "nobody"}
                         </p>
-                        <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px]">
+                        <p className="mt-1 flex flex-wrap items-center gap-1.5 text-2xs">
                           <span className={c.quiet ? "font-medium text-warn-700" : "text-muted"}>{since(c.last)}</span>
                           {c.tasks.overdue > 0 && <Chip tone="bad">{c.tasks.overdue} overdue</Chip>}
                           {c.tasks.overdue === 0 && c.tasks.open > 0 && <Chip tone="info">{c.tasks.open} to do</Chip>}
                           {c.apps > 0 && <span className="text-muted">{c.apps} application{c.apps === 1 ? "" : "s"}</span>}
                         </p>
-                        {c.stageEnteredAt && <p className="mt-0.5 text-[11px] text-muted">On {stageLabel(c.stage).toLowerCase()} since {fmtDate(c.stageEnteredAt)}</p>}
+                        {c.stageEnteredAt && <p className="mt-0.5 text-2xs text-muted">On {stageLabel(c.stage).toLowerCase()} since {fmtDate(c.stageEnteredAt)}</p>}
                       </Link>
                     ))}
-                    {here.length === 0 && <p className="rounded-lg border border-dashed border-line p-3 text-[11px] text-muted">Nobody</p>}
+                    {here.length === 0 && <p className="rounded-lg border border-dashed border-line p-3 text-2xs text-muted">Nobody</p>}
                   </div>
                 </div>
               );

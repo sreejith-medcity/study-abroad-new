@@ -134,19 +134,19 @@ export async function FinderResults({
             .filter(([k]) => !RAIL_KEYS.includes(k))
             .map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
           <div className="flex items-baseline justify-between">
-            <h2 className="text-[13px] font-semibold text-ink">Narrow these</h2>
+            <h2 className="text-sm font-semibold text-ink">Narrow these</h2>
             <Link href={`/finder?${qs({ ...Object.fromEntries(RAIL_KEYS.map((k) => [k, undefined])) })}`} className="text-xs text-brand-600 hover:underline">Clear</Link>
           </div>
 
           <Field label="Words in the course or university">
-            <Input name="q" defaultValue={f.q ?? ""} placeholder="Search these results" className="py-1.5 text-[13px]" aria-label="Words in the course or university" />
+            <Input name="q" defaultValue={f.q ?? ""} placeholder="Search these results" className="py-1.5 text-sm" aria-label="Words in the course or university" />
           </Field>
 
           {unis.length > 1 && (
             <Field label="University">
               <div className="max-h-56 space-y-1 overflow-auto pr-1">
                 {unis.map((x) => (
-                  <label key={x.id} className="flex cursor-pointer items-center gap-2 text-[13px] leading-snug">
+                  <label key={x.id} className="flex cursor-pointer items-center gap-2 text-sm leading-snug">
                     <input type="checkbox" name="uni" value={x.id} defaultChecked={listOf(f.uni).includes(x.id)} className="size-3.5 shrink-0" />
                     <span className="flex-1 truncate" title={`${x.name}, ${x.country}`}>{x.name}</span>
                     <span className="tabular shrink-0 text-xs text-muted">{x.n.toLocaleString("en-IN")}</span>
@@ -160,13 +160,13 @@ export async function FinderResults({
             <Field label="Applied through">
               <div className="space-y-1">
                 {vendors.map((x) => (
-                  <label key={x.id} className="flex cursor-pointer items-center gap-2 text-[13px]">
+                  <label key={x.id} className="flex cursor-pointer items-center gap-2 text-sm">
                     <input type="checkbox" name="vendor" value={x.id} defaultChecked={listOf(f.vendor).includes(x.id)} className="size-3.5 shrink-0" />
                     <span className="size-2.5 shrink-0 rounded-sm" style={{ background: x.colour }} aria-hidden="true" />
                     <span className="flex-1 truncate">{x.code} {x.name}</span>
                   </label>
                 ))}
-                <label className="flex cursor-pointer items-center gap-2 text-[13px]">
+                <label className="flex cursor-pointer items-center gap-2 text-sm">
                   <input type="checkbox" name="vendor" value="none" defaultChecked={listOf(f.vendor).includes("none")} className="size-3.5 shrink-0" />
                   <span className="flex-1 truncate text-muted">No route recorded</span>
                 </label>
@@ -177,7 +177,7 @@ export async function FinderResults({
           <Field label="Level">
             <div className="space-y-1">
               {LEVELS.filter(([k]) => levels.get(k)).map(([key, label]) => (
-                <label key={key} className="flex cursor-pointer items-center gap-2 text-[13px]">
+                <label key={key} className="flex cursor-pointer items-center gap-2 text-sm">
                   <input type="checkbox" name="level" value={key} defaultChecked={listOf(f.level).includes(key)} className="size-3.5 shrink-0" />
                   <span className="flex-1 truncate">{label}</span>
                   <span className="tabular shrink-0 text-xs text-muted">{(levels.get(key) ?? 0).toLocaleString("en-IN")}</span>
@@ -187,7 +187,7 @@ export async function FinderResults({
           </Field>
 
           <Field label="Tuition a year">
-            <Select name="budget" defaultValue={f.budget ?? ""} aria-label="Tuition a year" className="py-1.5 text-[13px]">
+            <Select name="budget" defaultValue={f.budget ?? ""} aria-label="Tuition a year" className="py-1.5 text-sm">
               <option value="">Any</option>
               {BUDGETS.map((b) => <option key={b} value={b}>Up to ₹{b} lakh</option>)}
             </Select>
@@ -195,13 +195,13 @@ export async function FinderResults({
 
           <Field label="Course length in months">
             <div className="flex items-center gap-2">
-              <Input name="durFrom" defaultValue={f.durFrom ?? ""} inputMode="numeric" placeholder="From" aria-label="Shortest course in months" className="py-1.5 text-[13px]" />
-              <Input name="durTo" defaultValue={f.durTo ?? ""} inputMode="numeric" placeholder="To" aria-label="Longest course in months" className="py-1.5 text-[13px]" />
+              <Input name="durFrom" defaultValue={f.durFrom ?? ""} inputMode="numeric" placeholder="From" aria-label="Shortest course in months" className="py-1.5 text-sm" />
+              <Input name="durTo" defaultValue={f.durTo ?? ""} inputMode="numeric" placeholder="To" aria-label="Longest course in months" className="py-1.5 text-sm" />
             </div>
           </Field>
 
           <Field label="Offer turnaround">
-            <Select name="tat" defaultValue={f.tat ?? ""} aria-label="Offer turnaround" className="py-1.5 text-[13px]">
+            <Select name="tat" defaultValue={f.tat ?? ""} aria-label="Offer turnaround" className="py-1.5 text-sm">
               <option value="">Any, recorded or not</option>
               {TATS.map((d) => <option key={d} value={d}>Within {d} days</option>)}
             </Select>
@@ -210,7 +210,7 @@ export async function FinderResults({
           <Field label="What matters">
             <div className="space-y-1">
               {QUICK.filter((q) => RAIL_QUICK.includes(q.key)).map((q) => (
-                <label key={q.key} className="flex cursor-pointer items-center gap-2 text-[13px]">
+                <label key={q.key} className="flex cursor-pointer items-center gap-2 text-sm">
                   <input type="checkbox" name={q.key} value="1" defaultChecked={!!f[q.key]} className="size-3.5 shrink-0" />
                   <span>{q.label}</span>
                 </label>
@@ -220,19 +220,19 @@ export async function FinderResults({
 
           <Field label="The student">
             <div className="space-y-2">
-              <Select name="qual" defaultValue={f.qual ?? ""} aria-label="Highest qualification finished" className="py-1.5 text-[13px]">
+              <Select name="qual" defaultValue={f.qual ?? ""} aria-label="Highest qualification finished" className="py-1.5 text-sm">
                 <option value="">Highest qualification finished</option>
                 {QUALS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
               </Select>
               <div className="grid grid-cols-2 gap-2">
                 {[...ENGLISH, ...APTITUDE].map(([key, label]) => (
-                  <Input key={key} name={key} defaultValue={f[key] ?? ""} inputMode="decimal" placeholder={label} aria-label={label} className="py-1.5 text-[13px]" />
+                  <Input key={key} name={key} defaultValue={f[key] ?? ""} inputMode="decimal" placeholder={label} aria-label={label} className="py-1.5 text-sm" />
                 ))}
-                <Input name="ae_backlogs" defaultValue={f.ae_backlogs ?? ""} inputMode="numeric" placeholder="Backlogs" aria-label="Backlogs" className="py-1.5 text-[13px]" />
-                <Input name="gapMonths" defaultValue={f.gapMonths ?? ""} inputMode="numeric" placeholder="Gap, months" aria-label="Study gap in months" className="py-1.5 text-[13px]" />
+                <Input name="ae_backlogs" defaultValue={f.ae_backlogs ?? ""} inputMode="numeric" placeholder="Backlogs" aria-label="Backlogs" className="py-1.5 text-sm" />
+                <Input name="gapMonths" defaultValue={f.gapMonths ?? ""} inputMode="numeric" placeholder="Gap, months" aria-label="Study gap in months" className="py-1.5 text-sm" />
               </div>
               {checker && (
-                <label className="flex cursor-pointer items-start gap-2 text-[13px]">
+                <label className="flex cursor-pointer items-start gap-2 text-sm">
                   <input type="checkbox" name="fit" value="1" defaultChecked={!!f.fit} className="mt-0.5 size-3.5 shrink-0" />
                   <span>Only what they can meet</span>
                 </label>
@@ -242,12 +242,12 @@ export async function FinderResults({
 
           <Field label="University and deadlines">
             <div className="space-y-2">
-              <Select name="uniType" defaultValue={f.uniType ?? ""} aria-label="University type" className="py-1.5 text-[13px]">
+              <Select name="uniType" defaultValue={f.uniType ?? ""} aria-label="University type" className="py-1.5 text-sm">
                 <option value="">Public or private</option>
                 <option value="public">Public</option>
                 <option value="private">Private</option>
               </Select>
-              <Select name="apply" defaultValue={f.apply ?? ""} aria-label="Applications open or closed" className="py-1.5 text-[13px]">
+              <Select name="apply" defaultValue={f.apply ?? ""} aria-label="Applications open or closed" className="py-1.5 text-sm">
                 <option value="">Open or closed</option>
                 <option value="open">Applications open</option>
                 <option value="closed">Closed for now</option>
@@ -262,7 +262,7 @@ export async function FinderResults({
       <div className="min-w-0 space-y-3">
         <Card className="p-3.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-[15px] font-semibold text-ink" data-testid="finder-counts">
+            <p className="text-base font-semibold text-ink" data-testid="finder-counts">
               {counts.total.toLocaleString("en-IN")} course{counts.total === 1 ? "" : "s"} at {counts.unis.toLocaleString("en-IN")} {counts.unis === 1 ? "university" : "universities"}
             </p>
             <form method="get" action="/finder" className="flex items-center gap-2">
@@ -270,14 +270,14 @@ export async function FinderResults({
               {Object.entries(f)
                 .filter(([k]) => k !== "sort" && k !== "page")
                 .map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
-              <label htmlFor="sort" className="text-[13px] text-muted">Sort by</label>
-              <Select id="sort" name="sort" defaultValue={sort} className="w-52 py-1.5 text-[13px]">
+              <label htmlFor="sort" className="text-sm text-muted">Sort by</label>
+              <Select id="sort" name="sort" defaultValue={sort} className="w-52 py-1.5 text-sm">
                 {SORTS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
               </Select>
               <Button type="submit" size="sm" variant="secondary">Sort</Button>
             </form>
           </div>
-          <p className="mt-1 text-[13px] text-ink-soft">
+          <p className="mt-1 text-sm text-ink-soft">
             {checker ? <><span className="font-semibold text-ink">{counts.meets.toLocaleString("en-IN")}</span> meet every requirement on record. </> : null}
             {budget ? <><span className="font-semibold text-ink">{counts.inBudget.toLocaleString("en-IN")}</span> sit inside the budget, and anything up to a quarter over is shown and marked. </> : null}
             {byFit && counts.total > CANDIDATES ? `Best fit is worked out over the strongest ${CANDIDATES.toLocaleString("en-IN")} of these; sort by fee or ranking to page through all of them.` : null}
@@ -333,7 +333,7 @@ export async function FinderResults({
                         <Chip tone={match.band === "strong" ? "ok" : match.band === "possible" ? "info" : "neutral"}>{BAND_LABEL[match.band]}</Chip>
                         {row.pathway !== "DEGREE" && <Chip tone="brand">{row.pathway === "AUSBILDUNG" ? "Ausbildung" : "Nursing"}</Chip>}
                       </div>
-                      <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-muted">
+                      <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
                         <span>{LEVEL_LABEL[row.level] ?? row.level}</span>
                         <Link prefetch={false} href={`/universities/${row.universityId}`} className="hover:text-brand-700 hover:underline">{row.university}</Link>
                         <span className="inline-flex items-center gap-1"><IconGlobe className="size-3.5" />{row.city ? `${row.city}, ` : ""}{row.country}</span>
@@ -350,7 +350,7 @@ export async function FinderResults({
                   </div>
                 </div>
 
-                <dl className="mt-2 grid gap-x-4 gap-y-1 text-[13px] sm:grid-cols-2 lg:grid-cols-4">
+                <dl className="mt-2 grid gap-x-4 gap-y-1 text-sm sm:grid-cols-2 lg:grid-cols-4">
                   <Fact label="Tuition" value={tuitionText(row.tuitionPerYear, row.tuitionTotal, row.currency)} />
                   <Fact label="Length" value={row.durationMonths ? `${row.durationMonths} months` : null} />
                   <Fact label="Intakes" value={row.intakeMonths.length ? intakesText(row.intakeMonths) : null} />
@@ -362,7 +362,7 @@ export async function FinderResults({
                 </dl>
 
                 {(match.reasons.length > 0 || match.cautions.length > 0) && (
-                  <ul className="mt-2 space-y-1 text-[13px]">
+                  <ul className="mt-2 space-y-1 text-sm">
                     {match.reasons.slice(0, 4).map((r) => (
                       <li key={r} className="flex items-start gap-1.5 text-ink-soft">
                         <IconCheck className="mt-0.5 size-3.5 shrink-0 text-good-500" /> {r}
@@ -390,7 +390,7 @@ export async function FinderResults({
                 {!studentId && <span className="inline-flex items-center gap-1 text-xs text-muted"><IconSpark className="size-3.5" /> Pick a student to shortlist from here.</span>}
               </div>
               {pages > 1 && (
-                <nav className="flex items-center gap-2 text-[13px]" aria-label="Pages">
+                <nav className="flex items-center gap-2 text-sm" aria-label="Pages">
                   {page > 1 && <Link href={`/finder?${qs({ page: String(page - 1) })}&step=results`} className="font-medium text-brand-600 hover:underline">Previous</Link>}
                   <span className="text-muted">Page {page} of {pages.toLocaleString("en-IN")}</span>
                   {page < pages && <Link href={`/finder?${qs({ page: String(page + 1) })}&step=results`} className="font-medium text-brand-600 hover:underline">Next</Link>}
@@ -410,7 +410,7 @@ const RAIL_QUICK = ["workRights", "scholarship", "noEnglish", "moi", "noAppFee",
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted">{label}</p>
+      <p className="mb-1 text-2xs font-semibold uppercase tracking-wide text-muted">{label}</p>
       {children}
     </div>
   );

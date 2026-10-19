@@ -26,7 +26,7 @@ export default async function AdminPromotionsPage() {
               {rows.map((p) => {
                 const st = promotionState(p.startsOn, p.endsOn);
                 return (
-                  <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-[13px]">
+                  <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm">
                     <div>
                       <p className="font-medium text-ink">{p.title}</p>
                       <p className="text-muted">{rangeText(p.startsOn, p.endsOn)}{p.countries.length ? ` · ${p.countries.join(", ")}` : " · All destinations"}</p>

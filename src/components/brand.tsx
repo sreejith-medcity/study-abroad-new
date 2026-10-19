@@ -50,9 +50,9 @@ export async function OrgBrandLogo({ org, tone = "light", className }: { org: Or
         /* eslint-disable-next-line @next/next/no-img-element */
         <img src={`/api/org-logo/${org.id}?v=${org.portalLogoKey.slice(-12)}`} alt={label} className="h-8 w-auto max-w-[10rem] rounded bg-white/90 object-contain p-0.5" />
       ) : (
-        <span className={cn("font-display text-[16px] font-semibold", tone === "light" ? "text-white" : "text-ink")}>{label}</span>
+        <span className={cn("font-display text-lg font-semibold", tone === "light" ? "text-white" : "text-ink")}>{label}</span>
       )}
-      <span className={cn("text-[11px] leading-tight", tone === "light" ? "text-white/70" : "text-muted")}>with {settings.organisationName}</span>
+      <span className={cn("text-2xs leading-tight", tone === "light" ? "text-white/70" : "text-muted")}>with {settings.organisationName}</span>
     </span>
   );
 }

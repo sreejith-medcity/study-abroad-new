@@ -132,7 +132,7 @@ export default async function AdminDashboard({ user, f, showMoney = true }: { us
             <CardHeader
               title="Lane health"
               subtitle="Live work per lane, and how much of it has passed its service level"
-              action={<Link href="/admin/queue" className="text-[13px] font-medium text-brand-600 hover:underline">Work queue</Link>}
+              action={<Link href="/admin/queue" className="text-sm font-medium text-brand-600 hover:underline">Work queue</Link>}
             />
             <Table tableClassName="min-w-[560px]">
               <thead>
@@ -150,7 +150,7 @@ export default async function AdminDashboard({ user, f, showMoney = true }: { us
                     <Td className="tabular">{groups[g]}</Td>
                     <Td>{(late.perGroup[g] ?? 0) > 0 ? <Chip tone="bad">{late.perGroup[g]}</Chip> : <Chip tone="ok">None</Chip>}</Td>
                     <Td>
-                      <Link href={`/applications?group=${g}`} className="text-[13px] font-medium text-brand-600 hover:underline">
+                      <Link href={`/applications?group=${g}`} className="text-sm font-medium text-brand-600 hover:underline">
                         See list
                       </Link>
                     </Td>

@@ -102,7 +102,7 @@ export function RouteForm({ programId, vendors, route, currency, onDone }: { pro
       </Field>
       <Checkbox name="interviewRequired" label="This route runs its own interview before the university's" defaultChecked={route?.interviewRequired} />
       {onDone && (
-        <button type="button" onClick={onDone} className="text-[13px] text-muted hover:text-ink">Cancel</button>
+        <button type="button" onClick={onDone} className="text-sm text-muted hover:text-ink">Cancel</button>
       )}
     </ActionForm>
   );
@@ -110,10 +110,10 @@ export function RouteForm({ programId, vendors, route, currency, onDone }: { pro
 
 export function AddRoute({ programId, vendors, currency }: { programId: string; vendors: Vendor[]; currency: string }) {
   const [open, setOpen] = useState(false);
-  if (!vendors.length) return <p className="text-[13px] text-muted">Add a vendor first, under Vendors and routes.</p>;
+  if (!vendors.length) return <p className="text-sm text-muted">Add a vendor first, under Vendors and routes.</p>;
   if (!open)
     return (
-      <button type="button" onClick={() => setOpen(true)} className="text-[13px] font-medium text-brand-600 hover:underline">
+      <button type="button" onClick={() => setOpen(true)} className="text-sm font-medium text-brand-600 hover:underline">
         Add a route to this course
       </button>
     );
@@ -124,7 +124,7 @@ export function EditRoute({ programId, vendors, route, currency }: { programId: 
   const [open, setOpen] = useState(false);
   if (!open)
     return (
-      <button type="button" onClick={() => setOpen(true)} className="text-[13px] font-medium text-brand-600 hover:underline">
+      <button type="button" onClick={() => setOpen(true)} className="text-sm font-medium text-brand-600 hover:underline">
         Edit
       </button>
     );

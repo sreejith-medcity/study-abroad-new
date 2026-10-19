@@ -420,28 +420,28 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <Link href="/" className="relative z-10 rounded-lg px-1 py-1">
           <BrandLogo />
         </Link>
-        <span className="relative z-10 ml-1 hidden text-[13px] text-white/70 lg:inline">{user.orgName}</span>
+        <span className="relative z-10 ml-1 hidden text-sm text-white/70 lg:inline">{user.orgName}</span>
 
         <div className="relative z-10 ml-auto flex items-center gap-1.5">
           <CommandPalette groups={navGroups} />
-          <Link href="/whats-new" className="relative hidden items-center rounded-lg px-2.5 py-2 text-[13px] font-medium text-white/90 hover:bg-white/10 sm:flex">
+          <Link href="/whats-new" className="relative hidden items-center rounded-lg px-2.5 py-2 text-sm font-medium text-white/90 hover:bg-white/10 sm:flex">
             What&apos;s new
             {freshNews && <span className="ml-1 size-2 rounded-full bg-gold-400" aria-label="New items" />}
           </Link>
           <details className="group relative">
             <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-lg px-2.5 py-2 text-white/90 transition-colors hover:bg-white/10" aria-label={`Notifications, ${unread} unread`}>
               <IconBell />
-              {unread > 0 && <span className="rounded-full bg-gold-400 px-1.5 text-[11px] font-bold text-ink tabular">{unread}</span>}
+              {unread > 0 && <span className="rounded-full bg-gold-400 px-1.5 text-2xs font-bold text-ink tabular">{unread}</span>}
             </summary>
             <div className="absolute right-0 mt-2 w-[22rem] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-xl border border-line bg-surface text-ink shadow-pop">
               <div className="flex items-center justify-between border-b border-line px-3.5 py-2.5">
-                <span className="font-display text-sm font-semibold">Notifications</span>
-                <Link href="/notifications" className="text-[13px] font-medium text-brand-600 hover:underline">
+                <span className="font-display text-md font-semibold">Notifications</span>
+                <Link href="/notifications" className="text-sm font-medium text-brand-600 hover:underline">
                   View all
                 </Link>
               </div>
               {latest.length === 0 ? (
-                <p className="px-4 py-8 text-center text-[13px] text-muted">You&apos;re all caught up.</p>
+                <p className="px-4 py-8 text-center text-sm text-muted">You&apos;re all caught up.</p>
               ) : (
                 <ul className="max-h-[22rem] overflow-y-auto">
                   {latest.map((n) => (
@@ -449,9 +449,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                       <Link href={`/notifications/${n.id}`} className="flex gap-2.5 px-3.5 py-2.5 hover:bg-surface-2">
                         <span className={cn("mt-1.5 size-1.5 shrink-0 rounded-full", n.readAt ? "bg-transparent" : "bg-brand-600")} />
                         <span className="min-w-0">
-                          <span className={cn("block truncate text-sm", n.readAt ? "text-ink-soft" : "font-semibold text-ink")}>{n.title}</span>
+                          <span className={cn("block truncate text-md", n.readAt ? "text-ink-soft" : "font-semibold text-ink")}>{n.title}</span>
                           {n.body && <span className="block truncate text-xs text-muted">{n.body}</span>}
-                          <span className="block text-[11px] text-muted/80">{fmtDateTime(n.createdAt)}</span>
+                          <span className="block text-2xs text-muted/80">{fmtDateTime(n.createdAt)}</span>
                         </span>
                       </Link>
                     </li>
@@ -463,32 +463,32 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
           <details className="relative">
             <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg py-1.5 pl-1.5 pr-2.5 text-white transition-colors hover:bg-white/10">
-              <span className="grid size-8 place-items-center rounded-full bg-white/15 font-display text-[13px] font-semibold">
+              <span className="grid size-8 place-items-center rounded-full bg-white/15 font-display text-sm font-semibold">
                 {user.name.slice(0, 1).toUpperCase()}
               </span>
               <span className="hidden text-left leading-tight sm:block">
-                <span className="block text-[13px] font-medium">{user.name.split(" ")[0]}</span>
-                <span className="block text-[11px] text-white/70">{ROLE_LABEL[user.role]}</span>
+                <span className="block text-sm font-medium">{user.name.split(" ")[0]}</span>
+                <span className="block text-2xs text-white/70">{ROLE_LABEL[user.role]}</span>
               </span>
               <span aria-hidden="true" className="text-white/70">▾</span>
             </summary>
             <div className="absolute right-0 mt-2 w-64 rounded-xl border border-line bg-surface p-3.5 text-ink shadow-pop">
-              <p className="font-display text-sm font-semibold">{user.name}</p>
+              <p className="font-display text-md font-semibold">{user.name}</p>
               <p className="truncate text-xs text-muted">{user.email}</p>
               <p className="mt-1 text-xs text-muted">
                 {user.orgName} · {ROLE_LABEL[user.role]}
                 {user.deskLabel ? ` · ${user.deskLabel}` : ""}
               </p>
               <div className="mt-3 grid grid-cols-2 gap-2">
-                <Link href="/settings" className="rounded-lg border border-line px-3 py-1.5 text-center text-[13px] font-medium hover:bg-surface-2">
+                <Link href="/settings" className="rounded-lg border border-line px-3 py-1.5 text-center text-sm font-medium hover:bg-surface-2">
                   Settings
                 </Link>
-                <Link href="/settings/security" className="rounded-lg border border-line px-3 py-1.5 text-center text-[13px] font-medium hover:bg-surface-2">
+                <Link href="/settings/security" className="rounded-lg border border-line px-3 py-1.5 text-center text-sm font-medium hover:bg-surface-2">
                   Password
                 </Link>
               </div>
               <form action={logoutAction} className="mt-2">
-                <button className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-surface-2 px-3 py-1.5 text-[13px] font-medium hover:bg-brand-50 hover:text-brand-700">
+                <button className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-surface-2 px-3 py-1.5 text-sm font-medium hover:bg-brand-50 hover:text-brand-700">
                   <IconLogout className="size-4" /> Sign out
                 </button>
               </form>
@@ -503,7 +503,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <SideNav groups={navGroups} />
             {/* Hidden once the menu is put away: four characters and an
                 ellipsis is not the name of a company. */}
-            <p className="truncate border-t border-line/70 px-4 py-3 text-[11px] leading-relaxed text-muted/70 [[data-nav-rail='1']_&]:hidden">
+            <p className="truncate border-t border-line/70 px-4 py-3 text-2xs leading-relaxed text-muted/70 [[data-nav-rail='1']_&]:hidden">
               {settings.organisationName}
             </p>
           </div>

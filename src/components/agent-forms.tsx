@@ -48,8 +48,8 @@ export function JoinForm({ branches }: { branches: { slug: string; name: string 
         invented one. What is filled in is checked for shape before it is kept.
       */}
       <fieldset className="rounded-lg border border-line p-4">
-        <legend className="px-1 text-[13px] font-medium">Your company, if you have registered one</legend>
-        <p className="mb-3 text-[13px] text-muted">
+        <legend className="px-1 text-sm font-medium">Your company, if you have registered one</legend>
+        <p className="mb-3 text-sm text-muted">
           Leave any of this empty if it does not apply to you. We ask because Medcity has to know who it is paying before it pays
           anybody.
         </p>
@@ -65,8 +65,8 @@ export function JoinForm({ branches }: { branches: { slug: string; name: string 
       </fieldset>
 
       <fieldset className="rounded-lg border border-line p-4">
-        <legend className="px-1 text-[13px] font-medium">Who owns the firm</legend>
-        <p className="mb-3 text-[13px] text-muted">
+        <legend className="px-1 text-sm font-medium">Who owns the firm</legend>
+        <p className="mb-3 text-sm text-muted">
           Only if that is somebody other than you, or if you want to give the proof now rather than later. The number is held the way
           a student&rsquo;s passport is: only the last characters are shown on screen, and the whole of it only to those who need it.
         </p>
@@ -200,7 +200,7 @@ export function AssignReferral({ enquiryId, branches }: { enquiryId: string; bra
     <ActionForm action={assignReferralAction} submitLabel="Give it to them" pendingLabel="Passing it on…">
       <input type="hidden" name="enquiryId" value={enquiryId} />
       <Field label="Branch" htmlFor={`to-${enquiryId}`} required>
-        <Select id={`to-${enquiryId}`} name="orgId" className="py-1.5 text-[13px]">
+        <Select id={`to-${enquiryId}`} name="orgId" className="py-1.5 text-sm">
           {branches.map((b) => (
             <option key={b.id} value={b.id}>
               {b.name}
@@ -345,7 +345,7 @@ export function AgentSettingsForm({
 /** Kept so the agreement body can be read before accepting, without a library. */
 export function MouBody({ body }: { body: string }) {
   return (
-    <div className="max-h-[32rem] overflow-y-auto rounded-lg border border-line bg-surface p-4 text-[13.5px] leading-relaxed text-ink-soft">
+    <div className="max-h-[32rem] overflow-y-auto rounded-lg border border-line bg-surface p-4 text-sm leading-relaxed text-ink-soft">
       {body.split(/\n{2,}/).map((para, i) => (
         <p key={i} className="mb-3 whitespace-pre-wrap last:mb-0">
           {para}

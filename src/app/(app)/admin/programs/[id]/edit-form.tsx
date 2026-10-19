@@ -160,8 +160,8 @@ export function ProgramEditForm({ program, currency, docs }: { program: Editable
 function Section({ title, note, children }: { title: string; note?: string; children: React.ReactNode }) {
   return (
     <fieldset className="space-y-3">
-      <legend className="font-display text-[15px] font-semibold text-ink">{title}</legend>
-      {note && <p className="-mt-1 text-[13px] text-muted">{note}</p>}
+      <legend className="font-display text-base font-semibold text-ink">{title}</legend>
+      {note && <p className="-mt-1 text-sm text-muted">{note}</p>}
       <div className="grid gap-3 sm:grid-cols-2">{children}</div>
     </fieldset>
   );

@@ -173,7 +173,7 @@ export default async function SuperAdminDashboard({ user, f }: { user: SessionUs
           ]}
         />
 
-        <h2 className="pt-1 text-[11px] font-semibold uppercase tracking-[0.13em] text-muted">More detail</h2>
+        <h2 className="pt-1 text-2xs font-semibold uppercase tracking-[0.13em] text-muted">More detail</h2>
 
         <Section
           id="attention"
@@ -213,7 +213,7 @@ export default async function SuperAdminDashboard({ user, f }: { user: SessionUs
                         {ROLE_LABEL[r.role] ?? r.role}
                       </Chip>
                     </Td>
-                    <Td className="max-w-[14rem] truncate text-[13px]" title={r.orgName}>{r.orgName}</Td>
+                    <Td className="max-w-[14rem] truncate text-sm" title={r.orgName}>{r.orgName}</Td>
                     <Td>
                       {!r.active ? (
                         <Chip tone="bad">Switched off</Chip>
@@ -223,7 +223,7 @@ export default async function SuperAdminDashboard({ user, f }: { user: SessionUs
                         <Chip>Never signed in</Chip>
                       )}
                     </Td>
-                    <Td className="whitespace-nowrap text-[13px] text-muted">{r.lastSignInAt ? fmtDate(r.lastSignInAt) : "Never"}</Td>
+                    <Td className="whitespace-nowrap text-sm text-muted">{r.lastSignInAt ? fmtDate(r.lastSignInAt) : "Never"}</Td>
                   </tr>
                 ))}
               </tbody>
@@ -245,7 +245,7 @@ export default async function SuperAdminDashboard({ user, f }: { user: SessionUs
           ) : (
             <ul>
               {sensitive.map((r) => (
-                <li key={r.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-b border-line px-4 py-2.5 text-[13px] last:border-0">
+                <li key={r.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-b border-line px-4 py-2.5 text-sm last:border-0">
                   <Chip tone={/delete|reveal/.test(r.action) ? "bad" : "warn"}>{actionLabel(r.action)}</Chip>
                   <span className="font-medium">{r.actorName ?? "System"}</span>
                   <span className="text-muted">· {r.entityType.replace(/_/g, " ")}</span>

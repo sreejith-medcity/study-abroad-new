@@ -157,7 +157,7 @@ export default async function DocumentationQueuePage({
                 <tr key={r.id}>
                   <Td className="whitespace-nowrap text-xs tabular">
                     {waited(r.uploadedAt)}
-                    {r.dueOn && <span className="block text-[11px] text-muted">Wanted by {fmtDate(r.dueOn)}</span>}
+                    {r.dueOn && <span className="block text-2xs text-muted">Wanted by {fmtDate(r.dueOn)}</span>}
                   </Td>
                   <Td>
                     <Link href={`/students/${r.studentId}/documentation`} className="font-medium text-brand-600 hover:underline">{r.studentName}</Link>

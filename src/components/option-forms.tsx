@@ -24,8 +24,8 @@ export function OptionRequestForm({ students, countries, preselect }: { students
   return (
     <ActionForm action={createOptionRequestAction} submitLabel="Send request to the Overseas team" pendingLabel="Sending…">
       <fieldset className="space-y-2">
-        <legend className="text-[11px] font-semibold uppercase tracking-wider text-muted">Who is it for</legend>
-        <div className="flex flex-wrap gap-4 text-[13px]">
+        <legend className="text-2xs font-semibold uppercase tracking-wider text-muted">Who is it for</legend>
+        <div className="flex flex-wrap gap-4 text-sm">
           <label className="flex items-center gap-2"><input type="radio" name="who" checked={existing === "existing"} onChange={() => setExisting("existing")} className="accent-brand-600" /> A student already registered</label>
           <label className="flex items-center gap-2"><input type="radio" name="who" checked={existing === "new"} onChange={() => setExisting("new")} className="accent-brand-600" /> Someone not registered yet</label>
         </div>
@@ -56,10 +56,10 @@ export function OptionRequestForm({ students, countries, preselect }: { students
         </Field>
       </div>
       <fieldset>
-        <legend className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">Destinations (up to {MAX_CHOICES})</legend>
+        <legend className="mb-1.5 text-2xs font-semibold uppercase tracking-wider text-muted">Destinations (up to {MAX_CHOICES})</legend>
         <div className="flex flex-wrap gap-1.5">
           {countries.map((c) => (
-            <label key={c.code} className={`cursor-pointer rounded-full border px-3 py-1 text-[13px] ${dest.includes(c.code) ? "border-brand-600 bg-brand-600 text-white" : "border-line-strong text-ink-soft"}`}>
+            <label key={c.code} className={`cursor-pointer rounded-full border px-3 py-1 text-sm ${dest.includes(c.code) ? "border-brand-600 bg-brand-600 text-white" : "border-line-strong text-ink-soft"}`}>
               <input type="checkbox" name="destination" value={c.code} checked={dest.includes(c.code)} onChange={() => toggle(dest, setDest, c.code)} className="sr-only" />
               {c.name}
             </label>
@@ -68,10 +68,10 @@ export function OptionRequestForm({ students, countries, preselect }: { students
         <FieldError name="destination" />
       </fieldset>
       <fieldset>
-        <legend className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">Level to study (up to {MAX_CHOICES})</legend>
+        <legend className="mb-1.5 text-2xs font-semibold uppercase tracking-wider text-muted">Level to study (up to {MAX_CHOICES})</legend>
         <div className="flex flex-wrap gap-1.5">
           {LEVELS.map(([v, l]) => (
-            <label key={v} className={`cursor-pointer rounded-full border px-3 py-1 text-[13px] ${levels.includes(v) ? "border-brand-600 bg-brand-600 text-white" : "border-line-strong text-ink-soft"}`}>
+            <label key={v} className={`cursor-pointer rounded-full border px-3 py-1 text-sm ${levels.includes(v) ? "border-brand-600 bg-brand-600 text-white" : "border-line-strong text-ink-soft"}`}>
               <input type="checkbox" name="studyLevel" value={v} checked={levels.includes(v)} onChange={() => toggle(levels, setLevels, v)} className="sr-only" />
               {l}
             </label>

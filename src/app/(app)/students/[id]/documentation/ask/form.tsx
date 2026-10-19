@@ -118,11 +118,11 @@ export function AskForm({
               </Field>
             </div>
             <Field label="The message" htmlFor="ask-body" hint="Edit it freely. What is here is exactly what is sent.">
-              <Textarea id="ask-body" name="body" rows={16} value={body} onChange={(e) => setEdited(e.target.value)} className="font-mono text-[13px]" />
+              <Textarea id="ask-body" name="body" rows={16} value={body} onChange={(e) => setEdited(e.target.value)} className="font-mono text-sm" />
               <FieldError name="body" />
             </Field>
             {edited !== null && (
-              <button type="button" onClick={() => setEdited(null)} className="text-[13px] text-muted hover:text-ink">
+              <button type="button" onClick={() => setEdited(null)} className="text-sm text-muted hover:text-ink">
                 Start again from the list
               </button>
             )}
@@ -137,11 +137,11 @@ export function AskForm({
           )}
           <div className="flex flex-wrap gap-2">
             {canWhatsApp && (
-              <button type="submit" name="channel" value="WHATSAPP" disabled={chosen.length === 0} className="rounded-lg bg-brand-600 px-4 py-2 text-[13px] font-medium text-white disabled:opacity-50">
+              <button type="submit" name="channel" value="WHATSAPP" disabled={chosen.length === 0} className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
                 Send on WhatsApp
               </button>
             )}
-            <button type="submit" name="channel" value="PORTAL" disabled={chosen.length === 0} className="rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-ink disabled:opacity-50">
+            <button type="submit" name="channel" value="PORTAL" disabled={chosen.length === 0} className="rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink disabled:opacity-50">
               Put it in the portal only
             </button>
           </div>

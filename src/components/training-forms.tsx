@@ -12,10 +12,10 @@ export function QuizForm({ courseId, questions }: { courseId: string; questions:
         {questions.map((q, n) => (
           <li key={q.id}>
             <fieldset>
-              <legend className="mb-1.5 text-[13px] font-medium">{n + 1}. {q.prompt}</legend>
+              <legend className="mb-1.5 text-sm font-medium">{n + 1}. {q.prompt}</legend>
               <div className="space-y-1">
                 {q.options.map((o, i) => (
-                  <label key={i} className="flex items-start gap-2 text-[13px]">
+                  <label key={i} className="flex items-start gap-2 text-sm">
                     <input type="radio" name={`q_${q.id}`} value={i} className="mt-0.5 accent-brand-600" />
                     <span>{o}</span>
                   </label>
@@ -45,7 +45,7 @@ export function CourseForm({ resources }: { resources: { id: string; title: stri
       </Field>
       {resources.length > 0 && (
         <fieldset>
-          <legend className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">Reading from the learning library</legend>
+          <legend className="mb-1.5 text-2xs font-semibold uppercase tracking-wider text-muted">Reading from the learning library</legend>
           <div className="max-h-48 space-y-1 overflow-y-auto">
             {resources.map((r) => <Checkbox key={r.id} name="resource" value={r.id} label={r.title} />)}
           </div>
@@ -64,7 +64,7 @@ export function QuestionForm({ courseId }: { courseId: string }) {
         <FieldError name="prompt" />
       </Field>
       <fieldset className="space-y-1.5">
-        <legend className="text-[11px] font-semibold uppercase tracking-wider text-muted">Answers: tick the right one</legend>
+        <legend className="text-2xs font-semibold uppercase tracking-wider text-muted">Answers: tick the right one</legend>
         {[0, 1, 2, 3].map((i) => (
           <div key={i} className="flex items-center gap-2">
             <input type="radio" name="correct" value={i} aria-label={`Answer ${i + 1} is right`} className="accent-brand-600" />

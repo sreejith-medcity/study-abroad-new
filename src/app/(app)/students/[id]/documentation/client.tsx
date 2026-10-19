@@ -49,7 +49,7 @@ function Quiet({ action, children, ...fields }: { action: (fd: FormData) => Prom
   );
 }
 
-const link = "text-[13px] font-medium text-brand-600 hover:underline";
+const link = "text-sm font-medium text-brand-600 hover:underline";
 
 export function ItemActions({ item, reasons, canProcess, userId }: { item: Item; reasons: { code: string; label: string }[]; canProcess: boolean; userId: string }) {
   const [open, setOpen] = useState<null | "ask" | "check" | "skip" | "upload">(null);
@@ -76,11 +76,11 @@ export function ItemActions({ item, reasons, canProcess, userId }: { item: Item;
           )}
           <button type="button" className={link} onClick={() => setOpen("upload")}>Upload</button>
           {item.state !== "ACCEPTED" && (
-            <button type="button" className="text-[13px] text-muted hover:text-ink" onClick={() => setOpen("skip")}>Not needed</button>
+            <button type="button" className="text-sm text-muted hover:text-ink" onClick={() => setOpen("skip")}>Not needed</button>
           )}
           {item.source === "STUDENT" && item.version === 0 && (
             <Quiet action={removeChecklistItemAction} itemId={item.id}>
-              <button type="submit" className="text-[13px] text-muted hover:text-ink">Remove</button>
+              <button type="submit" className="text-sm text-muted hover:text-ink">Remove</button>
             </Quiet>
           )}
         </>
@@ -107,11 +107,11 @@ export function ItemActions({ item, reasons, canProcess, userId }: { item: Item;
       <Modal open={open === "check"} onClose={() => setOpen(null)} title={`Checking ${item.label}`} description={item.guidance ?? "No rule recorded for this document yet."} className="max-w-2xl">
         <div className="space-y-4">
           {item.fileName && item.documentId ? (
-            <p className="text-[13px]">
+            <p className="text-sm">
               File: <a href={`/api/documents/${item.documentId}`} className="font-medium text-brand-600 hover:underline">{item.fileName}</a> {item.version > 0 && <span className="text-muted">v{item.version}</span>}
             </p>
           ) : (
-            <p className="text-[13px] text-muted">No file on the row. Accepting it records the decision without one.</p>
+            <p className="text-sm text-muted">No file on the row. Accepting it records the decision without one.</p>
           )}
           {!heldByOther && (
             <Quiet action={claimItemAction} itemId={item.id}>
@@ -120,7 +120,7 @@ export function ItemActions({ item, reasons, canProcess, userId }: { item: Item;
           )}
           {item.claimedById === userId && (
             <Quiet action={releaseItemAction} itemId={item.id}>
-              <button type="submit" className="ml-3 text-[13px] text-muted hover:text-ink">Let it go</button>
+              <button type="submit" className="ml-3 text-sm text-muted hover:text-ink">Let it go</button>
             </Quiet>
           )}
           <div className="rounded-lg border border-line p-3">

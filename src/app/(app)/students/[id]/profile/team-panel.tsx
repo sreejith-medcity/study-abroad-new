@@ -13,7 +13,7 @@ export function AddPersonForm({ studentId, people }: { studentId: string; people
       <input type="hidden" name="studentId" value={studentId} />
       <div className="flex flex-wrap items-center gap-2">
         <label htmlFor={`who-${studentId}`} className="sr-only">Somebody to put on this file</label>
-        <Select id={`who-${studentId}`} name="userId" defaultValue="" className="w-52 py-1.5 text-[13px]">
+        <Select id={`who-${studentId}`} name="userId" defaultValue="" className="w-52 py-1.5 text-sm">
           <option value="" disabled>Who else is on this</option>
           {people.map((p) => (
             <option key={p.id} value={p.id}>{p.deskLabel ?? p.name}</option>
@@ -25,7 +25,7 @@ export function AddPersonForm({ studentId, people }: { studentId: string; people
           name="part"
           list={`parts-${studentId}`}
           placeholder="What they do: Visa"
-          className="w-44 py-1.5 text-[13px]"
+          className="w-44 py-1.5 text-sm"
         />
         <datalist id={`parts-${studentId}`}>
           {PARTS.map((p) => (

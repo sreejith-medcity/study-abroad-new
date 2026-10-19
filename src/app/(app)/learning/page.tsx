@@ -93,8 +93,8 @@ export default async function LearningPage({ searchParams }: { searchParams: Pro
             {x.countryName && <Chip tone="info">{x.countryName}</Chip>}
             {!x.published && <Chip tone="bad">Unpublished</Chip>}
           </div>
-          <h3 className="mt-2 font-display text-[15px] font-semibold leading-snug">{x.title}</h3>
-          {x.summary && <p className="mt-1 text-[13px] leading-relaxed text-muted">{x.summary}</p>}
+          <h3 className="mt-2 font-display text-base font-semibold leading-snug">{x.title}</h3>
+          {x.summary && <p className="mt-1 text-sm leading-relaxed text-muted">{x.summary}</p>}
         </div>
         <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-600">
           {x.url ? <IconGlobe className="size-4" /> : <IconDoc className="size-4" />}
@@ -118,7 +118,7 @@ export default async function LearningPage({ searchParams }: { searchParams: Pro
             href={x.url}
             target="_blank"
             rel="noreferrer noopener"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-line-strong bg-surface px-2.5 py-1.5 text-[13px] font-medium hover:border-brand-300 hover:text-brand-700"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-line-strong bg-surface px-2.5 py-1.5 text-sm font-medium hover:border-brand-300 hover:text-brand-700"
           >
             Open link
           </a>
@@ -184,7 +184,7 @@ export default async function LearningPage({ searchParams }: { searchParams: Pro
             <>
               {pinned.length > 0 && (
                 <section>
-                  <h2 className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">
+                  <h2 className="mb-2 flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-wider text-muted">
                     <IconSpark className="size-3.5" /> Start here
                   </h2>
                   <ul className="grid gap-3 md:grid-cols-2">{pinned.map(cardFor)}</ul>
@@ -193,7 +193,7 @@ export default async function LearningPage({ searchParams }: { searchParams: Pro
               {rest.length > 0 && (
                 <section>
                   {pinned.length > 0 && (
-                    <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted">Everything else</h2>
+                    <h2 className="mb-2 text-2xs font-semibold uppercase tracking-wider text-muted">Everything else</h2>
                   )}
                   <ul className="grid gap-3 md:grid-cols-2">{rest.map(cardFor)}</ul>
                 </section>
@@ -211,7 +211,7 @@ export default async function LearningPage({ searchParams }: { searchParams: Pro
       </div>
 
       {!canManage && (
-        <p className="mt-6 text-[13px] text-muted">
+        <p className="mt-6 text-sm text-muted">
           Something missing? Ask your relationship manager, or{" "}
           <Link href="/notifications" className="text-brand-600 hover:underline">check your notifications</Link> for the latest updates.
         </p>

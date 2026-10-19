@@ -88,7 +88,7 @@ export default async function DeadlinesPage({ searchParams }: { searchParams: Pr
           <Select name="days" aria-label="Window" defaultValue={String(days)}>
             {WINDOWS.map((w) => <option key={w} value={w}>Next {w} days</option>)}
           </Select>
-          <label className="flex items-center gap-2 text-[13px] text-ink-soft">
+          <label className="flex items-center gap-2 text-sm text-ink-soft">
             <input type="checkbox" name="mine" value="1" defaultChecked={!!f.mine} className="size-4 accent-brand-600" />
             {isStaff(user) ? "Shortlisted by any student" : "On my students' shortlists"}
           </label>
@@ -139,8 +139,8 @@ export default async function DeadlinesPage({ searchParams }: { searchParams: Pr
                         {r.note ? ` · ${r.note}` : ""}
                       </p>
                     </Td>
-                    <Td className="whitespace-nowrap text-[13px]">{MONTHS[r.month - 1]} {r.year}</Td>
-                    <Td className="text-[13px]">
+                    <Td className="whitespace-nowrap text-sm">{MONTHS[r.month - 1]} {r.year}</Td>
+                    <Td className="text-sm">
                       {r.shortlistedBy.length ? (
                         <div className="flex flex-wrap gap-1">
                           {r.shortlistedBy.slice(0, 3).map((n) => <Chip key={n} tone="info">{n}</Chip>)}
@@ -155,7 +155,7 @@ export default async function DeadlinesPage({ searchParams }: { searchParams: Pr
           </Table>
         )}
         {(page > 1 || page * PAGE < total) && (
-          <div className="flex items-center justify-between border-t border-line px-4 py-3 text-[13px]">
+          <div className="flex items-center justify-between border-t border-line px-4 py-3 text-sm">
             <span className="text-muted">Page {page} of {Math.ceil(total / PAGE)}</span>
             <div className="flex gap-2">
               {page > 1 && <LinkButton prefetch={false} variant="secondary" size="sm" href={qs({ page: String(page - 1) })}>Previous</LinkButton>}
@@ -170,7 +170,7 @@ export default async function DeadlinesPage({ searchParams }: { searchParams: Pr
 
 function DeadlineTabs({ on }: { on: "programs" | "applications" }) {
   const pill = (href: string, label: string, active: boolean) => (
-    <Link href={href} className={cn("rounded-full border px-3 py-1 text-[13px] font-medium", active ? "border-brand-600 bg-brand-600 text-white" : "border-line-strong text-ink-soft hover:border-brand-300")}>{label}</Link>
+    <Link href={href} className={cn("rounded-full border px-3 py-1 text-sm font-medium", active ? "border-brand-600 bg-brand-600 text-white" : "border-line-strong text-ink-soft hover:border-brand-300")}>{label}</Link>
   );
   return (
     <div className="mb-4 flex flex-wrap gap-2">
@@ -244,7 +244,7 @@ async function ApplicationDeadlines({ user, f }: { user: SessionUser; f: Record<
                     </Td>
                     <Td>{DEADLINE_LABEL[r.type]}{r.note ? <p className="text-xs text-muted">{r.note}</p> : null}</Td>
                     <Td><Link prefetch={false} href={`/students/${r.studentId}/applications?app=${r.appId}`} className="font-medium hover:underline">{r.firstName} {r.lastName}</Link><p className="text-xs text-muted">{r.program} · {r.university}</p></Td>
-                    <Td className="tabular text-[13px]">{r.ackNo}</Td>
+                    <Td className="tabular text-sm">{r.ackNo}</Td>
                   </tr>
                 );
               })}

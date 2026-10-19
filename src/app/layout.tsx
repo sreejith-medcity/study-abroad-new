@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getSession } from "@/lib/auth";
 import { readSkin } from "@/lib/skins";
+import { readTextSize } from "@/lib/text-size";
 /*
   The type, served from this application rather than from Google.
 
@@ -39,9 +40,13 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   // there is no cookie and no query, and the default surface is used.
   const session = await getSession();
   const skin = readSkin(session?.skin);
+  // Their reading size, read here for the same reason as the surface: it
+  // moves the document's own font size, and every size in the portal is a
+  // multiple of that one.
+  const text = readTextSize(session?.textSize);
   return (
-    <html lang="en" data-skin={skin}>
-      <body className="min-h-screen text-[15px] antialiased">{children}</body>
+    <html lang="en" data-skin={skin} data-text={text}>
+      <body className="min-h-screen text-base antialiased">{children}</body>
     </html>
   );
 }

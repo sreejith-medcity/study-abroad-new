@@ -36,16 +36,16 @@ export default async function StudentServicesPage({ params }: { params: Promise<
                   <p className="font-medium">{SERVICE_LABEL[r.type]}</p>
                   <Chip tone={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Chip>
                 </div>
-                <p className="whitespace-pre-wrap text-[13px] text-ink-soft">{r.details}</p>
+                <p className="whitespace-pre-wrap text-sm text-ink-soft">{r.details}</p>
                 <p className="text-xs text-muted">
                   Asked {fmtDateTime(r.createdAt)}{r.requestedBy ? ` by ${r.requestedBy.name}` : ""}
                   {r.provider ? ` · Provider: ${r.provider}` : ""}
                   {r.owner ? ` · Handled by ${r.owner.name}` : ""}
                 </p>
-                {r.teamNote && <p className="rounded-md bg-brand-50 px-3 py-2 text-[13px]">{r.teamNote}</p>}
+                {r.teamNote && <p className="rounded-md bg-brand-50 px-3 py-2 text-sm">{r.teamNote}</p>}
                 {canWork && (
                   <details>
-                    <summary className="cursor-pointer text-[13px] font-medium text-brand-600">Update</summary>
+                    <summary className="cursor-pointer text-sm font-medium text-brand-600">Update</summary>
                     <div className="mt-2"><UpdateServiceForm id={r.id} status={r.status} provider={r.provider} teamNote={r.teamNote} /></div>
                   </details>
                 )}

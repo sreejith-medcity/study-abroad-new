@@ -50,7 +50,7 @@ export function Crash({ error, reset }: { error: Error & { digest?: string }; re
   if (reloading) {
     return (
       <div className="mx-auto max-w-lg px-4 py-20 text-center">
-        <p className="text-sm text-muted">A new version of the portal went out while this screen was open. Loading it now.</p>
+        <p className="text-md text-muted">A new version of the portal went out while this screen was open. Loading it now.</p>
       </div>
     );
   }
@@ -58,25 +58,25 @@ export function Crash({ error, reset }: { error: Error & { digest?: string }; re
   return (
     <div className="mx-auto max-w-lg px-4 py-16">
       <h1 className="text-lg font-semibold">{stale ? "The portal was updated while this was open" : "This screen stopped working"}</h1>
-      <p className="mt-2 text-sm text-muted">
+      <p className="mt-2 text-md text-muted">
         {stale
           ? "Nothing you typed has been sent, and nothing on the file has changed. Reload the page and do it again; it will go through on the new version."
           : "Nothing you typed has been sent, and nothing on the file has changed. Try it again, and if it keeps happening send us the two lines below."}
       </p>
-      <div className="mt-4 rounded-lg border border-line bg-surface-2/60 px-3.5 py-3 text-[13px]">
+      <div className="mt-4 rounded-lg border border-line bg-surface-2/60 px-3.5 py-3 text-sm">
         <p className="break-words font-mono">{error.message || error.name || "No message was given."}</p>
         {error.digest && <p className="mt-1 break-words font-mono text-muted">Reference {error.digest}</p>}
       </div>
       <div className="mt-5 flex flex-wrap gap-2">
         {reset && (
-          <button type="button" onClick={reset} className="rounded-lg bg-brand-600 px-3 py-1.5 text-[13px] font-medium text-white">
+          <button type="button" onClick={reset} className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white">
             Try again
           </button>
         )}
-        <button type="button" onClick={() => window.location.reload()} className="rounded-lg border border-line px-3 py-1.5 text-[13px] font-medium">
+        <button type="button" onClick={() => window.location.reload()} className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium">
           Reload the page
         </button>
-        <a href="/dashboard" className="rounded-lg border border-line px-3 py-1.5 text-[13px] font-medium">
+        <a href="/dashboard" className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium">
           Back to the dashboard
         </a>
       </div>

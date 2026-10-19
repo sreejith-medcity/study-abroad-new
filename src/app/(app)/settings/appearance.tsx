@@ -68,6 +68,8 @@ export function AppearancePicker({ current }: { current: string }) {
             type="button"
             onClick={() => pick(s.id)}
             aria-pressed={on}
+            aria-label={s.name}
+            data-testid="skin-swatch"
             className={cn(
               "rounded-xl border p-2 text-left transition-shadow",
               on ? "border-brand-600 shadow-lift ring-2 ring-brand-100" : "border-line hover:shadow-card",
@@ -80,20 +82,20 @@ export function AppearancePicker({ current }: { current: string }) {
                   className="block rounded-md p-2"
                   style={{ background: w.card, border: `1px solid ${w.line}`, backdropFilter: s.id === "glass" ? "blur(6px)" : undefined }}
                 >
-                  <span className="block text-[9px] font-medium" style={{ color: w.faint }}>
+                  <span className="block text-3xs font-medium" style={{ color: w.faint }}>
                     Waiting
                   </span>
-                  <span className="block font-display text-[17px] font-semibold leading-none tabular" style={{ color: w.ink }}>
+                  <span className="block font-display text-lg font-semibold leading-none tabular" style={{ color: w.ink }}>
                     14
                   </span>
                 </span>
               </span>
             </span>
             <span className="mt-2 flex items-center gap-1.5 px-0.5">
-              <span className="font-display text-[14px] font-semibold text-ink">{s.name}</span>
-              {on && <span className="rounded-full bg-brand-600 px-1.5 py-px text-[10px] font-semibold text-white">On</span>}
+              <span className="font-display text-md font-semibold text-ink">{s.name}</span>
+              {on && <span className="rounded-full bg-brand-600 px-1.5 py-px text-3xs font-semibold text-white">On</span>}
             </span>
-            <span className="mt-0.5 block px-0.5 text-[12px] leading-snug text-muted">{s.note}</span>
+            <span className="mt-0.5 block px-0.5 text-xs leading-snug text-muted">{s.note}</span>
           </button>
         );
       })}

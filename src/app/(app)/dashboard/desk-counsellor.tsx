@@ -139,7 +139,7 @@ export default async function DeskCounsellorDashboard({ user, f }: { user: Sessi
           <CardHeader title={`Students have written (${work.replies.length})`} subtitle="Unread, oldest first. Nobody else is going to answer these." />
           <ul className="divide-y divide-line">
             {work.replies.map((r) => (
-              <li key={r.id} className="px-4 py-3 text-[13px]">
+              <li key={r.id} className="px-4 py-3 text-sm">
                 <Link href={`/students/${r.studentId}/applications?app=${r.applicationId}`} className="font-medium text-brand-600 hover:underline">
                   {r.firstName} {r.lastName}
                 </Link>

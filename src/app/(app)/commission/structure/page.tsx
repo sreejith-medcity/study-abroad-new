@@ -43,7 +43,7 @@ export default async function CommissionStructurePage({ searchParams }: { search
   return (
     <>
       <PageHeader
-        eyebrow={<Link href="/commission" className="text-[13px] font-medium text-brand-600 hover:underline">← Commission</Link>}
+        eyebrow={<Link href="/commission" className="text-sm font-medium text-brand-600 hover:underline">← Commission</Link>}
         title="Commission structure"
         subtitle="What your branch earns on each placement. Where two rules could apply, the most specific one wins: a program's own rule, then its university's, then the destination's."
       />
@@ -100,8 +100,8 @@ export default async function CommissionStructurePage({ searchParams }: { search
                         {r.partnerSharePercent}% of {r.basis === "FLAT" ? `a flat ${money(r.flatAmount, r.currency)}` : `${r.percentOfTuition ?? 0}% of first-year tuition`}
                       </p>
                     </Td>
-                    <Td className="text-[13px]">{r.intakeYear ? `${r.intakeYear} intakes` : "Every intake"}</Td>
-                    <Td className="max-w-xs text-[13px] text-muted">{r.notes ?? ""}</Td>
+                    <Td className="text-sm">{r.intakeYear ? `${r.intakeYear} intakes` : "Every intake"}</Td>
+                    <Td className="max-w-xs text-sm text-muted">{r.notes ?? ""}</Td>
                   </tr>
                 );
               })}

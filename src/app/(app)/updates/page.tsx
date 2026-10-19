@@ -17,7 +17,7 @@ export default async function UpdatesPage({ searchParams }: { searchParams: Prom
   const names = new Map(countries.map((c) => [c.code, c.name]));
   const rows = await publishedBulletins(announcements ? "ANNOUNCEMENT" : "UPDATE", { country: announcements ? undefined : sp.country, limit: 100 });
   const pill = (href: string, label: string, on: boolean) => (
-    <Link href={href} className={cn("rounded-full border px-3 py-1 text-[13px] font-medium", on ? "border-brand-600 bg-brand-600 text-white" : "border-line-strong text-ink-soft hover:border-brand-300")}>{label}</Link>
+    <Link href={href} className={cn("rounded-full border px-3 py-1 text-sm font-medium", on ? "border-brand-600 bg-brand-600 text-white" : "border-line-strong text-ink-soft hover:border-brand-300")}>{label}</Link>
   );
   return (
     <>

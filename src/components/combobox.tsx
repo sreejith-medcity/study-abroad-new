@@ -116,10 +116,10 @@ export function Combobox({
       {chosen ? (
         <div className="flex min-w-0 items-start gap-2 rounded-lg border border-brand-500 bg-brand-50/40 px-3 py-2">
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-medium">{chosen.label}</span>
+            <span className="block truncate text-md font-medium">{chosen.label}</span>
             {chosen.sub && <span className="block truncate text-xs text-muted">{chosen.sub}</span>}
           </span>
-          <button type="button" onClick={clear} className="shrink-0 text-[13px] font-medium text-brand-700 hover:underline">
+          <button type="button" onClick={clear} className="shrink-0 text-sm font-medium text-brand-700 hover:underline">
             Change
           </button>
         </div>
@@ -156,7 +156,7 @@ export function Combobox({
               setOpen(false);
             }
           }}
-          className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm outline-none placeholder:text-muted focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+          className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-md outline-none placeholder:text-muted focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
         />
       )}
       {open && !chosen && (
@@ -165,8 +165,8 @@ export function Combobox({
           role="listbox"
           className="thin-scroll absolute z-30 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-line bg-surface py-1 shadow-pop"
         >
-          {busy && options.length === 0 && <li className="px-3 py-2 text-[13px] text-muted">Searching…</li>}
-          {!busy && options.length === 0 && <li className="px-3 py-2 text-[13px] text-muted">{emptyText}</li>}
+          {busy && options.length === 0 && <li className="px-3 py-2 text-sm text-muted">Searching…</li>}
+          {!busy && options.length === 0 && <li className="px-3 py-2 text-sm text-muted">{emptyText}</li>}
           {options.map((o, i) => (
             <li key={o.id}>
               <button
@@ -178,8 +178,8 @@ export function Combobox({
                 className={cn("block w-full px-3 py-2 text-left", i === cursor ? "bg-brand-50" : "hover:bg-ground")}
               >
                 <span className="flex items-center gap-2">
-                  <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{o.label}</span>
-                  {o.tag && <span className="shrink-0 rounded bg-good-50 px-1.5 py-0.5 text-[11px] font-medium text-good-700">{o.tag}</span>}
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{o.label}</span>
+                  {o.tag && <span className="shrink-0 rounded bg-good-50 px-1.5 py-0.5 text-2xs font-medium text-good-700">{o.tag}</span>}
                 </span>
                 {o.sub && <span className="block truncate text-xs text-muted">{o.sub}</span>}
               </button>

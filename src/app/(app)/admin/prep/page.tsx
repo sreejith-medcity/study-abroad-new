@@ -24,7 +24,7 @@ export default async function AdminPrepPage() {
           ) : (
             <ul className="divide-y divide-line">
               {rows.map((c) => (
-                <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-[13px]">
+                <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm">
                   <div>
                     <p className="font-medium text-ink">{c.title}</p>
                     <p className="text-muted">{PREP_TEST_LABEL[c.test as keyof typeof PREP_TEST_LABEL] ?? c.test} · {c.mode}{c.durationWeeks ? ` · ${c.durationWeeks} weeks` : ""}{c.feeInr != null ? ` · ₹${c.feeInr.toLocaleString("en-IN")}` : " · Fee on request"}</p>

@@ -49,11 +49,11 @@ export default async function InterviewPage({ searchParams }: { searchParams: Pr
         <Card className="h-fit">
           <CardHeader title="Past practice" />
           {sessions.length === 0 ? (
-            <p className="px-4 pb-4 text-[13px] text-muted">None yet.</p>
+            <p className="px-4 pb-4 text-sm text-muted">None yet.</p>
           ) : (
             <ul className="divide-y divide-line">
               {sessions.map((x) => (
-                <li key={x.id} className="px-4 py-2.5 text-[13px]">
+                <li key={x.id} className="px-4 py-2.5 text-sm">
                   <Link href={`/interview?session=${x.id}`} className="font-medium text-ink hover:text-brand-700 hover:underline">{INTERVIEW_KINDS[x.kind as keyof typeof INTERVIEW_KINDS] ?? x.kind}</Link>
                   <p className="text-xs text-muted">{x.student ? fullName(x.student) : "General practice"} · {fmtDateTime(x.createdAt)}</p>
                 </li>
@@ -66,12 +66,12 @@ export default async function InterviewPage({ searchParams }: { searchParams: Pr
         <Card className="mt-5" id="session">
           <CardHeader title={INTERVIEW_KINDS[open.kind as keyof typeof INTERVIEW_KINDS] ?? open.kind} subtitle={open.context} />
           <div className="grid gap-5 p-4 lg:grid-cols-2">
-            <ol className="space-y-2 text-[13px]">
+            <ol className="space-y-2 text-sm">
               {open.transcript.map((l, i) => (
                 <li key={i} className={l.role === "interviewer" ? "font-medium text-ink" : "pl-4 text-ink-soft"}>{l.role === "interviewer" ? "Q: " : "A: "}{l.text}</li>
               ))}
             </ol>
-            <RichText text={open.feedback} className="text-[14px] leading-relaxed" />
+            <RichText text={open.feedback} className="text-md leading-relaxed" />
           </div>
         </Card>
       )}

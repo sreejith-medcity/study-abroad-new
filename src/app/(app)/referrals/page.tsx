@@ -114,14 +114,14 @@ export default async function ReferralsPage({ searchParams }: { searchParams: Pr
                         <Td>
                           <span className="font-medium text-ink">{r.name}</span>
                           <span className="block text-xs text-muted tabular">{r.phone}</span>
-                          {r.medcityId && <span className="block font-mono text-[11px] text-muted">{r.medcityId}</span>}
+                          {r.medcityId && <span className="block font-mono text-2xs text-muted">{r.medcityId}</span>}
                         </Td>
                         <Td>
-                          <span className="text-[13px]">{REFERRAL_STAGE_LABEL[r.stage] ?? r.stage}</span>
+                          <span className="text-sm">{REFERRAL_STAGE_LABEL[r.stage] ?? r.stage}</span>
                           {r.journeyStage && <span className="block text-xs text-muted">{stageLabel(r.journeyStage)}</span>}
                           {r.stage === "LOST" && r.lostReason && <span className="block text-xs text-muted">{r.lostReason}</span>}
                         </Td>
-                        <Td className="text-[13px] text-muted">{r.heldBy ?? "Not assigned yet"}</Td>
+                        <Td className="text-sm text-muted">{r.heldBy ?? "Not assigned yet"}</Td>
                         <Td>
                           {r.earningState ? (
                             <>
@@ -142,7 +142,7 @@ export default async function ReferralsPage({ searchParams }: { searchParams: Pr
             <div className="space-y-4">
               <Card className="p-4">
                 <h2 className="mb-1 font-semibold text-ink">Refer somebody</h2>
-                <p className="mb-3 text-[13px] leading-relaxed text-muted">
+                <p className="mb-3 text-sm leading-relaxed text-muted">
                   A name and a number is enough to start. Medcity rings them, and you can watch the rest here.
                 </p>
                 <ReferForm />
@@ -150,13 +150,13 @@ export default async function ReferralsPage({ searchParams }: { searchParams: Pr
 
               <Card className="p-4">
                 <h2 className="mb-1 font-semibold text-ink">What you are paid</h2>
-                <p className="text-[13px] text-ink-soft">{rateText(rate)}</p>
-                <p className="mt-2 text-[12.5px] leading-relaxed text-muted">
+                <p className="text-sm text-ink-soft">{rateText(rate)}</p>
+                <p className="mt-2 text-xs leading-relaxed text-muted">
                   {rate
                     ? "A referral is credited to your wallet once Medcity has actually been paid for that student, not when they are registered."
                     : "The Overseas team has not set your rate yet. Ask them before you start sending people, so there is no argument later."}
                 </p>
-                <dl className="mt-3 space-y-1.5 border-t border-line pt-3 text-[12.5px]">
+                <dl className="mt-3 space-y-1.5 border-t border-line pt-3 text-xs">
                   {(Object.keys(EARNING_STATE_LABEL) as ReferralEarningState[]).map((k) => (
                     <div key={k}>
                       <dt className="font-medium text-ink">{EARNING_STATE_LABEL[k]}</dt>
@@ -169,12 +169,12 @@ export default async function ReferralsPage({ searchParams }: { searchParams: Pr
               {mou.version && (
                 <Card className="p-4">
                   <h2 className="font-semibold text-ink">The agreement</h2>
-                  <p className="mt-1 text-[13px] text-muted">
+                  <p className="mt-1 text-sm text-muted">
                     {mou.accepted
                       ? `You accepted ${mou.version.version} on ${fmtDate(mou.acceptance!.createdAt)}.`
                       : `${mou.version.version} is waiting to be accepted.`}
                   </p>
-                  <a href="/agreement" className="mt-2 inline-block text-[13px] font-medium text-brand-600 hover:underline">
+                  <a href="/agreement" className="mt-2 inline-block text-sm font-medium text-brand-600 hover:underline">
                     Read it
                   </a>
                 </Card>

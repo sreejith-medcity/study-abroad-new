@@ -137,7 +137,7 @@ export default async function DeskLeadDashboard({ user }: { user: SessionUser })
       />
 
       {stale > 0 && (
-        <Card className="border-warn-500/25 bg-warn-50/60 p-4 text-[13px]">
+        <Card className="border-warn-500/25 bg-warn-50/60 p-4 text-sm">
           <span className="font-medium">{stale} document{stale === 1 ? " has" : "s have"} been claimed longer than a check takes.</span> Usually somebody opened
           it and went home. They can be moved to another officer, or put back in the pool, from the queue.
         </Card>
@@ -206,13 +206,13 @@ export default async function DeskLeadDashboard({ user }: { user: SessionUser })
                     <p className="text-xs text-muted">{ROLE_LABEL[o.role] ?? o.role}</p>
                   </Td>
                   <Td className="text-right tabular font-medium">{o.carrying}</Td>
-                  <Td className={cn("whitespace-nowrap text-[13px]", o.stale > 0 && "font-medium text-warn-700")}>
+                  <Td className={cn("whitespace-nowrap text-sm", o.stale > 0 && "font-medium text-warn-700")}>
                     {waited(o.oldestHours)}
                     {o.stale > 0 && <span className="block text-xs">{o.stale} held too long</span>}
                   </Td>
                   <Td className={cn("text-right tabular", o.overdue > 0 && "font-medium text-stop-700")}>{o.overdue || "—"}</Td>
                   <Td className="text-right tabular">{o.decidedWeek}</Td>
-                  <Td className="text-[13px]">
+                  <Td className="text-sm">
                     {o.decidedWeek === 0 ? (
                       <span className="text-muted">—</span>
                     ) : (
@@ -230,7 +230,7 @@ export default async function DeskLeadDashboard({ user }: { user: SessionUser })
             </tbody>
           </Table>
         )}
-        <p className="border-t border-line px-4 py-2.5 text-[13px] text-muted">
+        <p className="border-t border-line px-4 py-2.5 text-sm text-muted">
           A document is moved from the <Link href="/documentation" className="font-medium text-brand-600 hover:underline">queue</Link> itself, on the row it sits on.
         </p>
       </Card>
