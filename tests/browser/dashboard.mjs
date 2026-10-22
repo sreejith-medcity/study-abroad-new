@@ -311,6 +311,21 @@ const lead = await open("sreejith@miak.in");
   }
   check((await page.locator("[data-view-as] select").first().count()) === 1, "and the super admin can view as another desk");
 
+  // Every placement figure is the length of the tracker list it opens.
+  for (const slug of ["ausbildung-students", "interview-coming", "german-not-finished", "service-charge-pending", "nursing-students"]) {
+    await page.goto(`${BASE}/dashboard`);
+    await hydrated(page);
+    const tile = page.locator(`[data-placement="${slug}"]`);
+    const shown = Number((await tile.locator("[data-figure]").innerText()).replace(/[^0-9]/g, ""));
+    await page.goto(`${BASE}${await tile.getAttribute("href")}`);
+    await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
+    await hydrated(page);
+    const rows = await page.locator("[data-tracker-row]").count();
+    check(shown === rows, `placements: "${slug}" is the list it opens (${shown} against ${rows})`);
+  }
+  await page.goto(`${BASE}/dashboard`);
+  await hydrated(page);
+
   // Viewing as a branch narrows to it and reads what the branch reads.
   const one = sql(`select o.id from organizations o where o.type = 'BRANCH' and o.active order by (select count(*) from students s where s.org_id = o.id) desc limit 1`);
   await page.goto(`${BASE}/dashboard?as=branch&org=${one}`);
@@ -385,6 +400,16 @@ const coun = await open(cEmail);
   await page.goto(`${BASE}/dashboard?as=leadership`);
   await hydrated(page);
   check((await page.locator("main [data-exec-hero]").count()) === 0, "and asking for leadership's dashboard changes nothing");
+}
+/* ---------------- A counsellor with nobody yet is told why the board is empty ---------------- */
+{
+  const empty = sql(`select u.email from users u where u.role in ('COUNSELLOR','SUB_AGENT_COUNSELLOR','TRAINEE_COUNSELLOR') and u.active and not exists (select 1 from students s where s.assigned_to_id = u.id) order by u.email limit 1`);
+  if (empty) {
+    const nobody = await open(empty);
+    check((await nobody.page.locator("[data-first-day]").count()) === 1, `a counsellor with no students is told how the board fills (${empty})`);
+    check((await nobody.page.locator("[data-placements]").count()) === 0, "and is not shown a card of placement noughts");
+    await nobody.ctx.close();
+  }
 }
 check(coun.errors.length === 0, `a counsellor's board draws without an error ${coun.errors.slice(0, 2).join(" | ")}`);
 await coun.ctx.close();

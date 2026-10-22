@@ -2,11 +2,11 @@ import { inrShort } from "@/lib/money";
 import { PROCESSING_ROLES } from "@/lib/permissions";
 import { dashboardTiles, type Flow } from "@/server/dashboard-tiles";
 import { activity, branchesCompared, destinations, journey, monthly } from "@/server/dashboard-charts";
-import { pastServiceLevel } from "@/server/dashboard-work";
+import { pastServiceLevel, placements } from "@/server/dashboard-work";
 import { PERIODS, type Lens } from "@/server/dashboard-lens";
 import { Card, CardHeader } from "@/components/ui";
 import { ActivityFeed, BranchTable, CountryBars } from "@/components/charts/dashboard-pictures";
-import { AreaLine, AttentionList, ExecHero, FlowRibbon, Gauge, MiniTiles } from "@/components/dashboard/role-pieces";
+import { AreaLine, AttentionList, ExecHero, FlowRibbon, Gauge, MiniTiles, Placements } from "@/components/dashboard/role-pieces";
 import { Controls, ViewingAsNote, firstName, partOfDay, periodLinks } from "./controls";
 
 /**
@@ -25,7 +25,7 @@ export default async function Executive({ lens, sp }: { lens: Lens; sp: Record<s
   // Management reads everything and works nothing, so the work queues are not
   // theirs to open; their links go to the lists instead.
   const works = (PROCESSING_ROLES as readonly string[]).includes(user.role);
-  const [t, steps, months, compared, going, late, latest] = await Promise.all([
+  const [t, steps, months, compared, going, late, latest, placed] = await Promise.all([
     dashboardTiles(lens),
     journey(lens),
     monthly(lens),
@@ -33,6 +33,7 @@ export default async function Executive({ lens, sp }: { lens: Lens; sp: Record<s
     destinations(lens, 6),
     pastServiceLevel(lens),
     activity(lens, 6),
+    placements(lens),
   ]);
 
   const when = PERIODS.find(([k]) => k === lens.period)?.[1] ?? "All time";
@@ -146,6 +147,10 @@ export default async function Executive({ lens, sp }: { lens: Lens; sp: Record<s
               <BranchTable rows={compared} />
             </Card>
           )}
+          <Card>
+            <CardHeader title="Placements" subtitle="Ausbildung and NCLEX-RN, each figure opening the placement tracker" />
+            <Placements ausbildung={placed.ausbildung} nclex={placed.nclex} query={lens.org ? `branch=${lens.org}` : ""} />
+          </Card>
           <Card>
             <CardHeader title="Where students want to go" subtitle="Preferred country, as registered" />
             <div className="p-4">

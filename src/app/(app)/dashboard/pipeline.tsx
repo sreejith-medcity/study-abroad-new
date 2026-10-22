@@ -6,11 +6,11 @@ import { walletBalance } from "@/server/commission";
 import { commissionVisible } from "@/server/commission-visibility";
 import { dashboardTiles } from "@/server/dashboard-tiles";
 import { destinations } from "@/server/dashboard-charts";
-import { documentsToCome, followUps, pipeline, teamBoard, unassigned } from "@/server/dashboard-work";
+import { documentsToCome, followUps, pipeline, placements, teamBoard, unassigned } from "@/server/dashboard-work";
 import { PERIODS, type Lens } from "@/server/dashboard-lens";
 import { Card, CardHeader, LinkButton } from "@/components/ui";
 import { CountryBars } from "@/components/charts/dashboard-pictures";
-import { FigureStrip, Leaderboard, PipelineColumns, ProgressList, TaskList, ageText } from "@/components/dashboard/role-pieces";
+import { FigureStrip, Leaderboard, PipelineColumns, Placements, ProgressList, TaskList, ageText } from "@/components/dashboard/role-pieces";
 import { IconPlus } from "@/components/icons";
 import { Controls, ViewingAsNote, firstName, partOfDay } from "./controls";
 
@@ -34,7 +34,7 @@ export default async function Pipeline({ lens }: { lens: Lens }) {
   // somebody at the desk picked while looking as one. A senior counsellor
   // runs the students, not the branch, so has none.
   const walletOrg = kind === "branch" ? (user.role === "PARTNER" ? user.orgId : lens.viewingAs ? lens.org : null) : null;
-  const [t, board, owed, people, tasks, going, loose, money, mayRegister] = await Promise.all([
+  const [t, board, owed, people, tasks, going, loose, money, mayRegister, placed] = await Promise.all([
     dashboardTiles(lens),
     pipeline(lens),
     documentsToCome(lens),
@@ -44,6 +44,7 @@ export default async function Pipeline({ lens }: { lens: Lens }) {
     counsellor ? Promise.resolve(0) : unassigned(lens),
     commissionVisible(user),
     lens.viewingAs ? Promise.resolve(false) : can(user, "REGISTER_STUDENT"),
+    placements(lens),
   ]);
   const wallet = walletOrg && money ? await walletBalance(walletOrg) : null;
 
@@ -106,6 +107,11 @@ export default async function Pipeline({ lens }: { lens: Lens }) {
         </div>
       </div>
 
+      {counsellor && lens.person && !lens.viewingAs && t.registrations.value === 0 && lens.period === "all" && (
+        <p data-first-day className="mb-4 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2.5 text-sm text-ink-soft">
+          No students are assigned to you yet. The ones your branch gives you, and the ones you register yourself, fill this board as they come.
+        </p>
+      )}
       <FigureStrip figures={figures} />
 
       <Card className="mt-5">
@@ -180,6 +186,19 @@ export default async function Pipeline({ lens }: { lens: Lens }) {
           </div>
         </Card>
       </div>
+
+      {/* Placement work, where the branch or the counsellor has any. A board of
+          noughts for somebody who never places anybody would be noise. */}
+      {placed.ausbildung.students + placed.nclex.students > 0 && (
+        <Card className="mt-5">
+          <CardHeader title="Placements" subtitle="Ausbildung and NCLEX-RN, each figure opening the placement tracker" />
+          <Placements
+            ausbildung={placed.ausbildung}
+            nclex={placed.nclex}
+            query={[lens.viewingAs && lens.org ? `branch=${lens.org}` : "", lens.person ? `who=${lens.person.id}` : ""].filter(Boolean).join("&")}
+          />
+        </Card>
+      )}
     </>
   );
 }

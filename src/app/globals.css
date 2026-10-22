@@ -472,6 +472,22 @@ h4,
   --shadow-hero: 0 20px 44px -28px rgba(0, 0, 0, 0.9);
 }
 
+/*
+  The portal's own colours arrive as a :root style written from settings,
+  which is as specific as the block above and comes after it, so on its own
+  it put the light washes back after dark: a pale stripe behind the menu's
+  current page and white tiles on a dark dashboard. These are stated once
+  more, more specifically, and mixed from the portal's colour rather than
+  fixed, so a portal set to another brand colour still gets its own tint.
+*/
+:root[data-skin="night"] {
+  --color-brand-50: color-mix(in oklab, var(--color-brand-600) 16%, #191220);
+  --color-brand-100: color-mix(in oklab, var(--color-brand-600) 24%, #191220);
+  --color-brand-200: color-mix(in oklab, var(--color-brand-600) 36%, #191220);
+  --color-info-50: color-mix(in oklab, var(--color-info-500) 18%, #191220);
+  --color-info-700: color-mix(in oklab, var(--color-info-500) 55%, white);
+}
+
 [data-skin="night"] body {
   background-color: var(--color-ground);
   background-image:

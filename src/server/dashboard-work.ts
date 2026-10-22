@@ -4,6 +4,7 @@ import { db, schema } from "@/db";
 import { COUNSELLING_ROLES } from "@/lib/permissions";
 import { getSlaDays } from "./dashboard";
 import { lensApps, lensOrg, lensStudents, type Lens } from "./dashboard-lens";
+import { trackerRows } from "./ausbildung";
 
 const {
   applications: a,
@@ -390,4 +391,32 @@ export async function unassigned(lens: Lens) {
     .from(s)
     .where(and(lensOrg(lens, s.orgId), eq(s.archived, false), isNull(s.assignedToId)));
   return Number(row?.n ?? 0);
+}
+
+/**
+ * The placement work beside the study-abroad work: Ausbildung students with
+ * an interview coming, a contract in, German not finished or the service
+ * charge not paid, and the NCLEX-RN cases and passes. Read through the
+ * placement tracker's own rows, so every figure is exactly the list its link
+ * opens.
+ */
+export async function placements(lens: Lens) {
+  const scope = { org: lens.org ?? undefined, counsellor: lens.person?.id };
+  const [aus, nclex] = await Promise.all([trackerRows(lens.user, { tab: "ausbildung", ...scope }), trackerRows(lens.user, { tab: "nclex", ...scope })]);
+  const dayAgo = Date.now() - 86_400_000;
+  const unpaid = (r: (typeof aus)[number]) => !r.charge.any || r.charge.byCurrency.some((b) => b.received < b.owed) || r.charge.unpriced > 0;
+  return {
+    ausbildung: {
+      students: aus.length,
+      interview: aus.filter((r) => r.interviewOn && new Date(r.interviewOn).getTime() >= dayAgo && !r.contractReceivedOn).length,
+      contract: aus.filter((r) => r.contractReceivedOn).length,
+      german: aus.filter((r) => r.german.incomplete.length > 0).length,
+      unpaid: aus.filter(unpaid).length,
+    },
+    nclex: {
+      students: nclex.length,
+      opened: nclex.filter((r) => r.nclexOpened).length,
+      passed: nclex.filter((r) => r.nclexResult === "PASS").length,
+    },
+  };
 }

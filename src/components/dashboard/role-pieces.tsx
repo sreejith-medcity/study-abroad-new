@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { cn, Avatar } from "../ui";
 
 /*
@@ -38,18 +38,18 @@ export function ExecHero({
   return (
     <section data-exec-hero className="brand-wash grain relative overflow-hidden rounded-2xl px-5 py-6 text-white shadow-lg sm:px-7">
       <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center">
-        <div className="min-w-0 lg:w-[16.5rem] lg:shrink-0">
+        <div className="min-w-0 lg:w-[18rem] lg:shrink-0">
           <p className="text-3xs font-semibold uppercase tracking-[0.16em] text-white/70">{eyebrow}</p>
-          <h1 className="mt-1 font-display text-[1.75rem] font-semibold leading-tight">{greeting}</h1>
+          <h1 className="mt-1 font-display text-[1.625rem] font-semibold leading-tight">{greeting}</h1>
           <p className="mt-1 text-sm text-white/80">{line}</p>
-          <nav aria-label="Period" className="mt-3 flex flex-wrap gap-1.5">
+          <nav aria-label="Period" className="mt-3 flex flex-wrap gap-1">
             {periods.map((p) => (
               <Link
                 key={p.key}
                 href={p.href}
                 scroll={false}
                 aria-current={p.on ? "page" : undefined}
-                className={cn("rounded-md px-2.5 py-1 text-xs font-medium transition-colors", p.on ? "bg-white text-brand-800" : "bg-white/12 text-white hover:bg-white/20")}
+                className={cn("whitespace-nowrap rounded-md px-2 py-1 text-xs font-medium transition-colors", p.on ? "bg-white text-brand-800" : "bg-white/12 text-white hover:bg-white/20")}
               >
                 {p.label}
               </Link>
@@ -279,8 +279,10 @@ export function AreaLine({ points, unit = "", money = false }: { points: { key: 
   const line = points.map((p, i) => `${i ? "L" : "M"} ${px(i).toFixed(1)} ${py(p.value).toFixed(1)}`).join(" ");
   const last = points[points.length - 1];
   return (
-    <figure data-area-line>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label={points.map((p) => `${p.label} ${short(p.value)}${unit}`).join(", ")}>
+    // Kept to a readable size on a phone and scrolled, rather than shrunk
+    // until the months cannot be read.
+    <figure data-area-line className="thin-scroll overflow-x-auto">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[520px]" role="img" aria-label={points.map((p) => `${p.label} ${short(p.value)}${unit}`).join(", ")}>
         {[0, 0.5, 1].map((f) => (
           <g key={f}>
             <line x1={L} x2={W - R} y1={py(nice * f)} y2={py(nice * f)} stroke="var(--color-line)" />
@@ -377,10 +379,16 @@ const dot = [
  */
 export function PipelineColumns({ columns, empty = "Nothing here" }: { columns: BoardColumn[]; empty?: string }) {
   return (
+    // On a phone the columns sit side by side at most of the screen's width
+    // and snap as they are swiped, the way a board is used on one; from a
+    // laptop up they share the width.
     <div data-board className="thin-scroll overflow-x-auto p-4">
-      <div className="grid min-w-[900px] gap-3" style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))` }}>
+      <div
+        className="grid snap-x snap-mandatory auto-cols-[82%] grid-flow-col gap-3 sm:auto-cols-[46%] lg:snap-none lg:grid-flow-row lg:auto-cols-auto lg:grid-cols-[repeat(var(--cols),minmax(0,1fr))]"
+        style={{ "--cols": columns.length } as CSSProperties}
+      >
         {columns.map((c, i) => (
-          <section key={c.key} data-column={c.key} aria-label={c.label} className="flex min-w-0 flex-col rounded-xl border border-line bg-surface-2/70 p-2">
+          <section key={c.key} data-column={c.key} aria-label={c.label} className="flex min-w-0 snap-start flex-col rounded-xl border border-line bg-surface-2/70 p-2">
             <Link href={c.href} className="mb-2 flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-surface">
               <span className={cn("size-2 shrink-0 rounded-sm", dot[i] ?? "bg-brand-600")} />
               <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink" style={{ fontFamily: "var(--font-sans)" }}>
@@ -609,4 +617,61 @@ export function shortDate(iso: string) {
 export function ageText(days: number) {
   if (days <= 0) return "today";
   return `${days}d`;
+}
+
+/* ---------------- Placements: Ausbildung and NCLEX-RN ---------------- */
+
+/**
+ * The placement work in two short rows of figures, each opening the
+ * placement tracker on exactly that list. Drawn whatever they hold, so the
+ * card reads the same way every day; a nought steps back to grey.
+ */
+export function Placements({
+  ausbildung,
+  nclex,
+  query,
+}: {
+  ausbildung: { students: number; interview: number; contract: number; german: number; unpaid: number };
+  nclex: { students: number; opened: number; passed: number };
+  /** The branch or counsellor the tracker should open on, as an address query. */
+  query: string;
+}) {
+  const href = (extra: string) => `/ausbildung?${[extra, query].filter(Boolean).join("&")}`;
+  const row = (title: string, items: { slug: string; label: string; value: number; href: string; tone?: "warn" | "good" | "stop" }[]) => (
+    <div>
+      <p className="mb-2 text-3xs font-semibold uppercase tracking-wider text-muted">{title}</p>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
+        {items.map((it) => (
+          <Link key={it.slug} href={it.href} data-placement={it.slug} className="rounded-lg border border-line bg-surface-2/60 px-3 py-2.5 transition-colors hover:border-brand-200">
+            <span
+              data-figure
+              className={cn(
+                "block font-display text-xl font-semibold leading-none tabular",
+                it.value === 0 ? "text-muted" : it.tone === "warn" ? "text-warn-700" : it.tone === "good" ? "text-good-700" : it.tone === "stop" ? "text-stop-700" : "text-ink",
+              )}
+            >
+              {fmt(it.value)}
+            </span>
+            <span className="mt-1 block text-xs leading-tight text-ink-soft">{it.label}</span>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+  return (
+    <div data-placements className="space-y-4 p-4">
+      {row("Ausbildung", [
+        { slug: "ausbildung-students", label: "Students", value: ausbildung.students, href: href("tab=ausbildung") },
+        { slug: "interview-coming", label: "Interview coming up", value: ausbildung.interview, href: href("tab=ausbildung&show=interview"), tone: "warn" },
+        { slug: "contract-received", label: "Contract received", value: ausbildung.contract, href: href("tab=ausbildung&show=contract"), tone: "good" },
+        { slug: "german-not-finished", label: "German not finished", value: ausbildung.german, href: href("tab=ausbildung&show=german"), tone: "warn" },
+        { slug: "service-charge-pending", label: "Service charge pending", value: ausbildung.unpaid, href: href("tab=ausbildung&show=unpaid"), tone: "stop" },
+      ])}
+      {row("NCLEX-RN (USA)", [
+        { slug: "nursing-students", label: "Nursing students", value: nclex.students, href: href("tab=nclex") },
+        { slug: "nclex-opened", label: "On the NCLEX process", value: nclex.opened, href: href("tab=nclex") },
+        { slug: "nclex-passed", label: "Passed", value: nclex.passed, href: href("tab=nclex"), tone: "good" },
+      ])}
+    </div>
+  );
 }
