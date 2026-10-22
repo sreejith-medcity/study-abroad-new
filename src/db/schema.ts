@@ -680,7 +680,13 @@ export const students = pgTable(
     createdAt: createdAt(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("students_org_idx").on(t.orgId), index("students_email_idx").on(t.email), uniqueIndex("students_crm_id_uq").on(t.crmId)],
+  (t) => [
+    index("students_org_idx").on(t.orgId),
+    index("students_email_idx").on(t.email),
+    uniqueIndex("students_crm_id_uq").on(t.crmId),
+    // A counsellor's own students: their board, their list and their team's figures.
+    index("students_assigned_idx").on(t.assignedToId),
+  ],
 );
 
 export const academicRecords = pgTable("academic_records", {
@@ -900,7 +906,9 @@ export const applications = pgTable(
     createdAt: createdAt(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("applications_org_idx").on(t.orgId), index("applications_status_idx").on(t.statusId)],
+  // By student too: a student's own page, the journey and every "has an
+  // application on" question look applications up by their student.
+  (t) => [index("applications_org_idx").on(t.orgId), index("applications_status_idx").on(t.statusId), index("applications_student_idx").on(t.studentId)],
 );
 
 /** Dated milestones on one application: pay by, request the CAS by, accept the offer by. */
@@ -921,21 +929,27 @@ export const applicationDeadlines = pgTable(
   (t) => [index("application_deadlines_due_idx").on(t.dueOn), index("application_deadlines_app_idx").on(t.applicationId)],
 );
 
-export const statusHistory = pgTable("status_history", {
-  id: id(),
-  applicationId: text("application_id")
-    .notNull()
-    .references(() => applications.id, { onDelete: "cascade" }),
-  fromStatusId: text("from_status_id").references(() => statusDefinitions.id),
-  toStatusId: text("to_status_id")
-    .notNull()
-    .references(() => statusDefinitions.id),
-  reason: text("reason"),
-  changedById: text("changed_by_id")
-    .notNull()
-    .references(() => users.id),
-  createdAt: createdAt(),
-});
+export const statusHistory = pgTable(
+  "status_history",
+  {
+    id: id(),
+    applicationId: text("application_id")
+      .notNull()
+      .references(() => applications.id, { onDelete: "cascade" }),
+    fromStatusId: text("from_status_id").references(() => statusDefinitions.id),
+    toStatusId: text("to_status_id")
+      .notNull()
+      .references(() => statusDefinitions.id),
+    reason: text("reason"),
+    changedById: text("changed_by_id")
+      .notNull()
+      .references(() => users.id),
+    createdAt: createdAt(),
+  },
+  // Every "has this file ever had an offer" question reads one application's
+  // history, newest or oldest first.
+  (t) => [index("status_history_application_idx").on(t.applicationId, t.createdAt)],
+);
 
 export const comments = pgTable("comments", {
   id: id(),

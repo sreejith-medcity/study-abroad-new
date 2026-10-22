@@ -338,44 +338,52 @@ export type DocCard = { id: string; studentId: string; student: string; document
  * stored state, because that is what is happening to it.
  */
 export async function documentBoard(lens: Lens, perColumn = 4) {
-  const column = sql<string>`case
-    when ${ci.state} in ('UPLOADED','IN_REVIEW') and ${ci.claimedById} is not null then 'IN_REVIEW'
-    when ${ci.state} in ('UPLOADED','IN_REVIEW') then 'UPLOADED'
-    else ${ci.state}::text end`;
+  // One small query per column, each taking its oldest few, rather than one
+  // that numbers every live document on the portal to keep four of each: on a
+  // portal with tens of thousands of items in play the second was most of the
+  // time the screen took.
   const since = sql`coalesce(${ci.decidedAt}, ${ci.askedAt}, ${ci.updatedAt})`;
-  const live = or(inArray(ci.state, [...OUTSTANDING]), and(eq(ci.state, "ACCEPTED"), gte(ci.decidedAt, sql`now() - interval '7 days'`)));
+  const inHand = inArray(ci.state, ["UPLOADED", "IN_REVIEW"]);
+  const where: Record<(typeof DOC_COLUMNS)[number]["key"], SQL> = {
+    ASKED: eq(ci.state, "ASKED"),
+    UPLOADED: and(inHand, isNull(ci.claimedById))!,
+    IN_REVIEW: and(inHand, sql`${ci.claimedById} is not null`)!,
+    REJECTED: eq(ci.state, "REJECTED"),
+    ACCEPTED: and(eq(ci.state, "ACCEPTED"), gte(ci.decidedAt, sql`now() - interval '7 days'`))!,
+  };
   const claimer = schema.users;
-  const rows = await db
-    .select({
-      id: ci.id,
-      studentId: s.id,
-      student: name,
-      document: dt.label,
-      branch: og.name,
-      column,
-      days: daysSince(since),
-      who: claimer.name,
-      overdue: sql<boolean>`${ci.dueOn} is not null and ${ci.dueOn} < current_date and ${ci.state} in ('ASKED','REJECTED')`,
-      rank: sql<number>`row_number() over (partition by ${column} order by ${since} asc)`.mapWith(Number),
-      total: sql<number>`count(*) over (partition by ${column})`.mapWith(Number),
-    })
-    .from(ci)
-    .innerJoin(s, eq(ci.studentId, s.id))
-    .innerJoin(dt, eq(ci.typeCode, dt.code))
-    .innerJoin(og, eq(s.orgId, og.id))
-    .leftJoin(claimer, eq(ci.claimedById, claimer.id))
-    .where(and(docScope(lens), live));
-  return DOC_COLUMNS.map((c) => {
-    const mine = rows.filter((r) => r.column === c.key);
-    return {
-      ...c,
-      total: mine[0] ? Number(mine[0].total) : 0,
-      cards: mine
-        .filter((r) => r.rank <= perColumn)
-        .sort((x, y) => x.rank - y.rank)
-        .map((r): DocCard => ({ id: r.id, studentId: r.studentId, student: r.student, document: r.document, branch: r.branch, days: Number(r.days), who: r.who, overdue: Boolean(r.overdue) })),
-    };
-  });
+  const columns = await Promise.all(
+    DOC_COLUMNS.map(async (c) => {
+      const [[total], rows] = await Promise.all([
+        db.select({ n: count() }).from(ci).innerJoin(s, eq(ci.studentId, s.id)).where(and(docScope(lens), where[c.key])),
+        db
+          .select({
+            id: ci.id,
+            studentId: s.id,
+            student: name,
+            document: dt.label,
+            branch: og.name,
+            days: daysSince(since),
+            who: claimer.name,
+            overdue: sql<boolean>`${ci.dueOn} is not null and ${ci.dueOn} < current_date and ${ci.state} in ('ASKED','REJECTED')`,
+          })
+          .from(ci)
+          .innerJoin(s, eq(ci.studentId, s.id))
+          .innerJoin(dt, eq(ci.typeCode, dt.code))
+          .innerJoin(og, eq(s.orgId, og.id))
+          .leftJoin(claimer, eq(ci.claimedById, claimer.id))
+          .where(and(docScope(lens), where[c.key]))
+          .orderBy(asc(since))
+          .limit(perColumn),
+      ]);
+      return {
+        ...c,
+        total: Number(total?.n ?? 0),
+        cards: rows.map((r): DocCard => ({ id: r.id, studentId: r.studentId, student: r.student, document: r.document, branch: r.branch, days: Number(r.days), who: r.who, overdue: Boolean(r.overdue) })),
+      };
+    }),
+  );
+  return columns;
 }
 
 /** Counted here so the menu of a counsellor's dashboard can show "my students". */
