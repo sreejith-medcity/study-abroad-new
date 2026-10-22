@@ -6,10 +6,11 @@ import { setCounsellorActiveAction } from "@/server/team";
 import { Alert, Button, Card, CardHeader, Chip } from "@/components/ui";
 import { AddCounsellorForm, DeskLabelForm, ResetPasswordForm } from "./forms";
 import { PARTNER_ROLES } from "@/lib/permissions";
+import { seatLimit } from "@/lib/seats";
 
 export const metadata = { title: "Team" };
 
-/** The branch owner's own team: counsellors within the tier's seats, their desks, passwords and students. */
+/** The branch owner's own team: counsellors (within the tier's seats, for a sub-agent), their desks, passwords and students. */
 export default async function TeamPage() {
   const owner = await requireUser(["PARTNER"]);
   const org = await db.query.organizations.findFirst({ where: eq(schema.organizations.id, owner.orgId) });
@@ -32,12 +33,16 @@ export default async function TeamPage() {
     .where(and(eq(u.orgId, org.id), inArray(u.role, [...PARTNER_ROLES])))
     .orderBy(sql`${u.role} = 'PARTNER' desc`, sql`${u.active} desc`, u.name);
   const [{ used }] = await db.select({ used: count() }).from(u).where(and(eq(u.orgId, org.id), eq(u.active, true), inArray(u.role, [...PARTNER_ROLES])));
-  const free = Math.max(0, org.counsellorSeats - used);
+  // A branch has no seat limit; a sub-agent has its tier's. Infinity keeps
+  // every "is there room" question below the same for both.
+  const limit = seatLimit(org);
+  const free = limit === null ? Infinity : Math.max(0, limit - used);
+  const tierName = org.tier.charAt(0) + org.tier.slice(1).toLowerCase();
 
   return (
     <>
       <Card>
-        <CardHeader title="Your team" subtitle={`${used} of ${org.counsellorSeats} seats in use on the ${org.tier.charAt(0) + org.tier.slice(1).toLowerCase()} tier. Switching someone off moves their students to you and signs them out at once.`} />
+        <CardHeader title="Your team" subtitle={`${limit === null ? `${used} ${used === 1 ? "person" : "people"} active` : `${used} of ${limit} seats in use on the ${tierName} tier`}. Switching someone off moves their students to you and signs them out at once.`} />
         <ul className="divide-y divide-line">
           {people.map((p) => (
             <li key={p.id} className="px-4 py-3 text-sm" data-testid={`member-${p.email}`}>
@@ -74,7 +79,13 @@ export default async function TeamPage() {
         </ul>
       </Card>
       <Card>
-        <CardHeader title="Add a counsellor" subtitle={free > 0 ? `${free} seat${free === 1 ? "" : "s"} free.` : "Every seat is in use. Switch someone off first, or ask the Overseas team about a higher tier."} />
+        <CardHeader title="Add a counsellor" subtitle={
+            limit === null
+              ? "Add as many as the branch needs."
+              : free > 0
+                ? `${free} seat${free === 1 ? "" : "s"} free.`
+                : "Every seat is in use. Switch someone off first, or ask the Overseas team about a higher tier."
+          } />
         {free > 0 && <div className="p-4 pt-0"><AddCounsellorForm /></div>}
       </Card>
     </>

@@ -93,7 +93,9 @@ export default async function PartnersPage() {
                     o.city ?? null,
                     o.tier,
                     `${people} ${people === 1 ? "person" : "people"}`,
-                    `${seatsUsed} of ${o.counsellorSeats} seats`,
+                    // Seats are a sub-agent's tier arrangement; a branch is
+                    // Medcity's own and has none.
+                    o.type === "SUB_AGENT" ? `${seatsUsed} of ${o.counsellorSeats} seats` : null,
                     `${stat?.students ?? 0} students`,
                     `${stat?.apps ?? 0} applications`,
                   ]
@@ -106,7 +108,7 @@ export default async function PartnersPage() {
             // is said on the summary line and opened when the desk wants it.
             const todo = [
               waiting ? `${waiting} temporary ${waiting === 1 ? "password" : "passwords"}` : null,
-              !hq && seatsUsed > o.counsellorSeats ? "Over its seats" : null,
+              o.type === "SUB_AGENT" && seatsUsed > o.counsellorSeats ? "Over its seats" : null,
               !hq && !o.idCode ? "No ID code" : null,
               !hq && !o.relationshipManagerId ? "No relationship manager" : null,
               !people ? "Nobody yet" : null,
@@ -139,10 +141,14 @@ export default async function PartnersPage() {
                         <option>PLATINUM</option>
                       </Select>
                     </label>
-                    <label className="text-2xs font-semibold uppercase tracking-wider text-muted">
-                      Seats ({seatsUsed} used)
-                      <Input name="counsellorSeats" type="number" min={1} defaultValue={o.counsellorSeats} className="mt-1 w-20 py-1.5 text-sm" />
-                    </label>
+                    {o.type === "SUB_AGENT" ? (
+                      <label className="text-2xs font-semibold uppercase tracking-wider text-muted">
+                        Seats ({seatsUsed} used)
+                        <Input name="counsellorSeats" type="number" min={1} defaultValue={o.counsellorSeats} className="mt-1 w-20 py-1.5 text-sm" />
+                      </label>
+                    ) : (
+                      <input type="hidden" name="counsellorSeats" value={o.counsellorSeats} />
+                    )}
                     <label className="text-2xs font-semibold uppercase tracking-wider text-muted">
                       ID code
                       <Input name="idCode" defaultValue={o.idCode ?? ""} maxLength={4} placeholder="KTM" className="mt-1 w-20 py-1.5 font-mono text-sm uppercase" />

@@ -55,10 +55,14 @@ check(open > 0 && open < foldCount, `not everything is stacked open (${open} of 
 check(await folds.first().evaluate((d) => d.open), "the head office starts open");
 
 // A folded organisation still has to answer the usual question without being
-// opened: which tier, how many seats, how many students.
-const closed = page.locator("[id^='org-'] > details:not([open]) > summary").first();
-const line = (await closed.innerText()).replace(/\s+/g, " ");
-check(/seats/.test(line) && /students/.test(line), `a folded branch still says its seats and students (${line.slice(0, 90)})`);
+// opened: which tier and how many students, and for a sub-agent its seats.
+// A branch has no seats: it is Medcity's own, staffed as Medcity decides.
+const closed = page.locator("[id^='org-'] > details:not([open]) > summary");
+const lines = (await closed.allInnerTexts()).map((t) => t.replace(/\s+/g, " "));
+const branchLine = lines.find((l) => /Branch/.test(l)) ?? "";
+const subLine = lines.find((l) => /Sub-agent/.test(l)) ?? "";
+check(/students/.test(branchLine) && !/seats/.test(branchLine), `a folded branch says its students and no seats (${branchLine.slice(0, 90)})`);
+check(!subLine || (/seats/.test(subLine) && /students/.test(subLine)), `a folded sub-agent says its seats and students (${subLine.slice(0, 90)})`);
 
 // Fifteen screens was the complaint. Anything near that again is a regression.
 const screens = await page.evaluate(() => document.documentElement.scrollHeight / window.innerHeight);

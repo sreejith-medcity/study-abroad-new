@@ -9,6 +9,7 @@ import { hashPassword, requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import type { FormState } from "@/lib/form-state";
 import { BRANCH_COUNSELLOR_ROLES, PARTNER_ROLES } from "@/lib/permissions";
+import { seatFree } from "@/lib/seats";
 
 const tempPassword = () => `Mc-${randomBytes(6).toString("base64url")}`;
 
@@ -25,7 +26,7 @@ const newCounsellor = z.object({
   deskLabel: z.string().trim().max(60).optional().transform((v) => v || null),
 });
 
-/** Adds a counsellor within the branch's seats. The one-time password is shown once and must be changed at first sign in. */
+/** Adds a counsellor; a sub-agent within its seats, a branch without a limit. The one-time password is shown once and must be changed at first sign in. */
 export async function addCounsellorAction(_: FormState, fd: FormData): Promise<FormState> {
   const owner = await requireUser(["PARTNER"]);
   const parsed = newCounsellor.safeParse(Object.fromEntries(fd));
@@ -37,7 +38,7 @@ export async function addCounsellorAction(_: FormState, fd: FormData): Promise<F
     .select({ n: count() })
     .from(schema.users)
     .where(and(eq(schema.users.orgId, org.id), eq(schema.users.active, true), inArray(schema.users.role, [...PARTNER_ROLES])));
-  if (n >= org.counsellorSeats) return { error: `All ${org.counsellorSeats} seats for your tier are in use. Switch someone off, or ask the Overseas team about a higher tier.` };
+  if (!seatFree(org, n)) return { error: `All ${org.counsellorSeats} seats for your tier are in use. Switch someone off, or ask the Overseas team about a higher tier.` };
   if (await db.query.users.findFirst({ where: eq(schema.users.email, d.email) })) return { fieldErrors: { email: ["Someone already signs in with this email"] }, error: "Check the highlighted fields." };
   const password = tempPassword();
   const [created] = await db
@@ -61,7 +62,7 @@ export async function setCounsellorActiveAction(fd: FormData) {
       .select({ n: count() })
       .from(schema.users)
       .where(and(eq(schema.users.orgId, owner.orgId), eq(schema.users.active, true), inArray(schema.users.role, [...PARTNER_ROLES])));
-    if (!org || n >= org.counsellorSeats) return;
+    if (!org || !seatFree(org, n)) return;
   }
   let moved = 0;
   await db.transaction(async (tx) => {

@@ -1,4 +1,5 @@
-// Branch team management: the owner adds counsellors within the tier's seats
+// Branch team management: the owner adds counsellors (a branch without a
+// limit, a sub-agent within its tier's seats)
 // (one-time password, forced change), switches one off (students move to the
 // owner, sign-in ends at once) and back on, resets a password, and nobody
 // else can reach it. Wants the plain seed.
@@ -48,7 +49,7 @@ const op = owner.page;
 let text = await go(op, "/settings/team");
 // The seat count moves with the seed, which now has one of each counsellor
 // role at this branch, so the shape is asserted rather than a frozen number.
-check(/\d+ of \d+ seats in use/.test(text) && /Owner/.test(text), "team: seats and people listed");
+check(/\d+ (person|people) active/.test(text) && /Owner/.test(text) && !/seats in use/.test(text), "team: people listed, and a branch is not told about seats");
 
 // Add a counsellor.
 const email = `new.counsellor${Date.now() % 100000}@medcity.test`;
@@ -88,15 +89,38 @@ const r = await counsellor.page.goto(`${BASE}/dashboard`);
 await counsellor.page.waitForLoadState("domcontentloaded");
 check(/\/login/.test(counsellor.page.url()) || r.status() >= 400, "switch off: the counsellor is signed out at once");
 
-// Seats: full means no add and no switching back on.
-sql(`update organizations set counsellor_seats = (select count(*) from users where org_id = '${org}' and active and role in ('PARTNER','COUNSELLOR')) where id = '${org}'`);
+// A branch is Medcity's own and has no seat limit: "unable to add more than
+// 3 members" was a sub-agent's tier cap applied to a branch. Squeeze its old
+// seat number below its headcount and it must still take more people.
+sql(`update organizations set counsellor_seats = 1 where id = '${org}'`);
 text = await go(op, "/settings/team");
-check(/Every seat is in use/.test(text) && (await op.getByRole("button", { name: "Add counsellor" }).count()) === 0 && /No seat free/.test(text), "seats: full means no add and no switch back on");
+check((await op.getByRole("button", { name: "Add counsellor" }).count()) === 1 && !/Every seat is in use/.test(text), "branch: still takes more people whatever the old seat number says");
+const many = Number(sql(`select count(*) from users where org_id = '${org}' and active and role in ('PARTNER','COUNSELLOR','SENIOR_COUNSELLOR','TRAINEE_COUNSELLOR','SUB_AGENT_COUNSELLOR')`));
+for (let i = 0; i < 2; i++) {
+  await op.locator('[name="name"]').fill(`Extra Counsellor ${i}`);
+  await op.locator('[name="email"]').fill(`new.counsellor.extra${i}.${Date.now() % 100000}@medcity.test`);
+  await op.getByRole("button", { name: "Add counsellor" }).click();
+  await toast(op, /One-time password/);
+  await go(op, "/settings/team");
+}
+const after = Number(sql(`select count(*) from users where org_id = '${org}' and active and role in ('PARTNER','COUNSELLOR','SENIOR_COUNSELLOR','TRAINEE_COUNSELLOR','SUB_AGENT_COUNSELLOR')`));
+check(after === many + 2, `branch: a fourth member and beyond are added (${many} to ${after})`);
+
+// A sub-agent keeps its tier's seats: full means no add.
+{
+  const sub = await signIn("owner@horizon.test", "10.105.1.9");
+  const subOrg = sql("select org_id from users where email = 'owner@horizon.test'");
+  sql(`update organizations set counsellor_seats = (select count(*) from users where org_id = '${subOrg}' and active and role in ('PARTNER','COUNSELLOR','SENIOR_COUNSELLOR','TRAINEE_COUNSELLOR','SUB_AGENT_COUNSELLOR')) where id = '${subOrg}'`);
+  const t = await go(sub.page, "/settings/team");
+  check(/Every seat is in use/.test(t) && (await sub.page.getByRole("button", { name: "Add counsellor" }).count()) === 0, "sub-agent: full means no add");
+  sql(`update organizations set counsellor_seats = 3 where id = '${subOrg}'`);
+  await sub.ctx.close();
+}
 sql(`update organizations set counsellor_seats = 8 where id = '${org}'`);
 await go(op, "/settings/team");
 await op.getByTestId("member-uk.docs@medcity.test").getByRole("button", { name: /^Switch on/ }).click();
 await op.waitForTimeout(1500);
-check(sql(`select active from users where id = '${ukDocs}'`) === "t", "switch on: back when a seat is free");
+check(sql(`select active from users where id = '${ukDocs}'`) === "t", "switch on: back on");
 
 // Reset a password.
 await go(op, "/settings/team");

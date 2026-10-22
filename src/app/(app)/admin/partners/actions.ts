@@ -1,5 +1,6 @@
 "use server";
 
+import { seatFree } from "@/lib/seats";
 import { revalidatePath } from "next/cache";
 import { randomBytes } from "crypto";
 import { and, count, eq, inArray, isNotNull } from "drizzle-orm";
@@ -80,7 +81,7 @@ export async function addUserAction(_: FormState, formData: FormData): Promise<F
 
   if (org.type !== "HQ") {
     const [{ n }] = await db.select({ n: count() }).from(schema.users).where(and(eq(schema.users.orgId, org.id), eq(schema.users.active, true), inArray(schema.users.role, [...PARTNER_ROLES])));
-    if (n >= org.counsellorSeats) return { error: `${org.name} has used all ${org.counsellorSeats} seats for its tier.` };
+    if (!seatFree(org, n)) return { error: `${org.name} has used all ${org.counsellorSeats} seats for its tier.` };
   }
 
   const password = tempPassword();
