@@ -7,9 +7,9 @@ import { fmtMoney } from "@/lib/format";
 import { ADMIN_ROLES } from "@/lib/permissions";
 import { rankLabels } from "@/lib/rankings";
 import { Card, CardHeader, Chip, PageHeader } from "@/components/ui";
-import { LivingFundsForm, RankingsImportForm } from "./forms";
+import { LivingFundsForm, RankingsImportForm, ServiceChargeForm } from "./forms";
 
-export const metadata = { title: "Destinations and rankings" };
+export const metadata = { title: "Destinations, service charge and rankings" };
 
 export default async function DestinationsPage() {
   await requireUser([...ADMIN_ROLES]);
@@ -23,6 +23,34 @@ export default async function DestinationsPage() {
   return (
     <>
       <PageHeader title="Destinations and rankings" subtitle="Figures partners quote to students. Each one keeps its source, so it can be checked when the government or the ranking changes." />
+      {/* Which destinations Medcity charges the student a service charge for.
+          A student going to a ticked country, and every Ausbildung student,
+          shows what has been paid and what is still owed, on their file and
+          on the Ausbildung and service charge tracker. */}
+      <section id="service-charge" className="mb-5">
+        <details className="rounded-xl border border-line bg-surface shadow-card" open={countries.some((c) => c.collectsServiceCharge) ? undefined : true}>
+          <summary className="flex cursor-pointer list-none flex-wrap items-center gap-3 px-4 py-3">
+            <span className="font-semibold text-brand-700">Countries that collect a service charge</span>
+            <span className="text-sm text-muted">
+              {countries.filter((c) => c.collectsServiceCharge).map((c) => c.name).join(", ") || "None ticked yet"}
+            </span>
+            <span className="ml-auto text-xs text-muted">Show</span>
+          </summary>
+          <div className="border-t border-line px-4 py-3">
+            <p className="mb-3 text-sm text-muted">
+              Tick a country and its students show the service charge received and pending. Ausbildung students always do. The usual charge is offered as the
+              starting figure on a student&rsquo;s Income tab; leave it empty where there is no single figure.
+            </p>
+            <ul className="grid gap-x-6 gap-y-2 lg:grid-cols-2">
+              {countries.map((c) => (
+                <li key={c.id} className="rounded-lg px-2 py-1.5 odd:bg-surface-2/60">
+                  <ServiceChargeForm countryId={c.id} name={c.name} on={c.collectsServiceCharge} amount={c.serviceChargeInr} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        </details>
+      </section>
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
         <Card>
           <CardHeader title="Living costs for the student visa" subtitle="What a student must show for the first year, as each government states it. Leave blank where there is no national figure." />

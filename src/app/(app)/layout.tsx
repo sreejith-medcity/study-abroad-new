@@ -38,6 +38,7 @@ const partnerNav = (home: string): NavGroup[] => [
       { href: "/students/board", label: "By stage", icon: "flow" },
       { href: "/applications", label: "Applications", icon: "applications" },
       { href: "/program-options", label: "Program options", icon: "spark" },
+      { href: "/ausbildung", label: "Ausbildung & service charge", icon: "services" },
     ],
   },
   {
@@ -64,6 +65,7 @@ const partnerNav = (home: string): NavGroup[] => [
       { href: "/support", label: "Help desk", icon: "support" },
       { href: "/learning", label: "Learning resources", icon: "learning" },
       { href: "/contacts", label: "Contacts", icon: "partners" },
+      { href: "/checklists", label: "Document checklists", icon: "training" },
     ],
   },
   {
@@ -129,6 +131,7 @@ const ADMIN_NAV: NavGroup[] = [
       { href: "/students/board", label: "By stage", icon: "flow" },
       { href: "/enquiries", label: "Enquiries", icon: "enquiry" },
       { href: "/program-options", label: "Program options", icon: "spark" },
+      { href: "/ausbildung", label: "Ausbildung & service charge", icon: "services" },
     ],
   },
   {
@@ -138,6 +141,7 @@ const ADMIN_NAV: NavGroup[] = [
       { href: "/documentation", label: "Documentation", icon: "applications" },
       { href: "/deadlines", label: "Deadlines", icon: "deadlines" },
       { href: "/admin/services", label: "Services", icon: "services" },
+      { href: "/checklists", label: "Document checklists", icon: "training" },
     ],
   },
   {
@@ -219,6 +223,7 @@ const DOCUMENTATION_NAV: NavGroup[] = [
   {
     title: "Reference",
     items: [
+      { href: "/checklists", label: "Document checklists", icon: "training" },
       { href: "/search", label: "Search programs", icon: "search" },
       { href: "/universities", label: "Universities", icon: "universities" },
       { href: "/deadlines", label: "Deadlines", icon: "deadlines" },
@@ -253,6 +258,7 @@ const TEAM_LEAD_NAV: NavGroup[] = [
     title: "What the desk works to",
     items: [
       { href: "/admin/documents", label: "Documents and requirements", icon: "applications" },
+      { href: "/checklists", label: "Document checklists", icon: "training" },
       { href: "/search", label: "Search programs", icon: "search" },
       { href: "/universities", label: "Universities", icon: "universities" },
       { href: "/deadlines", label: "Deadlines", icon: "deadlines" },
@@ -307,6 +313,7 @@ const MANAGEMENT_NAV: NavGroup[] = [
       { href: "/dashboard", label: "Performance", icon: "dashboard" },
       { href: "/applications", label: "Applications", icon: "applications" },
       { href: "/students", label: "Students", icon: "students" },
+      { href: "/ausbildung", label: "Ausbildung & service charge", icon: "services" },
       { href: "/admin/commission", label: "Commission", icon: "commission" },
       { href: "/admin/insights", label: "Insights", icon: "insights" },
       { href: "/learning", label: "Learning resources", icon: "learning" },

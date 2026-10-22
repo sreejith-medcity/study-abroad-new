@@ -1,3 +1,4 @@
+import { PrintButton } from "@/components/print-button";
 import Link from "next/link";
 import { db, schema } from "@/db";
 import { eq } from "drizzle-orm";
@@ -9,6 +10,9 @@ import { activeRejectionReasons, overridesFor, rowStanding, stageGate, studentCh
 import { OWED_BY_LABEL, SOURCE_LABEL, STAGES, STATE_LABEL, stageLabel, standingText, lockedMissing } from "@/lib/journey";
 import { Alert, Card, CardHeader, Chip, Table, Td, Th } from "@/components/ui";
 import { AddItem, ItemActions, StageMover } from "./client";
+
+/** The journeys, as the team says them, for the line above the list. */
+const JOURNEY_NAME = { DEGREE: "Study abroad", AUSBILDUNG: "Ausbildung", NURSING: "Nursing / NCLEX-RN" } as const;
 
 export const metadata = { title: "Documentation" };
 
@@ -35,10 +39,11 @@ export default async function DocumentationPage({ params, searchParams }: { para
   });
   const canProcess = canWrite && mayDecideDocuments(user, branch?.checksOwnDocuments === true);
 
-  // A file opened for the first time has nothing on its list yet: build it now,
-  // so nobody has to press a button to see what the student owes.
-  const held = await db.$count(schema.checklistItems, eq(schema.checklistItems.studentId, id));
-  if (held === 0 && canWrite) await syncChecklist(id);
+  // Brought into line every time it is opened, not only the first time: a
+  // file opened for the first time has nothing on it yet, and a file whose
+  // journey has changed (a degree that became Ausbildung) is asking for the
+  // wrong paper until it is. The sync keeps everything already done.
+  if (canWrite) await syncChecklist(id);
 
   const [rows, ctx, reasons, spare, overrides, apps] = await Promise.all([
     studentChecklist(id),
@@ -83,6 +88,12 @@ export default async function DocumentationPage({ params, searchParams }: { para
 
   return (
     <div className="space-y-4">
+      {/* The list as it stands, on paper, to hand to the student. The menus
+          and buttons drop out when printed. */}
+      <div className="flex flex-wrap items-center justify-end gap-3" data-print="hide">
+        <span className="text-xs text-muted">Journey: {ctx.pathways.map((p) => JOURNEY_NAME[p]).join(", ")}</span>
+        <PrintButton label="Print checklist" />
+      </div>
       <Card className="p-4">
         <div className="grid gap-4 md:grid-cols-4">
           <div>

@@ -429,6 +429,18 @@ export const countries = pgTable("countries", {
   visaLivingNote: text("visa_living_note"),
   visaLivingSource: text("visa_living_source"),
   visaLivingChecked: date("visa_living_checked"),
+  /**
+   * Whether Medcity charges the student a service charge for going here.
+   * Ticked in Settings by country; a student bound for one of these, and every
+   * Ausbildung student, shows what has been paid and what is still owed.
+   */
+  collectsServiceCharge: boolean("collects_service_charge").notNull().default(false),
+  /**
+   * The usual service charge for this destination, in rupees, offered as the
+   * starting figure when one is raised on a student. Null until somebody sets
+   * it: never a nought standing in for unknown.
+   */
+  serviceChargeInr: integer("service_charge_inr"),
 });
 
 export const universities = pgTable(
@@ -999,6 +1011,13 @@ export const documentRequirements = pgTable(
     vendorId: text("vendor_id").references(() => vendors.id, { onDelete: "cascade" }),
     universityId: text("university_id").references(() => universities.id, { onDelete: "cascade" }),
     programId: text("program_id").references(() => programs.id, { onDelete: "cascade" }),
+    /**
+     * Which journey this belongs to: a degree abroad, Ausbildung, or nursing
+     * registration (NCLEX-RN and the like). Null is every journey. A statement
+     * of purpose is a degree's paper and a training contract is Ausbildung's,
+     * and a student is asked for their own journey's list, not all three.
+     */
+    pathway: pathway("pathway"),
     /** Only a required item gates the stage. The rest are asked for, not enforced. */
     required: boolean("required").notNull().default(true),
     /**
@@ -1036,6 +1055,63 @@ export const documentRequirements = pgTable(
     index("document_requirements_program_idx").on(t.programId),
   ],
 );
+
+/* ---------- Ausbildung and German ---------- */
+
+/** Where one German level stands for one student. */
+export const germanModuleState = pgEnum("german_module_state", ["NOT_STARTED", "IN_PROGRESS", "COMPLETED"]);
+
+/**
+ * One German level, for one student.
+ *
+ * Ausbildung needs B1 or B2 before anything else can move, and the levels are
+ * taught here in order, so where a student stands in them is the first thing
+ * anybody asks about an Ausbildung file. A level with no row is not started.
+ */
+export const germanModules = pgTable(
+  "german_modules",
+  {
+    id: id(),
+    studentId: text("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    level: text("level").notNull(),
+    state: germanModuleState("state").notNull().default("NOT_STARTED"),
+    completedOn: date("completed_on"),
+    note: text("note"),
+    updatedById: text("updated_by_id").references(() => users.id, { onDelete: "set null" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("german_modules_student_level_uq").on(t.studentId, t.level)],
+);
+
+/**
+ * What an Ausbildung file carries that a degree file does not: the three
+ * fields the student would train in, in order of preference, and the three
+ * dates the whole thing turns on, application, interview and contract.
+ *
+ * Kept on the student rather than on one application, because an Ausbildung
+ * student is matched to employers in rounds and these are the answers for the
+ * student, whichever employer it turns out to be.
+ */
+export const ausbildungProfiles = pgTable("ausbildung_profiles", {
+  id: id(),
+  studentId: text("student_id")
+    .notNull()
+    .unique()
+    .references(() => students.id, { onDelete: "cascade" }),
+  preference1: text("preference_1"),
+  preference2: text("preference_2"),
+  preference3: text("preference_3"),
+  applicationSubmittedOn: date("application_submitted_on"),
+  interviewOn: timestamp("interview_on", { withTimezone: true }),
+  interviewWith: text("interview_with"),
+  contractReceivedOn: date("contract_received_on"),
+  contractEmployer: text("contract_employer"),
+  note: text("note"),
+  updatedById: text("updated_by_id").references(() => users.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 /** The reasons the team sends a document back. The list grows; nothing is deleted. */
 export const rejectionReasons = pgTable("rejection_reasons", {

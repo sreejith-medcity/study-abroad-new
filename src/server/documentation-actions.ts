@@ -418,6 +418,7 @@ const reqSchema = z.object({
   guidance: z.string().trim().max(600).optional(),
   guidanceMl: z.string().trim().max(600).optional(),
   sortOrder: z.string().optional(),
+  pathway: z.enum(["", "DEGREE", "AUSBILDUNG", "NURSING"]).optional(),
 });
 
 /**
@@ -461,6 +462,8 @@ export async function saveRequirementAction(_: FormState, fd: FormData): Promise
     guidanceMl: d.guidanceMl || null,
     sortOrder,
     active: ticked(fd, "active"),
+    // Empty is every journey; a journey narrows it to the students on it.
+    pathway: d.pathway ? d.pathway : null,
     updatedAt: new Date(),
   };
   if (d.requirementId) {

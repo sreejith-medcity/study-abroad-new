@@ -470,6 +470,13 @@
       "when": 1792379525369,
       "tag": "0066_user_text_size",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1792669084547,
+      "tag": "0067_ausbildung_and_service_charge",
+      "breakpoints": true
     }
   ]
 }

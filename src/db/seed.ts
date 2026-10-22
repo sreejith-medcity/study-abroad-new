@@ -20,6 +20,8 @@ const client = postgres(process.env.DATABASE_URL!, { max: 1 });
 const db = drizzle(client, { schema });
 
 const PASSWORD = "Password@123";
+/** A date so many days from today, as the YYYY-MM-DD a date column takes. */
+const ymd = (days: number) => new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
 
 async function main() {
   console.log("Resetting data...");
@@ -152,6 +154,7 @@ async function main() {
       owedBy: r.owedBy ?? ("STUDENT" as const),
       validityMonths: r.validityMonths ?? null,
       guidance: r.guidance ?? null,
+      pathway: r.pathway ?? null,
       sortOrder: (i + 1) * 10,
     })),
   );
@@ -724,6 +727,36 @@ async function main() {
     const stage: schema.JourneyStage = reached.length ? reached.reduce((far, s) => (order.indexOf(s) > order.indexOf(far) ? s : far)) : "PROFILE";
     await db.update(schema.students).set({ journeyStage: stage, stageEnteredAt: months(12) }).where(eq(schema.students.id, student.id));
     await syncChecklist(student.id);
+  }
+
+  // Two Ausbildung files, one well along and one starting, so the tracker and
+  // the Ausbildung tab have something real to show.
+  const ausb = (first: string) => allStudents.find((st) => st.firstName === first);
+  const akshara = ausb("Akshara");
+  const rihan = ausb("Rihan");
+  if (akshara) {
+    await db.insert(schema.germanModules).values([
+      { studentId: akshara.id, level: "A1", state: "COMPLETED", completedOn: ymd(-300) },
+      { studentId: akshara.id, level: "A2", state: "COMPLETED", completedOn: ymd(-200) },
+      { studentId: akshara.id, level: "B1", state: "COMPLETED", completedOn: ymd(-90) },
+      { studentId: akshara.id, level: "B2", state: "IN_PROGRESS" },
+    ]);
+    await db.insert(schema.ausbildungProfiles).values({
+      studentId: akshara.id,
+      preference1: "Nursing (Pflegefachmann/-frau)",
+      preference2: "Elderly care (Altenpflege)",
+      preference3: "Medical assistant (MFA)",
+      applicationSubmittedOn: ymd(-20),
+      interviewOn: new Date(Date.now() + 6 * 86400000),
+      interviewWith: "Sample Klinikum",
+    });
+  }
+  if (rihan) {
+    await db.insert(schema.germanModules).values([
+      { studentId: rihan.id, level: "A1", state: "COMPLETED", completedOn: ymd(-60) },
+      { studentId: rihan.id, level: "A2", state: "IN_PROGRESS" },
+    ]);
+    await db.insert(schema.ausbildungProfiles).values({ studentId: rihan.id, preference1: "Hotel management (Hotelfachmann/-frau)" });
   }
 
   // A worked example on the first student: paper in hand, paper asked for, one

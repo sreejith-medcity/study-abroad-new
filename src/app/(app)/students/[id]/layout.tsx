@@ -2,7 +2,7 @@ import Link from "next/link";
 import { and, count, eq, ilike, notInArray } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
-import { fullName } from "@/lib/format";
+import { fmtDate, fullName } from "@/lib/format";
 import { APP_ROLES, isStaff, worksStudentFiles } from "@/lib/permissions";
 import { getStudentForUser } from "@/server/queries";
 import { Alert, Button, Card, Chip } from "@/components/ui";
@@ -13,6 +13,7 @@ import { backgroundComplete } from "@/lib/background";
 import { commissionVisible } from "@/server/commission-visibility";
 import { assignStudentIdAction } from "@/server/id-actions";
 import { aimLabel } from "@/lib/aims";
+import { showsAusbildungTab } from "@/server/ausbildung";
 
 
 export default async function StudentLayout({ children, params }: { children: React.ReactNode; params: Promise<{ id: string }> }) {
@@ -38,6 +39,9 @@ export default async function StudentLayout({ children, params }: { children: Re
   // Money is off a counsellor's screens where the branch owner chose that, and
   // the tab follows the same switch rather than adding a second one to forget.
   const money = await commissionVisible(user);
+  // Ausbildung, or a destination that collects a service charge: the file
+  // gets a tab for German, the Ausbildung dates and the service charge.
+  const extra = await showsAusbildungTab(id);
   // The student's preferred destination is stored by name; search filters by code.
   const preferred = student.preferredCountry
     ? await db.query.countries.findFirst({ where: ilike(schema.countries.name, student.preferredCountry.trim()) })
@@ -82,6 +86,7 @@ export default async function StudentLayout({ children, params }: { children: Re
           )}
           <p className="mt-2 text-xs text-muted">
             {isStaff(user) ? `${student.org.name} · ` : ""}Assigned to {student.assignedTo ? student.assignedTo.deskLabel ?? student.assignedTo.name : "nobody"}
+            {` · Registered ${fmtDate(student.createdAt)}`}
             {student.consentAt ? " · Consent recorded" : " · No consent on file"}
           </p>
         </Card>
@@ -97,6 +102,9 @@ export default async function StudentLayout({ children, params }: { children: Re
                 { href: `/students/${id}/timeline`, label: "Timeline", done: true },
                 ...(money ? [{ href: `/students/${id}/income`, label: "Income", done: true }] : []),
                 { href: `/students/${id}/services`, label: `Services (${services})`, done: services > 0 },
+                ...(extra.ausbildung || extra.charging
+                  ? [{ href: `/students/${id}/ausbildung`, label: extra.ausbildung ? "Ausbildung" : "Service charge", done: true }]
+                  : []),
               ]}
             />
           </div>

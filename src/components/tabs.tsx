@@ -1,16 +1,27 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "./ui";
 
 export function StepTabs({ steps }: { steps: { href: string; label: string; done?: boolean }[] }) {
   const path = usePathname();
+  const strip = useRef<HTMLDivElement>(null);
+  // The row scrolls, and a file has more tabs than fit, so the one you are on
+  // is brought into view rather than left off the end of the strip.
+  useEffect(() => {
+    const here = strip.current?.querySelector<HTMLElement>('[aria-current="step"]');
+    if (!here || !strip.current) return;
+    const box = strip.current.getBoundingClientRect();
+    const at = here.getBoundingClientRect();
+    if (at.right > box.right || at.left < box.left) strip.current.scrollLeft += at.left - box.left - 8;
+  }, [path]);
   // Scrolls inside its own card rather than making the whole page wider: with
   // seven steps the row outgrew the window, and a page that scrolls sideways
   // takes the header and the sidebar off the screen with it.
   return (
-    <div className="thin-scroll -mx-1 w-full min-w-0 overflow-x-auto px-1 py-0.5">
+    <div ref={strip} className="thin-scroll -mx-1 w-full min-w-0 overflow-x-auto px-1 py-0.5">
       <ol className="flex min-w-max items-center gap-2" aria-label="Student file steps">
         {steps.map((s, i) => {
           const active = path.startsWith(s.href);

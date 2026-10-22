@@ -3,6 +3,7 @@
 import { ActionForm, FieldError } from "@/components/action-form";
 import { Field, Input, Textarea } from "@/components/ui";
 import { importRankingsAction, saveLivingFundsAction } from "./actions";
+import { saveServiceChargeCountryAction } from "@/server/ausbildung-actions";
 
 export function LivingFundsForm({ countryId, currency, amount, note, source }: { countryId: string; currency: string; amount: number | null; note: string | null; source: string | null }) {
   return (
@@ -33,6 +34,26 @@ export function RankingsImportForm() {
       </Field>
       <Field label="Or paste rows" htmlFor="rk-csv" hint="university, country_code, qs_rank, qs_year, the_rank, the_year. Ranks as published: 154, =154 or 601-650.">
         <Textarea id="rk-csv" name="csv" rows={4} className="font-mono text-xs" defaultValue={"university,country_code,qs_rank,qs_year,the_rank,the_year\n"} />
+      </Field>
+    </ActionForm>
+  );
+}
+
+/**
+ * One destination's service charge: whether Medcity collects one for it, and
+ * the usual figure. A tick and a number, saved together.
+ */
+export function ServiceChargeForm({ countryId, name, on, amount }: { countryId: string; name: string; on: boolean; amount: number | null }) {
+  return (
+    <ActionForm action={saveServiceChargeCountryAction} submitLabel="Save" submitVariant="secondary" className="flex flex-wrap items-end gap-3">
+      <input type="hidden" name="countryId" value={countryId} />
+      <label className="flex min-w-40 flex-1 items-center gap-2 text-sm font-medium">
+        <input type="checkbox" name="collects" value="1" defaultChecked={on} className="size-4 rounded border-line-strong accent-brand-600" aria-label={`${name} collects a service charge`} />
+        {name}
+      </label>
+      <Field label="Usual charge (₹)" htmlFor={`sc-${countryId}`}>
+        <Input id={`sc-${countryId}`} name="serviceChargeInr" inputMode="numeric" defaultValue={amount ?? ""} placeholder="Not recorded" className="w-36" />
+        <FieldError name="serviceChargeInr" />
       </Field>
     </ActionForm>
   );

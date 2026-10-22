@@ -5,8 +5,9 @@
  * tests build lists too, and there must be exactly one place that decides what a
  * student owes.
  */
-import { and, asc, eq, inArray, or } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, or } from "drizzle-orm";
 import { db, schema } from ".";
+import type { Pathway } from "./schema";
 
 const { checklistItems: ci, documentRequirements: dr, documentTypes: dt, applications: ap } = schema;
 
@@ -36,6 +37,13 @@ export type StudentContext = {
   programIds: string[];
   /** The application a requirement belongs to, where only one application asks for it. */
   applicationIdByCountry: Record<string, string>;
+  /**
+   * The journeys this student is on: a degree, Ausbildung, nursing. Read from
+   * their open applications and what they registered for, and a degree when
+   * neither says, because that is what the portal was first built for and
+   * every file before this was one.
+   */
+  pathways: Pathway[];
 };
 
 /**
@@ -48,11 +56,15 @@ export async function studentContext(studentId: string): Promise<StudentContext>
     where: eq(ap.studentId, studentId),
     with: {
       status: { columns: { group: true } },
-      program: { columns: { id: true, universityId: true }, with: { university: { columns: { id: true, name: true, countryId: true }, with: { country: { columns: { id: true, name: true } } } } } },
+      program: { columns: { id: true, universityId: true, pathway: true }, with: { university: { columns: { id: true, name: true, countryId: true }, with: { country: { columns: { id: true, name: true } } } } } },
       route: { columns: { vendorId: true }, with: { vendor: { columns: { id: true, name: true } } } },
     },
   });
   const open = apps.filter((a) => a.status.group !== "CLOSED");
+  const student = await db.query.students.findFirst({ where: eq(schema.students.id, studentId), columns: { preferredPathway: true } });
+  const pathways = new Set<Pathway>(open.map((a) => a.program.pathway).filter((p): p is Pathway => !!p));
+  if (student?.preferredPathway) pathways.add(student.preferredPathway);
+  if (pathways.size === 0) pathways.add("DEGREE");
   const countryNames: Record<string, string> = {};
   const vendorNames: Record<string, string> = {};
   const universityNames: Record<string, string> = {};
@@ -75,6 +87,7 @@ export async function studentContext(studentId: string): Promise<StudentContext>
     universityNames,
     programIds: open.map((a) => a.program.id),
     applicationIdByCountry,
+    pathways: [...pathways],
   };
 }
 
@@ -96,11 +109,14 @@ export async function requirementsFor(ctx: StudentContext) {
     ctx.universityIds.length ? inArray(dr.universityId, ctx.universityIds) : undefined,
     ctx.programIds.length ? inArray(dr.programId, ctx.programIds) : undefined,
   ].filter(Boolean);
+  // A row for one journey reaches only the students on it; a row for none
+  // reaches everybody.
+  const journey = or(isNull(dr.pathway), inArray(dr.pathway, ctx.pathways));
   const rows = await db
     .select({ req: dr, label: dt.label, sortOrder: dt.sortOrder })
     .from(dr)
     .innerJoin(dt, eq(dt.code, dr.typeCode))
-    .where(and(eq(dr.active, true), or(...scope)))
+    .where(and(eq(dr.active, true), journey, or(...scope)))
     .orderBy(asc(dr.stage), asc(dr.sortOrder), asc(dt.sortOrder));
 
   const RANK: Record<string, number> = { ALWAYS: 0, DESTINATION: 1, ROUTE: 2, UNIVERSITY: 3, STUDENT: 4 };
@@ -178,6 +194,38 @@ export async function syncChecklist(studentId: string) {
       })
       .where(eq(ci.id, held.id));
   }
+
+  // A student whose journey changes, a degree file that turns out to be an
+  // Ausbildung one, should stop being asked for the other journey's paper.
+  // Only what nobody has touched is put away, and it is put away rather than
+  // deleted, with the reason said, so it comes back if the journey does.
+  const wantedTypes = new Set(wanted.map((w) => w.req.typeCode));
+  const strays = existing.filter((i) => !wantedTypes.has(i.typeCode) && i.requirementId && i.state === "NOT_ASKED" && !i.documentId);
+  if (strays.length) {
+    const reqs = await db
+      .select({ id: dr.id, pathway: dr.pathway })
+      .from(dr)
+      .where(inArray(dr.id, strays.map((i) => i.requirementId!)));
+    const otherJourney = new Set(reqs.filter((r) => r.pathway && !ctx.pathways.includes(r.pathway)).map((r) => r.id));
+    const retire = strays.filter((i) => otherJourney.has(i.requirementId!)).map((i) => i.id);
+    if (retire.length) {
+      await db
+        .update(ci)
+        .set({ state: "NOT_NEEDED", reason: NOT_THIS_JOURNEY, updatedAt: new Date() })
+        .where(inArray(ci.id, retire));
+    }
+  }
+  // And the other way: put away for that reason alone, and wanted again now.
+  const back = existing.filter((i) => wantedTypes.has(i.typeCode) && i.state === "NOT_NEEDED" && i.reason === NOT_THIS_JOURNEY && !i.decidedById);
+  if (back.length) {
+    await db
+      .update(ci)
+      .set({ state: "NOT_ASKED", reason: null, updatedAt: new Date() })
+      .where(inArray(ci.id, back.map((i) => i.id)));
+  }
   return { added: toAdd.length, ctx };
 }
+
+/** Said on an item put away because the student is not on the journey that asks for it. */
+export const NOT_THIS_JOURNEY = "Not asked for on this student's journey";
 

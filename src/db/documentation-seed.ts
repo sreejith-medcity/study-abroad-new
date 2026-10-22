@@ -8,7 +8,7 @@
  * the date is read off the document instead.
  */
 
-import type { JourneyStage, OwedBy } from "./schema";
+import type { JourneyStage, OwedBy, Pathway } from "./schema";
 
 /** Document types the documentation spine needs on top of the originals. */
 export const DOCUMENTATION_TYPES = [
@@ -49,6 +49,11 @@ export const DOCUMENTATION_TYPES = [
   { code: "LOCAL_ADDRESS", label: "Local address proof", labelMl: "പ്രാദേശിക വിലാസ തെളിവ്", uploadedBy: "partner", sortOrder: 242 },
   { code: "LOCAL_BANK_ACCOUNT", label: "Local bank account", labelMl: "പ്രാദേശിക ബാങ്ക് അക്കൗണ്ട്", uploadedBy: "partner", sortOrder: 243 },
   { code: "TERM_REGISTRATION", label: "First-term registration", labelMl: "ആദ്യ ടേം രജിസ്ട്രേഷൻ", uploadedBy: "partner", sortOrder: 244 },
+  // Ausbildung and nursing registration ask for paper a degree does not.
+  { code: "MOTIVATION_LETTER", label: "Motivation letter (Anschreiben)", labelMl: "മോട്ടിവേഷൻ ലെറ്റർ", uploadedBy: "partner", sortOrder: 93 },
+  { code: "BIRTH_CERTIFICATE", label: "Birth certificate", labelMl: "ജനന സർട്ടിഫിക്കറ്റ്", uploadedBy: "partner", sortOrder: 12 },
+  { code: "NURSING_DEGREE", label: "Nursing degree or diploma certificate (BSc / GNM)", labelMl: "നഴ്സിങ് ബിരുദം / ഡിപ്ലോമ സർട്ടിഫിക്കറ്റ്", uploadedBy: "partner", sortOrder: 47 },
+  { code: "NURSING_MARKSHEETS", label: "Nursing marksheets and transcript", labelMl: "നഴ്സിങ് മാർക്ക് ഷീറ്റുകളും ട്രാൻസ്ക്രിപ്റ്റും", uploadedBy: "partner", sortOrder: 48 },
 ];
 
 export type SeedRequirement = {
@@ -60,6 +65,8 @@ export type SeedRequirement = {
   guidance?: string;
   /** A two-letter country code where the destination is what asks for it. */
   country?: string;
+  /** The journey this belongs to. Left out, it is every journey's. */
+  pathway?: Pathway;
 };
 
 /** The nine lists. Anything with a country is a destination's own addition. */
@@ -69,47 +76,47 @@ export const STAGE_REQUIREMENTS: SeedRequirement[] = [
   { stage: "PROFILE", typeCode: "PHOTOGRAPH", guidance: "Recent, plain background, face uncovered." },
   { stage: "PROFILE", typeCode: "MARKSHEET_10" },
   { stage: "PROFILE", typeCode: "MARKSHEET_12" },
-  { stage: "PROFILE", typeCode: "DEGREE_MARKSHEETS", required: false, guidance: "Where the student has studied a degree. All semesters." },
-  { stage: "PROFILE", typeCode: "DEGREE_CERTIFICATE", required: false, guidance: "Where the student has studied a degree. A provisional certificate is enough until the original is issued." },
-  { stage: "PROFILE", typeCode: "TRANSCRIPT", required: false, guidance: "Where the university issues one separately from the marksheets." },
-  { stage: "PROFILE", typeCode: "BACKLOG_CERTIFICATE", required: false, guidance: "Where there are backlogs. Some universities ask for it even at zero." },
-  { stage: "PROFILE", typeCode: "ENGLISH_TEST", validityMonths: 24, guidance: "IELTS, PTE or OET. Two years from the test date, so read the date off the report." },
-  { stage: "PROFILE", typeCode: "MOI", required: false, guidance: "Instead of a test, where the university accepts it. On the university's letterhead." },
-  { stage: "PROFILE", typeCode: "WORK_EXPERIENCE_LETTER", required: false, guidance: "Where there is work experience to show, on company letterhead with dates and role." },
-  { stage: "PROFILE", typeCode: "CV" },
+  { stage: "PROFILE", typeCode: "DEGREE_MARKSHEETS", pathway: "DEGREE", required: false, guidance: "Where the student has studied a degree. All semesters." },
+  { stage: "PROFILE", typeCode: "DEGREE_CERTIFICATE", pathway: "DEGREE", required: false, guidance: "Where the student has studied a degree. A provisional certificate is enough until the original is issued." },
+  { stage: "PROFILE", typeCode: "TRANSCRIPT", pathway: "DEGREE", required: false, guidance: "Where the university issues one separately from the marksheets." },
+  { stage: "PROFILE", typeCode: "BACKLOG_CERTIFICATE", pathway: "DEGREE", required: false, guidance: "Where there are backlogs. Some universities ask for it even at zero." },
+  { stage: "PROFILE", typeCode: "ENGLISH_TEST", pathway: "DEGREE", validityMonths: 24, guidance: "IELTS, PTE or OET. Two years from the test date, so read the date off the report." },
+  { stage: "PROFILE", typeCode: "MOI", pathway: "DEGREE", required: false, guidance: "Instead of a test, where the university accepts it. On the university's letterhead." },
+  { stage: "PROFILE", typeCode: "WORK_EXPERIENCE_LETTER", pathway: "DEGREE", required: false, guidance: "Where there is work experience to show, on company letterhead with dates and role." },
+  { stage: "PROFILE", typeCode: "CV", pathway: "DEGREE" },
   // 2. Shortlist asks for nothing new: the gate is that stage 1 is complete.
   // 3. Application
-  { stage: "APPLICATION", typeCode: "SOP" },
-  { stage: "APPLICATION", typeCode: "LOR", guidance: "Two, unless the university says otherwise." },
-  { stage: "APPLICATION", typeCode: "PORTFOLIO", required: false, guidance: "Design, architecture and fine art courses." },
-  { stage: "APPLICATION", typeCode: "UNIVERSITY_FORM", owedBy: "MEDCITY", guidance: "The university's own form, filled and signed." },
+  { stage: "APPLICATION", typeCode: "SOP", pathway: "DEGREE" },
+  { stage: "APPLICATION", typeCode: "LOR", pathway: "DEGREE", guidance: "Two, unless the university says otherwise." },
+  { stage: "APPLICATION", typeCode: "PORTFOLIO", pathway: "DEGREE", required: false, guidance: "Design, architecture and fine art courses." },
+  { stage: "APPLICATION", typeCode: "UNIVERSITY_FORM", pathway: "DEGREE", owedBy: "MEDCITY", guidance: "The university's own form, filled and signed." },
   // 4. Offer
-  { stage: "OFFER", typeCode: "OFFER_LETTER", owedBy: "UNIVERSITY" },
-  { stage: "OFFER", typeCode: "OFFER_CONDITION_EVIDENCE", required: false, guidance: "One file for each condition on the offer." },
-  { stage: "OFFER", typeCode: "OFFER_ACCEPTANCE" },
-  { stage: "OFFER", typeCode: "SCHOLARSHIP_LETTER", required: false, owedBy: "UNIVERSITY" },
+  { stage: "OFFER", typeCode: "OFFER_LETTER", pathway: "DEGREE", owedBy: "UNIVERSITY" },
+  { stage: "OFFER", typeCode: "OFFER_CONDITION_EVIDENCE", pathway: "DEGREE", required: false, guidance: "One file for each condition on the offer." },
+  { stage: "OFFER", typeCode: "OFFER_ACCEPTANCE", pathway: "DEGREE" },
+  { stage: "OFFER", typeCode: "SCHOLARSHIP_LETTER", pathway: "DEGREE", required: false, owedBy: "UNIVERSITY" },
   // 5. Deposit
-  { stage: "DEPOSIT", typeCode: "DEPOSIT_RECEIPT" },
-  { stage: "DEPOSIT", typeCode: "BANK_TRANSFER_PROOF", required: false, guidance: "The A1 form or the SWIFT copy, whichever the bank issued." },
-  { stage: "DEPOSIT", typeCode: "LOAN_SANCTION", required: false, guidance: "Where the fee is met by a loan." },
-  { stage: "DEPOSIT", typeCode: "SPONSOR_AFFIDAVIT", required: false, guidance: "Where somebody other than the student pays, with proof of the relationship." },
+  { stage: "DEPOSIT", typeCode: "DEPOSIT_RECEIPT", pathway: "DEGREE" },
+  { stage: "DEPOSIT", typeCode: "BANK_TRANSFER_PROOF", pathway: "DEGREE", required: false, guidance: "The A1 form or the SWIFT copy, whichever the bank issued." },
+  { stage: "DEPOSIT", typeCode: "LOAN_SANCTION", pathway: "DEGREE", required: false, guidance: "Where the fee is met by a loan." },
+  { stage: "DEPOSIT", typeCode: "SPONSOR_AFFIDAVIT", pathway: "DEGREE", required: false, guidance: "Where somebody other than the student pays, with proof of the relationship." },
   // 6. Confirmation
-  { stage: "CONFIRMATION", typeCode: "CAS_COE", owedBy: "UNIVERSITY", guidance: "CAS for the UK, I-20 for the United States, CoE for Australia, LOA for Canada." },
-  { stage: "CONFIRMATION", typeCode: "UNCONDITIONAL_OFFER", required: false, owedBy: "UNIVERSITY" },
-  { stage: "CONFIRMATION", typeCode: "FEE_RECEIPT" },
-  { stage: "CONFIRMATION", typeCode: "MEDICAL_REPORT", required: false, guidance: "Where the university asks for one." },
+  { stage: "CONFIRMATION", typeCode: "CAS_COE", pathway: "DEGREE", owedBy: "UNIVERSITY", guidance: "CAS for the UK, I-20 for the United States, CoE for Australia, LOA for Canada." },
+  { stage: "CONFIRMATION", typeCode: "UNCONDITIONAL_OFFER", pathway: "DEGREE", required: false, owedBy: "UNIVERSITY" },
+  { stage: "CONFIRMATION", typeCode: "FEE_RECEIPT", pathway: "DEGREE" },
+  { stage: "CONFIRMATION", typeCode: "MEDICAL_REPORT", pathway: "DEGREE", required: false, guidance: "Where the university asks for one." },
   // 7. Visa
   { stage: "VISA", typeCode: "VISA_FORM", owedBy: "MEDCITY" },
-  { stage: "VISA", typeCode: "FINANCIAL_PROOF", guidance: "The blocked account for Germany, the GIC for Canada, the funds the destination states elsewhere." },
-  { stage: "VISA", typeCode: "BANK_STATEMENT", guidance: "Read the dates off the statement: the destination's window is what decides, not the day it was printed." },
-  { stage: "VISA", typeCode: "ITR", required: false },
-  { stage: "VISA", typeCode: "BIOMETRICS_RECEIPT" },
+  { stage: "VISA", typeCode: "FINANCIAL_PROOF", pathway: "DEGREE", guidance: "The blocked account for Germany, the GIC for Canada, the funds the destination states elsewhere." },
+  { stage: "VISA", typeCode: "BANK_STATEMENT", pathway: "DEGREE", guidance: "Read the dates off the statement: the destination's window is what decides, not the day it was printed." },
+  { stage: "VISA", typeCode: "ITR", pathway: "DEGREE", required: false },
+  { stage: "VISA", typeCode: "BIOMETRICS_RECEIPT", pathway: "DEGREE" },
   { stage: "VISA", typeCode: "VISA_APPOINTMENT" },
   { stage: "VISA", typeCode: "TB_TEST", country: "GB", validityMonths: 6, guidance: "From a clinic on the approved list. Six months from the test date." },
-  { stage: "VISA", typeCode: "CREDIBILITY_STATEMENT", country: "GB", guidance: "The credibility interview statement, in the student's own words." },
+  { stage: "VISA", typeCode: "CREDIBILITY_STATEMENT", pathway: "DEGREE", country: "GB", guidance: "The credibility interview statement, in the student's own words." },
   { stage: "VISA", typeCode: "POLICE_CLEARANCE", country: "AU", validityMonths: 3, guidance: "Three months from the date of issue." },
-  { stage: "APPLICATION", typeCode: "APS_CERTIFICATE", country: "DE", guidance: "Germany asks for it before the application, so start it early." },
-  { stage: "APPLICATION", typeCode: "CREDENTIAL_EVALUATION", country: "CA", required: false, guidance: "WES or an equivalent, where the college asks for it." },
+  { stage: "APPLICATION", typeCode: "APS_CERTIFICATE", pathway: "DEGREE", country: "DE", guidance: "Germany asks for it before the application, so start it early." },
+  { stage: "APPLICATION", typeCode: "CREDENTIAL_EVALUATION", pathway: "DEGREE", country: "CA", required: false, guidance: "WES or an equivalent, where the college asks for it." },
   // 8. Departure
   { stage: "DEPARTURE", typeCode: "VISA", owedBy: "MEDCITY", guidance: "The visa page itself, once it is in the passport." },
   { stage: "DEPARTURE", typeCode: "TICKET" },
@@ -119,11 +126,31 @@ export const STAGE_REQUIREMENTS: SeedRequirement[] = [
   { stage: "DEPARTURE", typeCode: "SIM_CARD", required: false },
   { stage: "DEPARTURE", typeCode: "PRE_DEPARTURE_BRIEFING", owedBy: "MEDCITY" },
   // 9. Arrived
-  { stage: "ARRIVED", typeCode: "ENROLMENT_CONFIRMATION", owedBy: "UNIVERSITY" },
+  { stage: "ARRIVED", typeCode: "ENROLMENT_CONFIRMATION", pathway: "DEGREE", owedBy: "UNIVERSITY" },
   { stage: "ARRIVED", typeCode: "RESIDENCE_PERMIT", required: false },
   { stage: "ARRIVED", typeCode: "LOCAL_ADDRESS", required: false },
   { stage: "ARRIVED", typeCode: "LOCAL_BANK_ACCOUNT", required: false },
-  { stage: "ARRIVED", typeCode: "TERM_REGISTRATION", required: false },
+  { stage: "ARRIVED", typeCode: "TERM_REGISTRATION", pathway: "DEGREE", required: false },
+
+  // Ausbildung: an employer reads the file, not an admissions office, and it
+  // is read in German. A starting list for the Overseas team to edit under
+  // Settings, not a rule written into the code.
+  { stage: "PROFILE", typeCode: "GERMAN_CERTIFICATE", pathway: "AUSBILDUNG", guidance: "Goethe, telc or ÖSD. Most places ask for B1; nursing and care usually B2." },
+  { stage: "PROFILE", typeCode: "CV", pathway: "AUSBILDUNG", guidance: "In German, in the tabular Lebenslauf form, with a photograph." },
+  { stage: "PROFILE", typeCode: "MOTIVATION_LETTER", pathway: "AUSBILDUNG", guidance: "In German, addressed to the employer, one page." },
+  { stage: "PROFILE", typeCode: "WORK_EXPERIENCE_LETTER", pathway: "AUSBILDUNG", required: false, guidance: "Any work or internship, on letterhead with dates and role." },
+  { stage: "PROFILE", typeCode: "BIRTH_CERTIFICATE", pathway: "AUSBILDUNG", required: false, guidance: "Where the embassy or the employer asks for it." },
+  { stage: "OFFER", typeCode: "TRAINING_CONTRACT", pathway: "AUSBILDUNG", guidance: "Signed by the employer and the student. The visa is applied for on this." },
+
+  // Nursing registration abroad: NCLEX-RN, the NMC and the like. The board
+  // reads the nursing education and the licence at home before anything else.
+  { stage: "PROFILE", typeCode: "NURSING_DEGREE", pathway: "NURSING" },
+  { stage: "PROFILE", typeCode: "NURSING_MARKSHEETS", pathway: "NURSING", guidance: "Every year of the course, with the theory and clinical hours where the college states them." },
+  { stage: "PROFILE", typeCode: "NURSING_LICENSE", pathway: "NURSING", guidance: "The state nursing council registration, current." },
+  { stage: "PROFILE", typeCode: "ENGLISH_TEST", pathway: "NURSING", validityMonths: 24, guidance: "OET or IELTS academic. Two years from the test date." },
+  { stage: "PROFILE", typeCode: "WORK_EXPERIENCE_LETTER", pathway: "NURSING", required: false, guidance: "Each hospital, on letterhead, with the dates and the ward." },
+  { stage: "PROFILE", typeCode: "CV", pathway: "NURSING" },
+  { stage: "APPLICATION", typeCode: "CREDENTIAL_EVALUATION", pathway: "NURSING", guidance: "CGFNS for NCLEX-RN, or the evaluation the board names." },
 ];
 
 /** The reasons a document goes back. The words here are the words the student reads. */

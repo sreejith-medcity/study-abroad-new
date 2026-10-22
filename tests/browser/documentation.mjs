@@ -182,6 +182,14 @@ check(/Let through with a reason/.test(text) && /attestation/.test(text), "gate:
      where ci.student_id = '${firstStudent}' and ci.required and ci.state <> 'ACCEPTED' and ci.stage = '${stageNow2}' limit 1`,
   );
   if (locked) {
+    // On the requirements themselves, as the team does it: the file reads its
+    // rules from them every time it is opened, so a mark put on the file's own
+    // rows alone would be put back the moment the page loaded.
+    const reqs = sql(
+      `select string_agg(distinct requirement_id, ',') from checklist_items where student_id = '${firstStudent}' and required and state <> 'ACCEPTED' and stage = '${stageNow2}' and requirement_id is not null`,
+    ).split(",").filter(Boolean);
+    const inList = reqs.map((r) => `'${r}'`).join(",") || "''";
+    sql(`update document_requirements set never_waive = true where id in (${inList})`);
     sql(
       `update checklist_items set never_waive = true where student_id = '${firstStudent}' and required and state <> 'ACCEPTED' and stage = '${stageNow2}'`,
     );
@@ -208,6 +216,7 @@ check(/Let through with a reason/.test(text) && /attestation/.test(text), "gate:
         check(sql(`select journey_stage from students where id = '${firstStudent}'`) === next, "never waived: the stage did not move");
       }
     }
+    sql(`update document_requirements set never_waive = false where id in (${inList})`);
     sql(`update checklist_items set never_waive = false where student_id = '${firstStudent}'`);
   } else {
     bad("never waived: no outstanding required item to mark");

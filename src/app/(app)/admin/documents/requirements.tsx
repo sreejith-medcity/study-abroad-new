@@ -5,7 +5,7 @@ import { ActionForm, FieldError } from "@/components/action-form";
 import { Checkbox, Field, Input, Select, Textarea } from "@/components/ui";
 import { OWED_BY_LABEL, STAGES } from "@/lib/journey";
 import { addRejectionReasonAction, saveRequirementAction, setReasonActiveAction, setRequirementActiveAction } from "@/server/documentation-actions";
-import type { JourneyStage, OwedBy, RequirementSource } from "@/db/schema";
+import type { JourneyStage, OwedBy, Pathway, RequirementSource } from "@/db/schema";
 
 export type Option = { id: string; name: string };
 export type RequirementRow = {
@@ -27,7 +27,12 @@ export type RequirementRow = {
   guidanceMl: string | null;
   sortOrder: number;
   active: boolean;
+  /** The journey it belongs to; null is every journey. */
+  pathway: Pathway | null;
 };
+
+/** The three journeys, as the team says them. */
+export const JOURNEY_LABEL: Record<Pathway, string> = { DEGREE: "Study abroad", AUSBILDUNG: "Ausbildung", NURSING: "Nursing / NCLEX-RN" };
 
 const OWED: OwedBy[] = ["STUDENT", "MEDCITY", "UNIVERSITY", "VENDOR"];
 
@@ -68,6 +73,14 @@ export function RequirementForm({
             ))}
           </Select>
           <FieldError name="typeCode" />
+        </Field>
+        <Field label="Which journey" htmlFor={`pathway-${key}`} hint="A student is asked for their own journey's paper, and for anything set for every journey.">
+          <Select id={`pathway-${key}`} name="pathway" defaultValue={row?.pathway ?? ""}>
+            <option value="">Every journey</option>
+            {(Object.keys(JOURNEY_LABEL) as Pathway[]).map((p) => (
+              <option key={p} value={p}>{JOURNEY_LABEL[p]}</option>
+            ))}
+          </Select>
         </Field>
         <Field label="Who asks for it" htmlFor={`source-${key}`} required>
           <Select id={`source-${key}`} name="source" value={source} onChange={(e) => setSource(e.target.value as RequirementSource)}>

@@ -9,7 +9,7 @@ import { listRequirements } from "@/server/documentation";
 import { OWED_BY_LABEL, SOURCE_LABEL, STAGES, stageLabel } from "@/lib/journey";
 import { Card, CardHeader, Chip, PageHeader, Table, Td, Th, cn } from "@/components/ui";
 import { DocumentTypeForm } from "./form";
-import { ReasonForm, ReasonToggle, RequirementForm, RequirementRowActions } from "./requirements";
+import { JOURNEY_LABEL, ReasonForm, ReasonToggle, RequirementForm, RequirementRowActions } from "./requirements";
 
 export const metadata = { title: "Documents and requirements" };
 
@@ -138,6 +138,7 @@ async function Requirements({ types }: { types: { code: string; label: string }[
     guidanceMl: r.req.guidanceMl,
     sortOrder: r.req.sortOrder,
     active: r.req.active,
+    pathway: r.req.pathway,
   }));
 
   return (
@@ -181,7 +182,10 @@ async function Requirements({ types }: { types: { code: string; label: string }[
                         {r.guidance && <p className="mt-0.5 max-w-lg text-xs text-muted">{r.guidance}</p>}
                         {!r.active && <Chip className="mt-1">Paused</Chip>}
                       </Td>
-                      <Td className="text-xs">{r.scope ?? SOURCE_LABEL[r.source]}</Td>
+                      <Td className="text-xs">
+                        {r.scope ?? SOURCE_LABEL[r.source]}
+                        {r.pathway && <Chip className="ml-1" tone="info">{JOURNEY_LABEL[r.pathway]}</Chip>}
+                      </Td>
                       <Td className="text-xs">{OWED_BY_LABEL[r.owedBy]}</Td>
                       <Td className="text-xs">{r.validityMonths ? `${r.validityMonths} months from its date` : "Its own expiry"}</Td>
                       <Td className="text-xs">
