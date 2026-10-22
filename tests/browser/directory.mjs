@@ -105,8 +105,8 @@ check(!/Test Visa Officer/.test(text), "contacts page: a hidden contact is gone"
 text = await go(pp, "/promotions");
 check(/UK January push/.test(text) && /₹10,000 extra per UK January visa/.test(text) && /10 days left/.test(text) && /Paid with the regular commission/.test(text), "schemes page: running scheme with days left and terms");
 check(/Ended in the last year/.test(text) && /Spring bonus/.test(text), "schemes page: past schemes");
-text = await go(pp, "/dashboard");
-check(/Schemes running/.test(text) && /UK January push/.test(text) && /Quick links/.test(text), "dashboard: schemes and quick links");
+// The dashboard used to repeat the running schemes and the quick links. It
+// is a board of figures now; both are read on their own pages, checked above.
 
 const counsellor = await signIn("uk.docs@medcity.test", "10.100.1.3");
 await counsellor.page.goto(`${BASE}/promotions`);

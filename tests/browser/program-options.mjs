@@ -36,6 +36,9 @@ const go = async (page, path) => { await page.goto(BASE + path); return main(pag
 
 const partner = await signIn("kottayam@medcity.test", "10.79.1.1");
 const pp = partner.page;
+// The request button used to sit on the branch dashboard. The dashboard is a
+// board of figures now; the button is where the requests themselves are.
+await go(pp, "/program-options");
 await pp.getByRole("link", { name: "Request program options" }).first().click();
 await pp.waitForURL(/\/program-options\/new/);
 await hydrated(pp);

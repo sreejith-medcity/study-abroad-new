@@ -1,3 +1,11 @@
+// Every role lands on the dashboard, with its own menu behind it.
+//
+// There used to be a different dashboard per job and this suite was how they
+// were told apart. There is one board now, scoped to what each person may
+// see, so what is left to check here is that every role reaches it, that the
+// board is actually drawn for them, and that the menu behind it is still the
+// one their job needs. The figures on the board are checked against the
+// database in dashboard.mjs.
 import { chromium } from "playwright";
 import { knownWarning } from "./_errors.mjs";
 import fs from "node:fs";
@@ -9,12 +17,18 @@ const fails = [];
 const ok = (m) => console.log("  ok  " + m);
 const bad = (m) => { console.log("FAIL  " + m); fails.push(m); };
 
+// One board for everybody now, so what differs between these five is the
+// menu they get and the figures the board is scoped to, not the screen. The
+// board's own contents are checked tile by tile against the database in
+// dashboard.mjs; this one is about each role landing on it with the right
+// menu behind it.
+const BOARD = ["Total registrations", "Total applications", "Offers received", "Visas received"];
 const ROLES = [
-  { file: "01-super-admin", email: "sreejith@miak.in", expect: ["Platform owner", "Accounts by role", "Accounts that need an owner"], nav: "Audit log" },
-  { file: "02-admin", email: "admin@medcityoverseas.test", expect: ["Processing desk", "Lane health", "Partner activity"], nav: "Work queue" },
-  { file: "03-management", email: "management@medcityoverseas.test", expect: ["Management view", "Conversion funnel", "Partner performance"], nav: "Performance" },
-  { file: "04-partner", email: "kottayam@medcity.test", expect: ["Branch workspace", "Your team", "Benefits level"], nav: "Students" },
-  { file: "05-counsellor", email: "uk.docs@medcity.test", expect: ["Your desk", "Waiting on you", "Student replies"], nav: "My desk" },
+  { file: "01-super-admin", email: "sreejith@miak.in", expect: BOARD, nav: "Audit log" },
+  { file: "02-admin", email: "admin@medcityoverseas.test", expect: BOARD, nav: "Work queue" },
+  { file: "03-management", email: "management@medcityoverseas.test", expect: BOARD, nav: "Performance" },
+  { file: "04-partner", email: "kottayam@medcity.test", expect: [...BOARD, "Waiting on you"], nav: "Students" },
+  { file: "05-counsellor", email: "uk.docs@medcity.test", expect: [...BOARD, "Waiting on you"], nav: "My desk" },
 ];
 
 const browser = await chromium.launch({
@@ -65,6 +79,10 @@ for (const [i, role] of ROLES.entries()) {
   for (const phrase of role.expect) {
     text.includes(phrase.toLowerCase()) ? ok(`${role.file}: "${phrase}"`) : bad(`${role.file}: missing "${phrase}"`);
   }
+  (await page.locator("main [data-stat-tiles]").count()) === 1
+    ? ok(`${role.file}: lands on the board of figures`)
+    : bad(`${role.file}: no board of figures on the dashboard`);
+
   const nav = page.locator('nav[aria-label="Main"]');
   (await nav.getByText(role.nav, { exact: true }).count()) ? ok(`${role.file}: nav has ${role.nav}`) : bad(`${role.file}: nav missing ${role.nav}`);
 
@@ -81,7 +99,7 @@ for (const [i, role] of ROLES.entries()) {
   await page.goto(`${BASE}/login`);
   await page.screenshot({ path: `${OUT}/00-login.png` });
   const t = (await page.locator("body").innerText()).toLowerCase();
-  t.includes("one sign in, five views") ? ok("login page updated") : bad("login page not updated");
+  t.includes("one sign in, every desk") ? ok("login page updated") : bad("login page not updated");
   await ctx.close();
 }
 

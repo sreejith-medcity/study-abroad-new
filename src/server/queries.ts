@@ -30,6 +30,8 @@ export type ApplicationFilters = {
   dlFrom?: string;
   dlTo?: string;
   priority?: string;
+  /** BRANCH or SUB_AGENT: whose files these are, for the dashboard's two waiting tiles. */
+  orgType?: string;
   sort?: string;
 };
 
@@ -46,6 +48,7 @@ export function readFilters(sp: Record<string, string | string[] | undefined>): 
 export const KPI_WHERE: Record<string, SQL> = {
   offers: sql`${sd.group} = 'OFFER'`,
   payments: sql`${a.feeStatus} = 'PAID'`,
+  fees_due: sql`${a.feeStatus} = 'DUE'`,
   visa_received: sql`${sd.code} in ('VISA_RECEIVED','ENROLLED','JOINED','DEPLOYED')`,
   visa_rejected: sql`${sd.code} = 'VISA_REJECTED'`,
   non_enrolment: sql`${sd.code} = 'WITHDRAWN'`,
@@ -73,6 +76,11 @@ export function applicationWhere(user: SessionUser, f: ApplicationFilters, mine?
   if (f.student) conds.push(or(ilike(s.firstName, `%${f.student}%`), ilike(s.lastName, `%${f.student}%`), ilike(sql`${s.firstName} || ' ' || ${s.lastName}`, `%${f.student}%`)));
   if (f.assignedTo) conds.push(eq(s.assignedToId, f.assignedTo));
   if (f.org && isStaff(user)) conds.push(eq(a.orgId, f.org));
+  // Our own branches, or the sub-agents working through them. Only the desk
+  // can ask this, because it is the only one that sees both kinds.
+  if (f.orgType && isStaff(user) && (schema.orgType.enumValues as readonly string[]).includes(f.orgType)) {
+    conds.push(sql`exists (select 1 from organizations o where o.id = ${a.orgId} and o.type = ${f.orgType}::org_type)`);
+  }
   if (f.priority && (schema.applicationPriority.enumValues as readonly string[]).includes(f.priority)) conds.push(eq(a.priority, f.priority as "HIGH"));
   // Applications with an open deadline of this type (or any type) in the date range.
   if (f.dlType || f.dlFrom || f.dlTo) {

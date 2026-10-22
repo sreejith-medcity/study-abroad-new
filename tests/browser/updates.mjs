@@ -58,11 +58,15 @@ const partner = await signIn("kottayam@medcity.test", "10.80.1.2");
 const pp = partner.page;
 let text = await go(pp, "/notifications");
 check(/Important update: Hull extends/.test(text) && /Announcement: Partner meet in Kochi/.test(text) && !/Program options are here/.test(text), "partner: told about the update and the announcement, not What's New");
-text = await go(pp, "/dashboard");
-check(/Partner meet in Kochi/.test(text) && (await pp.getByRole("link", { name: "See events" }).count()) >= 1, "dashboard: the announcement banner with its button");
-check(/Hull extends the January deadline/.test(text), "dashboard: the update in the Important updates card");
-text = await go(pp, "/dashboard?uc=AU");
-check(!/Hull extends the January deadline/.test(text), "dashboard: the AUS tab leaves out a UK update");
+// The dashboard used to carry the announcement banner and an Important
+// updates card. It is a board of figures now, so both are read on the
+// updates page, with the notification above as the thing that says so.
+text = await go(pp, "/updates?tab=announcements");
+check(/Partner meet in Kochi/.test(text), "updates page: the announcement is listed");
+text = await go(pp, "/updates");
+check(/Hull extends the January deadline/.test(text), "updates page: the important update is listed");
+text = await go(pp, "/updates?country=AU");
+check(!/Hull extends the January deadline/.test(text), "updates page: the Australia filter leaves out a UK update");
 text = await go(pp, "/updates?country=GB");
 check(/Hull extends the January deadline/.test(text) && /January 2027/.test(text), "updates page: filtered by country");
 check(await pp.getByLabel("New items").count() === 1, "What's New: a dot for the unread item");

@@ -1,6 +1,8 @@
 // Typed deadlines on applications: the team dates a CAS request, the partner
-// is told, sees it on the dashboard by window, filters the applications list by
-// it, and ticks it off; an offer's accept-by date becomes a deadline by itself.
+// is told, sees it on the deadlines page by window, filters the applications
+// list by it, and ticks it off; an offer's accept-by date becomes a deadline
+// by itself. The dashboard used to carry a card of these; it is a board of
+// figures now, and the deadlines page is where they are read.
 // Wants the sample data (npm run db:seed).
 import { chromium } from "playwright";
 import { hydrated, knownWarning } from "./_errors.mjs";
@@ -42,10 +44,8 @@ const iso = (n) => { const d = new Date(Date.now() + n * 86400000); return `${d.
 
 const partner = await signIn("kottayam@medcity.test", "10.81.1.1");
 const pp = partner.page;
-let text = await go(pp, "/dashboard");
-check(/Upcoming deadlines/.test(text) && /Payment ·/.test(text), "dashboard: a payment deadline within 14 days");
-text = await go(pp, "/dashboard?dw=today");
-check(/Nothing due in this window/.test(text), "dashboard: the Today tab narrows it");
+let text = await go(pp, "/deadlines?tab=applications");
+check(/Payment/.test(text), "deadlines page: a payment deadline is listed");
 
 const admin = await signIn("admin@medcityoverseas.test", "10.81.1.2");
 const ap = admin.page;
@@ -62,8 +62,8 @@ check(await toast(ap, /Deadline added/), "admin: a CAS request deadline is added
 
 text = await go(pp, "/notifications");
 check(/CAS \/ I-20 \/ CoE request due/.test(text), "partner: told about it");
-text = await go(pp, "/dashboard?dw=7");
-check(/CAS \/ I-20 \/ CoE request ·/.test(text) && /Fathima Rahman/.test(text), "dashboard: shows in the 7-day window");
+text = await go(pp, "/deadlines?tab=applications&days=30");
+check(/CAS \/ I-20 \/ CoE request/.test(text) && /Fathima Rahman/.test(text), "deadlines page: shows in the 30-day window");
 text = await go(pp, "/applications?dlType=CAS_REQUEST");
 check(/Fathima Rahman/.test(text) && /Due in 2d/.test(text), "applications: filtered by deadline type, with the countdown");
 text = await go(pp, "/applications?dlType=VISA");

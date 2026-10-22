@@ -138,8 +138,8 @@ async function signIn(email, ip, password = "Password@123") {
   const { ctx, page, errors } = await signIn("documentation@medcityoverseas.test", "10.9.6.13");
   page.url().endsWith("/dashboard") ? ok("documentation lands on the dashboard") : bad("landed on " + page.url());
   const t = (await page.locator("main").innerText()).toLowerCase();
-  t.includes("documentation desk") ? ok("dashboard reads as the documentation desk") : bad("wrong dashboard heading");
-  !t.includes("paid to partners") ? ok("money lines are hidden") : bad("money is visible to documentation");
+  (await page.locator("main [data-stat-tiles]").count()) === 1 ? ok("documentation gets the board of figures") : bad("no board on the documentation dashboard");
+  (await page.locator('[data-tile="total-revenue-expected"]').count()) === 0 ? ok("money is hidden from documentation") : bad("money is visible to documentation");
   await page.screenshot({ path: `${OUT}/02-documentation-dashboard.png`, fullPage: true });
 
   const nav = page.locator('nav[aria-label="Main"]');
@@ -291,8 +291,7 @@ async function signIn(email, ip, password = "Password@123") {
   await page.goto(`${BASE}/dashboard`);
   await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   const lead = await page.locator("main").innerText();
-  /The documentation desk/i.test(lead) ? ok("team leader: their dashboard is the desk, not the applications board") : bad(`team leader: wrong dashboard (${lead.slice(0, 80).replace(/\n/g, " ")})`);
-  /Who is carrying what/i.test(lead) ? ok("team leader: it says who is carrying what") : bad("team leader: no standing table");
+  /Total registrations/i.test(lead) ? ok("team leader: lands on the board of figures") : bad(`team leader: no board (${lead.slice(0, 80).replace(/\n/g, " ")})`);
   !/Commission|Invoices raised/i.test(lead) ? ok("team leader: running the desk is not running the money") : bad("team leader: money on the desk dashboard");
   await page.screenshot({ path: `${OUT}/05-team-leader.png`, fullPage: true });
 
@@ -328,14 +327,16 @@ async function signIn(email, ip, password = "Password@123") {
   await ctx.close();
 }
 
-// --- A dashboard per role, each with that role's own work at the top.
+// --- The same board for every role, scoped to what each may see. The desk
+// reads the whole portal and is asked about branches and sub-agents; a
+// branch or sub-agent role reads its own, and is asked what is waiting on it.
 {
   const seen = [
-    ["senior@medcity.test", "senior counsellor", /every student/i, /Wallet balance|Counsellor seats/],
-    ["trainee@medcity.test", "trainee", /in training/i, null],
-    ["desk.counsellor@medcityoverseas.test", "desk counsellor", /Overseas desk/i, /Counsellor seats|Benefits level/],
-    ["staff@horizon.test", "sub-agent counsellor", /referred/i, null],
-    ["uk.docs@medcity.test", "counsellor", /Your desk/i, /Your team/],
+    ["senior@medcity.test", "senior counsellor", /Waiting on you/, /Pending from branches/],
+    ["trainee@medcity.test", "trainee", /Waiting on you/, /Pending from branches/],
+    ["desk.counsellor@medcityoverseas.test", "desk counsellor", /Pending from branches/, /Waiting on you/],
+    ["staff@horizon.test", "sub-agent counsellor", /Waiting on you/, /Pending from branches/],
+    ["uk.docs@medcity.test", "counsellor", /Waiting on you/, /Pending from branches/],
   ];
   let ip = 60;
   for (const [email, label, wants, refuses] of seen) {
@@ -352,28 +353,11 @@ async function signIn(email, ip, password = "Password@123") {
     await page.goto(`${BASE}/dashboard`);
     await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
     const text = await page.locator("main").innerText();
-    wants.test(text) ? ok(`${label}: gets their own dashboard`) : bad(`${label}: wrong dashboard (${text.slice(0, 70).replace(/\n/g, " ")})`);
+    wants.test(text) ? ok(`${label}: gets the board scoped to them`) : bad(`${label}: wrong board (${text.slice(0, 70).replace(/\n/g, " ")})`);
     if (refuses) (!refuses.test(text) ? ok(`${label}: and not what belongs to somebody else`) : bad(`${label}: shown ${refuses}`));
     errors.length === 0 ? ok(`${label}: no client errors`) : bad(`${label}: ${errors.slice(0, 2).join(" | ")}`);
     await ctx.close();
   }
-}
-
-// A trainee builds files somebody else sends, which is the one thing their
-// dashboard has that nobody else's does.
-{
-  const ctx = await browser.newContext({ viewport: { width: 1400, height: 1000 }, extraHTTPHeaders: { "x-forwarded-for": "10.212.2.1" } });
-  const page = await ctx.newPage();
-  await page.goto(`${BASE}/login`);
-  await page.fill('input[name="email"]', "trainee@medcity.test");
-  await page.fill('input[name="password"]', "Password@123");
-  await page.click('button[type="submit"]');
-  await page.waitForURL((u) => !String(u).includes("/login"), { timeout: 20000 }).catch(() => {});
-  await page.goto(`${BASE}/dashboard`);
-  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
-  const t = await page.locator("main").innerText();
-  /Built and waiting to be sent/i.test(t) ? ok("trainee: what they built and cannot send is on their own screen") : bad("trainee: no waiting-to-be-sent card");
-  await ctx.close();
 }
 
 await browser.close();

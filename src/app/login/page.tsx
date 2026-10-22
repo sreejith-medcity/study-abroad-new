@@ -36,7 +36,7 @@ export default async function LoginPage() {
           </ul>
         </div>
         <div className="relative z-10">
-          <p className="mb-2.5 text-2xs font-semibold uppercase tracking-[0.16em] text-white/50">One sign in, five views</p>
+          <p className="mb-2.5 text-2xs font-semibold uppercase tracking-[0.16em] text-white/50">One sign in, every desk</p>
           <ul className="mb-5 flex flex-wrap gap-1.5">
             {AUDIENCE.map((who) => (
               <li key={who} className="rounded-full bg-white/12 px-2.5 py-1 text-xs font-medium text-white/85 ring-1 ring-inset ring-white/15">
@@ -55,7 +55,7 @@ export default async function LoginPage() {
           </div>
           <h2 className="font-display text-[1.375rem] font-semibold text-ink">Sign in</h2>
           <p className="mt-1 text-md text-muted">
-            Your dashboard is built around your role, so sign in and you land on the work that is yours.
+            Sign in and the board opens on your own figures, whichever desk you work at.
           </p>
           <Card className="mt-5 p-5">
             <LoginForm />

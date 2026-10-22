@@ -1,57 +1,20 @@
 import { requireUser } from "@/lib/auth";
-import { APP_ROLES, isAdmin, isSuperAdmin } from "@/lib/permissions";
-import { readFilters } from "@/server/queries";
-import AdminDashboard from "./admin";
-import DeskCounsellorDashboard from "./desk-counsellor";
-import DeskLeadDashboard from "./desk-lead";
-import FinanceDashboard from "./finance";
-import ManagementDashboard from "./management";
-import PartnerDashboard from "./partner";
-import SuperAdminDashboard from "./super-admin";
+import { APP_ROLES } from "@/lib/permissions";
+import TileDashboard from "./tiles";
 
 export const metadata = { title: "Dashboard" };
 
 /**
- * Which branch dashboard each role inside an organisation gets.
+ * One dashboard, the same for everybody, scoped to what each person may see.
  *
- * A branch head runs the branch. A senior counsellor runs its students without
- * running the branch, so they get the branch's numbers and none of its wallet.
- * A trainee builds files somebody else sends. A sub-agent's counsellor is paid
- * per referral rather than per placement, so what they are owed is the thing
- * they open this for.
+ * There were seven of them, one per job, each drawing its own lanes, lists,
+ * charts and leaderboards. What was asked for instead is a board of figures:
+ * registrations, applications, offers, visas, refusals, documents still out,
+ * deferrals, fees paid and unpaid, what is sitting with a branch or a
+ * sub-agent, and what the work on the books is worth. Every tile opens the
+ * list behind it, and the lists themselves live where the work is done.
  */
-const VARIANT: Record<string, "owner" | "senior" | "counsellor" | "trainee" | "subagent"> = {
-  PARTNER: "owner",
-  SENIOR_COUNSELLOR: "senior",
-  COUNSELLOR: "counsellor",
-  TRAINEE_COUNSELLOR: "trainee",
-  SUB_AGENT_COUNSELLOR: "subagent",
-};
-
-/**
- * One address, a dashboard per job. The platform for a super admin, the
- * applications board for an admin, the documentation desk for whoever runs it,
- * outcomes for management, the branch for a partner owner, and their own work
- * for a counsellor.
- */
-export default async function DashboardPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+export default async function DashboardPage() {
   const user = await requireUser([...APP_ROLES]);
-  const f = readFilters(await searchParams);
-
-  if (isSuperAdmin(user)) return <SuperAdminDashboard user={user} f={f} />;
-  if (isAdmin(user)) return <AdminDashboard user={user} f={f} />;
-  // Whoever runs the documentation desk gets the desk, not the applications
-  // board: how the work is spread is the question a queue cannot answer.
-  if (user.role === "APPLICATION_TEAM_LEADER") return <DeskLeadDashboard user={user} />;
-  // Finance answers for the money and nothing else, so that is the whole screen.
-  if (user.role === "FINANCE") return <FinanceDashboard user={user} />;
-  // The documentation team sees the same desk without the money lines.
-  if (user.role === "DOCUMENTATION") return <AdminDashboard user={user} f={f} showMoney={false} />;
-  if (user.role === "MANAGEMENT") return <ManagementDashboard user={user} f={f} />;
-  // A desk counsellor sits at Medcity Overseas with students spread across every
-  // branch, so the branch workspace was wrong for them twice: it scoped to the
-  // head office, where they have none, and offered a wallet and a team that are
-  // not theirs.
-  if (user.role === "DESK_COUNSELLOR") return <DeskCounsellorDashboard user={user} f={f} />;
-  return <PartnerDashboard user={user} f={f} variant={VARIANT[user.role] ?? "counsellor"} />;
+  return <TileDashboard user={user} />;
 }

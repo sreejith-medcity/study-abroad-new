@@ -119,15 +119,19 @@ if (await page.getByRole("button", { name: /^Clear/ }).count()) {
 
 await page.goto(`${BASE}/dashboard`);
 await settle();
-const band = page.locator("dl.relative dd");
-check((await band.count()) >= 3, "The hero carries its figures");
-const sizes = await band.evaluateAll((els) => els.map((e) => getComputedStyle(e).fontSize));
-check(sizes.every((s) => parseFloat(s) >= 22), `Hero figures are set large, got ${sizes.join(", ")}`);
-// A tile at nought is not drawn; that is the whole point of the row.
-const tiles = page.locator('[class*="border-l-"]');
-const zeros = await page.locator('[class*="border-l-"] p.tabular').evaluateAll((els) => els.filter((e) => e.textContent.trim() === "0").length);
-check(zeros === 0, `No tile is drawn at nought, found ${zeros}`);
-check((await tiles.count()) > 0 || (await page.getByText(/Nothing is open|Every account is in order|Nothing needs you/).count()) > 0, "Either there are tiles or the page says there is nothing");
+// The dashboard is a board of figures and nothing else. Every tile is drawn
+// every day, nought or not, so it can be read by position; what a nought
+// does instead of disappearing is go quiet.
+const tiles = page.locator("main [data-stat-tiles] > *");
+check((await tiles.count()) >= 10, `The board carries its figures (${await tiles.count()})`);
+const sizes = await page.locator("main [data-stat-tiles] [data-figure]").evaluateAll((els) => els.map((e) => getComputedStyle(e).fontSize));
+check(sizes.every((s) => parseFloat(s) >= 22), `Figures are set large, got ${[...new Set(sizes)].join(", ")}`);
+const shades = await page.locator("main [data-stat-tiles] [data-figure]").evaluateAll((els) =>
+  els.map((e) => ({ nought: (e.textContent ?? "").trim() === "0", colour: getComputedStyle(e).color })),
+);
+const quiet = new Set(shades.filter((x) => x.nought).map((x) => x.colour));
+const loud = new Set(shades.filter((x) => !x.nought).map((x) => x.colour));
+check([...quiet].every((c) => !loud.has(c)), `A nought is set quieter than a figure (${[...quiet].join(", ") || "none on this data"})`);
 await page.screenshot({ path: `${shots}/dashboard-kit.png` });
 
 /* ---------------- Reading size ---------------- */

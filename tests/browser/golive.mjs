@@ -93,7 +93,8 @@ const settle = (page) => page.locator('[aria-busy="true"]').first().waitFor({ st
 
   // The portal has to still work with nothing in it.
   for (const [path, needle] of [
-    ["/dashboard", "platform"],
+    // The board is drawn in full at nought, which is the point of a board.
+    ["/dashboard", "total registrations"],
     ["/students", "no students"],
     ["/applications", "no applications"],
     ["/admin/partners", "organisations"],
