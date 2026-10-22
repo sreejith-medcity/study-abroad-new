@@ -1,4 +1,5 @@
-// The dashboard: eleven figures, the same board for everybody.
+// The dashboard: eleven figures, the same board for everybody, and the
+// pictures of them underneath.
 //
 // It used to be seven screens, one per job, each with its own lanes, lists,
 // charts and leaderboards, and the complaint about all of them was the same:
@@ -79,15 +80,18 @@ const desk = await open("sreejith@miak.in");
   check(order.length === DESK.length, `every figure is drawn, nought or not (${order.length} of ${DESK.length})`);
   check(order.join(",") === DESK.join(","), `and always in the same order (${order.join(" | ")})`);
 
-  // Nothing else is on the screen any more. The lists it used to draw are
-  // read where the work is done.
-  check((await page.locator("main table").count()) === 0, "and nothing else: no tables");
+  // The old lanes and lists are not back: no folded panels, and the one
+  // table a person reads is the branches compared (the other is the chart's
+  // twin for a screen reader).
   check((await page.locator("main details").count()) === 0, "no folded panels");
+  check((await page.locator("main table:not(.sr-only)").count()) === 1, "one visible table, the branches compared");
 
   const want = {
     "total-registrations": n("select count(*) from students where not archived"),
     "total-applications": n("select count(*) from applications"),
-    "offers-received": n(`select count(distinct h.application_id) from status_history h join status_definitions d on d.id = h.to_status_id where d."group" = 'OFFER'`),
+    // A visa cannot be had without an offer, so a file that went straight to
+    // a visa status still received one.
+    "offers-received": n(`select count(distinct h.application_id) from status_history h join status_definitions d on d.id = h.to_status_id where d."group" = 'OFFER' or d.code in ('VISA_RECEIVED','ENROLLED','JOINED','DEPLOYED')`),
     "visas-received": n(`select count(distinct h.application_id) from status_history h join status_definitions d on d.id = h.to_status_id where d.code in ('VISA_RECEIVED','ENROLLED','JOINED','DEPLOYED')`),
     "visas-rejected": n(`select count(distinct h.application_id) from status_history h join status_definitions d on d.id = h.to_status_id where d.code = 'VISA_REJECTED'`),
     "pending-documents": n(`select count(*) from checklist_items c join students s on s.id = c.student_id where not s.archived and c.state in ('ASKED','UPLOADED','IN_REVIEW','REJECTED')`),
@@ -120,6 +124,85 @@ const desk = await open("sreejith@miak.in");
   await desk.page.goto(`${BASE}${hrefs[0]}`);
   await hydrated(desk.page);
   check(desk.page.url().includes("/students"), "and the first one goes where it says");
+}
+
+/* ---------------- The pictures under the board ---------------- */
+{
+  const page = desk.page;
+  await page.goto(`${BASE}/dashboard`);
+  await hydrated(page);
+  const body = (await page.locator("main").innerText()).replace(/\s+/g, " ");
+  for (const title of ["From registration to enrolment", "Month by month", "Where applications stand", "Branches compared", "Where students want to go", "Recent activity"]) {
+    check(body.includes(title), `the dashboard draws "${title}"`);
+  }
+
+  // Month by month: the twelve months add up to the students registered and
+  // the applications made in them.
+  const bands = await page.locator("main svg rect[aria-label]").evaluateAll((els) =>
+    els.map((e) => {
+      const m = e.getAttribute("aria-label").match(/: (\d+) registrations, (\d+) applications/) || [];
+      return { r: Number(m[1] ?? 0), a: Number(m[2] ?? 0) };
+    }),
+  );
+  const yearAgo = sql("select to_char(date_trunc('month', now()) - interval '11 months', 'YYYY-MM-DD')");
+  const registered = n(`select count(*) from students where not archived and created_at >= '${yearAgo}'`);
+  const applied = n(`select count(*) from applications where created_at >= '${yearAgo}'`);
+  check(bands.length === 12, `twelve months are drawn (${bands.length})`);
+  const sumR = bands.reduce((x, b) => x + b.r, 0);
+  const sumA = bands.reduce((x, b) => x + b.a, 0);
+  check(sumR === registered, `they add up to the students registered in them (${sumR} against ${registered})`);
+  check(sumA === applied, `and to the applications made in them (${sumA} against ${applied})`);
+
+  // The journey never widens: a step cannot keep more than the one before.
+  const steps = await page.locator("main ol li a").evaluateAll((els) =>
+    els.map((e) => Number((e.querySelector("span.font-display")?.textContent ?? "x").replace(/,/g, "").trim())).filter((v) => !Number.isNaN(v)),
+  );
+  const funnel = steps.slice(0, 5);
+  check(funnel.length === 5, `the journey has its five steps (${funnel.join(" > ")})`);
+  check(funnel.slice(1).every((v, i) => v <= funnel[i]), `and narrows at every step, never widens (${funnel.join(" > ")})`);
+  check(funnel[0] === n("select count(*) from students where not archived"), "and starts from everybody registered");
+
+  // The branches compared add up to what the portal registered.
+  const branchRows = await page.locator("main table:not(.sr-only) tbody tr").evaluateAll((rows) =>
+    rows.map((r) => Number(r.querySelectorAll("td")[2]?.textContent?.trim() ?? 0)),
+  );
+  const branchStudents = n("select count(*) from students s join organizations o on o.id = s.org_id where not s.archived and o.type in ('BRANCH','SUB_AGENT') and o.active");
+  check(branchRows.reduce((x, y) => x + y, 0) === branchStudents, `the branches compared account for every branch's students (${branchRows.reduce((x, y) => x + y, 0)} of ${branchStudents})`);
+
+  // The ring counts every application, once.
+  const ring = Number((await page.locator('main svg[aria-label$="applications by stage"]').getAttribute("aria-label")).match(/^(\d+)/)[1]);
+  check(ring === n("select count(*) from applications"), `the ring counts every application (${ring})`);
+
+  // What just happened, newest first, each line opening a student.
+  const feed = await page.locator("main ol a[href^='/students/']").count();
+  check(feed > 0, `recent activity lists what happened (${feed} lines)`);
+}
+
+/* ---------------- The period and the branch ---------------- */
+{
+  const page = desk.page;
+  const docsAll = await figure(page, "pending-documents");
+  await page.getByRole("link", { name: "This month", exact: true }).click();
+  await page.waitForURL(/period=month/, { timeout: 15000 });
+  await hydrated(page);
+  const monthStart = sql("select to_char(date_trunc('month', now()), 'YYYY-MM-DD')");
+  const regsMonth = n(`select count(*) from students where not archived and created_at >= '${monthStart}'`);
+  const read = Number((await figure(page, "total-registrations")).replace(/[^0-9]/g, ""));
+  check(read === regsMonth, `"This month" counts the students registered this month (${read} against ${regsMonth})`);
+  const changeLine = await page.locator('[data-tile="total-registrations"]').innerText();
+  check(/vs last month/.test(changeLine), "and says how that moved against last month");
+  check((await figure(page, "pending-documents")) === docsAll, "while a state of things now stays as it was");
+
+  // One branch: the whole screen narrows to it.
+  const one = sql(`select o.id from organizations o where o.type = 'BRANCH' and o.active order by (select count(*) from students s where s.org_id = o.id) desc limit 1`);
+  await page.goto(`${BASE}/dashboard?org=${one}`);
+  await hydrated(page);
+  const theirs = n(`select count(*) from students where org_id = '${one}' and not archived`);
+  const shown = Number((await figure(page, "total-registrations")).replace(/[^0-9]/g, ""));
+  check(shown === theirs, `picking a branch narrows the board to it (${shown} against its ${theirs})`);
+  check((await page.locator("main table:not(.sr-only)").count()) === 0, "and drops the comparison, which is of one");
+  const ringOne = Number((await page.locator('main svg[aria-label$="applications by stage"]').getAttribute("aria-label")).match(/^(\d+)/)[1]);
+  check(ringOne === n(`select count(*) from applications where org_id = '${one}'`), `and the pictures follow it (${ringOne} applications)`);
 }
 
 /* ---------------- The two waiting tiles are the desk's own question ---------------- */

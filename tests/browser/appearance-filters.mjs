@@ -52,7 +52,9 @@ const skinOf = () => page.evaluate(() => document.documentElement.getAttribute("
 // The card background, as the browser actually paints it.
 const cardBg = () =>
   page.evaluate(() => {
-    const el = document.querySelector(".shadow-card");
+    // A plain card, not one of the dashboard's figure tiles, which are
+    // washed in their own tone on purpose.
+    const el = document.querySelector(".shadow-card:not([data-tile])");
     return el ? getComputedStyle(el).backgroundColor : null;
   });
 

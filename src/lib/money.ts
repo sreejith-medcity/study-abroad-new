@@ -47,6 +47,19 @@ export function inr(amount: number | null | undefined) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount ?? 0);
 }
 
+/**
+ * Rupees the way they are said aloud, for a figure on a tile with no room for
+ * all its digits: ₹6.52 L, ₹1.86 Cr. Below a lakh it is written in full.
+ * Rounded down, so a tile never shows more than is there.
+ */
+export function inrShort(amount: number | null | undefined) {
+  const n = amount ?? 0;
+  const cut = (v: number) => (Math.floor(v * 100) / 100).toFixed(2).replace(/\.?0+$/, "");
+  if (Math.abs(n) >= 1e7) return `₹${cut(n / 1e7)} Cr`;
+  if (Math.abs(n) >= 1e5) return `₹${cut(n / 1e5)} L`;
+  return inr(n);
+}
+
 export function money(amount: number | null | undefined, currency: string) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency, maximumFractionDigits: 0 }).format(amount ?? 0);
 }

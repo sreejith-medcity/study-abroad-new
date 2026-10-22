@@ -14,7 +14,7 @@ export const metadata = { title: "Dashboard" };
  * sub-agent, and what the work on the books is worth. Every tile opens the
  * list behind it, and the lists themselves live where the work is done.
  */
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const user = await requireUser([...APP_ROLES]);
-  return <TileDashboard user={user} />;
+  return <TileDashboard user={user} searchParams={await searchParams} />;
 }
