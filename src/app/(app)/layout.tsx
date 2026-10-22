@@ -38,7 +38,7 @@ const partnerNav = (home: string): NavGroup[] => [
       { href: "/students/board", label: "By stage", icon: "flow" },
       { href: "/applications", label: "Applications", icon: "applications" },
       { href: "/program-options", label: "Program options", icon: "spark" },
-      { href: "/ausbildung", label: "Ausbildung & service charge", icon: "services" },
+      { href: "/ausbildung", label: "Placement tracker", icon: "services" },
     ],
   },
   {
@@ -131,7 +131,7 @@ const ADMIN_NAV: NavGroup[] = [
       { href: "/students/board", label: "By stage", icon: "flow" },
       { href: "/enquiries", label: "Enquiries", icon: "enquiry" },
       { href: "/program-options", label: "Program options", icon: "spark" },
-      { href: "/ausbildung", label: "Ausbildung & service charge", icon: "services" },
+      { href: "/ausbildung", label: "Placement tracker", icon: "services" },
     ],
   },
   {
@@ -313,7 +313,7 @@ const MANAGEMENT_NAV: NavGroup[] = [
       { href: "/dashboard", label: "Performance", icon: "dashboard" },
       { href: "/applications", label: "Applications", icon: "applications" },
       { href: "/students", label: "Students", icon: "students" },
-      { href: "/ausbildung", label: "Ausbildung & service charge", icon: "services" },
+      { href: "/ausbildung", label: "Placement tracker", icon: "services" },
       { href: "/admin/commission", label: "Commission", icon: "commission" },
       { href: "/admin/insights", label: "Insights", icon: "insights" },
       { href: "/learning", label: "Learning resources", icon: "learning" },

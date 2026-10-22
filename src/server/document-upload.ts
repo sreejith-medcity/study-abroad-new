@@ -8,7 +8,7 @@ import { attachUploadToChecklist } from "@/server/documentation";
 import { issuesTeamDocuments } from "@/lib/permissions";
 import type { SessionUser } from "@/lib/auth";
 
-export type UploadOutcome = { ok: string } | { error: string; status: number };
+export type UploadOutcome = { ok: string; documentId: string } | { error: string; status: number };
 
 /**
  * Putting one document on a student's file.
@@ -48,7 +48,7 @@ export async function saveStudentDocument(
     // A file that answers something on the documentation list joins the team's
     // queue. Nobody, least of all the student, marks their own document good.
     await attachUploadToChecklist(studentId, typeCode, doc.id, user.id);
-    return { ok: `${label ?? type.label} uploaded.` };
+    return { ok: `${label ?? type.label} uploaded.`, documentId: doc.id };
   } catch (e) {
     if (e instanceof UploadError) return { error: e.message, status: 400 };
     console.error("The upload failed", { studentId, typeCode, fileName: file.name, size: file.size }, e);

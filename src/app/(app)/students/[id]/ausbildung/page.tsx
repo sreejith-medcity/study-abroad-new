@@ -8,8 +8,10 @@ import { chargingCountries, studentAusbildung } from "@/server/ausbildung";
 import { commissionVisible } from "@/server/commission-visibility";
 import { Alert, Card, CardHeader, Chip, cn } from "@/components/ui";
 import { AusbildungForm, ModuleForm, RaiseServiceCharge, RecordPayment } from "./forms";
+import { NclexCaseForm, NclexResultForm, NclexStepForm, NclexStepUpload } from "./nclex-forms";
+import { NCLEX_STATES } from "@/lib/nclex";
 
-export const metadata = { title: "Ausbildung and service charge" };
+export const metadata = { title: "Ausbildung, NCLEX-RN and service charge" };
 export const dynamic = "force-dynamic";
 
 /**
@@ -41,7 +43,81 @@ export default async function StudentAusbildungPage({ params }: { params: Promis
 
   return (
     <div className="space-y-5">
-      {!a.isAusbildung && !a.goesToChargingCountry && (
+      {a.isNursing && (
+        <Card data-nclex>
+          <CardHeader
+            title="NCLEX-RN (USA)"
+            subtitle={
+              a.nclexCase
+                ? `${a.nclex.finished} of ${a.nclex.total} steps done.${a.nclex.next ? ` Next: ${a.nclex.next.label}.` : " Every step done."}`
+                : "Not on the USA placement yet. Completing the first step opens it."
+            }
+            action={
+              <span className="flex flex-wrap gap-1.5">
+                {a.nclexCase?.boardState && (
+                  <Chip tone="info">{NCLEX_STATES.find((st) => st.code === a.nclexCase!.boardState)?.name ?? a.nclexCase.boardState}</Chip>
+                )}
+                {a.nclexCase?.result && <Chip tone={a.nclexCase.result === "PASS" ? "ok" : "bad"}>{a.nclexCase.result === "PASS" ? "Passed" : "Failed"}</Chip>}
+              </span>
+            }
+          />
+          {a.nclexCase && (
+            <div className="space-y-4 border-b border-line p-4">
+              <NclexCaseForm studentId={id} boardState={a.nclexCase.boardState} paymentLink={a.nclexCase.paymentLink} note={a.nclexCase.note} />
+              {a.nclexCase.paymentLink && (
+                <p className="text-xs text-muted">
+                  Payment link on file:{" "}
+                  <a href={a.nclexCase.paymentLink} target="_blank" rel="noopener noreferrer" className="break-all font-medium text-brand-600 hover:underline">
+                    {a.nclexCase.paymentLink}
+                  </a>
+                </p>
+              )}
+            </div>
+          )}
+          <ol className="divide-y divide-line">
+            {a.nclex.steps.map((st, i) => {
+              const row = a.nclexSteps.find((r) => r.step === st.key);
+              const done = Boolean(row?.completed);
+              const isNext = a.nclex.next?.key === st.key;
+              return (
+                <li key={st.key} data-nclex-step={st.key} className={cn("space-y-2 px-4 py-3", done && "bg-good-50/40", isNext && "bg-warn-50/50")}>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={cn(
+                        "grid size-6 shrink-0 place-items-center rounded-full text-2xs font-bold",
+                        done ? "bg-good-500 text-white" : isNext ? "bg-warn-500 text-white" : "bg-surface-2 text-muted ring-1 ring-inset ring-line-strong",
+                      )}
+                    >
+                      {done ? "✓" : i + 1}
+                    </span>
+                    <span className="font-medium text-ink">{st.label}</span>
+                    <Chip tone={done ? "ok" : "neutral"}>{done ? `Completed${row?.completedOn ? ` ${fmtDate(row.completedOn)}` : ""}` : "Pending"}</Chip>
+                    {st.after && <span className="text-xs text-muted">after a {st.after === "PASS" ? "pass" : "fail"}</span>}
+                  </div>
+                  {st.hint && <p className="pl-8 text-xs text-muted">{st.hint}</p>}
+                  <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pl-8">
+                    <NclexStepForm studentId={id} step={st.key} label={st.label} completed={done} completedOn={row?.completedOn ?? null} />
+                    {st.upload &&
+                      (row?.documentId ? (
+                        <a href={`/api/documents/${row.documentId}`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-brand-600 hover:underline">
+                          {row.fileName ?? "The file"}
+                        </a>
+                      ) : null)}
+                    {st.upload && <NclexStepUpload studentId={id} step={st.key} label={st.label} />}
+                  </div>
+                  {st.key === "EXAM_RESULTS" && (
+                    <div className="pl-8">
+                      <NclexResultForm studentId={id} result={a.nclexCase?.result ?? null} resultOn={a.nclexCase?.resultOn ?? null} />
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+        </Card>
+      )}
+
+      {!a.isAusbildung && !a.goesToChargingCountry && !a.isNursing && (
         <Alert tone="info" title="Not an Ausbildung file">
           This student is not registered for Ausbildung and is not going to a country that collects a service charge. Their German record can still be kept
           here.
@@ -80,6 +156,7 @@ export default async function StudentAusbildungPage({ params }: { params: Promis
         </Card>
       )}
 
+      {(a.isAusbildung || !a.isNursing) && (
       <Card>
         <CardHeader
           title="German"
@@ -110,8 +187,9 @@ export default async function StudentAusbildungPage({ params }: { params: Promis
           })}
         </ul>
       </Card>
+      )}
 
-      {(a.isAusbildung || a.goesToChargingCountry) &&
+      {(a.isAusbildung || a.goesToChargingCountry || a.nclexCase) &&
         (money ? (
           <Card>
             <CardHeader

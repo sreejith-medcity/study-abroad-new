@@ -26,7 +26,7 @@ export default async function DestinationsPage() {
       {/* Which destinations Medcity charges the student a service charge for.
           A student going to a ticked country, and every Ausbildung student,
           shows what has been paid and what is still owed, on their file and
-          on the Ausbildung and service charge tracker. */}
+          on the placement tracker. */}
       <section id="service-charge" className="mb-5">
         <details className="rounded-xl border border-line bg-surface shadow-card" open={countries.some((c) => c.collectsServiceCharge) ? undefined : true}>
           <summary className="flex cursor-pointer list-none flex-wrap items-center gap-3 px-4 py-3">

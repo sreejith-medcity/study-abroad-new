@@ -102,8 +102,8 @@ export default async function StudentLayout({ children, params }: { children: Re
                 { href: `/students/${id}/timeline`, label: "Timeline", done: true },
                 ...(money ? [{ href: `/students/${id}/income`, label: "Income", done: true }] : []),
                 { href: `/students/${id}/services`, label: `Services (${services})`, done: services > 0 },
-                ...(extra.ausbildung || extra.charging
-                  ? [{ href: `/students/${id}/ausbildung`, label: extra.ausbildung ? "Ausbildung" : "Service charge", done: true }]
+                ...(extra.ausbildung || extra.charging || extra.nursing
+                  ? [{ href: `/students/${id}/ausbildung`, label: extra.ausbildung ? "Ausbildung" : extra.nursing ? "NCLEX-RN" : "Service charge", done: true }]
                   : []),
               ]}
             />

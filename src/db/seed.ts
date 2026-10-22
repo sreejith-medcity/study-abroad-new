@@ -759,6 +759,21 @@ async function main() {
     await db.insert(schema.ausbildungProfiles).values({ studentId: rihan.id, preference1: "Hotel management (Hotelfachmann/-frau)" });
   }
 
+  // One nursing file part way through the USA placement, so the NCLEX-RN tab
+  // and the tracker have a real one to show.
+  const nurse = allStudents.find((st) => st.preferredPathway === "NURSING");
+  if (nurse) {
+    await db.insert(schema.nclexCases).values({ studentId: nurse.id, boardState: "TX" });
+    await db.insert(schema.nclexSteps).values(
+      (["REGISTERED", "CGFNS_FORM", "CGFNS_ACCOUNT", "CES_CVS_PAYMENT"] as const).map((step, i) => ({
+        studentId: nurse.id,
+        step,
+        completed: true,
+        completedOn: ymd(-40 + i * 7),
+      })),
+    );
+  }
+
   // A worked example on the first student: paper in hand, paper asked for, one
   // sent back with a reason, and a test report that runs out before the course.
   const worked = await db.query.checklistItems.findMany({ where: eq(schema.checklistItems.studentId, firstStudentId) });

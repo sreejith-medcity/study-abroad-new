@@ -4,6 +4,8 @@ import { getSession } from "@/lib/auth";
 import { PARTNER_ROLES, PROCESSING_ROLES } from "@/lib/permissions";
 import { saveStudentDocument } from "@/server/document-upload";
 import { MAX_UPLOAD_BYTES } from "@/lib/uploads";
+import { NCLEX_STEPS } from "@/lib/nclex";
+import { recordNclexStep } from "@/server/nclex";
 
 /**
  * Where a document is posted now.
@@ -63,6 +65,10 @@ export async function POST(request: Request) {
   });
 
   if ("error" in outcome) return NextResponse.json({ error: outcome.error }, { status: outcome.status });
+  // A file put up from an NCLEX-RN step is that step's file. The student was
+  // checked for this user by the save above, so the step can be written.
+  const step = NCLEX_STEPS.find((st) => st.upload && st.key === String(form.get("nclexStep") ?? ""));
+  if (step) await recordNclexStep(studentId, step.key, user.id, { documentId: outcome.documentId });
   revalidatePath(`/students/${studentId}`, "layout");
   return NextResponse.json({ ok: outcome.ok });
 }

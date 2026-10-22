@@ -1113,6 +1113,50 @@ export const ausbildungProfiles = pgTable("ausbildung_profiles", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/* ---------- NCLEX-RN (USA) ---------- */
+
+/**
+ * One student's NCLEX-RN placement in the United States: the board state it
+ * goes through, the payment link sent for it, and the result. The steps are
+ * in nclex_steps; this is what belongs to the case as a whole.
+ */
+export const nclexCases = pgTable("nclex_cases", {
+  id: id(),
+  studentId: text("student_id")
+    .notNull()
+    .unique()
+    .references(() => students.id, { onDelete: "cascade" }),
+  /** FL, TX, IL or NY, as the placement sheet lists them. */
+  boardState: text("board_state"),
+  paymentLink: text("payment_link"),
+  /** PASS or FAIL, once the result is in. */
+  result: text("result"),
+  resultOn: date("result_on"),
+  note: text("note"),
+  updatedById: text("updated_by_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: createdAt(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** One step of one student's NCLEX-RN placement. A step with no row is pending. */
+export const nclexSteps = pgTable(
+  "nclex_steps",
+  {
+    id: id(),
+    studentId: text("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    step: text("step").notNull(),
+    completed: boolean("completed").notNull().default(false),
+    completedOn: date("completed_on"),
+    /** The file the step carries, where the sheet asks for one. */
+    documentId: text("document_id").references(() => documents.id, { onDelete: "set null" }),
+    updatedById: text("updated_by_id").references(() => users.id, { onDelete: "set null" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("nclex_steps_student_step_uq").on(t.studentId, t.step)],
+);
+
 /** The reasons the team sends a document back. The list grows; nothing is deleted. */
 export const rejectionReasons = pgTable("rejection_reasons", {
   code: text("code").primaryKey(),

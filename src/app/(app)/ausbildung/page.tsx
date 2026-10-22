@@ -3,12 +3,13 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { fmtDate, fullName, istTime } from "@/lib/format";
 import { STUDENT_WORK_ROLES, isStaff } from "@/lib/permissions";
+import { NCLEX_STATES } from "@/lib/nclex";
 import { chargingCountries, trackerChoices, trackerRows, type TrackerRow, type TrackerShow, type TrackerTab } from "@/server/ausbildung";
 import { commissionVisible } from "@/server/commission-visibility";
 import { FilterBar } from "@/components/filter-bar";
 import { Card, EmptyState, PageHeader, Table, Td, Th, cn } from "@/components/ui";
 
-export const metadata = { title: "Ausbildung and service charge" };
+export const metadata = { title: "Placement tracker" };
 export const dynamic = "force-dynamic";
 
 const SHOW: { value: TrackerShow; label: string }[] = [
@@ -32,7 +33,7 @@ const SHOW: { value: TrackerShow; label: string }[] = [
 export default async function AusbildungTrackerPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const user = await requireUser([...STUDENT_WORK_ROLES, "MANAGEMENT"]);
   const sp = await searchParams;
-  const tab: TrackerTab = sp.tab === "service" ? "service" : "ausbildung";
+  const tab: TrackerTab = sp.tab === "service" ? "service" : sp.tab === "nclex" ? "nclex" : "ausbildung";
   const show = SHOW.some((s) => s.value === sp.show) ? (sp.show as TrackerShow) : undefined;
   const [rows, choices, money, charging] = await Promise.all([
     trackerRows(user, { tab, org: sp.branch, counsellor: sp.who, q: sp.q, show }),
@@ -42,19 +43,20 @@ export default async function AusbildungTrackerPage({ searchParams }: { searchPa
   ]);
   const staff = isStaff(user);
 
-  const tabHref = (t: TrackerTab) => `/ausbildung${t === "service" ? "?tab=service" : ""}`;
+  const tabHref = (t: TrackerTab) => `/ausbildung${t === "ausbildung" ? "" : `?tab=${t}`}`;
 
   return (
     <>
       <PageHeader
-        title="Ausbildung and service charge"
-        subtitle="Every Ausbildung student and every student bound for a service-charge country, with where each one stands."
+        title="Placement tracker"
+        subtitle="Ausbildung, NCLEX-RN (USA) and every student bound for a service-charge country, with where each one stands."
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-2" role="tablist" aria-label="Which students">
         {(
           [
             ["ausbildung", "Ausbildung"],
+            ["nclex", "NCLEX-RN (USA)"],
             ["service", "Service-charge countries"],
           ] as const
         ).map(([t, label]) => (
@@ -95,7 +97,7 @@ export default async function AusbildungTrackerPage({ searchParams }: { searchPa
             kind: "select" as const,
             name: "show",
             label: "Show",
-            options: SHOW.filter((s) => (tab === "ausbildung" ? true : s.value === "german" || s.value === "unpaid"))
+            options: SHOW.filter((s) => (tab === "ausbildung" ? true : tab === "nclex" ? s.value === "unpaid" : s.value === "german" || s.value === "unpaid"))
               .filter((s) => money || s.value !== "unpaid")
               .map((s) => ({ value: s.value, label: s.label })),
           },
@@ -107,7 +109,7 @@ export default async function AusbildungTrackerPage({ searchParams }: { searchPa
       </FilterBar>
 
       {rows.length === 0 ? (
-        <EmptyState title={tab === "ausbildung" ? "No Ausbildung students here" : "No students bound for a service-charge country"}>
+        <EmptyState title={tab === "ausbildung" ? "No Ausbildung students here" : tab === "nclex" ? "No nursing students here" : "No students bound for a service-charge country"}>
           {tab === "service" && !charging.length
             ? "Tick the countries that collect a service charge under Destinations, and their students appear here."
             : "Widen the filters, or register a student."}
@@ -120,9 +122,10 @@ export default async function AusbildungTrackerPage({ searchParams }: { searchPa
                 <Th>Student</Th>
                 <Th>Registered</Th>
                 <Th>Branch and counsellor</Th>
-                {tab === "ausbildung" ? <Th>Preferences</Th> : <Th>Destination</Th>}
-                <Th>German</Th>
+                {tab === "ausbildung" ? <Th>Preferences</Th> : tab === "nclex" ? <Th>Board state</Th> : <Th>Destination</Th>}
+                {tab === "nclex" ? <Th>Where they are</Th> : <Th>German</Th>}
                 {tab === "ausbildung" && <Th>Application, interview, contract</Th>}
+                {tab === "nclex" && <Th>Result</Th>}
                 {money && <Th>Service charge</Th>}
               </tr>
             </thead>
@@ -169,9 +172,39 @@ function Row({ r, tab, money }: { r: TrackerRow; tab: TrackerTab; money: boolean
             <span className="text-xs text-muted">Not recorded</span>
           )}
         </Td>
+      ) : tab === "nclex" ? (
+        <Td className="text-sm">
+          {r.boardState ? (
+            <>
+              {NCLEX_STATES.find((st) => st.code === r.boardState)?.name ?? r.boardState}
+              <p className="text-xs text-muted">${NCLEX_STATES.find((st) => st.code === r.boardState)?.feeUsd}</p>
+            </>
+          ) : (
+            <span className="text-muted">Not chosen</span>
+          )}
+        </Td>
       ) : (
         <Td className="text-sm">{r.destination ?? <span className="text-muted">Not recorded</span>}</Td>
       )}
+      {tab === "nclex" ? (
+        <Td className="text-sm">
+          {!r.nclexOpened ? (
+            <span className="text-muted">Not on the USA placement yet</span>
+          ) : (
+            <>
+              <div className="flex items-center gap-2">
+                <span className="h-1.5 w-28 overflow-hidden rounded-full bg-surface-2 ring-1 ring-inset ring-line" aria-hidden="true">
+                  <span className="block h-full rounded-full bg-good-500" style={{ width: `${(r.nclex.finished / r.nclex.total) * 100}%` }} />
+                </span>
+                <span className="text-xs tabular text-muted">
+                  {r.nclex.finished} of {r.nclex.total}
+                </span>
+              </div>
+              <p className="mt-1 text-xs">{r.nclex.next ? <>Next: <span className="font-medium">{r.nclex.next.label}</span></> : "Every step done"}</p>
+            </>
+          )}
+        </Td>
+      ) : (
       <Td>
         <div className="flex gap-1" aria-label={r.german.incomplete.length ? `German incomplete: ${r.german.incomplete.join(", ")}` : "German complete"}>
           {r.german.levels.map((l) => (
@@ -189,6 +222,18 @@ function Row({ r, tab, money }: { r: TrackerRow; tab: TrackerTab; money: boolean
         </div>
         {r.german.incomplete.length > 0 && <p className="mt-1 text-2xs text-muted">Incomplete: {r.german.incomplete.join(", ")}</p>}
       </Td>
+      )}
+      {tab === "nclex" && (
+        <Td className="text-sm">
+          {r.nclexResult === "PASS" ? (
+            <span className="font-medium text-good-700">Pass</span>
+          ) : r.nclexResult === "FAIL" ? (
+            <span className="font-medium text-stop-700">Fail</span>
+          ) : (
+            <span className="text-muted">Not in yet</span>
+          )}
+        </Td>
+      )}
       {tab === "ausbildung" && (
         <Td className="text-sm">
           {/* The three dates the whole thing turns on, in the order they
