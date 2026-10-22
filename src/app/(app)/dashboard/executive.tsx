@@ -5,6 +5,7 @@ import { activity, branchesCompared, destinations, journey, monthly } from "@/se
 import { pastServiceLevel, placements } from "@/server/dashboard-work";
 import { PERIODS, type Lens } from "@/server/dashboard-lens";
 import { Card, CardHeader } from "@/components/ui";
+import { PrintButton } from "@/components/print-button";
 import { ActivityFeed, BranchTable, CountryBars } from "@/components/charts/dashboard-pictures";
 import { AreaLine, AttentionList, ExecHero, FlowRibbon, Gauge, MiniTiles, Placements } from "@/components/dashboard/role-pieces";
 import { Controls, ViewingAsNote, firstName, partOfDay, periodLinks } from "./controls";
@@ -62,6 +63,7 @@ export default async function Executive({ lens, sp }: { lens: Lens; sp: Record<s
       <ViewingAsNote lens={lens} />
       <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
         <Controls lens={lens} periods={false} />
+        <PrintButton />
       </div>
 
       <ExecHero

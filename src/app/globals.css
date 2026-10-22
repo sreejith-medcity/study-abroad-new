@@ -247,6 +247,9 @@ h4,
   .shadow-card { box-shadow: none !important; }
   table { font-size: 11px; }
   [data-print="only"] { display: revert !important; }
+  /* The summary's band is its colour; printed white it loses its text. */
+  [data-exec-hero] { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  [data-exec-hero], main .rounded-xl { break-inside: avoid; }
 }
 [data-print="only"] { display: none; }
 

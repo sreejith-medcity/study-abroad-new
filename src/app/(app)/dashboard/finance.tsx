@@ -5,6 +5,7 @@ import { moneyFigures } from "@/server/dashboard-money";
 import { MONTHS } from "@/lib/format";
 import { PERIODS, type Lens } from "@/server/dashboard-lens";
 import { Card, CardHeader } from "@/components/ui";
+import { PrintButton } from "@/components/print-button";
 import { AreaLine, AttentionList, ExecHero, Gauge, MiniTiles, shortDate } from "@/components/dashboard/role-pieces";
 import { Controls, ViewingAsNote, firstName, partOfDay, periodLinks } from "./controls";
 
@@ -41,6 +42,7 @@ export default async function Finance({ lens, sp }: { lens: Lens; sp: Record<str
       <ViewingAsNote lens={lens} />
       <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
         <Controls lens={lens} periods={false} />
+        <PrintButton />
       </div>
       <ExecHero
         eyebrow={`Finance · ${when}`}

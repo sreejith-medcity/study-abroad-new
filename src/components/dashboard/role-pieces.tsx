@@ -42,7 +42,7 @@ export function ExecHero({
           <p className="text-3xs font-semibold uppercase tracking-[0.16em] text-white/70">{eyebrow}</p>
           <h1 className="mt-1 font-display text-[1.625rem] font-semibold leading-tight">{greeting}</h1>
           <p className="mt-1 text-sm text-white/80">{line}</p>
-          <nav aria-label="Period" className="mt-3 flex flex-wrap gap-1">
+          <nav aria-label="Period" className="mt-3 flex flex-wrap gap-1" data-print="hide">
             {periods.map((p) => (
               <Link
                 key={p.key}

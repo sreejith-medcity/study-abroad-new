@@ -24,6 +24,8 @@ export type ApplicationFilters = {
   program?: string;
   student?: string;
   assignedTo?: string;
+  /** The officer carrying the file, or "none" for the files nobody has been given yet. */
+  officer?: string;
   org?: string;
   pathway?: string;
   dlType?: string;
@@ -54,6 +56,8 @@ export const KPI_WHERE: Record<string, SQL> = {
   non_enrolment: sql`${sd.code} = 'WITHDRAWN'`,
   deferrals: sql`${sd.code} = 'DEFERRED'`,
   pending_partner: sql`${sd.group} = 'PENDING_PARTNER'`,
+  // Still being worked: what the desk's "who is carrying what" counts.
+  open: sql`${sd.group} in ('NEW','PENDING_PARTNER','IN_PROGRESS','OFFER')`,
 };
 
 export function applicationWhere(user: SessionUser, f: ApplicationFilters, mine?: SQL): SQL | undefined {
@@ -76,6 +80,7 @@ export function applicationWhere(user: SessionUser, f: ApplicationFilters, mine?
   if (f.student) conds.push(or(ilike(s.firstName, `%${f.student}%`), ilike(s.lastName, `%${f.student}%`), ilike(sql`${s.firstName} || ' ' || ${s.lastName}`, `%${f.student}%`)));
   // "none" is the students nobody has been given to yet, which a branch head hands out from.
   if (f.assignedTo) conds.push(f.assignedTo === "none" ? isNull(s.assignedToId) : eq(s.assignedToId, f.assignedTo));
+  if (f.officer) conds.push(f.officer === "none" ? isNull(a.officerId) : eq(a.officerId, f.officer));
   if (f.org && isStaff(user)) conds.push(eq(a.orgId, f.org));
   // Our own branches, or the sub-agents working through them. Only the desk
   // can ask this, because it is the only one that sees both kinds.

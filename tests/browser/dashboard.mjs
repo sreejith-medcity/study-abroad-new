@@ -171,6 +171,19 @@ const desk = await open("admin@medcityoverseas.test");
   const loadRows = await page.locator("main table:not(.sr-only)").first().locator("tbody tr").evaluateAll((rows) => rows.map((r) => Number(r.querySelectorAll("td")[1]?.textContent?.trim() ?? 0)));
   const openFiles = n(`select count(*) from applications a join status_definitions d on d.id = a.status_id where d."group" in ('NEW','PENDING_PARTNER','IN_PROGRESS','OFFER')`);
   check(loadRows.reduce((x, y) => x + y, 0) === openFiles, `the officers carry every open file between them (${loadRows.reduce((x, y) => x + y, 0)} of ${openFiles})`);
+  // And each officer's line opens exactly the files it counts.
+  const officerLinks = await page.locator("main table:not(.sr-only)").first().locator("tbody tr").evaluateAll((rows) =>
+    rows.map((r) => ({ href: r.querySelector("a")?.getAttribute("href"), open: Number(r.querySelectorAll("td")[1]?.textContent?.trim() ?? 0) })),
+  );
+  for (const o of officerLinks.slice(0, 3)) {
+    await page.goto(`${BASE}${o.href}`);
+    await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
+    await hydrated(page);
+    const shown = await page.locator("tbody tr").count();
+    check(shown === o.open, `an officer's line opens their open files (${o.href}: ${shown} of ${o.open})`);
+  }
+  await page.goto(`${BASE}/dashboard`);
+  await hydrated(page);
 
   // The branches compared add up to what the portal registered.
   const branchRows = await page.locator("main table:not(.sr-only)").nth(1).locator("tbody tr").evaluateAll((rows) =>
@@ -310,6 +323,12 @@ const lead = await open("sreejith@miak.in");
     check((await page.locator("main").innerText()).includes(title), `the summary draws "${title}"`);
   }
   check((await page.locator("[data-view-as] select").first().count()) === 1, "and the super admin can view as another desk");
+
+  // Printed, the summary keeps its figures and drops the controls.
+  await page.emulateMedia({ media: "print" });
+  check(!(await page.locator("[data-view-as]").isVisible()), "printed, the view-as picker drops out");
+  check(await page.locator("[data-exec-hero]").isVisible(), "and the band of figures stays");
+  await page.emulateMedia({ media: "screen" });
 
   // Every placement figure is the length of the tracker list it opens.
   for (const slug of ["ausbildung-students", "interview-coming", "german-not-finished", "service-charge-pending", "nursing-students"]) {

@@ -223,7 +223,7 @@ export default async function CommandCentre({ lens }: { lens: Lens }) {
               rows={load.map((o) => ({
                 id: o.id ?? "nobody",
                 name: o.name,
-                href: "/admin/queue?officer=all",
+                href: `/applications?kpi=open&officer=${o.id ?? "none"}`,
                 cells: [o.open, o.late, `${o.oldest}d`],
               }))}
             />

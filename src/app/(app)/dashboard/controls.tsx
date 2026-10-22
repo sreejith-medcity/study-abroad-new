@@ -55,8 +55,9 @@ export async function Controls({ lens, periods = true }: { lens: Lens; periods?:
         .orderBy(asc(schema.organizations.type), asc(schema.organizations.name))
     : [];
   const showLens = periods || orgs.length > 0;
+  if (!showLens && !mayViewAs(user.role)) return null;
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2" data-print="hide">
       {mayViewAs(user.role) && (
         <ViewAs kinds={DASHBOARD_KINDS.map((k) => ({ key: k.key, label: k.label }))} kind={kind} own={dashboardFor(user.role)} people={people} person={lens.person?.id ?? null} />
       )}
