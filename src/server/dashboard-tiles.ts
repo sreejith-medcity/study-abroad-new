@@ -6,7 +6,7 @@ import { isStaff } from "@/lib/permissions";
 import { commissionVisible } from "./commission-visibility";
 import { fxRates, getSettings } from "./settings";
 import { fxToInr } from "@/lib/money";
-import { lensOrg, type Lens } from "./dashboard-lens";
+import { lensApps, lensOrg, lensStudents, type Lens } from "./dashboard-lens";
 
 const { applications: a, statusDefinitions: sd, statusHistory: sh, students: s, organizations: og, checklistItems: ci, commissions: cm } = schema;
 
@@ -55,8 +55,8 @@ export function lastTwelve(now = new Date()) {
 
 export async function dashboardTiles(lens: Lens) {
   const { user } = lens;
-  const scope = lensOrg(lens, a.orgId);
-  const studentScope = lensOrg(lens, s.orgId);
+  const scope = lensApps(lens);
+  const studentScope = lensStudents(lens);
   const money = await commissionVisible(user);
   const months = lastTwelve();
   const yearAgo = new Date(new Date().getFullYear(), new Date().getMonth() - 11, 1);
@@ -154,7 +154,9 @@ export async function dashboardTiles(lens: Lens) {
         .then((r) => ({ items: Number(r[0]?.items ?? 0), students: Number(r[0]?.students ?? 0) })),
       waitingOn("BRANCH"),
       waitingOn("SUB_AGENT"),
-      money ? revenueInr(lens) : Promise.resolve(null),
+      // Commission is earned by a branch, not by one counsellor, so a
+      // counsellor's own board has no revenue figure to show.
+      money && !lens.person ? revenueInr(lens) : Promise.resolve(null),
     ]);
 
   return { money, registrations, applications, offers, visaReceived, visaRejected, deferrals, feesPaid, feesDue, documents, fromBranches, fromSubAgents, revenue };
@@ -173,6 +175,12 @@ export async function dashboardTiles(lens: Lens) {
  * in platform settings, which is the same conversion the commission itself was
  * written down with. The partner's share is already stored in rupees.
  */
+/**
+ * The desk reads the whole fee; a branch reads its share. Somebody at the desk
+ * viewing as a branch reads what the branch would, which is the point of it.
+ */
+const readsGross = (lens: Lens) => isStaff(lens.user) && lens.kind !== "branch" && lens.kind !== "counsellor";
+
 async function revenueInr(lens: Lens) {
   const rates = fxRates(await getSettings());
   const rows = await db
@@ -189,7 +197,7 @@ async function revenueInr(lens: Lens) {
   let expected = 0;
   let received = 0;
   for (const r of rows) {
-    const amount = isStaff(lens.user) ? Math.round(Number(r.gross) * fxToInr(r.currency, rates)) : Number(r.share);
+    const amount = readsGross(lens) ? Math.round(Number(r.gross) * fxToInr(r.currency, rates)) : Number(r.share);
     if (r.status === "EXPECTED" || r.status === "INVOICED") expected += amount;
     if (r.status === "RECEIVED" || r.status === "SETTLED") received += amount;
   }

@@ -3,7 +3,7 @@ import { and, count, desc, eq, gte, inArray, isNotNull, or, sql, type SQL } from
 import { db, schema } from "@/db";
 import { isStaff } from "@/lib/permissions";
 import { MONTHS } from "@/lib/format";
-import { lensOrg, type Lens } from "./dashboard-lens";
+import { lensApps, lensStudents, type Lens } from "./dashboard-lens";
 
 /** The statuses that mean a visa is in hand, or the student has gone further. */
 export const VISA_OR_LATER = ["VISA_RECEIVED", "ENROLLED", "JOINED", "DEPLOYED"] as const;
@@ -32,12 +32,12 @@ export async function monthly(lens: Lens) {
     db
       .select({ month: key(s.createdAt), n: sql<number>`count(*)::int` })
       .from(s)
-      .where(and(lensOrg(lens, s.orgId), eq(s.archived, false), gte(s.createdAt, from)))
+      .where(and(lensStudents(lens), eq(s.archived, false), gte(s.createdAt, from)))
       .groupBy(key(s.createdAt)),
     db
       .select({ month: key(a.createdAt), n: sql<number>`count(*)::int` })
       .from(a)
-      .where(and(lensOrg(lens, a.orgId), gte(a.createdAt, from)))
+      .where(and(lensApps(lens), gte(a.createdAt, from)))
       .groupBy(key(a.createdAt)),
   ]);
   const reg = new Map(registered.map((r) => [r.month, Number(r.n)]));
@@ -57,7 +57,7 @@ export async function monthly(lens: Lens) {
  * shape a funnel.
  */
 export async function journey(lens: Lens) {
-  const cohort = and(lensOrg(lens, s.orgId), eq(s.archived, false), lens.from ? gte(s.createdAt, lens.from) : undefined);
+  const cohort = and(lensStudents(lens), eq(s.archived, false), lens.from ? gte(s.createdAt, lens.from) : undefined);
   const reached = async (match: SQL) => {
     const [row] = await db
       .select({ n: sql<number>`count(distinct ${s.id})::int` })
@@ -99,7 +99,7 @@ export async function stages(lens: Lens) {
     .select({ group: sd.group, n: sql<number>`count(*)::int` })
     .from(a)
     .innerJoin(sd, eq(a.statusId, sd.id))
-    .where(lensOrg(lens, a.orgId))
+    .where(lensApps(lens))
     .groupBy(sd.group);
   const by = new Map(rows.map((r) => [r.group as string, Number(r.n)]));
   return STAGES.map((st) => ({
@@ -154,7 +154,7 @@ export async function destinations(lens: Lens, limit = 6) {
       n: sql<number>`count(*)::int`,
     })
     .from(s)
-    .where(and(lensOrg(lens, s.orgId), eq(s.archived, false), lens.from ? gte(s.createdAt, lens.from) : undefined))
+    .where(and(lensStudents(lens), eq(s.archived, false), lens.from ? gte(s.createdAt, lens.from) : undefined))
     .groupBy(sql`1`)
     .orderBy(desc(sql`2`));
   const named = rows.filter((r) => r.country !== "Not recorded");
@@ -190,14 +190,14 @@ export async function activity(lens: Lens, limit = 10): Promise<ActivityItem[]> 
       .innerJoin(s, eq(a.studentId, s.id))
       .innerJoin(sd, eq(sh.toStatusId, sd.id))
       .leftJoin(us, eq(sh.changedById, us.id))
-      .where(lensOrg(lens, a.orgId))
+      .where(lensApps(lens))
       .orderBy(desc(sh.createdAt))
       .limit(fetch),
     db
       .select({ id: s.id, at: s.createdAt, studentId: s.id, student: name, org: og.name })
       .from(s)
       .innerJoin(og, eq(s.orgId, og.id))
-      .where(and(lensOrg(lens, s.orgId), eq(s.archived, false)))
+      .where(and(lensStudents(lens), eq(s.archived, false)))
       .orderBy(desc(s.createdAt))
       .limit(fetch),
     db
@@ -206,7 +206,7 @@ export async function activity(lens: Lens, limit = 10): Promise<ActivityItem[]> 
       .innerJoin(s, eq(dc.studentId, s.id))
       .leftJoin(dt, eq(dc.typeCode, dt.code))
       .leftJoin(us, eq(dc.uploadedById, us.id))
-      .where(and(lensOrg(lens, s.orgId), isNotNull(dc.uploadedById)))
+      .where(and(lensStudents(lens), isNotNull(dc.uploadedById)))
       .orderBy(desc(dc.createdAt))
       .limit(fetch),
   ]);

@@ -122,7 +122,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                 kind: "select",
                 name: "assignedTo",
                 label: "Assigned to",
-                options: assignable.map((c) => ({ value: c.id, label: c.deskLabel ?? c.name })),
+                options: [{ value: "none", label: "Nobody yet" }, ...assignable.map((c) => ({ value: c.id, label: c.deskLabel ?? c.name }))],
               },
           {
             kind: "select",

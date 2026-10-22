@@ -16,8 +16,11 @@ export function LensBar({
   period,
   orgs,
   org,
+  hidePeriods = false,
 }: {
   periods: readonly (readonly [string, string])[];
+  /** Where the period is picked somewhere else on the screen, as in the summary's band. */
+  hidePeriods?: boolean;
   period: string;
   /** Empty for anybody who only sees their own. */
   orgs: { id: string; name: string; subAgent: boolean }[];
@@ -38,19 +41,21 @@ export function LensBar({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <nav aria-label="Period" className="inline-flex rounded-lg bg-surface-2 p-0.5 ring-1 ring-inset ring-line">
-        {periods.map(([k, label]) => (
-          <Link
-            key={k}
-            href={href({ period: k === "all" ? null : k })}
-            scroll={false}
-            aria-current={period === k ? "page" : undefined}
-            className={cn("rounded-md px-2.5 py-1 text-xs font-medium transition-colors", period === k ? "bg-surface text-ink shadow-sm" : "text-muted hover:text-ink")}
-          >
-            {label}
-          </Link>
-        ))}
-      </nav>
+      {!hidePeriods && (
+        <nav aria-label="Period" className="inline-flex rounded-lg bg-surface-2 p-0.5 ring-1 ring-inset ring-line">
+          {periods.map(([k, label]) => (
+            <Link
+              key={k}
+              href={href({ period: k === "all" ? null : k })}
+              scroll={false}
+              aria-current={period === k ? "page" : undefined}
+              className={cn("rounded-md px-2.5 py-1 text-xs font-medium transition-colors", period === k ? "bg-surface text-ink shadow-sm" : "text-muted hover:text-ink")}
+            >
+              {label}
+            </Link>
+          ))}
+        </nav>
+      )}
       {orgs.length > 0 && (
         <select
           aria-label="Branch"

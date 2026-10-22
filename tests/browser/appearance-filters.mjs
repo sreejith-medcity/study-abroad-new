@@ -119,7 +119,9 @@ if (await page.getByRole("button", { name: /^Clear/ }).count()) {
 
 /* ---------------- The dashboard kit ---------------- */
 
-await page.goto(`${BASE}/dashboard`);
+// The command centre's board, which the super admin can look at as the
+// processing desk sees it.
+await page.goto(`${BASE}/dashboard?as=desk`);
 await settle();
 // The dashboard is a board of figures and nothing else. Every tile is drawn
 // every day, nought or not, so it can be read by position; what a nought

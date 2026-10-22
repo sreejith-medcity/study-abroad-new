@@ -1,11 +1,11 @@
-// Every role lands on the dashboard, with its own menu behind it.
+// Every role lands on its own dashboard, with its own menu behind it.
 //
-// There used to be a different dashboard per job and this suite was how they
-// were told apart. There is one board now, scoped to what each person may
-// see, so what is left to check here is that every role reaches it, that the
-// board is actually drawn for them, and that the menu behind it is still the
-// one their job needs. The figures on the board are checked against the
-// database in dashboard.mjs.
+// One dashboard per job, drawn three ways: leadership and finance read an
+// executive summary, the processing desk a command centre, and the
+// documentation desk, a branch and a counsellor a pipeline board. This checks
+// that each role lands on the one meant for it, that it is drawn, and that the
+// menu behind it is still the one their job needs. The figures on each are
+// checked against the database in dashboard.mjs.
 import { chromium } from "playwright";
 import { knownWarning } from "./_errors.mjs";
 import fs from "node:fs";
@@ -17,18 +17,14 @@ const fails = [];
 const ok = (m) => console.log("  ok  " + m);
 const bad = (m) => { console.log("FAIL  " + m); fails.push(m); };
 
-// One board for everybody now, so what differs between these five is the
-// menu they get and the figures the board is scoped to, not the screen. The
-// board's own contents are checked tile by tile against the database in
-// dashboard.mjs; this one is about each role landing on it with the right
-// menu behind it.
-const BOARD = ["Total registrations", "Total applications", "Offers received", "Visas received"];
 const ROLES = [
-  { file: "01-super-admin", email: "sreejith@miak.in", expect: BOARD, nav: "Audit log" },
-  { file: "02-admin", email: "admin@medcityoverseas.test", expect: BOARD, nav: "Work queue" },
-  { file: "03-management", email: "management@medcityoverseas.test", expect: BOARD, nav: "Performance" },
-  { file: "04-partner", email: "kottayam@medcity.test", expect: [...BOARD, "Waiting on you"], nav: "Students" },
-  { file: "05-counsellor", email: "uk.docs@medcity.test", expect: [...BOARD, "Waiting on you"], nav: "My desk" },
+  { file: "01-super-admin", email: "sreejith@miak.in", expect: ["Total registrations", "How students flow through", "Needs attention"], nav: "Audit log" },
+  { file: "02-admin", email: "admin@medcityoverseas.test", expect: ["Total registrations", "Deadlines this week", "Who is carrying what"], nav: "Work queue" },
+  { file: "03-management", email: "management@medcityoverseas.test", expect: ["Total registrations", "Needs attention", "Branches compared"], nav: "Performance" },
+  { file: "04-partner", email: "kottayam@medcity.test", expect: ["Applications by stage", "Waiting on you", "The team"], nav: "Students" },
+  { file: "05-counsellor", email: "uk.docs@medcity.test", expect: ["My pipeline", "My students", "Follow-ups"], nav: "My desk" },
+  { file: "06-documentation", email: "documentation@medcityoverseas.test", expect: ["Documents by stage", "Waiting for a check", "Who has what"], nav: "Work queue" },
+  { file: "07-finance", email: "finance@medcityoverseas.test", expect: ["Earned, not invoiced", "How late the money is", "Latest money in"], nav: "Invoices" },
 ];
 
 const browser = await chromium.launch({
@@ -79,9 +75,9 @@ for (const [i, role] of ROLES.entries()) {
   for (const phrase of role.expect) {
     text.includes(phrase.toLowerCase()) ? ok(`${role.file}: "${phrase}"`) : bad(`${role.file}: missing "${phrase}"`);
   }
-  (await page.locator("main [data-stat-tiles]").count()) === 1
-    ? ok(`${role.file}: lands on the board of figures`)
-    : bad(`${role.file}: no board of figures on the dashboard`);
+  (await page.locator("main [data-stat-tiles], main [data-exec-hero]").count()) === 1
+    ? ok(`${role.file}: lands on its figures`)
+    : bad(`${role.file}: no figures on the dashboard`);
 
   const nav = page.locator('nav[aria-label="Main"]');
   (await nav.getByText(role.nav, { exact: true }).count()) ? ok(`${role.file}: nav has ${role.nav}`) : bad(`${role.file}: nav missing ${role.nav}`);

@@ -327,14 +327,16 @@ async function signIn(email, ip, password = "Password@123") {
   await ctx.close();
 }
 
-// --- The same board for every role, scoped to what each may see. The desk
-// reads the whole portal and is asked about branches and sub-agents; a
-// branch or sub-agent role reads its own, and is asked what is waiting on it.
+// --- Every counselling role gets a pipeline board scoped to what it may
+// see, and is asked what is waiting on it. A senior counsellor reads the
+// branch; the rest, the desk counsellor included, read the students assigned
+// to them, so none of them is asked about the branches and sub-agents the
+// way the desk is.
 {
   const seen = [
     ["senior@medcity.test", "senior counsellor", /Waiting on you/, /Pending from branches/],
     ["trainee@medcity.test", "trainee", /Waiting on you/, /Pending from branches/],
-    ["desk.counsellor@medcityoverseas.test", "desk counsellor", /Pending from branches/, /Waiting on you/],
+    ["desk.counsellor@medcityoverseas.test", "desk counsellor", /My pipeline/, /Pending from branches/],
     ["staff@horizon.test", "sub-agent counsellor", /Waiting on you/, /Pending from branches/],
     ["uk.docs@medcity.test", "counsellor", /Waiting on you/, /Pending from branches/],
   ];

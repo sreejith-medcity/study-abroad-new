@@ -1,15 +1,16 @@
-import type { SessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/permissions";
 import { inrShort } from "@/lib/money";
-import { db, schema } from "@/db";
-import { and, asc, eq, inArray } from "drizzle-orm";
 import { dashboardTiles, type Flow } from "@/server/dashboard-tiles";
-import { activity, branchesCompared, destinations, journey, monthly, stages } from "@/server/dashboard-charts";
-import { PERIODS, readLens } from "@/server/dashboard-lens";
+import { activity, branchesCompared, journey, monthly, stages } from "@/server/dashboard-charts";
+import { deadlinesThisWeek, officerLoad, pastServiceLevel } from "@/server/dashboard-work";
+import { PERIODS, type Lens } from "@/server/dashboard-lens";
+import { DEADLINE_LABEL } from "@/lib/deadline-types";
 import { StatTiles, type StatTile } from "@/components/stat-tiles";
-import { LensBar } from "@/components/charts/lens-bar";
 import { MonthlyLines, APPS } from "@/components/charts/monthly-lines";
-import { ActivityFeed, BranchTable, CountryBars, JourneyFlow, StageRing } from "@/components/charts/dashboard-pictures";
+import { ActivityFeed, BranchTable, JourneyFlow, StageRing } from "@/components/charts/dashboard-pictures";
+import { Leaderboard, WeekStrip, shortDate } from "@/components/dashboard/role-pieces";
+import { Controls, ViewingAsNote, firstName, partOfDay } from "./controls";
+import Link from "next/link";
 import { Card, CardHeader, LinkButton } from "@/components/ui";
 import {
   IconAlert,
@@ -26,50 +27,35 @@ import {
   IconWallet,
 } from "@/components/icons";
 
-/** The greeting, so the screen says hello before it says numbers. */
-function partOfDay() {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
-}
-
 /**
- * The dashboard, as a command centre.
+ * The processing desk's dashboard, as a command centre: the Overseas admin
+ * and the application team leader.
  *
- * Eleven figures asked for by name, as a board, each the way into the list
- * behind it. Then the same figures as pictures: the journey from registering
- * to enrolling, a year month by month, where the applications stand, how the
- * branches compare, and what has just happened.
+ * The board of figures first, each the way into the list behind it, with one
+ * more the desk is measured by: files sat at a stage past their service
+ * level. Then the journey beside the week's deadlines, a year month by month
+ * beside where the applications stand, and who on the desk is carrying what
+ * beside what has just happened.
  *
  * A period picker moves the figures that are things happening, and says how
  * each moved against the stretch before; the ones that are a state of things
  * now are marked as such and stay put. The desk can narrow the whole screen
  * to one branch.
- *
- * The same screen for everybody, scoped to what they may see. Two of the
- * tiles cannot mean the same thing to the desk and to a branch, and those are
- * the only ones that change.
  */
-export default async function TileDashboard({ user, searchParams }: { user: SessionUser; searchParams: Record<string, string | string[] | undefined> }) {
-  const lens = await readLens(user, searchParams);
+export default async function CommandCentre({ lens }: { lens: Lens }) {
+  const { user } = lens;
   const staff = isStaff(user);
-  const [t, months, steps, standing, compared, going, latest, orgs] = await Promise.all([
+  const [t, months, steps, standing, compared, week, load, late] = await Promise.all([
     dashboardTiles(lens),
     monthly(lens),
     journey(lens),
     stages(lens),
     branchesCompared(lens),
-    destinations(lens, 6),
-    activity(lens, 8),
-    staff
-      ? db
-          .select({ id: schema.organizations.id, name: schema.organizations.name, type: schema.organizations.type })
-          .from(schema.organizations)
-          .where(and(inArray(schema.organizations.type, ["BRANCH", "SUB_AGENT"]), eq(schema.organizations.active, true)))
-          .orderBy(asc(schema.organizations.type), asc(schema.organizations.name))
-      : Promise.resolve([]),
+    deadlinesThisWeek(lens),
+    officerLoad(lens),
+    pastServiceLevel(lens),
   ]);
+  const latest = await activity(lens, 8);
 
   /** How a happening moved against the stretch before, in the tile's words. */
   const change = (f: Flow, upIsGood = true): StatTile["change"] => {
@@ -137,37 +123,59 @@ export default async function TileDashboard({ user, searchParams }: { user: Sess
   ];
 
   const where = lens.orgName ?? (staff ? "all branches and partners" : user.orgName);
+  const DAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const when = PERIODS.find(([k]) => k === lens.period)?.[1].toLowerCase() ?? "all time";
 
   return (
     <>
+      <ViewingAsNote lens={lens} />
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="font-display text-2xl font-semibold text-ink">Dashboard</h1>
+          <h1 className="font-display text-2xl font-semibold text-ink">
+            {partOfDay()}, {firstName(user.name)}
+          </h1>
           <p className="mt-0.5 text-muted">
-            {partOfDay()}, {user.name.split(" ")[0]}. {lens.period === "all" ? "Everything to date" : `Figures for ${when}`}, across {where}.
+            {lens.period === "all" ? "Everything to date" : `Figures for ${when}`}, across {where}.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <LensBar periods={PERIODS} period={lens.period} orgs={orgs.map((o) => ({ id: o.id, name: o.name, subAgent: o.type === "SUB_AGENT" }))} org={lens.org} />
-          <LinkButton href={staff ? "/admin/queue" : "/students"} size="sm">
-            <IconQueue className="size-4" /> {staff ? "Open work queue" : "Open students"}
+          <Controls lens={lens} />
+          <LinkButton href="/admin/queue" size="sm">
+            <IconQueue className="size-4" /> Open work queue
           </LinkButton>
         </div>
       </div>
 
       <StatTiles tiles={tiles} />
 
-      <Card className="mt-5">
-        <CardHeader
-          title="From registration to enrolment"
-          subtitle={`${lens.period === "all" ? "Every student" : `Students who registered ${when === "today" ? "today" : `this ${when.replace("this ", "")}`}`}, and how far they have got`}
-          action={<span className="text-xs text-muted">Each step opens its list</span>}
-        />
-        <div className="p-4">
-          <JourneyFlow steps={steps} />
-        </div>
-      </Card>
+      <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+        <Card className="min-w-0">
+          <CardHeader
+            title="From registration to enrolment"
+            subtitle={`${lens.period === "all" ? "Every student" : `Students who registered ${when === "today" ? "today" : `this ${when.replace("this ", "")}`}`}, and how far they have got`}
+            action={<span className="text-xs text-muted">Each step opens its list</span>}
+          />
+          <div className="p-4">
+            <JourneyFlow steps={steps} />
+          </div>
+        </Card>
+        <Card className="min-w-0">
+          <CardHeader title="Deadlines this week" subtitle="Open milestones on applications" action={<Link href="/deadlines" className="text-xs font-medium text-brand-700 hover:underline">All deadlines</Link>} />
+          <WeekStrip
+            days={week.days}
+            today={week.today}
+            late={week.late}
+            more={Math.max(0, week.total - week.items.length)}
+            items={week.items.map((d) => ({
+              id: d.id,
+              title: DEADLINE_LABEL[d.type] ?? d.type,
+              sub: `${d.student} · ${d.university}`,
+              due: d.dueOn === week.today ? "Today" : `${DAY[new Date(`${d.dueOn}T00:00:00`).getDay()]} ${shortDate(d.dueOn)}`,
+              href: `/students/${d.studentId}/applications?app=${d.appId}`,
+            }))}
+          />
+        </Card>
+      </div>
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
         <Card className="min-w-0">
@@ -199,18 +207,33 @@ export default async function TileDashboard({ user, searchParams }: { user: Sess
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
         <div className="min-w-0 space-y-5">
+          <Card>
+            <CardHeader
+              title="Who is carrying what"
+              subtitle="Open files per officer, how many are past their service level, and the oldest"
+              action={
+                <Link href="/admin/queue?officer=all" data-past-service-level={late} className={late > 0 ? "rounded-md bg-stop-50 px-2 py-1 text-xs font-semibold text-stop-700" : "rounded-md bg-good-50 px-2 py-1 text-xs font-semibold text-good-700"}>
+                  {late > 0 ? `${late} past service level` : "All within service level"}
+                </Link>
+              }
+            />
+            <Leaderboard
+              head={["Officer", "Open", "Late", "Oldest"]}
+              empty="No open files."
+              rows={load.map((o) => ({
+                id: o.id ?? "nobody",
+                name: o.name,
+                href: "/admin/queue?officer=all",
+                cells: [o.open, o.late, `${o.oldest}d`],
+              }))}
+            />
+          </Card>
           {staff && !lens.org && (
             <Card>
               <CardHeader title="Branches compared" subtitle={`${lens.period === "all" ? "To date" : `For ${when}`}, ranked by registrations. A name opens the dashboard for that branch.`} />
               <BranchTable rows={compared} />
             </Card>
           )}
-          <Card>
-            <CardHeader title="Where students want to go" subtitle="Preferred country, as registered" />
-            <div className="p-4">
-              <CountryBars rows={going.rows} notRecorded={going.notRecorded} />
-            </div>
-          </Card>
         </div>
         <Card className="h-fit min-w-0">
           <CardHeader title="Recent activity" subtitle="Newest first" />

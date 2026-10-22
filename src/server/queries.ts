@@ -1,6 +1,6 @@
 import "server-only";
 import { DEADLINE_TYPES } from "@/lib/deadline-types";
-import { and, asc, eq, gte, ilike, inArray, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, eq, gte, ilike, inArray, isNull, lte, or, sql, type SQL } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { mayOpenStudent, ownStudentsOnly } from "@/server/scope";
 import { idSearchKey, looksLikeStudentId } from "@/lib/medcity-id";
@@ -74,7 +74,8 @@ export function applicationWhere(user: SessionUser, f: ApplicationFilters, mine?
   if (f.ack) conds.push(ilike(a.ackNo, `%${f.ack}%`));
   if (f.program) conds.push(ilike(p.name, `%${f.program}%`));
   if (f.student) conds.push(or(ilike(s.firstName, `%${f.student}%`), ilike(s.lastName, `%${f.student}%`), ilike(sql`${s.firstName} || ' ' || ${s.lastName}`, `%${f.student}%`)));
-  if (f.assignedTo) conds.push(eq(s.assignedToId, f.assignedTo));
+  // "none" is the students nobody has been given to yet, which a branch head hands out from.
+  if (f.assignedTo) conds.push(f.assignedTo === "none" ? isNull(s.assignedToId) : eq(s.assignedToId, f.assignedTo));
   if (f.org && isStaff(user)) conds.push(eq(a.orgId, f.org));
   // Our own branches, or the sub-agents working through them. Only the desk
   // can ask this, because it is the only one that sees both kinds.
@@ -215,7 +216,7 @@ export async function studentWhere(user: SessionUser, f: Record<string, string |
     isStaff(user) ? (f.org ? eq(st.orgId, f.org) : undefined) : eq(st.orgId, user.orgId),
     await ownStudentsOnly(user),
     eq(st.archived, f.view === "archived"),
-    f.assignedTo ? eq(st.assignedToId, f.assignedTo) : undefined,
+    f.assignedTo === "none" ? isNull(st.assignedToId) : f.assignedTo ? eq(st.assignedToId, f.assignedTo) : undefined,
     f.team ? eq(st.teamId, f.team) : undefined,
     f.from ? gte(st.createdAt, new Date(f.from)) : undefined,
     f.to ? lte(st.createdAt, new Date(`${f.to}T23:59:59`)) : undefined,
