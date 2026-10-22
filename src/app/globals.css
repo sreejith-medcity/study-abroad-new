@@ -48,18 +48,22 @@
   --color-stop-700: #96261f;
 
   /*
-    Headings in Plus Jakarta Sans, everything else in Inter.
+    Avenir Next for the portal, Lexend Deca for its tables and boards.
 
-    Poppins was a geometric face with a wide, circular lower case: handsome
-    on a poster, and on a screen of tables it made every heading longer than
-    it needed to be and every figure wider than the column beside it. Inter
-    was drawn for exactly this, small text on a screen, and its figures are
-    the same width as each other, which is what makes a column of them line
-    up. Plus Jakarta carries the headings so the portal does not read as a
-    page of settings.
+    The way HubSpot sets a CRM, asked for by name: Avenir Next for records,
+    dashboards and navigation, and Lexend Deca, light, where the screen is
+    dense with data, because Lexend was drawn to be read quickly and its
+    light weight keeps a long table from turning into a block of ink.
+
+    Avenir Next is licensed, so it cannot be served from here: it is named
+    first and used wherever the machine has it, which is every Mac and
+    iPhone, and Helvetica and then Arial take its place elsewhere, exactly
+    as HubSpot's own stack does. Lexend Deca is free and is served with the
+    portal, so the tables read the same on every machine.
   */
-  --font-display: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Avenir Next", "Avenir Next LT Pro", Avenir, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-sans: "Avenir Next", "Avenir Next LT Pro", Avenir, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-data: "Lexend Deca", "Avenir Next", Helvetica, Arial, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /*
@@ -118,9 +122,22 @@ body {
   background: var(--color-ground);
   color: var(--color-ink);
   font-family: var(--font-sans);
-  /* Inter: the straight-sided one, and the 1 with a foot, which stops it
-     reading as an l in an acknowledgement number. */
-  font-feature-settings: "cv05" 1, "cv08" 1;
+}
+
+/*
+  Tables and board views: Lexend Deca, light. Light is the body of a cell;
+  anything a cell marks as medium or semibold, a name or a figure that
+  matters, keeps its weight, which in Lexend is still lighter than the same
+  weight in Avenir and is the point. The column headings stay in the UI face
+  so a table's frame reads as part of the page around it.
+*/
+table,
+[data-board] {
+  font-family: var(--font-data);
+  font-weight: 300;
+}
+table th {
+  font-family: var(--font-sans);
 }
 
 h1,
@@ -129,8 +146,8 @@ h3,
 h4,
 .font-display {
   font-family: var(--font-display);
-  /* Plus Jakarta sets a little loose at display sizes. */
-  letter-spacing: -0.021em;
+  /* Avenir Next sets a touch loose at display sizes. */
+  letter-spacing: -0.012em;
 }
 
 .tabular {

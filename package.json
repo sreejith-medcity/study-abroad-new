@@ -18,8 +18,7 @@
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.3.0",
-    "@fontsource/inter": "^5.3.0",
-    "@fontsource/plus-jakarta-sans": "^5.3.0",
+    "@fontsource/lexend-deca": "^5.3.0",
     "archiver": "^5.3.2",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",

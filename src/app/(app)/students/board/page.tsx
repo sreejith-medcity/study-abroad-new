@@ -129,7 +129,7 @@ export default async function BoardPage({ searchParams }: { searchParams: Promis
       {shown.length === 0 ? (
         <EmptyState title="Nobody here">Register a student, or widen the filters.</EmptyState>
       ) : (
-        <div className="overflow-x-auto pb-4" data-print="hide">
+        <div className="overflow-x-auto pb-4" data-print="hide" data-board>
           <div className="flex min-w-max gap-3">
             {STAGES.map((s) => {
               const here = shown.filter((c) => c.stage === s.value);

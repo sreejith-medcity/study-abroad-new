@@ -14,13 +14,13 @@ import { readTextSize } from "@/lib/text-size";
   Only the weights the portal uses, and only latin, because that is what the
   portal is written in. Each one is about 25 kilobytes.
 */
-import "@fontsource/plus-jakarta-sans/latin-600.css";
-import "@fontsource/plus-jakarta-sans/latin-700.css";
-import "@fontsource/plus-jakarta-sans/latin-800.css";
-import "@fontsource/inter/latin-400.css";
-import "@fontsource/inter/latin-500.css";
-import "@fontsource/inter/latin-600.css";
-import "@fontsource/inter/latin-700.css";
+// Avenir Next is the machine's own where it has it, and is licensed, so it
+// is not among these. Lexend Deca is for tables and boards, light for the
+// cells and heavier where a cell marks something out.
+import "@fontsource/lexend-deca/latin-300.css";
+import "@fontsource/lexend-deca/latin-400.css";
+import "@fontsource/lexend-deca/latin-500.css";
+import "@fontsource/lexend-deca/latin-600.css";
 import "@fontsource/ibm-plex-mono/latin-400.css";
 import "@fontsource/ibm-plex-mono/latin-500.css";
 import "./globals.css";
