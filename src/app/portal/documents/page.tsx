@@ -143,8 +143,13 @@ export default async function PortalDocuments({ searchParams }: { searchParams: 
                     <Chip>{t("teamUploads")}</Chip>
                   )}
                 </div>
-                {r.document && !r.byTeam && (r.document.replaceable || r.document.earlier.length > 0) && (
+                {r.document && !r.byTeam && (r.document.replaceable || r.document.acceptedLock || r.document.earlier.length > 0) && (
                   <div className="mt-2 flex flex-wrap items-start gap-x-5 gap-y-2 text-sm">
+                    {r.document.acceptedLock && (
+                      <p data-accepted-note className="text-muted">
+                        {t("acceptedAskCounsellor")}
+                      </p>
+                    )}
                     {r.document.replaceable && (
                       <details>
                         <summary className="cursor-pointer font-medium text-brand-600">{t("replaceFile")}</summary>

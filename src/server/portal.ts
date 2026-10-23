@@ -127,13 +127,29 @@ export async function studentDocuments(studentId: string, requiredCodes: string[
     .where(eq(schema.documents.studentId, studentId))
     .orderBy(desc(schema.documents.createdAt));
   const opens = (d: (typeof rows)[number]) => !!viewerId && (d.uploadedById === viewerId || d.sharedWithStudent);
+  // Kinds of document the team has accepted, which the student no longer
+  // replaces themselves; the upload route refuses the same.
+  const accepted = new Set(
+    (
+      await db
+        .select({ typeCode: schema.checklistItems.typeCode })
+        .from(schema.checklistItems)
+        .where(and(eq(schema.checklistItems.studentId, studentId), eq(schema.checklistItems.state, "ACCEPTED")))
+    ).map((r) => r.typeCode),
+  );
   const families = documentFamilies(rows).filter((f) => f.current);
-  const held = families.map((f) => ({
-    ...f.current!,
-    earlier: f.earlier.filter(opens),
-    /** A student replaces only what they can see; the route checks the same. */
-    replaceable: opens(f.current!),
-  }));
+  const held = families.map((f) => {
+    const theirs = opens(f.current!);
+    const locked = !!f.current!.typeCode && accepted.has(f.current!.typeCode);
+    return {
+      ...f.current!,
+      earlier: f.earlier.filter(opens),
+      /** A student replaces only what they can see and the team has not accepted; the route checks the same. */
+      replaceable: theirs && !locked,
+      /** One they could replace but for the team having accepted it, which the page explains. */
+      acceptedLock: theirs && locked,
+    };
+  });
 
   const types = await db.select().from(schema.documentTypes).orderBy(asc(schema.documentTypes.sortOrder));
   // What the branch chose to show the student, such as an offer letter.

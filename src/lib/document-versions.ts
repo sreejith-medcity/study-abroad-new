@@ -22,7 +22,10 @@ export type Version<T> = T & { version: number };
 export type DocumentFamily<T extends VersionRow> = {
   /** The first version's id, which names the whole history. */
   rootId: string;
-  /** The file in use. Null when the one in use was removed. */
+  /**
+   * The file in use. Null when every version was removed, or on a record left
+   * from before removing the file in use handed the document to an earlier one.
+   */
   current: Version<T> | null;
   /** Every other version still on record, newest first. */
   earlier: Version<T>[];
@@ -131,3 +134,66 @@ export function versionLine<T extends VersionRow>(f: DocumentFamily<T>, nameOf: 
 
 /** Only the current versions, for anything that counts or asks "is there one". */
 export const currentOnly = <T extends Pick<VersionRow, "supersededAt" | "removedAt">>(rows: T[]) => rows.filter(isCurrent);
+
+/**
+ * What taking one version off the record leaves as the document's current file.
+ *
+ * Removing the file in use hands the document to the newest earlier version
+ * still on record, so a mistaken upload removed does not hide the passport
+ * underneath it. With nothing earlier left, the document has no current file
+ * and its checklist item goes back to missing. Removing an earlier version
+ * changes nothing about which file is current. Null when the row is not in the
+ * rows given or is already removed.
+ *
+ * `promote` says whether the next file has to be made current, as opposed to
+ * already being current, which only a race between two replacements leaves.
+ */
+export function planRemoval<T extends VersionRow>(rows: T[], id: string): { next: Version<T> | null; promote: boolean } | null {
+  const family = familyOf(rows, id);
+  const target = family?.all.find((v) => v.id === id);
+  if (!family || !target || target.removedAt) return null;
+  if (!isCurrent(target)) return { next: family.current, promote: false };
+  const others = family.all.filter((v) => v.id !== id && v.removedAt == null);
+  const live = others.filter(isCurrent);
+  if (live.length) return { next: live[live.length - 1], promote: false };
+  // Oldest first, so the last is the newest earlier version.
+  return others.length ? { next: others[others.length - 1], promote: true } : { next: null, promote: false };
+}
+
+/**
+ * How a removed file comes back.
+ *
+ * Into a document that still has a current file it comes back as an earlier
+ * version, dated as set aside when the current file took over rather than now,
+ * so the current file is not mistaken for one somebody restored a moment ago.
+ * Into a document with no current file it comes back as the current one. Either
+ * way the document ends with exactly one current file. Null when the row is not
+ * removed, or not among the rows.
+ */
+export function planPutBack<T extends VersionRow>(
+  rows: T[],
+  id: string,
+  actorId: string,
+): { asCurrent: true } | { asCurrent: false; setAside: { at: Date; byId: string } | null } | null {
+  const family = familyOf(rows, id);
+  const target = family?.all.find((v) => v.id === id);
+  if (!family || !target || !target.removedAt) return null;
+  const current = family.current;
+  if (!current) return { asCurrent: true };
+  if (target.supersededAt) return { asCurrent: false, setAside: null };
+  return { asCurrent: false, setAside: { at: family.restored?.at ?? current.createdAt, byId: family.restored?.byId ?? actorId } };
+}
+
+/**
+ * What making an earlier version current again has to set aside: every file of
+ * the document that is current now, so there is one current file afterwards
+ * even where a race once left two.
+ */
+export function planRestore<T extends VersionRow>(rows: T[], id: string): { error: "removed" | "missing" } | { already: true } | { setAside: Version<T>[] } {
+  const family = familyOf(rows, id);
+  const target = family?.all.find((v) => v.id === id);
+  if (!family || !target) return { error: "missing" };
+  if (target.removedAt) return { error: "removed" };
+  if (isCurrent(target)) return { already: true };
+  return { setAside: family.all.filter(isCurrent) };
+}

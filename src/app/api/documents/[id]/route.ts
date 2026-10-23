@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { getSession } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { isStaff } from "@/lib/permissions";
+import { mayOpenStudent } from "@/server/scope";
 import { readUpload } from "@/server/storage";
 import { mayRestoreDocuments } from "@/server/document-versions";
 
@@ -10,7 +10,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const user = await getSession();
   if (!user) return new Response("Sign in required", { status: 401 });
   const { id } = await params;
-  const doc = await db.query.documents.findFirst({ where: eq(schema.documents.id, id), with: { student: { columns: { orgId: true } } } });
+  const doc = await db.query.documents.findFirst({ where: eq(schema.documents.id, id), with: { student: { columns: { id: true, orgId: true, assignedToId: true, createdById: true } } } });
   if (!doc) return new Response("Not found", { status: 404 });
   // A student sees only their own file: what they uploaded and what the branch shared.
   if (user.role === "STUDENT") {
@@ -19,7 +19,14 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     // A parent reads the journey and the list of what is outstanding. The files
     // themselves are the student's, and are not opened from a parent's sign-in.
     return new Response("Not found", { status: 404 });
-  } else if (!isStaff(user) && doc.student.orgId !== user.orgId) return new Response("Not found", { status: 404 });
+  } else if (!(await mayOpenStudent(user, doc.student))) {
+    // Staff open a file exactly when they could open the student it belongs to:
+    // a counsellor's own students, the files handed to the desk, everybody for
+    // the roles that see every student. Matching the organisation alone let a
+    // counsellor open any file in the branch by its id, and the head office
+    // was not checked at all.
+    return new Response("Not found", { status: 404 });
+  }
   // An earlier version opens for exactly the people the current one does. A
   // removed file opens only for the people who may put it back, so they can see
   // what they are restoring; for everybody else it is gone, as it was when

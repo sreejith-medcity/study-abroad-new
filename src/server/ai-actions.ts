@@ -7,6 +7,8 @@ import { audit } from "@/lib/audit";
 import { LEVEL_LABEL, intakesText, tuitionText } from "@/lib/catalogue";
 import { ADMIN_ROLES, APP_ROLES, HQ_ROLES, PARTNER_ROLES } from "@/lib/permissions";
 import { readUpload } from "@/server/storage";
+import { mayOpenStudent } from "@/server/scope";
+import { isCurrent } from "@/lib/document-versions";
 import { INTERVIEW_KINDS, type InterviewKind } from "@/lib/interview";
 import { aiAllowance, aiConfig, callClaude, recordAiUsage, replyText, type ClaudeMessage, type ClaudeTool } from "@/server/ai";
 
@@ -219,8 +221,16 @@ export async function extractDocumentAction(documentId: string): Promise<Extract
   const user = await requireUser([...PARTNER_ROLES, ...ADMIN_ROLES]);
   const cfg = await aiConfig();
   if (!cfg?.enabled || !cfg.features.autofill) return { ok: false, error: "Reading documents is not switched on." };
-  const doc = await db.query.documents.findFirst({ where: eq(schema.documents.id, documentId), with: { student: { columns: { orgId: true } } } });
-  if (!doc || (!(HQ_ROLES as readonly string[]).includes(user.role) && doc.student.orgId !== user.orgId)) return { ok: false, error: "That document is not yours." };
+  const doc = await db.query.documents.findFirst({
+    where: eq(schema.documents.id, documentId),
+    with: { student: { columns: { id: true, orgId: true, assignedToId: true, createdById: true } } },
+  });
+  // The same rule as opening the student, so a counsellor cannot read a file on
+  // a student their own branch keeps from them by sending its id.
+  if (!doc || !(await mayOpenStudent(user, doc.student))) return { ok: false, error: "That document is not yours." };
+  // Only the file the team works from. A replaced scan is the one the team
+  // stopped trusting, and a removed one is off the record.
+  if (!isCurrent(doc)) return { ok: false, error: "That file has been replaced or removed. Reload the page and read the current one." };
   const reader = READERS[doc.typeCode ?? ""];
   if (!reader) return { ok: false, error: "Only passports, Std. 12th and degree marksheets, and English test reports can be read." };
   const allowance = await aiAllowance(user, cfg);

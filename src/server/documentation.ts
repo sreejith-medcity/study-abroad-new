@@ -257,16 +257,22 @@ export const untouchedCount = (studentId: string) =>
     .where(and(eq(ci.studentId, studentId), eq(ci.state, "NOT_ASKED"), isNull(ci.documentId)))
     .then((r) => r[0]?.n ?? 0);
 
+/** A transaction, for the callers that attach a file as part of a larger change. */
+export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 /**
  * Attaches an uploaded file to whatever asks for it, and puts the item in front
  * of the documentation team. A student never marks their own document good.
+ *
+ * Takes a transaction where the caller has one, so a version change and the
+ * list following it land together or not at all.
  */
-export async function attachUploadToChecklist(studentId: string, typeCode: string, documentId: string, uploaderId: string) {
-  const item = await db.query.checklistItems.findFirst({ where: and(eq(ci.studentId, studentId), eq(ci.typeCode, typeCode)) });
+export async function attachUploadToChecklist(studentId: string, typeCode: string, documentId: string, uploaderId: string, run: Pick<Tx, "query" | "insert" | "update"> = db) {
+  const item = await run.query.checklistItems.findFirst({ where: and(eq(ci.studentId, studentId), eq(ci.typeCode, typeCode)) });
   if (!item) return null;
   const version = item.version + 1;
-  await db.insert(cf).values({ itemId: item.id, documentId, version, uploadedById: uploaderId });
-  await db
+  await run.insert(cf).values({ itemId: item.id, documentId, version, uploadedById: uploaderId });
+  await run
     .update(ci)
     .set({ state: "UPLOADED", documentId, version, reasonCode: null, reason: null, decidedAt: null, decidedById: null, claimedById: null, claimedAt: null, updatedAt: new Date() })
     .where(eq(ci.id, item.id));

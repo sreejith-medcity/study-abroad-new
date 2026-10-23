@@ -3,9 +3,13 @@
 // it; the list shows one document with "Version 2, replaced ... by ...", the
 // earlier version is listed and opens, and the document count does not double.
 // Earlier versions open for exactly the people the current one opens for, and
-// never for another branch. The desk brings version one back (audited), a
-// removed file keeps its stored copy and can be put back, and the student
-// replaces the shared file from the portal. Wants the plain seed.
+// never for another branch or a counsellor the student is not theirs, while the
+// documentation desk still opens a handed-over file. The desk brings version
+// one back (audited). Removing the file in use keeps its stored copy and hands
+// the document, and its checklist item, to the newest earlier version; putting
+// it back brings it in as an earlier version, never a second current file. The
+// student replaces the shared file from the portal, but not once the team has
+// accepted it. Wants the plain seed.
 import { chromium } from "playwright";
 import { hydrated, knownWarning } from "./_errors.mjs";
 import { execFileSync } from "node:child_process";
@@ -80,7 +84,11 @@ const adminId = sql("select id from users where email = 'admin@medcityoverseas.t
 const studentUserId = sql(`select id from users where role = 'STUDENT' and student_id = '${sid}' limit 1`);
 const sopLabel = sql("select label from document_types where code = 'SOP'");
 const currentCount = () => Number(sql(`select count(*) from documents where student_id = '${sid}' and superseded_at is null and removed_at is null`));
+// The statement of purpose on the documentation list, which follows the current file.
+const sopItem = sql(`select id from checklist_items where student_id = '${sid}' and type_code = 'SOP'`);
+const sopItemFile = () => sql(`select coalesce(document_id, '') || '|' || state from checklist_items where id = '${sopItem}'`);
 check(!!sid && !!partnerId && !!adminId && !!studentUserId, "seed: the student, the branch head, the desk and the student's sign-in exist");
+check(!!sopItem, "seed: the statement of purpose is on the student's documentation list");
 
 /* ---------------- The branch head uploads and replaces ---------------- */
 const partner = await signIn("kottayam@medcity.test");
@@ -149,6 +157,23 @@ res = await kochi.page.request.get(`${BASE}/api/documents/${v2Id}`);
 check(res.status() === 404, "access: nor the current one");
 await kochi.ctx.close();
 
+// The same branch is not enough: a counsellor the student is not assigned to
+// opens nothing, as the student's page itself is closed to them.
+const otherCounsellor = await signIn("germany@medcity.test");
+res = await otherCounsellor.page.request.get(`${BASE}/api/documents/${v2Id}`);
+const otherCurrent = res.status();
+res = await otherCounsellor.page.request.get(`${BASE}/api/documents/${v1Id}`);
+check(otherCurrent === 404 && res.status() === 404, "access: a counsellor at the same branch who is not on the student's file opens neither version");
+await otherCounsellor.ctx.close();
+
+// The documentation desk works files the branch handed over, and opens them.
+const desk = await signIn("documentation@medcityoverseas.test");
+res = await desk.page.request.get(`${BASE}/api/documents/${v2Id}`);
+const deskCurrent = res.status();
+res = await desk.page.request.get(`${BASE}/api/documents/${v1Id}`);
+check(deskCurrent === 200 && res.status() === 200, "access: the documentation desk opens the handed-over file and its earlier version");
+await desk.ctx.close();
+
 const student = await signIn("fathima.rahman@example.com");
 const sp = student.page;
 res = await sp.request.get(`${BASE}/api/documents/${v1Id}`);
@@ -176,6 +201,7 @@ check(await toast(ap, /current version again/), "restore: the screen says versio
 check((await waitSql(`select superseded_at is null from documents where id = '${v1Id}'`, "t")) === "t", "restore: version one is current");
 check(sql(`select (superseded_at is not null)::text || '|' || coalesce(superseded_by_id, '') from documents where id = '${v2Id}'`) === `true|${adminId}`, "restore: version two is set aside by the desk, not deleted");
 check(sql(`select count(*) from audit_logs where action = 'document.restore' and entity_id = '${v1Id}' and actor_id = '${adminId}'`) === "1", "restore: recorded in the audit log");
+check(sopItemFile().startsWith(`${v1Id}|`), `restore: the documentation list moves to the restored file (${sopItemFile()})`);
 
 await go(ap, `/students/${sid}/documents`);
 const restoredRow = ap.locator(`li[data-document-id="${v1Id}"]`);
@@ -185,10 +211,13 @@ await restoredRow.locator("details[data-earlier-versions] summary").click();
 check((await restoredRow.locator(`li[data-version-id="${v2Id}"]`).count()) === 1, "restore: version two is now listed as the earlier version");
 check(currentCount() === countBefore && (await tabCount(ap)) === countBefore, "count: restoring does not change the count either");
 
-/* ---------------- Removing keeps the file, and it can be put back ---------------- */
+/* ---------------- Removing the file in use hands over to the earlier version ---------------- */
 await restoredRow.getByRole("button", { name: `Delete ${v1Name}` }).click();
 check((await waitSql(`select (removed_at is not null)::text || '|' || coalesce(removed_by_id, '') from documents where id = '${v1Id}'`, `true|${adminId}`)) === `true|${adminId}`, "remove: the row is marked removed, not deleted");
-check(currentCount() === countBefore - 1, "remove: it no longer counts");
+check(sql(`select (superseded_at is null and removed_at is null)::text from documents where id = '${v2Id}'`) === "true", "remove: version two, the newest earlier version, is current again");
+check(sql(`select count(*) from documents where id in ('${v1Id}', '${v2Id}') and superseded_at is null and removed_at is null`) === "1", "remove: exactly one current file in the document");
+check(currentCount() === countBefore, "remove: the document still counts, by its earlier version");
+check(sopItemFile() === `${v2Id}|UPLOADED`, `remove: the documentation list follows to version two, to be checked again (${sopItemFile()})`);
 res = await ap.request.get(`${BASE}/api/documents/${v1Id}`);
 check(res.status() === 200 && (await res.text()).includes(`first ${tag}`), "remove: the stored file is still there for the desk");
 res = await pp.request.get(`${BASE}/api/documents/${v1Id}`);
@@ -197,30 +226,59 @@ res = await sp.request.get(`${BASE}/api/documents/${v1Id}`);
 check(res.status() === 404, "remove: nor does the student");
 
 await go(ap, `/students/${sid}/documents`);
+check((await ap.locator(`li[data-document-id="${v2Id}"]`).count()) === 1 && (await ap.locator(`li[data-document-id="${v1Id}"]`).count()) === 0, "remove: the list shows the document by version two");
 const removedSection = ap.locator("section[data-removed-documents]");
 await removedSection.locator("summary").click();
 await removedSection.getByRole("button", { name: `Put back ${v1Name}` }).click();
 check((await waitSql(`select removed_at is null from documents where id = '${v1Id}'`, "t")) === "t", "put back: the file is on the record again");
-check(currentCount() === countBefore, "put back: it counts again");
+check(sql(`select (superseded_at is not null)::text from documents where id = '${v1Id}'`) === "true", "put back: it comes back as an earlier version");
+check(sql(`select count(*) from documents where id in ('${v1Id}', '${v2Id}') and superseded_at is null and removed_at is null`) === "1" && sql(`select superseded_at is null from documents where id = '${v2Id}'`) === "t", "put back: version two stays the one current file");
+check(currentCount() === countBefore, "put back: the count does not change");
+check(sopItemFile().startsWith(`${v2Id}|`), "put back: the documentation list stays on the current file");
 check(sql(`select count(*) from audit_logs where entity_id = '${v1Id}' and action in ('document.remove', 'document.unremove')`) === "2", "remove and put back: both recorded in the audit log");
+await ap.waitForURL(/putBack=/, { timeout: 10000 }).catch(() => {});
+check(await ap.getByText(`${v1Name} is back, as an earlier version.`).first().waitFor({ timeout: 10000 }).then(() => true, () => false), "put back: the page says it came back as an earlier version");
+await ap.locator(`li[data-document-id="${v2Id}"] details[data-earlier-versions] summary`).click();
+check((await ap.locator(`li[data-document-id="${v2Id}"] li[data-version-id="${v1Id}"]`).count()) === 1, "put back: version one is listed under version two");
+
+/* ---------------- The student may not replace what the team has accepted ---------------- */
+const sopStateBefore = sql(`select state from checklist_items where id = '${sopItem}'`);
+sql(`update checklist_items set state = 'ACCEPTED' where id = '${sopItem}'`);
+await go(sp, "/portal/documents");
+const sopPortal = sp.locator(`[data-portal-document="SOP"]`);
+check((await sopPortal.locator('input[name="replacesId"]').count()) === 0, "portal: an accepted file offers no Replace");
+check(/ask your counsellor/i.test(await sopPortal.locator("[data-accepted-note]").innerText().catch(() => "")), "portal: and says to ask the counsellor instead");
+res = await sp.request.post(`${BASE}/api/uploads/portal-document`, {
+  multipart: { replacesId: v2Id, typeCode: "SOP", file: { name: `sneaky-${tag}.pdf`, mimeType: "application/pdf", buffer: pdf(`sneaky ${tag}`) } },
+  failOnStatusCode: false,
+});
+const refusal = await res.json().catch(() => ({}));
+check(res.status() === 409 && /ask your counsellor/i.test(refusal.error ?? ""), `portal: the server refuses a replacement of an accepted file (${res.status()})`);
+res = await sp.request.post(`${BASE}/api/uploads/portal-document`, {
+  multipart: { typeCode: "SOP", file: { name: `sneaky-new-${tag}.pdf`, mimeType: "application/pdf", buffer: pdf(`sneaky new ${tag}`) } },
+  failOnStatusCode: false,
+});
+check(res.status() === 409, "portal: and a fresh upload of the same kind");
+check(sql(`select count(*) from documents where student_id = '${sid}' and file_name like 'sneaky%${tag}.pdf'`) === "0" && sql(`select state from checklist_items where id = '${sopItem}'`) === "ACCEPTED", "portal: nothing was saved and the item is still accepted");
+sql(`update checklist_items set state = '${sopStateBefore}' where id = '${sopItem}'`);
 
 /* ---------------- The student replaces the shared file from the portal ---------------- */
 await go(sp, "/portal/documents");
-const replaceBox = sp.locator(`details:has(input[name="replacesId"][value="${v1Id}"])`);
-check((await replaceBox.count()) === 1, "portal: the shared file offers Replace");
+const replaceBox = sp.locator(`details:has(input[name="replacesId"][value="${v2Id}"])`);
+check((await replaceBox.count()) === 1, "portal: the shared file offers Replace while it is still being checked");
 await replaceBox.locator("summary").click();
 await replaceBox.locator('input[type="file"]').setInputFiles({ name: v3Name, mimeType: "application/pdf", buffer: pdf(`student ${tag}`) });
 await replaceBox.locator('button[type="submit"]').click();
 await sp.waitForURL(/uploaded=/, { timeout: 15000 }).catch(() => {});
-const v3Id = await waitValue(`select id from documents where replaces_id = '${v1Id}' and file_name = '${v3Name}'`);
+const v3Id = await waitValue(`select id from documents where replaces_id = '${v2Id}' and file_name = '${v3Name}'`);
 check(!!v3Id && sql(`select uploaded_by_id from documents where id = '${v3Id}'`) === studentUserId, "portal: the student's file replaces the shared one");
 check(currentCount() === countBefore, "portal: still one statement of purpose");
 await go(sp, "/portal/documents");
 const studentEarlier = sp.locator(`[data-portal-document="SOP"] details[data-earlier-versions]`);
 await studentEarlier.locator("summary").click().catch(() => {});
-check((await studentEarlier.locator(`a[href="/api/documents/${v1Id}"]`).count()) === 1, "portal: the student sees the earlier version they may open");
-res = await sp.request.get(`${BASE}/api/documents/${v1Id}`);
-check(res.status() === 200, "portal: and it opens");
+check((await studentEarlier.locator(`a[href="/api/documents/${v2Id}"]`).count()) === 1 && (await studentEarlier.locator(`a[href="/api/documents/${v1Id}"]`).count()) === 1, "portal: the student sees the earlier versions they may open");
+res = await sp.request.get(`${BASE}/api/documents/${v2Id}`);
+check(res.status() === 200, "portal: and they open");
 await sp.screenshot({ path: `${OUT}/portal.png`, fullPage: true });
 
 await go(pp, `/students/${sid}/documents`);

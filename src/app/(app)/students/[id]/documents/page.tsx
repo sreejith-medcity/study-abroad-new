@@ -79,7 +79,13 @@ export default async function DocumentsPage({ params, searchParams }: { params: 
   // What a restore just did, said here because the button that did it has
   // moved or gone. Worked out from the record, never from text in the link.
   const backDoc = docs.find((d) => d.id === (restored ?? putBack));
-  const backNote = backDoc ? (restored ? `${backDoc.fileName} is the current version again.` : `${backDoc.fileName} is back on the file.`) : null;
+  const backNote = backDoc
+    ? restored
+      ? `${backDoc.fileName} is the current version again.`
+      : backDoc.supersededAt
+        ? `${backDoc.fileName} is back, as an earlier version.`
+        : `${backDoc.fileName} is back on the file.`
+    : null;
 
   return (
     <Card>

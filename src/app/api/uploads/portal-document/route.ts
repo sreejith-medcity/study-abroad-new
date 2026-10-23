@@ -7,7 +7,7 @@ import { notifyUsers } from "@/server/notify";
 import { attachUploadToChecklist } from "@/server/documentation";
 import { getPortalStudent } from "@/server/portal";
 import { saveUpload, UploadError } from "@/server/storage";
-import { VersionConflict, putUpReplacement } from "@/server/document-versions";
+import { VersionConflict, acceptedOnChecklist, putUpReplacement } from "@/server/document-versions";
 import { isCurrent } from "@/lib/document-versions";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_MB } from "@/lib/uploads";
 
@@ -65,6 +65,13 @@ export async function POST(request: Request) {
   const type = await db.query.documentTypes.findFirst({ where: eq(schema.documentTypes.code, typeCode) });
   if (!type) return NextResponse.json({ error: "Pick what this document is." }, { status: 400 });
   if (type.uploadedBy === "team") return NextResponse.json({ error: "Medcity Overseas adds this one for you." }, { status: 403 });
+  // Any upload of a kind of document puts its checklist item back to "to be
+  // checked", so a student sending a new passport after the team accepted one
+  // would pull the accepted passport out of a pack already built. Once it is
+  // accepted, changing it goes through the counsellor, who can still replace it.
+  if (await acceptedOnChecklist(student.id, type.code)) {
+    return NextResponse.json({ error: `Your ${type.label} has already been checked and accepted, so it cannot be changed here. If it needs changing, ask your counsellor.` }, { status: 409 });
+  }
 
   try {
     if (old) {

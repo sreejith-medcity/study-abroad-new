@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { currentOnly, documentFamilies, familyOf, isCurrent, versionDay, versionLine, type VersionRow } from "../src/lib/document-versions";
+import { currentOnly, documentFamilies, familyOf, isCurrent, planPutBack, planRemoval, planRestore, versionDay, versionLine, type VersionRow } from "../src/lib/document-versions";
 
 type Row = VersionRow & { uploadedById: string | null };
 
@@ -82,7 +82,7 @@ test("restoring back and forth keeps reading as a restore, dated by the latest o
   assert.equal(versionLine(f, nameOf, uploader), "Version 2, restored 6 Nov 2026 by Anita");
 });
 
-test("a removed current file leaves the document with nothing current, and removed files are not earlier versions", () => {
+test("rows from before removal handed over, with the current file removed, show nothing current, and removed files are not earlier versions", () => {
   const [v1, v2] = replaced(row("v1"), "v2", "2026-11-03T05:00:00Z");
   const [f] = documentFamilies([v1, { ...v2, removedAt: at("2026-11-04T05:00:00Z") }]);
   assert.equal(f.current, null);
@@ -135,4 +135,147 @@ test("counting current versions counts a replaced document once and a removed on
 test("dates are Kerala dates", () => {
   // 8.30 pm UTC on the 2nd is already the 3rd in India.
   assert.equal(versionDay(at("2026-11-02T20:30:00Z")), "3 Nov 2026");
+});
+
+/* ---------- Removing, putting back and restoring, as the server plans them ---------- */
+
+/** What the server does with a removal plan, applied to the rows. */
+function remove(rows: Row[], id: string, when: string): Row[] {
+  const plan = planRemoval(rows, id);
+  assert.ok(plan, "a removal plan");
+  return rows.map((r) => {
+    if (r.id === id) return { ...r, removedAt: at(when) };
+    if (plan.promote && r.id === plan.next?.id) return { ...r, supersededAt: null, supersededById: null };
+    return r;
+  });
+}
+
+/** What the server does when putting a removed file back. */
+function putBack(rows: Row[], id: string, by = "u-nithin"): Row[] {
+  const plan = planPutBack(rows, id, by);
+  assert.ok(plan, "a put-back plan");
+  return rows.map((r) => {
+    if (r.id !== id) return r;
+    if (plan.asCurrent) return { ...r, removedAt: null, supersededAt: null, supersededById: null };
+    return { ...r, removedAt: null, ...(plan.setAside ? { supersededAt: plan.setAside.at, supersededById: plan.setAside.byId } : {}) };
+  });
+}
+
+/** What the server does when making an earlier version current. */
+function restore(rows: Row[], id: string, when: string, by = "u-nithin"): Row[] {
+  const plan = planRestore(rows, id);
+  assert.ok("setAside" in plan, "a restore plan");
+  const aside = new Set(plan.setAside.map((v) => v.id));
+  return rows.map((r) => (aside.has(r.id) ? { ...r, supersededAt: at(when), supersededById: by } : r.id === id ? { ...r, supersededAt: null, supersededById: null } : r));
+}
+
+const liveCount = (rows: Row[]) => rows.filter(isCurrent).length;
+
+test("removing the file in use hands the document to the newest earlier version", () => {
+  const [v1, v2a] = replaced(row("v1"), "v2", "2026-11-03T05:00:00Z");
+  const [v2, v3] = replaced(v2a, "v3", "2026-11-05T05:00:00Z");
+  const plan = planRemoval([v1, v2, v3], "v3");
+  assert.equal(plan?.next?.id, "v2", "the newest earlier version, not the first");
+  assert.equal(plan?.promote, true);
+  const after = remove([v1, v2, v3], "v3", "2026-11-06T05:00:00Z");
+  const [f] = documentFamilies(after);
+  assert.equal(f.current?.id, "v2");
+  assert.deepEqual(f.earlier.map((v) => v.id), ["v1"], "the history stays visible");
+  assert.equal(liveCount(after), 1);
+});
+
+test("removing the file in use skips earlier versions already removed", () => {
+  const [v1, v2a] = replaced(row("v1"), "v2", "2026-11-03T05:00:00Z");
+  const [v2, v3] = replaced(v2a, "v3", "2026-11-05T05:00:00Z");
+  assert.equal(planRemoval([v1, { ...v2, removedAt: at("2026-11-05T06:00:00Z") }, v3], "v3")?.next?.id, "v1");
+});
+
+test("removing the only file leaves nothing current, so the checklist shows it missing", () => {
+  assert.deepEqual(planRemoval([row("a")], "a"), { next: null, promote: false });
+});
+
+test("removing an earlier version, or one already removed, changes nothing about the current file", () => {
+  const [v1, v2] = replaced(row("v1"), "v2", "2026-11-03T05:00:00Z");
+  assert.deepEqual(planRemoval([v1, v2], "v1"), { next: { ...v2, version: 2 }, promote: false });
+  assert.equal(planRemoval([v1, { ...v2, removedAt: at("2026-11-04T05:00:00Z") }], "v2"), null);
+  assert.equal(planRemoval([v1, v2], "missing"), null);
+});
+
+test("where a race left two current files, removing one leaves the other current without promoting anything", () => {
+  const v1 = row("v1", { supersededAt: at("2026-11-03T05:00:00Z") });
+  const a = row("a", { replacesId: "v1", createdAt: at("2026-11-03T05:00:00Z") });
+  const b = row("b", { replacesId: "v1", createdAt: at("2026-11-03T05:00:01Z") });
+  const plan = planRemoval([v1, a, b], "b");
+  assert.equal(plan?.next?.id, "a");
+  assert.equal(plan?.promote, false);
+});
+
+test("a removed file put back beside a current one comes back as an earlier version, never a second current file", () => {
+  const [v1, v2] = replaced(row("v1"), "v2", "2026-11-03T05:00:00Z");
+  let rows = remove([v1, v2], "v2", "2026-11-04T05:00:00Z");
+  assert.equal(documentFamilies(rows)[0].current?.id, "v1");
+  const plan = planPutBack(rows, "v2", "u-nithin");
+  assert.deepEqual(plan, { asCurrent: false, setAside: { at: v1.createdAt, byId: "u-nithin" } });
+  rows = putBack(rows, "v2");
+  assert.equal(liveCount(rows), 1);
+  const [f] = documentFamilies(rows);
+  assert.equal(f.current?.id, "v1");
+  assert.deepEqual(f.earlier.map((v) => v.id), ["v2"]);
+  assert.equal(f.restored, null, "putting back is not a restore of the current file");
+});
+
+test("a removed file put back into a document with nothing current becomes the current file", () => {
+  let rows = remove([row("a")], "a", "2026-11-04T05:00:00Z");
+  assert.deepEqual(planPutBack(rows, "a", "u-nithin"), { asCurrent: true });
+  rows = putBack(rows, "a");
+  assert.equal(documentFamilies(rows)[0].current?.id, "a");
+  assert.equal(liveCount(rows), 1);
+  assert.equal(planPutBack(rows, "a", "u-nithin"), null, "a file on the record is not put back twice");
+});
+
+test("an old record with nothing current: putting the removed file back makes it current, and restoring after that sets it aside", () => {
+  // Removed before removing handed over: v2 removed, v1 still superseded.
+  const [v1, v2] = replaced(row("v1"), "v2", "2026-11-03T05:00:00Z");
+  let rows: Row[] = [v1, { ...v2, removedAt: at("2026-11-04T05:00:00Z") }];
+  assert.deepEqual(planRestore(rows, "v1"), { setAside: [] }, "restoring into nothing current sets nothing aside");
+  rows = putBack(rows, "v2");
+  assert.equal(liveCount(rows), 1);
+  const plan = planRestore(rows, "v1");
+  assert.ok("setAside" in plan);
+  assert.deepEqual(plan.setAside.map((v) => v.id), ["v2"]);
+  rows = restore(rows, "v1", "2026-11-05T05:00:00Z");
+  assert.equal(liveCount(rows), 1);
+  assert.equal(documentFamilies(rows)[0].current?.id, "v1");
+});
+
+test("restoring refuses a removed version, does nothing to the current one, and sets aside every current file of a raced document", () => {
+  const [v1, v2] = replaced(row("v1"), "v2", "2026-11-03T05:00:00Z");
+  assert.deepEqual(planRestore([{ ...v1, removedAt: at("2026-11-04T05:00:00Z") }, v2], "v1"), { error: "removed" });
+  assert.deepEqual(planRestore([v1, v2], "v2"), { already: true });
+  assert.deepEqual(planRestore([v1, v2], "missing"), { error: "missing" });
+  const old = row("old", { supersededAt: at("2026-11-03T05:00:00Z") });
+  const a = row("a", { replacesId: "old", createdAt: at("2026-11-03T05:00:00Z") });
+  const b = row("b", { replacesId: "old", createdAt: at("2026-11-03T05:00:01Z") });
+  const plan = planRestore([old, a, b], "old");
+  assert.ok("setAside" in plan);
+  assert.deepEqual(plan.setAside.map((v) => v.id).sort(), ["a", "b"]);
+  assert.equal(liveCount(restore([old, a, b], "old", "2026-11-04T05:00:00Z")), 1);
+});
+
+test("remove, put back and restore in any order keep at most one current file", () => {
+  const [v1, v2a] = replaced(row("v1"), "v2", "2026-11-03T05:00:00Z");
+  const [v2, v3] = replaced(v2a, "v3", "2026-11-05T05:00:00Z");
+  let rows: Row[] = [v1, v2, v3];
+  rows = remove(rows, "v3", "2026-11-06T05:00:00Z");
+  assert.equal(liveCount(rows), 1);
+  rows = remove(rows, "v2", "2026-11-06T06:00:00Z");
+  assert.equal(documentFamilies(rows)[0].current?.id, "v1");
+  rows = putBack(rows, "v3");
+  assert.equal(liveCount(rows), 1);
+  rows = restore(rows, "v3", "2026-11-07T05:00:00Z");
+  assert.equal(documentFamilies(rows)[0].current?.id, "v3");
+  rows = putBack(rows, "v2");
+  assert.equal(liveCount(rows), 1);
+  assert.equal(documentFamilies(rows)[0].current?.id, "v3");
+  assert.deepEqual(documentFamilies(rows)[0].earlier.map((v) => v.id).sort(), ["v1", "v2"]);
 });

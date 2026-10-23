@@ -106,6 +106,7 @@ const en = {
   replaceWith: "Replace with a new file",
   earlierVersions: "Earlier versions",
   version: "Version",
+  acceptedAskCounsellor: "Checked and accepted. If it needs changing, ask your counsellor.",
 
   messagesTitle: "Messages",
   messagesIntro: "This is the same thread your counsellor sees. Replies here reach them and your WhatsApp.",
@@ -145,7 +146,7 @@ const en = {
  * English until somebody who reads Malayalam adds them below, and naming them
  * here keeps every other phrase checked for a translation.
  */
-type Untranslated = "replaceFile" | "replaceWith" | "earlierVersions" | "version";
+type Untranslated = "replaceFile" | "replaceWith" | "earlierVersions" | "version" | "acceptedAskCounsellor";
 
 const ml: Record<Exclude<keyof typeof en, Untranslated>, string> = {
   portal: "വിദ്യാർഥി പോർട്ടൽ",
