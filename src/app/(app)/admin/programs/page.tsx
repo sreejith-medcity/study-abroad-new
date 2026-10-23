@@ -126,6 +126,7 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
                 <option value="">Any source</option>
                 <option value="catalogue">Researched catalogue</option>
                 <option value="CRICOS">CRICOS register</option>
+                <option value="MIOC">MIOC app</option>
               </Select>
               <Select name="tag" aria-label="Label" defaultValue={f.tag ?? ""}>
                 <option value="">Any label</option>

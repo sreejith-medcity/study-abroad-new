@@ -153,10 +153,15 @@ export async function bulkStatusAction(formData: FormData) {
   // Each batch reads the status it replaced from a second copy of the table in
   // the same statement (Postgres shows that copy as it was before the update),
   // so the history costs one insert per batch and no extra read.
+  // The MIOC app alone brought about 104,000 courses, more than the old cap
+  // of forty batches, so the run goes on until the filter is empty. It stops
+  // well inside the page's five minutes, and pressing again carries on: the
+  // filter still finds whatever is left.
   const BATCH = 2000;
+  const started = Date.now();
   let total = 0;
   const batchId = newBatchId();
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 200 && Date.now() - started < 200_000; i++) {
     const scope = db
       .select({ id: p.id })
       .from(p)

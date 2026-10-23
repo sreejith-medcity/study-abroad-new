@@ -13,7 +13,7 @@ export function programFilterWhere(f: ProgramFilters): SQL | undefined {
     f.pathway ? eq(p.pathway, f.pathway as schema.Pathway) : undefined,
     f.status ? eq(p.status, f.status as "LIVE") : undefined,
     f.level ? eq(p.level, f.level as "PG") : undefined,
-    f.source === "CRICOS" ? eq(p.source, "CRICOS") : f.source === "catalogue" ? isNull(p.source) : undefined,
+    f.source === "CRICOS" || f.source === "MIOC" ? eq(p.source, f.source) : f.source === "catalogue" ? isNull(p.source) : undefined,
     f.workRights ? eq(p.workRights, f.workRights as "ELIGIBLE") : undefined,
     f.tag === "none" ? sql`cardinality(${p.tags}) = 0` : f.tag ? sql`${f.tag} = any(${p.tags})` : undefined,
   );

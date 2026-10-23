@@ -125,6 +125,11 @@ check(guideText.indexOf("What does a Mioc year cost?") !== -1 && guideText.index
 await page.goto(`${BASE}/universities?country=GB`);
 check((await page.locator("[data-destination-strip]").innerText().catch(() => "")).includes("Mioc Capital Town"), "the universities list filtered to the UK opens with its guide in a line");
 
+/* ---------------- The desk finds the app's courses to review them ---------------- */
+await page.goto(`${BASE}/admin/programs?source=MIOC&status=DRAFT`);
+await hydrated(page);
+check((await page.locator("main").innerText()).includes("All 5 matching"), "the programs list filters to the app's courses, ready to publish as one batch");
+
 /* ---------------- A second run, from the gzip export, after somebody corrects a row ---------------- */
 sql("update programs set tuition_per_year = 33000, min_ielts = null where external_code = 'MIOC:105'");
 sql("update universities set about = 'Edited by the desk. <b>Kept as typed</b>' where id = 'u_mioc_wb'");
