@@ -60,18 +60,17 @@ export async function handEnquiryToDocumentation(studentId: string, byId: string
   }
 
   // Everybody on the desk hears about it, not only the one it landed on: the
-  // team leader is who notices when a registration is not being worked.
+  // team leader is who notices when a registration is not being worked. The
+  // officer it landed on is sent to the file. The rest of the desk cannot open
+  // a file nobody has handed them, so they are sent to the desk's queue, where
+  // it shows, rather than to a file that would refuse them.
   const desk = await db
     .select({ id: schema.users.id })
     .from(schema.users)
     .where(and(eq(schema.users.active, true), inArray(schema.users.role, [...DOCUMENTATION_ROLES])));
-  if (desk.length) {
-    await notifyUsers(
-      desk.map((d) => d.id),
-      "A registered student is ready for documents",
-      added > 0 ? `${studentName}: ${added} document${added === 1 ? "" : "s"} to collect.` : studentName,
-      `/students/${studentId}/documentation`,
-    );
-  }
+  const body = added > 0 ? `${studentName}: ${added} document${added === 1 ? "" : "s"} to collect.` : studentName;
+  if (officerId) await notifyUsers([officerId], "A registered student is ready for documents", body, `/students/${studentId}/documentation`);
+  const rest = desk.map((d) => d.id).filter((id) => id !== officerId);
+  if (rest.length) await notifyUsers(rest, "A registered student is ready for documents", body, "/documentation");
   return { added, officerId };
 }

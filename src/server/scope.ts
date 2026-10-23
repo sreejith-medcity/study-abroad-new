@@ -48,6 +48,25 @@ export async function ownApplicationsOnly(user: SessionUser): Promise<SQL | unde
           ),
         ),
     ),
+    // Put on the file by name, or working its documents: the student opens to
+    // them, so the student's applications are listed for them too.
+    exists(
+      db
+        .select({ one: sql`1` })
+        .from(schema.studentPeople)
+        .where(and(eq(schema.studentPeople.studentId, schema.applications.studentId), eq(schema.studentPeople.userId, user.id))),
+    ),
+    exists(
+      db
+        .select({ one: sql`1` })
+        .from(schema.checklistItems)
+        .where(
+          and(
+            eq(schema.checklistItems.studentId, schema.applications.studentId),
+            or(eq(schema.checklistItems.claimedById, user.id), eq(schema.checklistItems.decidedById, user.id)),
+          ),
+        ),
+    ),
   );
 }
 
