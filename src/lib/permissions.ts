@@ -171,7 +171,7 @@ export function homeFor(role: string) {
   return "/dashboard";
 }
 
-export function isStaff(user: SessionUser) {
+export function isStaff(user: Pick<SessionUser, "role">) {
   return (HQ_ROLES as readonly string[]).includes(user.role);
 }
 
@@ -190,7 +190,7 @@ export function isAdmin(user: SessionUser) {
 export const DOCUMENTATION_ROLES = ["DOCUMENTATION", "APPLICATION_TEAM_LEADER"] as const;
 
 /** The documentation desk: the same files as an admin, but read-only on status. */
-export function isDocumentationTeam(user: SessionUser) {
+export function isDocumentationTeam(user: Pick<SessionUser, "role">) {
   return (DOCUMENTATION_ROLES as readonly string[]).includes(user.role);
 }
 

@@ -1,9 +1,23 @@
 import "server-only";
 import { and, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/db";
+import { studentIdFromHref } from "@/lib/notification-links";
+import { whoMayOpenStudent } from "@/server/scope";
 
+/**
+ * Writes a notice to each of these people.
+ *
+ * A notice that links to a student goes only to the people who can open that
+ * student. Who to tell is worked out in many places, by branch, by desk, by
+ * assignment, and none of them asks the question the student page asks; so it
+ * is asked once here, with the page's own rule, and a link that would end in
+ * "page not found" is never written.
+ */
 export async function notifyUsers(userIds: (string | null | undefined)[], title: string, body?: string, href?: string) {
-  const ids = [...new Set(userIds.filter((x): x is string => !!x))];
+  let ids = [...new Set(userIds.filter((x): x is string => !!x))];
+  if (!ids.length) return;
+  const studentId = studentIdFromHref(href);
+  if (studentId) ids = await whoMayOpenStudent(studentId, ids);
   if (!ids.length) return;
   await db.insert(schema.notifications).values(ids.map((userId) => ({ userId, title, body, href })));
 }

@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { getSession } from "@/lib/auth";
+import { getSession, type SessionUser } from "@/lib/auth";
+import { studentIdFromHref } from "@/lib/notification-links";
+import { mayOpenStudent } from "@/server/scope";
 
 /**
  * Where a notification is allowed to send somebody.
@@ -44,7 +46,23 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     .set({ readAt: new Date() })
     .where(and(eq(schema.notifications.id, id), eq(schema.notifications.userId, user.id)))
     .returning();
+  const path = ownPath(n?.href);
+  // A notice about a student who has since been removed, or moved out of this
+  // person's reach, used to land on a bare "page not found". They are sent
+  // back to their notices instead, with a line saying what happened.
+  if (n && path && !(await stillOpen(user, path))) return sendTo(`/notifications?closed=${encodeURIComponent(n.id)}`);
   // 303 rather than 307: this GET has just written something, and the
   // browser should follow with a fresh GET of the page it is sent to.
-  return sendTo(ownPath(n?.href) ?? "/notifications");
+  return sendTo(path ?? "/notifications");
+}
+
+/** Whether the student a link is about can still be opened by this person. Links to anything else are left alone. */
+async function stillOpen(user: SessionUser, path: string) {
+  const studentId = studentIdFromHref(path);
+  if (!studentId) return true;
+  const student = await db.query.students.findFirst({
+    where: eq(schema.students.id, studentId),
+    columns: { id: true, orgId: true, assignedToId: true, createdById: true },
+  });
+  return !!student && (await mayOpenStudent(user, student));
 }

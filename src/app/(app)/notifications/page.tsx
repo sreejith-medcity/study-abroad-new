@@ -4,7 +4,7 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fmtDateTime } from "@/lib/format";
-import { Button, Card, EmptyState, PageHeader } from "@/components/ui";
+import { Alert, Button, Card, EmptyState, PageHeader } from "@/components/ui";
 
 export const metadata = { title: "Notifications" };
 
@@ -15,12 +15,25 @@ async function markAllRead() {
   revalidatePath("/", "layout");
 }
 
-export default async function NotificationsPage() {
+export default async function NotificationsPage({ searchParams }: { searchParams: Promise<{ closed?: string | string[] }> }) {
   const user = await requireUser();
   const rows = await db.select().from(schema.notifications).where(eq(schema.notifications.userId, user.id)).orderBy(desc(schema.notifications.createdAt)).limit(100);
+  // Sent back here from a notice whose student can no longer be opened.
+  const closedId = (await searchParams).closed;
+  const closed = typeof closedId === "string"
+    ? await db.query.notifications.findFirst({ where: and(eq(schema.notifications.id, closedId), eq(schema.notifications.userId, user.id)), columns: { title: true } })
+    : undefined;
   return (
     <div className="max-w-3xl">
       <PageHeader title="Notifications" actions={<form action={markAllRead}><Button variant="secondary">Mark all as read</Button></form>} />
+      {closed && (
+        <div className="mb-4">
+          <Alert tone="warn" title="That student's file is not open to you any more">
+            &ldquo;{closed.title}&rdquo; is about a student who has since been removed, or whose file has moved to somebody your role cannot see. Ask a Medcity
+            Overseas admin if you think you should still have it.
+          </Alert>
+        </div>
+      )}
       <Card>
         {rows.length === 0 ? <EmptyState title="You're all caught up" /> : (
           <ul className="divide-y divide-line">
