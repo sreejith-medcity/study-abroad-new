@@ -13,6 +13,8 @@ import { programFilterWhere, readProgramFilters } from "@/server/program-filters
 import { fetchCricosFiles, syncCricos } from "@/server/cricos-sync";
 import { fetchRegistry, syncRegistry } from "@/server/registry-sync";
 import { REGISTRY_SOURCES } from "@/lib/registry";
+import type { MiocCountry, MiocProgram, MiocUniversity } from "@/lib/mioc";
+import { loadMiocPrograms, prepareMioc, type MiocBatchResult, type MiocPrepareResult } from "@/server/mioc-load";
 
 export type ImportState = {
   error?: string;
@@ -495,4 +497,46 @@ export async function syncRegistryAction(_: FormState, fd: FormData): Promise<Fo
   } catch (e) {
     return { error: (e as Error).message };
   }
+}
+
+/**
+ * The MIOC app's catalogue. The browser reads the export and sends only the
+ * catalogue rows, in steps: countries and universities first, then programs a
+ * batch at a time, then a closing call that records the run.
+ */
+export async function miocPrepareAction(input: { countries: MiocCountry[]; universities: MiocUniversity[] }, dryRun: boolean): Promise<{ error?: string; result?: MiocPrepareResult }> {
+  const user = await requireUser([...ADMIN_ROLES]);
+  try {
+    const result = await prepareMioc(input, { dryRun });
+    if (!dryRun) await audit(user.id, "programs.mioc_prepare", "university", "*", { countriesNew: result.countriesNew, universitiesNew: result.universitiesNew, universitiesHere: result.universitiesHere });
+    return { result };
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+}
+
+export async function miocLoadAction(batch: MiocProgram[], universityIds: Record<number, string>): Promise<{ error?: string; result?: MiocBatchResult }> {
+  await requireUser([...ADMIN_ROLES]);
+  if (!Array.isArray(batch) || batch.length > 2000) return { error: "A batch holds at most 2,000 programs." };
+  try {
+    return { result: await loadMiocPrograms(batch, universityIds ?? {}) };
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+}
+
+export async function miocFinishAction(summary: MiocBatchResult & { programs: number; seconds: number }) {
+  const user = await requireUser([...ADMIN_ROLES]);
+  const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  await audit(user.id, "programs.mioc_load", "program", "*", {
+    programs: n(summary.programs),
+    created: n(summary.created),
+    filled: n(summary.filled),
+    unchanged: n(summary.unchanged),
+    keptResearched: n(summary.keptResearched),
+    noUniversity: n(summary.noUniversity),
+    seconds: n(summary.seconds),
+  });
+  revalidatePath("/admin/programs");
+  revalidatePath("/search");
 }

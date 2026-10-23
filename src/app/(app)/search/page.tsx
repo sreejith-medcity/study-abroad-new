@@ -61,12 +61,13 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
    *
    * Read from the routes rather than kept on the programme, so turning a vendor
    * into a direct tie-up on the Vendors screen moves its courses up the list
-   * the same day, with nothing to rebuild.
+   * the same day, with nothing to rebuild. An IN list worked out once, so the
+   * order does not cost a lookup for every course in the catalogue.
    */
-  const ourOwn = sql`exists (
-    select 1 from ${schema.programRoutes} rt
+  const ourOwn = sql`${p.id} in (
+    select rt.program_id from ${schema.programRoutes} rt
     join ${schema.vendors} vd on vd.id = rt.vendor_id
-    where rt.program_id = ${p.id} and rt.active and vd.active and vd.is_direct
+    where rt.active and vd.active and vd.is_direct
   ) desc`;
   /**
    * Ours first, in the order the portal chooses for itself.

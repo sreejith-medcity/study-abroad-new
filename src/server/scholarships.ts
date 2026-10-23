@@ -21,10 +21,20 @@ export async function openScholarships(universityId: string, level?: string) {
     .orderBy(sql`${s.deadline} nulls last`, asc(s.name));
 }
 
-/** The same test as SQL, for search: does this program's university offer an open scholarship at its level? */
-export const hasOpenScholarship = sql`exists (
-  select 1 from scholarships sc
-  where sc.university_id = programs.university_id and sc.active
-    and (sc.deadline is null or sc.deadline >= current_date)
-    and (cardinality(sc.levels) = 0 or programs.level = any(sc.levels))
+/**
+ * The same test as SQL, for search: does this program's university offer an
+ * open scholarship at its level?
+ *
+ * Written as two IN lists rather than one EXISTS per row. Postgres works out
+ * an uncorrelated list once and looks each program up in it; an EXISTS is run
+ * again for every program, which over a catalogue of a hundred thousand
+ * courses took most of a second for this one chip count.
+ */
+export const hasOpenScholarship = sql`(
+  programs.university_id in (
+    select sc.university_id from scholarships sc
+    where sc.active and (sc.deadline is null or sc.deadline >= current_date) and cardinality(sc.levels) = 0)
+  or (programs.university_id, programs.level) in (
+    select sc.university_id, unnest(sc.levels) from scholarships sc
+    where sc.active and (sc.deadline is null or sc.deadline >= current_date))
 )`;

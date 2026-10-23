@@ -12,6 +12,7 @@ import { ImportForm } from "./import-form";
 import { PROGRAM_FILTER_KEYS, programFilterWhere } from "@/server/program-filters";
 import { CricosForm } from "./cricos-form";
 import { RegistryForm } from "./registry-form";
+import { MiocForm } from "./mioc-form";
 import { fmtDateTime } from "@/lib/format";
 import { ADMIN_ROLES } from "@/lib/permissions";
 
@@ -204,6 +205,10 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
           <Card className="p-4">
             <h2 className="mb-2 font-semibold">Australia (CRICOS)</h2>
             <CricosForm lastSync={lastSync ? `${fmtDateTime(lastSync.createdAt)} by ${lastSync.actor ?? "system"}` : null} />
+          </Card>
+          <Card className="p-4">
+            <h2 className="mb-2 font-semibold">From the MIOC app</h2>
+            <MiocForm />
           </Card>
           <Card className="p-4">
             <h2 className="mb-2 font-semibold">Universities from a public register</h2>

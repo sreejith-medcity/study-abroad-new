@@ -84,8 +84,8 @@ export function qualificationCond(held: "SCHOOL" | "UG" | "PG"): SQL {
 }
 
 /** Applications open: a recorded deadline still ahead. Closed: deadlines recorded, all passed. */
-export const openCond = sql`exists (select 1 from program_deadlines pd where pd.program_id = programs.id and pd.deadline >= current_date)`;
-export const closedCond = sql`(exists (select 1 from program_deadlines pd where pd.program_id = programs.id) and not ${openCond})`;
+export const openCond = sql`programs.id in (select pd.program_id from program_deadlines pd where pd.deadline >= current_date)`;
+export const closedCond = sql`(programs.id in (select pd.program_id from program_deadlines pd) and not ${openCond})`;
 
 /**
  * A student described on the spot, without a file: scores and marks typed

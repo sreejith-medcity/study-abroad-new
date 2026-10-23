@@ -33,10 +33,14 @@ export function partnerShareJoins(rates: Record<string, number>) {
   return { rp, ru, rc, expr };
 }
 
-/** SQL for search: a live commission rule covers this program. */
-export const hasCommissionRule = sql`exists (
-  select 1 from commission_rules r
-  where r.active
-    and (r.program_id = programs.id or r.university_id = programs.university_id or r.country_id = universities.country_id)
-    and (r.intake_year is null or r.intake_year >= extract(year from current_date))
+/**
+ * SQL for search: a live commission rule covers this program, by the program
+ * itself, its university or its country. Three IN lists, each worked out once,
+ * rather than an EXISTS run again for every program in the catalogue.
+ */
+const liveRule = sql`r.active and (r.intake_year is null or r.intake_year >= extract(year from current_date))`;
+export const hasCommissionRule = sql`(
+  programs.id in (select r.program_id from commission_rules r where r.program_id is not null and ${liveRule})
+  or programs.university_id in (select r.university_id from commission_rules r where r.university_id is not null and ${liveRule})
+  or universities.country_id in (select r.country_id from commission_rules r where r.country_id is not null and ${liveRule})
 )`;

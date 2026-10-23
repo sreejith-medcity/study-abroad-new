@@ -25,8 +25,8 @@ export async function nextDeadlines(programIds: string[]) {
   return new Map(rows.map((r) => [r.programId, r]));
 }
 
-/** SQL for search: this program has an open deadline within `days` days. */
-export const closingWithin = (days: number) => sql`exists (
-  select 1 from program_deadlines pd
-  where pd.program_id = programs.id and pd.deadline >= current_date and pd.deadline <= current_date + ${days}::int
+/** SQL for search: this program has an open deadline within `days` days. An IN list, worked out once, not a lookup per program. */
+export const closingWithin = (days: number) => sql`programs.id in (
+  select pd.program_id from program_deadlines pd
+  where pd.deadline >= current_date and pd.deadline <= current_date + ${days}::int
 )`;
