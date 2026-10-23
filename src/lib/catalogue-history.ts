@@ -1,0 +1,217 @@
+import { durationText, feeText, intakesText, LEVEL_LABEL, PATHWAY_LABEL } from "./catalogue";
+import { PROGRAM_TAGS } from "./program-tags";
+
+/**
+ * The pure half of the catalogue's change history: which fields changed, what
+ * each is called, and how a stored value reads. Kept apart from the database
+ * so it can be tested on its own and used by the page as well as the server.
+ */
+
+export type CatalogueEntity = "program" | "university";
+export type ChangeSource = "edit" | "bulk" | "import" | "cricos" | "registry" | "mioc" | "restore";
+export type FieldChange = { field: string; before: unknown; after: unknown };
+
+/** Bookkeeping columns that move on every write and say nothing about the course. */
+const ALWAYS_IGNORED = new Set(["id", "createdAt", "updatedAt"]);
+
+/** Turns what was read or written into what jsonb can hold and compare. */
+export function storable(v: unknown): unknown {
+  if (v === undefined) return null;
+  if (v instanceof Date) return v.toISOString();
+  if (typeof v === "number" && !Number.isFinite(v)) return null;
+  if (Array.isArray(v)) return v.map(storable);
+  return v;
+}
+
+/**
+ * Whether two stored values mean the same thing.
+ *
+ * Blank text, null and an empty list all mean "nothing recorded", so moving
+ * between them is not a change worth a row. A list is compared without regard
+ * to order, because the edit screen sorts intakes and tags while a sync may
+ * not, and reordering is not a change anybody made. Numbers allow for the
+ * rounding a real column brings back (6.1 can return as 6.0999999), and a number
+ * that came back from jsonb as text still matches itself.
+ */
+export function sameValue(a: unknown, b: unknown): boolean {
+  const empty = (v: unknown) => v == null || v === "" || (Array.isArray(v) && v.length === 0);
+  if (empty(a) || empty(b)) return empty(a) && empty(b);
+  if (a instanceof Date || b instanceof Date) return storable(a) === storable(b);
+  const asNumber = (v: unknown) => (typeof v === "number" ? v : typeof v === "string" && v.trim() !== "" && Number.isFinite(Number(v)) ? Number(v) : null);
+  if (typeof a === "number" || typeof b === "number") {
+    const x = asNumber(a);
+    const y = asNumber(b);
+    if (x == null || y == null) return false;
+    return Math.abs(x - y) <= 1e-6 * Math.max(1, Math.abs(x), Math.abs(y));
+  }
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return false;
+    const key = (v: unknown) => JSON.stringify(storable(v));
+    const left = a.map(key).sort();
+    const right = b.map(key).sort();
+    return left.every((v, i) => v === right[i]);
+  }
+  if (Array.isArray(a) || Array.isArray(b)) return false;
+  if (typeof a === "object" && typeof b === "object") return JSON.stringify(a) === JSON.stringify(b);
+  return a === b;
+}
+
+/**
+ * The fields of `next` that differ from `current`, with both values as they
+ * will be stored. Only keys present in `next` are looked at, so a caller passes
+ * exactly what it is about to write and the columns it leaves alone never show
+ * up as changes.
+ */
+export function diffFields(current: Record<string, unknown>, next: Record<string, unknown>, ignore: readonly string[] = []): FieldChange[] {
+  const skip = new Set([...ALWAYS_IGNORED, ...ignore]);
+  const out: FieldChange[] = [];
+  for (const [field, after] of Object.entries(next)) {
+    if (skip.has(field) || after === undefined) continue;
+    const before = current[field];
+    if (sameValue(before, after)) continue;
+    out.push({ field, before: storable(before), after: storable(after) });
+  }
+  return out;
+}
+
+export const PROGRAM_FIELD_LABEL: Record<string, string> = {
+  name: "Name",
+  level: "Level",
+  pathway: "Pathway",
+  status: "Status",
+  studyArea: "Study area",
+  campus: "Campus",
+  durationMonths: "Duration",
+  tuitionPerYear: "Tuition per year",
+  tuitionTotal: "Tuition, whole course",
+  applicationFee: "Application fee",
+  initialDeposit: "Deposit",
+  balanceDeposit: "Balance deposit",
+  intakeMonths: "Intake months",
+  minIelts: "IELTS overall",
+  minIeltsBand: "IELTS lowest band",
+  minPte: "PTE Academic",
+  minOetGrade: "OET grade",
+  minGermanLevel: "German level",
+  minToefl: "TOEFL iBT",
+  minDuolingo: "Duolingo",
+  minGre: "GRE",
+  minGmat: "GMAT",
+  minSat: "SAT",
+  minAcademicPercent: "Minimum marks",
+  maxBacklogs: "Backlogs allowed",
+  maxGapYears: "Study gap allowed",
+  moiAccepted: "Medium of instruction letter accepted",
+  feeWaiver: "Application fee waiver",
+  programUrl: "Program page",
+  entryRequirements: "Entry requirements",
+  typicalScholarship: "Typical scholarship",
+  offerTatDays: "Offer turnaround",
+  tags: "Labels",
+  workRights: "Post-study work",
+  workRightsNote: "Post-study work evidence",
+  requiredDocs: "Required documents",
+  externalCode: "Register code",
+};
+
+export const UNIVERSITY_FIELD_LABEL: Record<string, string> = {
+  name: "Name",
+  city: "City",
+  website: "Website",
+  isPublic: "Public institution",
+  externalCode: "Register code",
+  qsRank: "QS ranking",
+  qsYear: "QS edition",
+  theRank: "THE ranking",
+  theYear: "THE edition",
+};
+
+/**
+ * Fields a restore may write back. A register code is left out: it is how a
+ * sync recognises its own rows, and putting an old one back could collide
+ * with the row that holds it now.
+ */
+export function restorable(entity: CatalogueEntity, field: string) {
+  if (field === "externalCode") return false;
+  return entity === "program" ? field in PROGRAM_FIELD_LABEL : field in UNIVERSITY_FIELD_LABEL;
+}
+
+const STATUSES = ["DRAFT", "LIVE", "ARCHIVED"];
+const WORK_RIGHTS = ["UNKNOWN", "ELIGIBLE", "INELIGIBLE"];
+
+/**
+ * Why putting old values back would leave a program the edit screen would
+ * refuse to save, or null when it is fine. A rule is only applied when the
+ * restore touches one of its fields: thousands of register courses are live
+ * with no intake recorded, and restoring a fee on one of those must not be
+ * blocked by a rule about intakes.
+ */
+export function programRestoreProblem(
+  row: { name: unknown; level: unknown; pathway: unknown; status: unknown; intakeMonths: unknown; workRights: unknown; workRightsNote: unknown },
+  touched: Iterable<string>,
+): string | null {
+  const t = new Set(touched);
+  if (t.has("name") && (typeof row.name !== "string" || !row.name.trim())) return "A program needs a name, so a blank one cannot come back.";
+  if (t.has("level") && !(String(row.level) in LEVEL_LABEL)) return "That level is not one the catalogue uses any more.";
+  if (t.has("pathway") && !(String(row.pathway) in PATHWAY_LABEL)) return "That pathway is not one the catalogue uses any more.";
+  if (t.has("status") && !STATUSES.includes(String(row.status))) return "That status is not one the catalogue uses any more.";
+  if (t.has("workRights") && !WORK_RIGHTS.includes(String(row.workRights))) return "That post-study work answer is not one the catalogue uses any more.";
+  if ((t.has("status") || t.has("intakeMonths")) && row.status === "LIVE" && !(Array.isArray(row.intakeMonths) && row.intakeMonths.length)) {
+    return "That would leave a live program with no intake, and nobody could apply. Restore the intakes too, or set it to draft first.";
+  }
+  if ((t.has("workRights") || t.has("workRightsNote")) && row.workRights !== "UNKNOWN" && !(typeof row.workRightsNote === "string" && row.workRightsNote.trim())) {
+    return "That would leave a post-study work answer with no evidence behind it. Restore the evidence too.";
+  }
+  return null;
+}
+
+export function fieldLabel(entity: CatalogueEntity, field: string) {
+  return (entity === "program" ? PROGRAM_FIELD_LABEL : UNIVERSITY_FIELD_LABEL)[field] ?? field;
+}
+
+export const SOURCE_LABEL: Record<string, string> = {
+  edit: "Edited",
+  bulk: "Bulk change",
+  import: "CSV import",
+  cricos: "CRICOS sync",
+  registry: "Register sync",
+  mioc: "MIOC import",
+  restore: "Restored",
+};
+
+const STATUS_LABEL: Record<string, string> = { DRAFT: "Draft", LIVE: "Live", ARCHIVED: "Archived" };
+const WORK_RIGHTS_LABEL: Record<string, string> = { UNKNOWN: "Not confirmed", ELIGIBLE: "Eligible", INELIGIBLE: "Not eligible" };
+const MONEY_ZERO: Record<string, string> = {
+  tuitionPerYear: "No tuition fee",
+  tuitionTotal: "No tuition fee",
+  applicationFee: "No application fee",
+  initialDeposit: "None",
+  balanceDeposit: "None",
+};
+
+const NOT_RECORDED = "Not recorded";
+const clip = (s: string, max = 160) => (s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s);
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/** One stored value as the rest of the admin screens would show it. */
+export function formatValue(entity: CatalogueEntity, field: string, value: unknown, ctx: { currency: string; docLabels?: Record<string, string> }): string {
+  if (value == null || value === "") return NOT_RECORDED;
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (entity === "university") return clip(String(value));
+
+  const n = typeof value === "number" ? value : typeof value === "string" && value.trim() !== "" && Number.isFinite(Number(value)) ? Number(value) : null;
+  if (field in MONEY_ZERO) return n == null ? clip(String(value)) : feeText(n, ctx.currency, { zero: MONEY_ZERO[field] });
+  if (field === "durationMonths") return n == null ? clip(String(value)) : durationText(n);
+  if (field === "intakeMonths") return Array.isArray(value) ? intakesText(value.map(Number)) : clip(String(value));
+  if (field === "tags") return Array.isArray(value) ? (value.length ? value.map((t) => PROGRAM_TAGS[t as keyof typeof PROGRAM_TAGS] ?? String(t)).join(", ") : "None") : clip(String(value));
+  if (field === "requiredDocs") return Array.isArray(value) ? (value.length ? value.map((d) => ctx.docLabels?.[String(d)] ?? String(d)).join(", ") : "None") : clip(String(value));
+  if (field === "level") return LEVEL_LABEL[String(value)] ?? String(value);
+  if (field === "pathway") return PATHWAY_LABEL[String(value)] ?? String(value);
+  if (field === "status") return STATUS_LABEL[String(value)] ?? String(value);
+  if (field === "workRights") return WORK_RIGHTS_LABEL[String(value)] ?? String(value);
+  if (field === "offerTatDays" && n != null) return plural(n, "day", "days");
+  if (field === "maxGapYears" && n != null) return plural(n, "year", "years");
+  if (field === "minAcademicPercent" && n != null) return `${n}%`;
+  if (Array.isArray(value)) return value.length ? clip(value.map(String).join(", ")) : "None";
+  return clip(String(value));
+}

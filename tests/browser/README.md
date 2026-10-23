@@ -57,6 +57,7 @@ on 3200, and run the same suites against both.
 | `scholarships.mjs` | Adding a scholarship and its rules, where it shows, the search filter, and pausing it |
 | `deadlines.mjs` | Recording deadlines and a fee waiver, the date rules, and where partners see them: program page, search filters, the deadlines page and the apply form warning |
 | `offer-visa.mjs` | Recording an offer, a CAS number and a visa decision with their rules, what the partner sees and is told, and the portal view |
+| `catalogue-history.mjs` | A program edit landing in the change history with its old value, restoring it, the university history card, and a counsellor kept out of both |
 | `destinations.mjs` | The visa living-cost figures, a rankings CSV with errors, and where rankings and funds show: search, the universities index, program and university pages |
 | `events.mjs` | Publishing a webinar with its rules, the partner's notice, taking a seat and the join link, registering a student, seat counts and cancelling |
 | `support.mjs` | Raising a ticket, the team's notice and reply, who it waits on, resolving, and branch isolation |

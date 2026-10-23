@@ -15,6 +15,7 @@ import { fetchRegistry, syncRegistry } from "@/server/registry-sync";
 import { REGISTRY_SOURCES } from "@/lib/registry";
 import type { MiocCountry, MiocProgram, MiocUniversity } from "@/lib/mioc";
 import { loadMiocPrograms, prepareMioc, type MiocBatchResult, type MiocPrepareResult } from "@/server/mioc-load";
+import { changesOf, newBatchId, recordChanges, type ChangeInput } from "@/server/catalogue-history";
 
 export type ImportState = {
   error?: string;
@@ -50,6 +51,9 @@ export async function importProgramsAction(prev: ImportState, formData: FormData
   let updated = 0;
   await db.transaction(async (tx) => {
     const uniCache = new Map<string, string>();
+    // What each updated row said before, so a file with a wrong column can be
+    // undone field by field rather than by hand.
+    const changes: ChangeInput[] = [];
     for (const r of valid) {
       const countryId = byCode[r.countryCode].id;
       const key = `${r.university}|${countryId}`;
@@ -90,6 +94,7 @@ export async function importProgramsAction(prev: ImportState, formData: FormData
         await tx.update(schema.programs).set(values).where(eq(schema.programs.id, existing.id));
         programId = existing.id;
         updated++;
+        changes.push(...changesOf("program", existing.id, existing, values));
       } else {
         [{ id: programId }] = await tx.insert(schema.programs).values(values).returning({ id: schema.programs.id });
         created++;
@@ -102,6 +107,7 @@ export async function importProgramsAction(prev: ImportState, formData: FormData
           .onConflictDoUpdate({ target: [schema.programDeadlines.programId, schema.programDeadlines.intakeYear, schema.programDeadlines.intakeMonth], set: { deadline: d.deadline } });
       }
     }
+    await recordChanges(tx, changes, { by: user.id, source: "import" });
   });
   await audit(user.id, "programs.import", "program", "*", { created, updated, skipped: errors.length });
   // The form refreshes the list itself once it has the result. Revalidating the
@@ -114,7 +120,12 @@ export async function setProgramStatusAction(formData: FormData) {
   const id = String(formData.get("programId"));
   const status = String(formData.get("status")) as "DRAFT" | "LIVE" | "ARCHIVED";
   if (!["DRAFT", "LIVE", "ARCHIVED"].includes(status)) return;
-  await db.update(schema.programs).set({ status, updatedAt: new Date() }).where(eq(schema.programs.id, id));
+  const current = await db.query.programs.findFirst({ where: eq(schema.programs.id, id), columns: { status: true } });
+  if (!current) return;
+  await db.transaction(async (tx) => {
+    await tx.update(schema.programs).set({ status, updatedAt: new Date() }).where(eq(schema.programs.id, id));
+    await recordChanges(tx, changesOf("program", id, current, { status }), { by: user.id, source: "edit" });
+  });
   await audit(user.id, "program.status", "program", id, { status });
   revalidatePath("/admin/programs");
 }
@@ -138,8 +149,13 @@ export async function bulkStatusAction(formData: FormData) {
   // joins. The update runs in batches: one statement over the whole CRICOS
   // register (about 27,000 rows) could outlast the hosting's request limit or
   // the database's statement timeout, and the page then showed nothing at all.
+  //
+  // Each batch reads the status it replaced from a second copy of the table in
+  // the same statement (Postgres shows that copy as it was before the update),
+  // so the history costs one insert per batch and no extra read.
   const BATCH = 2000;
   let total = 0;
+  const batchId = newBatchId();
   for (let i = 0; i < 40; i++) {
     const scope = db
       .select({ id: p.id })
@@ -148,11 +164,12 @@ export async function bulkStatusAction(formData: FormData) {
       .innerJoin(c, eq(u.countryId, c.id))
       .where(and(programFilterWhere(f), ne(p.status, to as "LIVE")))
       .limit(BATCH);
-    const changed = await db
-      .update(schema.programs)
-      .set({ status: to as "LIVE", updatedAt: new Date() })
-      .where(inArray(schema.programs.id, scope))
-      .returning({ id: schema.programs.id });
+    const changed = await db.execute<{ id: string; was: string }>(sql`
+      update programs set status = ${to}::program_status, updated_at = now()
+      from programs o
+      where o.id = programs.id and ${inArray(p.id, scope)}
+      returning programs.id as id, o.status as was`);
+    await recordChanges(db, changed.map((r) => ({ entity: "program" as const, entityId: r.id, field: "status", before: r.was, after: to })), { by: user.id, source: "bulk", batchId });
     total += changed.length;
     if (changed.length < BATCH) break;
   }
@@ -271,14 +288,16 @@ export async function updateProgramAction(_: FormState, fd: FormData): Promise<F
   // without one.
   if (clash && clash.id !== current.id && !current.externalCode && !clash.externalCode) return { error: "This university already has a program with that name at that level.", fieldErrors: { name: ["Already used at this university"] } };
 
-  const changed: Record<string, { from: unknown; to: unknown }> = {};
-  for (const [k, v] of Object.entries(values)) {
-    const before = current[k as keyof typeof current];
-    if (JSON.stringify(before) !== JSON.stringify(v)) changed[k] = { from: before, to: v };
-  }
-  if (!Object.keys(changed).length) return { ok: "Nothing changed." };
+  // The same comparison the change history uses, so the count in the message
+  // and the rows in the history always agree.
+  const diff = changesOf("program", id, current, values);
+  if (!diff.length) return { ok: "Nothing changed." };
+  const changed = Object.fromEntries(diff.map((d) => [d.field, { from: d.before, to: d.after }]));
 
-  await db.update(schema.programs).set({ ...values, updatedAt: new Date() }).where(eq(schema.programs.id, id));
+  await db.transaction(async (tx) => {
+    await tx.update(schema.programs).set({ ...values, updatedAt: new Date() }).where(eq(schema.programs.id, id));
+    await recordChanges(tx, diff, { by: user.id, source: "edit" });
+  });
   await audit(user.id, "program.update", "program", id, { changed });
   revalidatePath("/admin/programs");
   revalidatePath(`/admin/programs/${id}`);
@@ -311,7 +330,7 @@ export async function syncCricosAction(_: FormState, fd: FormData): Promise<Form
     return { error: `Could not get the register: ${(e as Error).message}. Download the three files from data.gov.au/data/dataset/cricos and upload them here instead.` };
   }
   try {
-    const r = await syncCricos(files, { publish });
+    const r = await syncCricos(files, { publish, by: user.id });
     await audit(user.id, "programs.cricos_sync", "program", "*", { ...r, publish, via: uploaded ? "upload" : "data.gov.au" });
     // No revalidatePath here: the form refreshes the page itself once it has the report.
     return {
@@ -336,13 +355,28 @@ export async function bulkTurnaroundAction(formData: FormData) {
   const f = readProgramFilters((k) => formData.get(k)?.toString());
   const { programs: p, universities: u, countries: c } = schema;
   const scope = db.select({ id: p.id }).from(p).innerJoin(u, eq(p.universityId, u.id)).innerJoin(c, eq(u.countryId, c.id)).where(programFilterWhere(f));
-  const changed = await db
-    .update(p)
-    .set({ offerTatDays: days, updatedAt: new Date() })
-    .where(and(inArray(p.id, scope), days == null ? sql`${p.offerTatDays} is not null` : sql`${p.offerTatDays} is distinct from ${days}::int`))
-    .returning({ id: p.id });
+  // The second copy of the table (o) still holds each row's figure from before
+  // the update, which is what the change history needs.
+  const changed = await db.execute<{ id: string; was: number | null }>(sql`
+    update programs set offer_tat_days = ${days}::int, updated_at = now()
+    from programs o
+    where o.id = programs.id and ${and(inArray(p.id, scope), days == null ? sql`${p.offerTatDays} is not null` : sql`${p.offerTatDays} is distinct from ${days}::int`)}
+    returning programs.id as id, o.offer_tat_days as was`);
+  await recordChanges(db, changed.map((r) => ({ entity: "program" as const, entityId: r.id, field: "offerTatDays", before: r.was, after: days })), { by: user.id, source: "bulk" });
   await audit(user.id, "programs.bulk_turnaround", "program", "*", { days, count: changed.length, filters: f });
   revalidatePath("/admin/programs");
+}
+
+/** A jsonb list as the driver hands it back: parsed already, or still as text. */
+function asList(v: unknown): unknown[] {
+  if (Array.isArray(v)) return v;
+  if (typeof v !== "string") return [];
+  try {
+    const parsed = JSON.parse(v);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
 export async function bulkTagAction(formData: FormData) {
@@ -353,14 +387,16 @@ export async function bulkTagAction(formData: FormData) {
   const f = readProgramFilters((k) => formData.get(k)?.toString());
   const { programs: p, universities: u, countries: c } = schema;
   const scope = db.select({ id: p.id }).from(p).innerJoin(u, eq(p.universityId, u.id)).innerJoin(c, eq(u.countryId, c.id)).where(programFilterWhere(f));
-  const changed = await db
-    .update(p)
-    .set({
-      tags: op === "add" ? sql`(select array_agg(distinct t order by t) from unnest(array_append(${p.tags}, ${tag})) t)` : sql`array_remove(${p.tags}, ${tag})`,
-      updatedAt: new Date(),
-    })
-    .where(and(inArray(p.id, scope), op === "add" ? sql`not (${tag} = any(${p.tags}))` : sql`${tag} = any(${p.tags})`))
-    .returning({ id: p.id });
+  // As with the turnaround, o is each row before the update. Both lists come
+  // back as JSON, so they read the same whatever the driver does with arrays.
+  const changed = await db.execute<{ id: string; was: unknown; now: unknown }>(sql`
+    update programs set
+      tags = ${op === "add" ? sql`(select array_agg(distinct t order by t) from unnest(array_append(${p.tags}, ${tag})) t)` : sql`array_remove(${p.tags}, ${tag})`},
+      updated_at = now()
+    from programs o
+    where o.id = programs.id and ${and(inArray(p.id, scope), op === "add" ? sql`not (${tag} = any(${p.tags}))` : sql`${tag} = any(${p.tags})`)}
+    returning programs.id as id, to_jsonb(o.tags) as was, to_jsonb(programs.tags) as now`);
+  await recordChanges(db, changed.map((r) => ({ entity: "program" as const, entityId: r.id, field: "tags", before: asList(r.was), after: asList(r.now) })), { by: user.id, source: "bulk" });
   await audit(user.id, "programs.bulk_tag", "program", "*", { tag, op, count: changed.length, filters: f });
   revalidatePath("/admin/programs");
 }
@@ -479,7 +515,7 @@ export async function syncRegistryAction(_: FormState, fd: FormData): Promise<Fo
   }
 
   try {
-    const r = await syncRegistry(key, raw, { dryRun });
+    const r = await syncRegistry(key, raw, { dryRun, by: user.id });
     if (!dryRun) await audit(user.id, "programs.registry_sync", "university", "*", { source: key, created: r.created, filled: r.filled, via: uploaded ? "upload" : "fetch" });
     const n = (v: number) => v.toLocaleString("en-IN");
     const skipped = r.unknownCountryRows
@@ -507,7 +543,7 @@ export async function syncRegistryAction(_: FormState, fd: FormData): Promise<Fo
 export async function miocPrepareAction(input: { countries: MiocCountry[]; universities: MiocUniversity[] }, dryRun: boolean): Promise<{ error?: string; result?: MiocPrepareResult }> {
   const user = await requireUser([...ADMIN_ROLES]);
   try {
-    const result = await prepareMioc(input, { dryRun });
+    const result = await prepareMioc(input, { dryRun, by: user.id });
     if (!dryRun) await audit(user.id, "programs.mioc_prepare", "university", "*", { countriesNew: result.countriesNew, universitiesNew: result.universitiesNew, universitiesHere: result.universitiesHere });
     return { result };
   } catch (e) {
@@ -516,10 +552,10 @@ export async function miocPrepareAction(input: { countries: MiocCountry[]; unive
 }
 
 export async function miocLoadAction(batch: MiocProgram[], universityIds: Record<number, string>): Promise<{ error?: string; result?: MiocBatchResult }> {
-  await requireUser([...ADMIN_ROLES]);
+  const user = await requireUser([...ADMIN_ROLES]);
   if (!Array.isArray(batch) || batch.length > 2000) return { error: "A batch holds at most 2,000 programs." };
   try {
-    return { result: await loadMiocPrograms(batch, universityIds ?? {}) };
+    return { result: await loadMiocPrograms(batch, universityIds ?? {}, user.id) };
   } catch (e) {
     return { error: (e as Error).message };
   }

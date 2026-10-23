@@ -4,10 +4,12 @@ import { and, asc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { LEVEL_LABEL, durationText, feeText, intakesText, tuitionText } from "@/lib/catalogue";
-import { APP_ROLES, isStaff } from "@/lib/permissions";
+import { APP_ROLES, isAdmin, isStaff } from "@/lib/permissions";
 import { openScholarships } from "@/server/scholarships";
 import { rankLabels } from "@/lib/rankings";
 import { ScholarshipList } from "@/components/scholarship-list";
+import { ChangeHistory } from "@/components/change-history";
+import { changeHistory } from "@/server/catalogue-history";
 import { Card, CardHeader, Chip, DataList, EmptyState, PageHeader, Table, Td, Th, cn } from "@/components/ui";
 import { IconAlert, IconCheck, IconPrograms } from "@/components/icons";
 
@@ -40,6 +42,10 @@ export default async function UniversityPage({
 
   const live = all.filter((p) => p.status === "LIVE");
   const scholarships = await openScholarships(university.id);
+  // The change history is for the people who may put a value back: admins.
+  // Partners and counsellors read this page too, and never see it.
+  const historyLimit = Math.min(500, Math.max(50, Number(typeof sp.history === "string" ? sp.history : 50) || 50));
+  const history = isAdmin(user) ? await changeHistory("university", university.id, historyLimit) : null;
   const levels = LEVEL_ORDER.filter((l) => all.some((p) => p.level === l));
   const matching = levelFilter ? all.filter((p) => p.level === levelFilter) : all;
   const PER_PAGE = 100;
@@ -167,6 +173,17 @@ export default async function UniversityPage({
           )}
         </Card>
         <ScholarshipList rows={scholarships} />
+        {history && (
+          <ChangeHistory
+            entity="university"
+            entityId={university.id}
+            rows={history.rows}
+            more={history.more}
+            moreHref={`/universities/${university.id}?history=${historyLimit + 50}`}
+            currency={cur}
+            canRestore
+          />
+        )}
         </div>
       </div>
     </>

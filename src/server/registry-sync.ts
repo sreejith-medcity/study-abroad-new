@@ -1,6 +1,7 @@
 import { eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { matchKey, REGISTRY_SOURCES, type RegistryRow } from "@/lib/registry";
+import { changesOf, recordChanges, type ChangeInput } from "./catalogue-history";
 
 export type RegistrySyncResult = {
   source: string;
@@ -92,7 +93,7 @@ export async function fetchRegistry(key: string) {
  *
  * `dryRun` reports exactly what a real run would change and writes nothing.
  */
-export async function syncRegistry(key: string, raw: string, opts: { dryRun: boolean }): Promise<RegistrySyncResult> {
+export async function syncRegistry(key: string, raw: string, opts: { dryRun: boolean; by?: string | null }): Promise<RegistrySyncResult> {
   const started = Date.now();
   const src = REGISTRY_SOURCES[key];
   if (!src) throw new Error(`No register called "${key}".`);
@@ -175,10 +176,22 @@ export async function syncRegistry(key: string, raw: string, opts: { dryRun: boo
     for (let i = 0; i < toCreate.length; i += 200) {
       await db.insert(u).values(toCreate.slice(i, i + 200)).onConflictDoNothing();
     }
+    // Only a blank city or website is ever filled, so the history is small:
+    // what each university had (nothing, usually) and what the register gave it.
+    // A register that lists one institution twice fills it twice, so what it
+    // holds is followed as the patches land.
+    const holds = new Map(here.map((x) => [x.id, { city: x.city, website: x.website }]));
+    const changes: ChangeInput[] = [];
     for (const patch of toFill) {
       const { id, ...set } = patch;
       await db.update(u).set(set).where(eq(u.id, id));
+      const was = holds.get(id);
+      if (was) {
+        changes.push(...changesOf("university", id, was, set));
+        holds.set(id, { ...was, ...set });
+      }
     }
+    await recordChanges(db, changes, { by: opts.by ?? null, source: "registry" });
   }
 
   return {

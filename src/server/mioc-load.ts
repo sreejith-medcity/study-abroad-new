@@ -1,6 +1,7 @@
 import { inArray, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { MIOC_COUNTRIES, MIOC_SOURCE, miocCode, nameKey, type MiocCountry, type MiocLevel, type MiocProgram, type MiocUniversity } from "@/lib/mioc";
+import { changesOf, newBatchId, recordChanges, type ChangeInput } from "./catalogue-history";
 
 /**
  * Writes the MIOC app's catalogue into the portal, in two steps the browser
@@ -47,7 +48,7 @@ const num = (v: unknown, min: number, max: number, int = true) =>
   typeof v === "number" && Number.isFinite(v) && v >= min && v <= max && (!int || Number.isInteger(v)) ? v : null;
 
 /** Countries and universities. With `dryRun`, counts what would happen and writes nothing. */
-export async function prepareMioc(input: { countries: MiocCountry[]; universities: MiocUniversity[] }, opts: { dryRun: boolean }): Promise<MiocPrepareResult> {
+export async function prepareMioc(input: { countries: MiocCountry[]; universities: MiocUniversity[] }, opts: { dryRun: boolean; by?: string | null }): Promise<MiocPrepareResult> {
   // Only countries this import knows, with the code, name and currency it
   // knows for them: the browser's word is not taken for any of it.
   const wanted = [...new Set(input.countries.map((x) => x.code))].map((code) => KNOWN_CODES.get(code)).filter((x): x is MiocCountry => !!x);
@@ -97,11 +98,20 @@ export async function prepareMioc(input: { countries: MiocCountry[]; universitie
   }
   if (opts.dryRun) return { countriesNew: countriesNew.map((x) => x.name), universitiesNew: toMake.size, universitiesHere: matched, ids: {} };
 
+  // Only a missing city is filled, so each one the update reports is a change
+  // from nothing to that city, and that is what the history records.
+  const cityBatch = newBatchId();
   for (const part of chunk(cityFor, 500)) {
-    await db.execute(sql`
+    const filled = await db.execute<{ id: string; city: string }>(sql`
       update universities set city = x.city
       from jsonb_to_recordset(${JSON.stringify(part)}::jsonb) as x(id text, city text)
-      where universities.id = x.id and universities.city is null`);
+      where universities.id = x.id and universities.city is null
+      returning universities.id as id, x.city as city`);
+    await recordChanges(
+      db,
+      filled.map((f) => ({ entity: "university" as const, entityId: f.id, field: "city", before: null, after: f.city })),
+      { by: opts.by ?? null, source: "mioc", batchId: cityBatch },
+    );
   }
   for (const part of chunk([...toMake.values()], 500)) {
     await db
@@ -190,15 +200,39 @@ const asRow = (id: string, x: Clean) => ({
   entry_requirements: x.entryRequirements,
 });
 
-/** Fills the empty fields of programs already here, and says how many gained anything. */
-async function fillBlanks(rows: ReturnType<typeof asRow>[]) {
+/** A column name as the schema spells it: study_area becomes studyArea. */
+const camel = (col: string) => col.replace(/_([a-z])/g, (_, ch: string) => ch.toUpperCase());
+
+/** A jsonb object as the driver hands it back: parsed already, or still as text. */
+function asObject(v: unknown): Record<string, unknown> {
+  if (v && typeof v === "object" && !Array.isArray(v)) return v as Record<string, unknown>;
+  if (typeof v !== "string") return {};
+  try {
+    const parsed = JSON.parse(v);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Fills the empty fields of programs already here, and says how many gained
+ * anything. Each filled row's fields are recorded in the change history: the
+ * second copy of the table (o) is the row as it was before the update, so the
+ * before and after come back from the same statement. Rows this inserts as new
+ * are not recorded; there was nothing before them.
+ */
+async function fillBlanks(rows: ReturnType<typeof asRow>[], by: string | null) {
   if (!rows.length) return 0;
   const cols = FILLABLE.map(([col, type]) => sql.raw(`${col} ${type}`));
   const sets = FILLABLE.map(([col]) => sql.raw(`${col} = coalesce(p.${col}, x.${col})`));
   const gains = FILLABLE.map(([col]) => sql.raw(`(p.${col} is null and x.${col} is not null)`));
+  const watched = [...FILLABLE.map(([col]) => col), "tuition_per_year", "intake_months"];
+  const snapshot = (alias: string) => sql.raw(`jsonb_build_object(${watched.map((col) => `'${col}', ${alias}.${col}`).join(", ")})`);
+  const batchId = newBatchId();
   let filled = 0;
   for (const part of chunk(rows, 500)) {
-    const changed = await db.execute<{ id: string }>(sql`
+    const changed = await db.execute<{ id: string; was: unknown; now: unknown }>(sql`
       update programs p set
         ${sql.join(sets, sql`, `)},
         -- A yearly fee only where there is no fee at all: a register's
@@ -206,20 +240,26 @@ async function fillBlanks(rows: ReturnType<typeof asRow>[]) {
         tuition_per_year = case when p.tuition_per_year is null and p.tuition_total is null then x.tuition_per_year else p.tuition_per_year end,
         intake_months = case when cardinality(p.intake_months) = 0 then x.intake_months else p.intake_months end,
         updated_at = now()
-      from jsonb_to_recordset(${JSON.stringify(part)}::jsonb) as x(id text, ${sql.join(cols, sql`, `)}, tuition_per_year int, intake_months int[])
-      where p.id = x.id and (
+      from jsonb_to_recordset(${JSON.stringify(part)}::jsonb) as x(id text, ${sql.join(cols, sql`, `)}, tuition_per_year int, intake_months int[]), programs o
+      where p.id = x.id and o.id = p.id and (
         ${sql.join(gains, sql` or `)}
         or (p.tuition_per_year is null and p.tuition_total is null and x.tuition_per_year is not null)
         or (cardinality(p.intake_months) = 0 and cardinality(x.intake_months) > 0)
       )
-      returning p.id`);
+      returning p.id as id, ${snapshot("o")} as was, ${snapshot("p")} as now`);
     filled += changed.length;
+    const changes: ChangeInput[] = [];
+    for (const r of changed) {
+      const rename = (o: Record<string, unknown>) => Object.fromEntries(Object.entries(o).map(([k, v]) => [camel(k), v]));
+      changes.push(...changesOf("program", r.id, rename(asObject(r.was)), rename(asObject(r.now))));
+    }
+    await recordChanges(db, changes, { by, source: "mioc", batchId });
   }
   return filled;
 }
 
 /** One batch of programs, their universities already in place. */
-export async function loadMiocPrograms(batch: MiocProgram[], universityIds: Record<number, string>): Promise<MiocBatchResult> {
+export async function loadMiocPrograms(batch: MiocProgram[], universityIds: Record<number, string>, by: string | null = null): Promise<MiocBatchResult> {
   const result: MiocBatchResult = { created: 0, filled: 0, unchanged: 0, keptResearched: 0, noUniversity: 0 };
   // The map comes from the browser: only universities that exist are taken,
   // so a stale or altered map cannot hang courses on the wrong institution
@@ -311,7 +351,7 @@ export async function loadMiocPrograms(batch: MiocProgram[], universityIds: Reco
     result.created += made.length;
     result.unchanged += part.length - made.length;
   }
-  const filled = await fillBlanks(fill);
+  const filled = await fillBlanks(fill, by);
   result.filled += filled;
   result.unchanged += fill.length - filled;
   return result;

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fmtDateTime } from "@/lib/format";
@@ -19,25 +19,25 @@ import { fmtMoney } from "@/lib/format";
 import { deadlineText, intakesText } from "@/lib/catalogue";
 import { MONTHS } from "@/lib/format";
 import { Button } from "@/components/ui";
+import { ChangeHistory } from "@/components/change-history";
+import { changeHistory, latestRestore } from "@/server/catalogue-history";
 
 export const metadata = { title: "Edit program" };
 
-export default async function EditProgramPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EditProgramPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   await requireUser([...ADMIN_ROLES]);
   const { id } = await params;
+  const sp = await searchParams;
+  // Fifty changes to start with, and fifty more each time "Show more" is used.
+  const historyLimit = Math.min(500, Math.max(50, Number(typeof sp.history === "string" ? sp.history : 50) || 50));
   const program = await db.query.programs.findFirst({ where: eq(schema.programs.id, id), with: { university: { with: { country: true } } } });
   if (!program) notFound();
 
-  const [docs, history, deadlines] = await Promise.all([
+  const [docs, history, deadlines, restoredBy] = await Promise.all([
     db.select({ code: schema.documentTypes.code, label: schema.documentTypes.label }).from(schema.documentTypes).orderBy(asc(schema.documentTypes.sortOrder)),
-    db
-      .select({ id: schema.auditLogs.id, action: schema.auditLogs.action, meta: schema.auditLogs.meta, createdAt: schema.auditLogs.createdAt, actor: schema.users.name })
-      .from(schema.auditLogs)
-      .leftJoin(schema.users, eq(schema.auditLogs.actorId, schema.users.id))
-      .where(and(eq(schema.auditLogs.entityType, "program"), eq(schema.auditLogs.entityId, id)))
-      .orderBy(desc(schema.auditLogs.createdAt))
-      .limit(10),
+    changeHistory("program", id, historyLimit),
     programDeadlines(id),
+    latestRestore("program", id),
   ]);
   const money = { tuitionPerYear: program.tuitionPerYear, tuitionTotal: program.tuitionTotal, applicationFee: program.applicationFee, offerTatDays: program.offerTatDays, currency: program.university.country.currency };
   const [vendors, routes] = await Promise.all([liveVendors(), routesForProgram(id, money)]);
@@ -56,7 +56,12 @@ export default async function EditProgramPage({ params }: { params: Promise<{ id
       />
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
         <Card className="p-5">
-          <ProgramEditForm program={program} currency={program.university.country.currency} docs={docs} />
+          {/* The form keeps what was typed into it across a save, which is right
+              for a save and wrong after a restore: it would still hold the value
+              the restore replaced, and the next save would quietly undo it. So
+              the form starts afresh whenever a newer restore is on record, and
+              keeps its state (and its "Saved" message) across an ordinary save. */}
+          <ProgramEditForm key={restoredBy ?? "no-restore"} program={program} currency={program.university.country.currency} docs={docs} />
         </Card>
         <div className="space-y-5 self-start">
         <Card>
@@ -118,26 +123,16 @@ export default async function EditProgramPage({ params }: { params: Promise<{ id
           )}
           <div className="p-4"><DeadlineForm programId={program.id} intakeMonths={program.intakeMonths} /></div>
         </Card>
-        <Card>
-          <CardHeader title="Changes" subtitle="Most recent first" />
-          {history.length === 0 ? (
-            <p className="px-4 py-6 text-center text-sm text-muted">No edits recorded yet.</p>
-          ) : (
-            <ul className="divide-y divide-line text-sm">
-              {history.map((h) => {
-                const changed = (h.meta as { changed?: Record<string, unknown> } | null)?.changed;
-                return (
-                  <li key={h.id} className="px-4 py-2.5">
-                    <p className="font-medium">{h.actor ?? "System"}</p>
-                    <p className="text-xs text-muted">
-                      {fmtDateTime(h.createdAt)} · {changed ? Object.keys(changed).join(", ") : h.action.replace("program.", "")}
-                    </p>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </Card>
+        <ChangeHistory
+          entity="program"
+          entityId={program.id}
+          rows={history.rows}
+          more={history.more}
+          moreHref={`/admin/programs/${program.id}?history=${historyLimit + 50}`}
+          currency={program.university.country.currency}
+          docLabels={Object.fromEntries(docs.map((d) => [d.code, d.label]))}
+          canRestore
+        />
         </div>
       </div>
     </>

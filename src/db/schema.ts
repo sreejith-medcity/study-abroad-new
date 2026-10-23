@@ -2518,6 +2518,38 @@ export const programDeadlines = pgTable(
 );
 
 /**
+ * What a program or a university said before each change to it, one row per
+ * field, so a fee somebody mistyped or a sync overwrote can be put back.
+ *
+ * The audit log already says that something happened. This says what the
+ * value was, which is what an admin needs to undo it. Rows from one save, one
+ * bulk action or one sync share a batch id, so a restore can put back a whole
+ * save or a single field of it.
+ *
+ * There is no foreign key on the entity: the row outlives a program a sync
+ * merged away, and one table serves both kinds of entity.
+ */
+export const catalogueChanges = pgTable(
+  "catalogue_changes",
+  {
+    id: id(),
+    entity: text("entity").$type<"program" | "university">().notNull(),
+    entityId: text("entity_id").notNull(),
+    // The column's name in the schema (applicationFee), not its label.
+    field: text("field").notNull(),
+    before: jsonb("before"),
+    after: jsonb("after"),
+    // Null for the automatic syncs, which nobody in particular ran.
+    changedById: text("changed_by_id").references(() => users.id, { onDelete: "set null" }),
+    // edit, bulk, import, cricos, registry, mioc or restore.
+    source: text("source").notNull(),
+    batchId: text("batch_id").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("catalogue_changes_entity_idx").on(t.entity, t.entityId, t.createdAt.desc()), index("catalogue_changes_batch_idx").on(t.batchId)],
+);
+
+/**
  * Help a student needs around the application: an education loan, forex,
  * accommodation, insurance, flights. A partner asks; the Overseas team works
  * it with a provider and records where it stands.

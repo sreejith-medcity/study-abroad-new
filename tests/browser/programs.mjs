@@ -162,7 +162,8 @@ check(/Saved 4 changes/.test(toast), `admin edit: saves and counts the changes (
 
 await ap.reload();
 text = await main(ap);
-check(/applicationFee/.test(text) && /workRights/.test(text), "admin edit: the change history names the fields");
+const historyText = await ap.locator("[data-change-history]").innerText().catch(() => "");
+check(/Application fee/.test(historyText) && /Post-study work/.test(historyText), "admin edit: the change history names the fields");
 
 text = await go(pp, programUrl.replace(BASE, ""));
 check(/Application fee\s*£60/.test(text) || /Application fee\s*GBP\s*60/.test(text) || /Application fee\s*[^\n]*60/.test(text), "program page: partners see the corrected fee");

@@ -1,6 +1,7 @@
 import { and, eq, isNull, ne, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { buildCricos, CRICOS_SOURCE, nameKey } from "@/lib/cricos";
+import { changesOf, newBatchId, recordChanges, type ChangeInput } from "./catalogue-history";
 
 /** data.gov.au's stable download links for the three register files. */
 export const CRICOS_FILES = {
@@ -62,8 +63,12 @@ const chunk = <T,>(list: T[], size: number) => Array.from({ length: Math.ceil(li
  *   register does not duplicate them. A twin an earlier sync added is merged
  *   away when it is an untouched draft.
  */
-export async function syncCricos(files: { institutions: string; courses: string; locations: string }, opts: { publish: boolean }): Promise<CricosSyncResult> {
+export async function syncCricos(files: { institutions: string; courses: string; locations: string }, opts: { publish: boolean; by?: string | null }): Promise<CricosSyncResult> {
   const started = Date.now();
+  // One batch for the whole run, so its history reads as one sync. Only rows
+  // that were already here and only fields that actually moved are recorded:
+  // a new course has no earlier value, and most of a release is unchanged.
+  const history = { by: opts.by ?? null, source: "cricos" as const, batchId: newBatchId() };
   const { providers, courses } = buildCricos(files);
   if (courses.length < 1000) throw new Error(`Only ${courses.length} live courses found. The files look incomplete, so nothing was changed.`);
 
@@ -73,7 +78,14 @@ export async function syncCricos(files: { institutions: string; courses: string;
   const p = schema.programs;
 
   // ---- Providers ----
-  const existing = await db.select({ id: u.id, name: u.name, externalCode: u.externalCode }).from(u).where(eq(u.countryId, au.id));
+  const existing = await db
+    .select({ id: u.id, name: u.name, externalCode: u.externalCode, website: u.website, isPublic: u.isPublic, city: u.city })
+    .from(u)
+    .where(eq(u.countryId, au.id));
+  // What each university holds as the run goes, to know what the update below
+  // changes. Two providers can match one university by name, so it is kept current.
+  const uniNow = new Map(existing.map((x) => [x.id, { externalCode: x.externalCode, website: x.website, isPublic: x.isPublic, city: x.city }]));
+  const uniChanges: ChangeInput[] = [];
   const byCode = new Map(existing.filter((x) => x.externalCode).map((x) => [x.externalCode!, x.id]));
   const byName = new Map(existing.map((x) => [x.name.toLowerCase(), x.id]));
   const providerId = new Map<string, string>();
@@ -87,6 +99,18 @@ export async function syncCricos(files: { institutions: string; courses: string;
   for (const pr of providers) {
     const id = providerId.get(pr.code);
     if (!id) continue;
+    const was = uniNow.get(id);
+    if (was) {
+      // The same rules as the statement below, worked out here to see what moves.
+      const next = {
+        externalCode: was.externalCode ?? (byCode.has(pr.code) ? null : pr.code),
+        website: was.website ?? pr.website,
+        isPublic: was.isPublic || pr.isPublic,
+        city: was.city ?? pr.city,
+      };
+      uniChanges.push(...changesOf("university", id, was, next));
+      uniNow.set(id, next);
+    }
     await db
       .update(u)
       .set({
@@ -98,6 +122,7 @@ export async function syncCricos(files: { institutions: string; courses: string;
       .where(eq(u.id, id));
     byCode.set(pr.code, id);
   }
+  await recordChanges(db, uniChanges, history);
   for (const part of chunk(toCreate, 500)) {
     const rows = await db
       .insert(u)
@@ -149,7 +174,25 @@ export async function syncCricos(files: { institutions: string; courses: string;
   let created = 0;
   let updated = 0;
   const ruleNote = sql.join(RULE_NOTE_PREFIXES.map((x) => sql`${p.workRightsNote} like ${x + "%"}`), sql` or `);
+  // The fields the upsert below can move, read before and returned after, so
+  // the history holds exactly what changed on rows that were already here.
+  const tracked = {
+    id: p.id,
+    externalCode: p.externalCode,
+    name: p.name,
+    level: p.level,
+    studyArea: p.studyArea,
+    durationMonths: p.durationMonths,
+    tuitionTotal: p.tuitionTotal,
+    campus: p.campus,
+    workRights: p.workRights,
+    workRightsNote: p.workRightsNote,
+    status: p.status,
+  };
   for (const part of chunk(courses, 800)) {
+    const before = new Map(
+      (await db.select(tracked).from(p).where(sql`${p.externalCode} = any(string_to_array(${part.map((c) => c.code).join(",")}, ','))`)).map((x) => [x.id, x]),
+    );
     const rows = await db
       .insert(p)
       .values(
@@ -187,22 +230,35 @@ export async function syncCricos(files: { institutions: string; courses: string;
           updatedAt: sql`now()`,
         },
       })
-      .returning({ inserted: sql<boolean>`(xmax = 0)` });
+      .returning({ inserted: sql<boolean>`(xmax = 0)`, ...tracked });
+    const changes: ChangeInput[] = [];
     for (const r of rows) {
       if (r.inserted) created++;
       else updated++;
+      const was = before.get(r.id);
+      if (!r.inserted && was) {
+        changes.push(...changesOf("program", r.id, was, r, ["inserted", "externalCode"]));
+      }
     }
+    await recordChanges(db, changes, history);
   }
 
   // ---- Courses that left the register ----
   // One text parameter, not 26,000: a bound array is expanded into a parameter
   // per element, which is past Postgres's limit of 65,535.
+  // The second copy of the table (o) still holds each row's status from
+  // before the update, which is what the history records.
   const codes = courses.map((c) => c.code);
-  const gone = await db
-    .update(p)
-    .set({ status: "ARCHIVED", updatedAt: new Date() })
-    .where(and(eq(p.source, CRICOS_SOURCE), ne(p.status, "ARCHIVED"), sql`not (${p.externalCode} = any(string_to_array(${codes.join(",")}, ',')))`))
-    .returning({ id: p.id });
+  const gone = await db.execute<{ id: string; was: string }>(sql`
+    update programs set status = 'ARCHIVED', updated_at = now()
+    from programs o
+    where o.id = programs.id and ${and(eq(p.source, CRICOS_SOURCE), ne(p.status, "ARCHIVED"), sql`not (${p.externalCode} = any(string_to_array(${codes.join(",")}, ',')))`)}
+    returning programs.id as id, o.status as was`);
+  await recordChanges(
+    db,
+    gone.map((r) => ({ entity: "program" as const, entityId: r.id, field: "status", before: r.was, after: "ARCHIVED" })),
+    history,
+  );
 
   return {
     providers: providers.length,
