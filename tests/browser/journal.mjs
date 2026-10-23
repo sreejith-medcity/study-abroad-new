@@ -78,7 +78,7 @@ clock(ist(30), ist(45), ist(90));
   check(/The working day ends at/.test(text), "before the day ends, the journal says when it will be issued");
   check((await c.page.locator("[data-verify]").count()) === 0, "and cannot be verified yet");
   await go(c.page, "/dashboard");
-  check((await c.page.locator("[data-journal-banner]").count()) === 0, "and no banner asks for it");
+  check((await c.page.locator("[data-journal-popup], [data-journal-tab]").count()) === 0, "and nothing pops up asking for it");
   check((await c.page.locator('nav[aria-label="Main"]').getByText("Daily journal", { exact: true }).count()) === 1, "the menu has the daily journal");
   await c.ctx.close();
 }
@@ -115,16 +115,32 @@ sql(`insert into tasks (id, org_id, student_id, title, due_on, assigned_to_id, c
 {
   const g = await open("germany@medcity.test");
   await go(g.page, "/dashboard");
-  check((await g.page.locator("[data-journal-banner]").count()) === 1, "once the day has ended, a banner asks for the journal");
+  check((await g.page.locator("[data-journal-popup]").count()) === 1, "once the day has ended, the journal pops up over the page");
+  check((await g.page.locator('[data-journal-popup] [role="dialog"]').innerText()).includes("Your journal for today"), "saying what it is");
   const text = await go(g.page, "/journal");
-  check(/Read every line below/.test(text), "the journal is open to verify");
-  check(n(`select count(*) from notifications where user_id = '${germany}' and title = 'Your journal for today is ready'`) === 1, "and everybody was told it is ready, once");
+  check(/Read every line below/.test(text), "the journal page is open to verify");
+  check((await g.page.locator("[data-journal-popup]").count()) === 0, "and does not pop up over itself");
+  check(n(`select count(*) from notifications where user_id = '${germany}' and title = 'Your journal for today is ready'`) === 1, "everybody was told it is ready, once");
   check(n(`select count(*) from daily_journals where user_id = '${germany}' and day = '${today}' and viewed_at is not null`) === 1, "opening it is noted");
-  await g.page.locator("[data-verify]").click();
-  await g.page.waitForFunction(() => !document.querySelector("[data-verify]"), null, { timeout: 15000 }).catch(() => {});
-  check(sql(`select state from daily_journals where user_id = '${germany}' and day = '${today}'`) === "VERIFIED", "verifying records it");
+
+  // Minimised, it becomes a tab in the corner, and stays minimised from page to page.
   await go(g.page, "/dashboard");
-  check((await g.page.locator("[data-journal-banner]").count()) === 0, "and the banner goes");
+  await g.page.locator("[data-journal-minimise]").click();
+  check((await g.page.locator("[data-journal-popup]").count()) === 0 && (await g.page.locator("[data-journal-tab]").count()) === 1, "it can be minimised to a tab");
+  await go(g.page, "/students");
+  check((await g.page.locator("[data-journal-popup]").count()) === 0 && (await g.page.locator("[data-journal-tab]").count()) === 1, "and stays minimised on the next page");
+  await g.page.locator("[data-journal-tab]").click();
+  check((await g.page.locator("[data-journal-popup]").count()) === 1, "the tab opens it again");
+  await g.page.keyboard.press("Escape");
+  check((await g.page.locator("[data-journal-tab]").count()) === 1, "Escape minimises it too");
+  await g.page.locator("[data-journal-tab]").click();
+
+  // Answered straight from the popup.
+  await g.page.locator("[data-journal-popup] [data-verify]").click();
+  await g.page.waitForFunction(() => !document.querySelector("[data-journal-popup]"), null, { timeout: 15000 }).catch(() => {});
+  check(sql(`select state from daily_journals where user_id = '${germany}' and day = '${today}'`) === "VERIFIED", "verifying from the popup records it");
+  await go(g.page, "/dashboard");
+  check((await g.page.locator("[data-journal-popup], [data-journal-tab]").count()) === 0, "and once answered it is gone for the day");
   check(g.errors.length === 0, `no errors for the counsellor who verified ${g.errors.slice(0, 2).join(" | ")}`);
   await g.ctx.close();
 }

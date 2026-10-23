@@ -17,6 +17,7 @@ import { APP_ROLES, PARTNER_ROLES, ROLE_LABEL, isAdmin, isSuperAdmin } from "@/l
 import { getSettings } from "@/server/settings";
 import { navCounts } from "@/server/nav-counts";
 import { journalTick, journalWaiting } from "@/server/journal";
+import { JournalPopup } from "@/components/journal-popup";
 import { journalIssued } from "@/lib/journal";
 
 /*
@@ -551,21 +552,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </aside>
         <main className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">
           <div className="mx-auto max-w-[1400px]">
-            {journalDue && (
-              <Link
-                href="/journal"
-                data-journal-banner
-                data-print="hide"
-                className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-warn-500/30 bg-warn-50 px-4 py-3 text-sm text-warn-700 hover:border-warn-500/60"
-              >
-                <strong className="font-semibold">Your journal for today is ready.</strong>
-                <span>View and verify what you did today before you leave. It closes at {journalDue.closesAt}.</span>
-                <span className="ml-auto font-semibold underline">Open my journal</span>
-              </Link>
-            )}
             {children}
           </div>
         </main>
+        {/* From the end of the working day until it is answered: the day's
+            journal, over whatever page this is, and minimisable. */}
+        {journalDue && <JournalPopup due={journalDue} />}
       </div>
     </div>
   );

@@ -5,7 +5,7 @@ import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { getSettings } from "./settings";
 import { notifyUsers } from "./notify";
-import { NOT_ISSUED, dayText, istAt, istClock, istDay, journalIssued, journalPhase, nextDay, previousDay, type JournalClock, type JournalPhase, type JournalStanding } from "@/lib/journal";
+import { KIND_LABEL, NOT_ISSUED, dayText, istAt, istClock, istDay, journalIssued, journalPhase, nextDay, previousDay, type JournalClock, type JournalPhase, type JournalStanding } from "@/lib/journal";
 
 /*
  * The daily journal: what each person did in the portal on one working day,
@@ -513,7 +513,22 @@ export const journalWaiting = cache(async (user: SessionUser) => {
   if (!(await issuedTo(user))) return null;
   const row = await db.query.dailyJournals.findFirst({ where: and(eq(dj.userId, user.id), eq(dj.day, day)), columns: { state: true } });
   if (row?.state) return null;
-  return { day, closesAt: istClock(istAt(day, clock.cutoff)) };
+  // Enough of the day to answer it from the popup: the totals, the latest
+  // few lines, and whether a sign-in has already gone past hours.
+  const entries = (await dayEntries(day, [user.id])).get(user.id) ?? [];
+  const work = entries.filter((e) => e.kind !== "signin");
+  const totals = [...kindCounts(work)].map(([kind, n]) => ({ label: KIND_LABEL[kind] ?? kind, n }));
+  return {
+    day,
+    closesAt: istClock(istAt(day, clock.cutoff)),
+    work: work.length,
+    totals,
+    latest: work
+      .slice(-5)
+      .reverse()
+      .map((e) => ({ at: istClock(e.at), text: e.text, href: e.href ?? null, outOfHours: !!e.outOfHours })),
+    lateSignIn: entries.some((e) => e.kind === "signin" && e.outOfHours),
+  };
 });
 
 /** Somebody's last two weeks of journals, for the history under today's. */
