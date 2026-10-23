@@ -248,7 +248,10 @@ export async function setDocumentTypeAction(formData: FormData) {
   const documentId = String(formData.get("documentId"));
   const typeCode = String(formData.get("typeCode"));
   const doc = await db.query.documents.findFirst({ where: eq(schema.documents.id, documentId) });
-  if (!doc) return;
+  // Only a file still in use is filed. An earlier version belongs to the
+  // document it was replaced in, and filing it as something else would give
+  // one history two kinds.
+  if (!doc || doc.supersededAt || doc.removedAt) return;
   await getStudentForUser(user, doc.studentId);
   const type = await db.query.documentTypes.findFirst({ where: eq(schema.documentTypes.code, typeCode) });
   if (!type) return;

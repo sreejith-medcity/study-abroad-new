@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, count, eq, ilike, notInArray } from "drizzle-orm";
+import { and, count, eq, ilike, isNull, notInArray } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fmtDate, fullName } from "@/lib/format";
@@ -24,7 +24,11 @@ export default async function StudentLayout({ children, params }: { children: Re
   // screen naming the roles it thinks are read-only.
   const canWork = worksStudentFiles(user);
   const [{ apps }] = await db.select({ apps: count() }).from(schema.applications).where(eq(schema.applications.studentId, id));
-  const [{ docs }] = await db.select({ docs: count() }).from(schema.documents).where(eq(schema.documents.studentId, id));
+  // Current versions only: a replaced passport is one document, not two.
+  const [{ docs }] = await db
+    .select({ docs: count() })
+    .from(schema.documents)
+    .where(and(eq(schema.documents.studentId, id), isNull(schema.documents.supersededAt), isNull(schema.documents.removedAt)));
   // The documentation tab counts what is still owed, not what is on the list:
   // "Documentation (3)" is a number somebody can act on this afternoon.
   const [{ owed }] = await db

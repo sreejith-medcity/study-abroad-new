@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { can } from "@/server/capabilities";
@@ -42,7 +42,14 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
   const autofill = await aiFeatureOn("autofill");
   const readable = autofill
     ? await db.query.documents.findMany({
-        where: and(eq(schema.documents.studentId, id), inArray(schema.documents.typeCode, ["PASSPORT", "MARKSHEET_12", "DEGREE_MARKSHEETS", "DEGREE_CERTIFICATE", "ENGLISH_TEST"])),
+        // The current version of each: reading a replaced scan would fill the
+        // profile from the file the team stopped trusting.
+        where: and(
+          eq(schema.documents.studentId, id),
+          inArray(schema.documents.typeCode, ["PASSPORT", "MARKSHEET_12", "DEGREE_MARKSHEETS", "DEGREE_CERTIFICATE", "ENGLISH_TEST"]),
+          isNull(schema.documents.supersededAt),
+          isNull(schema.documents.removedAt),
+        ),
         with: { type: { columns: { label: true } } },
         orderBy: desc(schema.documents.createdAt),
         limit: 8,

@@ -1008,9 +1008,36 @@ export const documents = pgTable(
     uploadedById: text("uploaded_by_id").references(() => users.id),
     /** Shown in the student's portal. Files the student uploaded are always theirs to see. */
     sharedWithStudent: boolean("shared_with_student").notNull().default(false),
+    /**
+     * The file this one replaced. A replaced passport scan is kept as an
+     * earlier version rather than overwritten, the way a refused bank statement
+     * stays on the checklist as version one.
+     */
+    replacesId: text("replaces_id").references((): AnyPgColumn => documents.id, { onDelete: "set null" }),
+    /**
+     * When this stopped being the file the team works from, and who did it:
+     * whoever put up the replacement, or whoever brought an earlier version back.
+     * Null on the current version, so "current" is one cheap test.
+     */
+    supersededAt: timestamp("superseded_at", { withTimezone: true }),
+    supersededById: text("superseded_by_id").references(() => users.id, { onDelete: "set null" }),
+    /**
+     * Taken off the file. The row and the stored file are kept, so the desk can
+     * put back something removed by mistake.
+     */
+    removedAt: timestamp("removed_at", { withTimezone: true }),
+    removedById: text("removed_by_id").references(() => users.id, { onDelete: "set null" }),
     createdAt: createdAt(),
   },
-  (t) => [index("documents_uploader_idx").on(t.uploadedById, t.createdAt)],
+  (t) => [
+    index("documents_uploader_idx").on(t.uploadedById, t.createdAt),
+    index("documents_replaces_idx").on(t.replacesId),
+    /**
+     * Only the current versions, because that is all the counts and the "has
+     * this student got a passport" checks read.
+     */
+    index("documents_current_idx").on(t.studentId, t.typeCode).where(sql`superseded_at is null and removed_at is null`),
+  ],
 );
 
 // ---------- The documentation spine ----------
@@ -3439,6 +3466,8 @@ export const documentsRelations = relations(documents, ({ one }) => ({
   comment: one(comments, { fields: [documents.commentId], references: [comments.id] }),
   type: one(documentTypes, { fields: [documents.typeCode], references: [documentTypes.code] }),
   uploadedBy: one(users, { fields: [documents.uploadedById], references: [users.id] }),
+  supersededBy: one(users, { fields: [documents.supersededById], references: [users.id], relationName: "documentSupersededBy" }),
+  removedBy: one(users, { fields: [documents.removedById], references: [users.id], relationName: "documentRemovedBy" }),
 }));
 
 export const documentRequirementsRelations = relations(documentRequirements, ({ one, many }) => ({

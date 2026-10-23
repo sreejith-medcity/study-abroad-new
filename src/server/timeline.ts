@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { byNewest, CHANNEL_LABEL, OUTCOME_LABEL, TASK_KIND_LABEL, type TimelineEntry } from "@/lib/crm";
 import { OUTCOME_LABEL as VENDOR_OUTCOME_LABEL } from "@/lib/desk";
@@ -26,8 +26,10 @@ export async function studentTimeline(studentId: string, limit = 120): Promise<T
       orderBy: desc(schema.contactLog.happenedAt),
       limit: 60,
     }),
+    // Replaced files stay in the story, because sending a file was an event.
+    // Removed ones leave it, as they did when removing deleted them.
     db.query.documents.findMany({
-      where: eq(schema.documents.studentId, studentId),
+      where: and(eq(schema.documents.studentId, studentId), isNull(schema.documents.removedAt)),
       with: { uploadedBy: { columns: { name: true, deskLabel: true } }, type: { columns: { label: true } } },
       orderBy: desc(schema.documents.createdAt),
       limit: 60,
@@ -88,7 +90,7 @@ export async function studentTimeline(studentId: string, limit = 120): Promise<T
       id: `doc-${d.id}`,
       at: d.createdAt,
       kind: "DOCUMENT",
-      title: `${d.type?.label ?? d.fileName} uploaded`,
+      title: `${d.type?.label ?? d.fileName} ${d.replacesId ? "replaced" : "uploaded"}`,
       detail: d.fileName,
       who: who(d.uploadedBy),
       href: `/api/documents/${d.id}`,

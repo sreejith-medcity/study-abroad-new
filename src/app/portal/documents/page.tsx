@@ -6,13 +6,13 @@ import { IconCheck } from "@/components/icons";
 import { PortalUploadForm } from "../forms";
 
 export default async function PortalDocuments({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const { student, locale } = await requireStudent();
+  const { student, locale, session } = await requireStudent();
   const t = translator(locale);
   const sp = await searchParams;
   const uploadedCode = (Array.isArray(sp.uploaded) ? sp.uploaded[0] : sp.uploaded) ?? null;
   const apps = await studentApplications(student.id, locale);
   const required = [...new Set(apps.flatMap((a) => a.requiredDocs ?? []))];
-  const docs = await studentDocuments(student.id, required, locale);
+  const docs = await studentDocuments(student.id, required, locale, session.id);
   // The documentation list, where the branch has one. It is the better answer to
   // "what do you still need from me": it carries the reason and the date.
   const list = await studentChecklist(student.id, locale);
@@ -48,7 +48,15 @@ export default async function PortalDocuments({ searchParams }: { searchParams: 
                   {r.reason && <p className="mt-0.5 text-sm leading-relaxed text-muted">{r.reason}</p>}
                   {r.dueOn && <p className="mt-0.5 text-sm text-muted">{t("wantedBy")} {fmtDate(r.dueOn)}</p>}
                   <div className="mt-2">
-                    <PortalUploadForm typeCode={r.code} label={r.label} chooseLabel={t("chooseFile")} uploadLabel={r.sentBack ? t("uploadAgain") : t("upload")} />
+                    {/* A file sent back is replaced by the new one, so the refused
+                        copy stays as an earlier version rather than a second passport. */}
+                    <PortalUploadForm
+                      typeCode={r.code}
+                      label={r.label}
+                      chooseLabel={t("chooseFile")}
+                      uploadLabel={r.sentBack ? t("uploadAgain") : t("upload")}
+                      replacesId={r.sentBack ? docs.held.find((d) => d.typeCode === r.code && d.replaceable)?.id : undefined}
+                    />
                   </div>
                 </li>
               ))}
@@ -119,19 +127,51 @@ export default async function PortalDocuments({ searchParams }: { searchParams: 
           {docs.rows
             .filter((r) => r.document || r.byTeam)
             .map((r) => (
-              <li key={r.code} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
-                <span className="font-medium">{r.label}</span>
-                {r.document ? (
-                  <>
-                    <Chip tone="ok">
-                      <IconCheck className="size-3.5" /> {t("uploaded")}
-                    </Chip>
-                    <span className="ml-auto text-xs text-muted">
-                      {t("uploadedOn")} {fmtDate(r.document.createdAt)}
-                    </span>
-                  </>
-                ) : (
-                  <Chip>{t("teamUploads")}</Chip>
+              <li key={r.code} data-portal-document={r.code} className="px-4 py-3">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="font-medium">{r.label}</span>
+                  {r.document ? (
+                    <>
+                      <Chip tone="ok">
+                        <IconCheck className="size-3.5" /> {t("uploaded")}
+                      </Chip>
+                      <span className="ml-auto text-xs text-muted">
+                        {t("uploadedOn")} {fmtDate(r.document.createdAt)}
+                      </span>
+                    </>
+                  ) : (
+                    <Chip>{t("teamUploads")}</Chip>
+                  )}
+                </div>
+                {r.document && !r.byTeam && (r.document.replaceable || r.document.earlier.length > 0) && (
+                  <div className="mt-2 flex flex-wrap items-start gap-x-5 gap-y-2 text-sm">
+                    {r.document.replaceable && (
+                      <details>
+                        <summary className="cursor-pointer font-medium text-brand-600">{t("replaceFile")}</summary>
+                        <div className="mt-2">
+                          <PortalUploadForm typeCode={r.code} label={r.label} chooseLabel={t("chooseFile")} uploadLabel={t("replaceWith")} replacesId={r.document.id} />
+                        </div>
+                      </details>
+                    )}
+                    {r.document.earlier.length > 0 && (
+                      <details data-earlier-versions>
+                        <summary className="cursor-pointer font-medium text-brand-600">
+                          {t("earlierVersions")} ({r.document.earlier.length})
+                        </summary>
+                        <ul className="mt-1 space-y-1">
+                          {r.document.earlier.map((v) => (
+                            <li key={v.id} data-version-id={v.id} className="flex flex-wrap items-center gap-x-3">
+                              <span>{t("version")} {v.version}</span>
+                              <span className="text-xs text-muted">{fmtDate(v.createdAt)}</span>
+                              <a href={`/api/documents/${v.id}`} target="_blank" rel="noreferrer" className="font-medium text-brand-600 hover:underline">
+                                {t("openFile")}
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
+                    )}
+                  </div>
                 )}
               </li>
             ))}

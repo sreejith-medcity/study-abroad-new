@@ -7,6 +7,8 @@ import { notifyUsers } from "@/server/notify";
 import { attachUploadToChecklist } from "@/server/documentation";
 import { getPortalStudent } from "@/server/portal";
 import { saveUpload, UploadError } from "@/server/storage";
+import { VersionConflict, putUpReplacement } from "@/server/document-versions";
+import { isCurrent } from "@/lib/document-versions";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_MB } from "@/lib/uploads";
 
 /**
@@ -44,7 +46,17 @@ export async function POST(request: Request) {
   }
 
   const file = form.get("file");
-  const typeCode = String(form.get("typeCode") ?? "");
+  // A student replaces only a file they can see on their own record: one they
+  // sent, or one the branch shared. The replacement keeps the old one's type.
+  const replacesId = form.get("replacesId") ? String(form.get("replacesId")) : null;
+  const old = replacesId ? await db.query.documents.findFirst({ where: eq(schema.documents.id, replacesId) }) : null;
+  if (replacesId) {
+    if (!old || old.studentId !== student.id || !(old.uploadedById === session.id || old.sharedWithStudent)) {
+      return NextResponse.json({ error: "That file is not on your record." }, { status: 404 });
+    }
+    if (!isCurrent(old)) return NextResponse.json({ error: "That file has already been replaced. Reload the page and look again." }, { status: 409 });
+  }
+  const typeCode = old ? (old.typeCode ?? "") : String(form.get("typeCode") ?? "");
   if (!(file instanceof File) || file.size === 0) return NextResponse.json({ error: "Choose a file first." }, { status: 400 });
   if (file.size > MAX_UPLOAD_BYTES) {
     return NextResponse.json({ error: `That file is too large. The limit is ${MAX_UPLOAD_MB} MB.` }, { status: 413 });
@@ -55,23 +67,30 @@ export async function POST(request: Request) {
   if (type.uploadedBy === "team") return NextResponse.json({ error: "Medcity Overseas adds this one for you." }, { status: 403 });
 
   try {
-    const saved = await saveUpload(file, `students/${student.id}`);
-    const [doc] = await db
-      .insert(schema.documents)
-      .values({ studentId: student.id, typeCode, fileName: file.name, uploadedById: session.id, ...saved })
-      .returning();
-    await audit(session.id, "document.upload", "document", doc.id, { typeCode, via: "portal" });
-    // A student cannot mark their own document good: it joins the documentation
-    // team's queue, where somebody checks it against the rule.
-    await attachUploadToChecklist(student.id, typeCode, doc.id, session.id);
+    if (old) {
+      // Checked and queued for the documentation team the same way as a first
+      // upload; the earlier file stays on record as an earlier version.
+      await putUpReplacement({ old, file, actorId: session.id, via: "portal" });
+    } else {
+      const saved = await saveUpload(file, `students/${student.id}`);
+      const [doc] = await db
+        .insert(schema.documents)
+        .values({ studentId: student.id, typeCode, fileName: file.name, uploadedById: session.id, ...saved })
+        .returning();
+      await audit(session.id, "document.upload", "document", doc.id, { typeCode, via: "portal" });
+      // A student cannot mark their own document good: it joins the documentation
+      // team's queue, where somebody checks it against the rule.
+      await attachUploadToChecklist(student.id, typeCode, doc.id, session.id);
+    }
     await notifyUsers(
       [student.assignedToId, student.createdById],
-      `${student.firstName} uploaded ${type.label}`,
+      `${student.firstName} ${old ? "replaced" : "uploaded"} ${type.label}`,
       "Sent from the student portal",
       `/students/${student.id}/documentation`,
     );
   } catch (e) {
     if (e instanceof UploadError) return NextResponse.json({ error: e.message }, { status: 400 });
+    if (e instanceof VersionConflict) return NextResponse.json({ error: e.message }, { status: 409 });
     console.error("A portal upload failed", { studentId: student.id, typeCode, fileName: file.name, size: file.size }, e);
     return NextResponse.json({ error: "The upload did not go through and nothing was saved. Try it again." }, { status: 500 });
   }

@@ -62,6 +62,7 @@ export async function POST(request: Request) {
     typeCode: String(form.get("typeCode") ?? ""),
     label: form.get("label") == null ? null : String(form.get("label")),
     file,
+    replacesId: form.get("replacesId") ? String(form.get("replacesId")) : null,
   });
 
   if ("error" in outcome) return NextResponse.json({ error: outcome.error }, { status: outcome.status });

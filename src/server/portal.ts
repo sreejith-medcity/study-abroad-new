@@ -6,6 +6,7 @@ import { db, schema } from "@/db";
 import { outstandingForStudent } from "./documentation";
 import { getSession } from "@/lib/auth";
 import { isLocale, type Locale } from "@/lib/i18n";
+import { documentFamilies } from "@/lib/document-versions";
 
 const LOCALE_COOKIE = "portal_locale";
 
@@ -100,26 +101,43 @@ export async function studentTimeline(applicationIds: string[], locale: Locale =
     .limit(30);
 }
 
-/** Documents the student has given us, and the ones still to come. */
-export async function studentDocuments(studentId: string, requiredCodes: string[], locale: Locale = "en") {
-  const held = await db
+/**
+ * Documents the student has given us, and the ones still to come.
+ *
+ * Counted by current version, so a passport sent twice is one passport. With
+ * the viewer's account given, each document also carries the earlier versions
+ * that viewer may open, which are the ones the download route lets them open:
+ * files they sent and files the branch shared.
+ */
+export async function studentDocuments(studentId: string, requiredCodes: string[], locale: Locale = "en", viewerId?: string) {
+  const rows = await db
     .select({
       id: schema.documents.id,
       typeCode: schema.documents.typeCode,
       fileName: schema.documents.fileName,
       createdAt: schema.documents.createdAt,
+      uploadedById: schema.documents.uploadedById,
+      sharedWithStudent: schema.documents.sharedWithStudent,
+      replacesId: schema.documents.replacesId,
+      supersededAt: schema.documents.supersededAt,
+      supersededById: schema.documents.supersededById,
+      removedAt: schema.documents.removedAt,
     })
     .from(schema.documents)
     .where(eq(schema.documents.studentId, studentId))
     .orderBy(desc(schema.documents.createdAt));
+  const opens = (d: (typeof rows)[number]) => !!viewerId && (d.uploadedById === viewerId || d.sharedWithStudent);
+  const families = documentFamilies(rows).filter((f) => f.current);
+  const held = families.map((f) => ({
+    ...f.current!,
+    earlier: f.earlier.filter(opens),
+    /** A student replaces only what they can see; the route checks the same. */
+    replaceable: opens(f.current!),
+  }));
 
   const types = await db.select().from(schema.documentTypes).orderBy(asc(schema.documentTypes.sortOrder));
   // What the branch chose to show the student, such as an offer letter.
-  const shared = await db
-    .select({ id: schema.documents.id, typeCode: schema.documents.typeCode, fileName: schema.documents.fileName, createdAt: schema.documents.createdAt })
-    .from(schema.documents)
-    .where(and(eq(schema.documents.studentId, studentId), eq(schema.documents.sharedWithStudent, true)))
-    .orderBy(desc(schema.documents.createdAt));
+  const shared = held.filter((d) => d.sharedWithStudent);
   const heldCodes = new Set(held.map((d) => d.typeCode));
   const wanted = types.filter((t) => requiredCodes.includes(t.code) || heldCodes.has(t.code));
   const labelOf = (code: string | null) => {

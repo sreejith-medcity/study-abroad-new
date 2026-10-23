@@ -122,7 +122,8 @@ export async function checkApplication(applicationId: string): Promise<CheckResu
     where: eq(schema.applications.id, applicationId),
     with: {
       program: true,
-      student: { with: { academics: true, tests: true, documents: true } },
+      // Only files still in use answer "has the student given us one of these".
+      student: { with: { academics: true, tests: true, documents: { where: (d, { and, isNull }) => and(isNull(d.supersededAt), isNull(d.removedAt)) } } },
     },
   });
   if (!app) return [];

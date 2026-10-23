@@ -102,6 +102,10 @@ const en = {
   beingChecked: "With us, being checked",
   alreadyDone: "Done",
   askedFor: "We have asked for this",
+  replaceFile: "Replace",
+  replaceWith: "Replace with a new file",
+  earlierVersions: "Earlier versions",
+  version: "Version",
 
   messagesTitle: "Messages",
   messagesIntro: "This is the same thread your counsellor sees. Replies here reach them and your WhatsApp.",
@@ -136,7 +140,14 @@ const en = {
   correctionSent: "Sent. Your counsellor will look at it.",
 } as const;
 
-const ml: Record<keyof typeof en, string> = {
+/**
+ * Phrases still waiting for a Malayalam translation. The portal shows them in
+ * English until somebody who reads Malayalam adds them below, and naming them
+ * here keeps every other phrase checked for a translation.
+ */
+type Untranslated = "replaceFile" | "replaceWith" | "earlierVersions" | "version";
+
+const ml: Record<Exclude<keyof typeof en, Untranslated>, string> = {
   portal: "വിദ്യാർഥി പോർട്ടൽ",
   signedInAs: "സൈൻ ഇൻ ചെയ്തിരിക്കുന്നത്",
   signOut: "സൈൻ ഔട്ട്",
@@ -259,8 +270,8 @@ const ml: Record<keyof typeof en, string> = {
   correctionSent: "അയച്ചു. നിങ്ങളുടെ കൗൺസലർ പരിശോധിക്കും.",
 };
 
-const DICTIONARIES = { en, ml } as const;
 export type Phrase = keyof typeof en;
+const DICTIONARIES: Record<Locale, Partial<Record<Phrase, string>>> = { en, ml };
 
 /** t("documents") in whichever language the student chose. */
 export function translator(locale: Locale) {

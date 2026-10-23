@@ -22,6 +22,8 @@ export type ChecklistRow = typeof schema.checklistItems.$inferSelect & {
   decidedByName: string | null;
   fileName: string | null;
   storageKey: string | null;
+  /** The file is still the one in use, so a new upload for this item replaces it. */
+  documentCurrent: boolean;
 };
 
 /** One student's list, in stage order, with the labels and the current file. */
@@ -38,6 +40,7 @@ export async function studentChecklist(studentId: string): Promise<ChecklistRow[
       claimedByName: claimant.name,
       fileName: schema.documents.fileName,
       storageKey: schema.documents.storageKey,
+      documentCurrent: sql<boolean>`(${schema.documents.id} is not null and ${schema.documents.supersededAt} is null and ${schema.documents.removedAt} is null)`,
       sortOrder: dt.sortOrder,
     })
     .from(ci)
@@ -60,6 +63,7 @@ export async function studentChecklist(studentId: string): Promise<ChecklistRow[
       decidedByName: null,
       fileName: r.fileName,
       storageKey: r.storageKey,
+      documentCurrent: !!r.documentCurrent,
     }))
     .sort((a, b) => stageRank(a.stage) - stageRank(b.stage));
 }

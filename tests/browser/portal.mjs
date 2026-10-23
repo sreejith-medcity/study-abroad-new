@@ -71,7 +71,9 @@ async function signIn(page, email, password = "Password@123") {
   await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
   t = await page.locator("main").innerText();
   t.includes("Your documents") ? ok("documents page renders") : bad("documents page missing");
-  const uploads = await page.locator('input[type="file"]').count();
+  // Visible ones only: a file already with us has a Replace form folded away
+  // under it, which is not something still to upload.
+  const uploads = await page.locator('input[type="file"]:visible').count();
   // Nothing outstanding is a valid state once an earlier run has uploaded it.
   uploads > 0
     ? ok(`${uploads} documents can be uploaded`)
@@ -84,7 +86,7 @@ async function signIn(page, email, password = "Password@123") {
   if (uploads > 0) {
     const tmp = "/tmp/smoke-portal/sample.pdf";
     fs.writeFileSync(tmp, "%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n");
-    await page.locator('input[type="file"]').first().setInputFiles(tmp);
+    await page.locator('input[type="file"]:visible').first().setInputFiles(tmp);
     await page.getByRole("button", { name: "Upload" }).first().click();
     await page.waitForURL(/uploaded=/, { timeout: 15000 }).catch(() => {});
     await page.locator("main").getByText(/We have it|ഞങ്ങൾക്ക് ലഭിച്ചു/).first().waitFor({ timeout: 15000 })

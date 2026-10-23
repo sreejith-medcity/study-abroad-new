@@ -27,15 +27,25 @@ export function UploadForm({
   types,
   defaultType,
   compact,
+  replacesId,
+  fileLabel,
 }: {
   studentId: string;
   types: { code: string; label: string }[];
   defaultType?: string;
   compact?: boolean;
+  /**
+   * The file this upload replaces. The old one is kept as an earlier version;
+   * the server takes the type from it, so no type is asked for.
+   */
+  replacesId?: string;
+  /** What the file picker is called to a screen reader, where a row has several. */
+  fileLabel?: string;
 }) {
-  const idBase = `${defaultType ?? "any"}-${studentId}`;
+  const idBase = replacesId ? `replace-${replacesId}` : `${defaultType ?? "any"}-${studentId}`;
   // "Something else" is only useful if the next person can tell what it was,
-  // so choosing it asks for the name of the document.
+  // so choosing it asks for the name of the document. A replacement keeps the
+  // name the old file had.
   const [typeCode, setTypeCode] = useState(defaultType ?? "");
   const [error, setError] = useState<string | null>(null);
   const [percent, setPercent] = useState<number | null>(null);
@@ -89,6 +99,7 @@ export function UploadForm({
     <form ref={form} onSubmit={send} className={compact ? "space-y-2" : "space-y-3"} noValidate>
       {error && <Alert tone="bad">{error}</Alert>}
       <input type="hidden" name="studentId" value={studentId} />
+      {replacesId && <input type="hidden" name="replacesId" value={replacesId} />}
       <div className="flex flex-wrap items-center gap-2">
         {defaultType ? (
           <input type="hidden" name="typeCode" value={defaultType} />
@@ -101,18 +112,18 @@ export function UploadForm({
             </Select>
           </>
         )}
-        {named && (
+        {named && !replacesId && (
           <>
             <label htmlFor={`label-${idBase}`} className="sr-only">What this document is</label>
             <Input id={`label-${idBase}`} name="label" placeholder="What is it? e.g. Experience certificate" className="w-64" />
           </>
         )}
-        <label htmlFor={`file-${idBase}`} className="sr-only">File</label>
+        <label htmlFor={`file-${idBase}`} className="sr-only">{fileLabel ?? "File"}</label>
         <input id={`file-${idBase}`} type="file" name="file" accept={UPLOAD_ACCEPT} className="text-xs" onChange={() => setError(null)} />
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" variant={compact ? "secondary" : "primary"} disabled={busy}>
-          {busy ? "Uploading…" : "Upload"}
+          {busy ? "Uploading…" : replacesId ? "Upload replacement" : "Upload"}
         </Button>
         {busy && (
           <span className="flex items-center gap-2 text-xs text-muted">

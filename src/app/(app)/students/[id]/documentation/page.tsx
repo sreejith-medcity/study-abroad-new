@@ -246,6 +246,7 @@ export default async function DocumentationPage({ params, searchParams }: { para
                           guidance: row.requirementGuidance ?? row.guidance,
                           fileName: row.fileName,
                           documentId: row.documentId,
+                          replacesId: row.documentCurrent ? row.documentId : null,
                           claimedById: row.claimedById,
                           claimedAt: row.claimedAt ? row.claimedAt.toISOString() : null,
                         }}

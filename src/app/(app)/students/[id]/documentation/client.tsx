@@ -33,6 +33,12 @@ type Item = {
   guidance: string | null;
   fileName: string | null;
   documentId: string | null;
+  /**
+   * The file a new upload replaces: the one on the item now, while it is still
+   * in use. A refused bank statement then stays on record as the earlier
+   * version instead of sitting beside its replacement as a second statement.
+   */
+  replacesId?: string | null;
   claimedById: string | null;
   claimedAt: string | null;
 };
@@ -173,7 +179,7 @@ export function ItemActions({ item, reasons, canProcess, userId }: { item: Item;
       </Modal>
 
       <Modal open={open === "upload"} onClose={() => setOpen(null)} title={`Upload ${item.label}`} description="The file joins the documentation team's queue. Nobody marks their own document good.">
-        <UploadForm studentId={item.studentId} types={[]} defaultType={item.typeCode} />
+        <UploadForm studentId={item.studentId} types={[]} defaultType={item.typeCode} replacesId={item.replacesId ?? undefined} />
       </Modal>
     </div>
   );

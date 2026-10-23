@@ -12,11 +12,14 @@ export function PortalUploadForm({
   label,
   chooseLabel,
   uploadLabel,
+  replacesId,
 }: {
   typeCode: string;
   label: string;
   chooseLabel: string;
   uploadLabel: string;
+  /** The file this replaces, which is kept as an earlier version. */
+  replacesId?: string;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [percent, setPercent] = useState<number | null>(null);
@@ -68,6 +71,7 @@ export function PortalUploadForm({
     <form ref={form} onSubmit={send} className="space-y-2" noValidate>
       {error && <Alert tone="bad">{error}</Alert>}
       <input type="hidden" name="typeCode" value={typeCode} />
+      {replacesId && <input type="hidden" name="replacesId" value={replacesId} />}
       <div className="flex flex-wrap items-center gap-2">
         <Input
           type="file"

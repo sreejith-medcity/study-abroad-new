@@ -81,6 +81,8 @@ const COVERED = [
   "application.status",
   "status.update",
   "document.upload",
+  // A replacement is a new row on the documents table, so it is already a line.
+  "document.replace",
   "checklist.accept",
   "checklist.reject",
   "checklist.request",
@@ -119,6 +121,9 @@ const SAYS: Record<string, string> = {
   "application.deadline": "Set an application deadline",
   "application.deadline_done": "Marked a deadline done",
   "checklist.chase": "Chased a student for documents",
+  "document.remove": "Removed a document from a student's file",
+  "document.restore": "Brought back an earlier version of a document",
+  "document.unremove": "Put a removed document back",
   "checklist.not_needed": "Marked a document not needed",
   "checklist.add": "Added a document to a student's list",
   "checklist.reassign": "Gave a document check to somebody else",

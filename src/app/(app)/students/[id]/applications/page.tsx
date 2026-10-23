@@ -163,7 +163,10 @@ async function ApplicationDetail({ appId, studentId, channel, canProcess, canChe
 
   const comments = await db.query.comments.findMany({
     where: and(eq(schema.comments.applicationId, appId), eq(schema.comments.channel, channel)),
-    with: { author: { columns: { name: true, role: true, deskLabel: true } }, attachments: true },
+    // What was sent with the message stays with it, even after a newer version
+    // replaced it; a removed file is gone from the thread as it was when
+    // removing deleted it.
+    with: { author: { columns: { name: true, role: true, deskLabel: true } }, attachments: { where: (d, { isNull }) => isNull(d.removedAt) } },
     orderBy: asc(schema.comments.createdAt),
   });
   const docTypes = await db.select().from(schema.documentTypes).orderBy(asc(schema.documentTypes.sortOrder));
@@ -406,7 +409,7 @@ async function ApplicationDetail({ appId, studentId, channel, canProcess, canChe
                     {c.attachments.map((d) => (
                       <div key={d.id} className="mt-2 flex flex-wrap items-center gap-2">
                         <a href={`/api/documents/${d.id}`} className="rounded bg-surface px-2 py-1 text-xs text-brand-600 hover:underline">📎 {d.fileName}</a>
-                        {canWrite && (!d.typeCode || d.typeCode === "OTHER") && (
+                        {canWrite && (!d.typeCode || d.typeCode === "OTHER") && !d.supersededAt && (
                           <form action={setDocumentTypeAction} className="flex items-center gap-1">
                             <input type="hidden" name="documentId" value={d.id} />
                             <Select name="typeCode" aria-label="File as" className="py-1 text-xs" defaultValue="">

@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { isStaff } from "@/lib/permissions";
 import { readUpload } from "@/server/storage";
+import { mayRestoreDocuments } from "@/server/document-versions";
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getSession();
@@ -19,6 +20,11 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     // themselves are the student's, and are not opened from a parent's sign-in.
     return new Response("Not found", { status: 404 });
   } else if (!isStaff(user) && doc.student.orgId !== user.orgId) return new Response("Not found", { status: 404 });
+  // An earlier version opens for exactly the people the current one does. A
+  // removed file opens only for the people who may put it back, so they can see
+  // what they are restoring; for everybody else it is gone, as it was when
+  // removing deleted it.
+  if (doc.removedAt && (user.role === "STUDENT" || !(await mayRestoreDocuments(user)))) return new Response("Not found", { status: 404 });
 
   let bytes: Buffer;
   try {
