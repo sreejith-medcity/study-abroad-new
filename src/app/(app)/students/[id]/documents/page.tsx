@@ -4,7 +4,7 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fmtDateTime } from "@/lib/format";
 import { getStudentForUser } from "@/server/queries";
-import { Button, Card, Chip, cn } from "@/components/ui";
+import { Alert, Button, Card, Chip, cn } from "@/components/ui";
 import { ActionForm } from "@/components/action-form";
 import { deleteDocumentAction, restoreRemovedAction, restoreVersionAction, shareDocumentAction } from "./actions";
 import { UploadForm } from "./upload";
@@ -19,9 +19,9 @@ type Person = { name: string; deskLabel: string | null; role: string };
 /** How a person is named beside a file: the desk they sit at, or the student. */
 const personLabel = (u: Person) => (u.role === "STUDENT" ? "the student" : (u.deskLabel ?? u.name));
 
-export default async function DocumentsPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> }) {
+export default async function DocumentsPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string; restored?: string; putBack?: string }> }) {
   const { id } = await params;
-  const { tab } = await searchParams;
+  const { tab, restored, putBack } = await searchParams;
   const user = await requireUser([...APP_ROLES]);
   await getStudentForUser(user, id);
   const canWrite = worksStudentFiles(user);
@@ -76,8 +76,18 @@ export default async function DocumentsPage({ params, searchParams }: { params: 
   const onThisTab = (code: string | null) => (typeOf.get(code ?? "")?.uploadedBy === "team") === teamTab;
   const removed = docs.filter((d) => d.removedAt && onThisTab(d.typeCode)).sort((a, b) => b.removedAt!.getTime() - a.removedAt!.getTime());
 
+  // What a restore just did, said here because the button that did it has
+  // moved or gone. Worked out from the record, never from text in the link.
+  const backDoc = docs.find((d) => d.id === (restored ?? putBack));
+  const backNote = backDoc ? (restored ? `${backDoc.fileName} is the current version again.` : `${backDoc.fileName} is back on the file.`) : null;
+
   return (
     <Card>
+      {backNote && (
+        <div className="px-4 pt-4">
+          <Alert tone="ok">{backNote}</Alert>
+        </div>
+      )}
       <div className="flex gap-6 border-b border-line px-4" role="tablist">
         <Link href={`/students/${id}/documents`} role="tab" aria-selected={!teamTab} className={cn("-mb-px border-b-2 py-3 font-medium", !teamTab ? "border-brand-600 text-brand-600" : "border-transparent text-muted")}>Your documents</Link>
         <Link href={`/students/${id}/documents?tab=team`} role="tab" aria-selected={teamTab} className={cn("-mb-px border-b-2 py-3 font-medium", teamTab ? "border-brand-600 text-brand-600" : "border-transparent text-muted")}>Medcity Overseas documents</Link>

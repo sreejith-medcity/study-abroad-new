@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
@@ -63,6 +64,9 @@ export async function restoreVersionAction(_: FormState, formData: FormData): Pr
   if (!(await mayRestoreDocuments(user))) return { error: "Bringing back an earlier version is for the people who check documents." };
   const outcome = await restoreVersion(user, doc);
   revalidatePath(`/students/${doc.studentId}`, "layout");
+  // The button sits in the earlier-versions list, which the version it brings
+  // back leaves; its own message would vanish with it. The page says it instead.
+  if ("ok" in outcome) redirect(`/students/${doc.studentId}/documents?restored=${encodeURIComponent(doc.id)}`);
   return outcome;
 }
 
@@ -75,5 +79,6 @@ export async function restoreRemovedAction(_: FormState, formData: FormData): Pr
   if (!(await mayRestoreDocuments(user))) return { error: "Putting back a removed file is for the people who check documents." };
   const outcome = await restoreRemoved(user, doc);
   revalidatePath(`/students/${doc.studentId}`, "layout");
+  if ("ok" in outcome) redirect(`/students/${doc.studentId}/documents?putBack=${encodeURIComponent(doc.id)}`);
   return outcome;
 }
