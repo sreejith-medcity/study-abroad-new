@@ -13,8 +13,8 @@ import { programFilterWhere, readProgramFilters } from "@/server/program-filters
 import { fetchCricosFiles, syncCricos } from "@/server/cricos-sync";
 import { fetchRegistry, syncRegistry } from "@/server/registry-sync";
 import { REGISTRY_SOURCES } from "@/lib/registry";
-import type { MiocCountry, MiocProgram, MiocUniversity } from "@/lib/mioc";
-import { loadMiocPrograms, prepareMioc, type MiocBatchResult, type MiocPrepareResult } from "@/server/mioc-load";
+import type { MiocCountry, MiocGuide, MiocProfile, MiocProgram, MiocUniversity } from "@/lib/mioc";
+import { loadMiocContent, loadMiocPrograms, prepareMioc, type MiocBatchResult, type MiocContentResult, type MiocPrepareResult } from "@/server/mioc-load";
 import { changesOf, newBatchId, recordChanges, type ChangeInput } from "@/server/catalogue-history";
 
 export type ImportState = {
@@ -545,6 +545,23 @@ export async function miocPrepareAction(input: { countries: MiocCountry[]; unive
   try {
     const result = await prepareMioc(input, { dryRun, by: user.id });
     if (!dryRun) await audit(user.id, "programs.mioc_prepare", "university", "*", { countriesNew: result.countriesNew, universitiesNew: result.universitiesNew, universitiesHere: result.universitiesHere });
+    return { result };
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+}
+
+/** University profiles and destination guides, once, between the universities and the courses. */
+export async function miocContentAction(
+  input: { profiles: MiocProfile[]; guides: MiocGuide[] },
+  universityIds: Record<number, string>,
+): Promise<{ error?: string; result?: MiocContentResult }> {
+  const user = await requireUser([...ADMIN_ROLES]);
+  if (!Array.isArray(input?.profiles) || input.profiles.length > 20000 || !Array.isArray(input?.guides) || input.guides.length > 300) return { error: "That is more profiles or guides than one export holds." };
+  try {
+    const result = await loadMiocContent(input, universityIds ?? {}, user.id);
+    await audit(user.id, "programs.mioc_content", "university", "*", { ...result });
+    revalidatePath("/admin/destinations");
     return { result };
   } catch (e) {
     return { error: (e as Error).message };

@@ -9,6 +9,7 @@ import { openScholarships } from "@/server/scholarships";
 import { rankLabels } from "@/lib/rankings";
 import { ScholarshipList } from "@/components/scholarship-list";
 import { ChangeHistory } from "@/components/change-history";
+import { DestinationSnapshot } from "@/components/destination-guide";
 import { changeHistory } from "@/server/catalogue-history";
 import { Card, CardHeader, Chip, DataList, EmptyState, PageHeader, Table, Td, Th, cn } from "@/components/ui";
 import { IconAlert, IconCheck, IconPrograms } from "@/components/icons";
@@ -62,6 +63,11 @@ export default async function UniversityPage({
   const intakes = [...new Set(live.flatMap((p) => p.intakeMonths))].sort((a, b) => a - b);
   const campuses = [...new Set(all.flatMap((p) => (p.campus ?? "").replace(/ and \d+ more$/, "").split(", ")).filter(Boolean))].sort();
   const multiCampus = campuses.length > 1;
+  // The stored address may be bare ("www.example.ac.uk"); anything not already
+  // http(s) is opened as https, which also keeps any other scheme out of the link.
+  const websiteHref = university.website ? (/^https?:\/\//i.test(university.website) ? university.website : `https://${university.website}`) : null;
+  const facts = university.facts ?? [];
+  const hasProfile = !!university.about?.trim() || facts.length > 0;
 
   return (
     <>
@@ -72,13 +78,36 @@ export default async function UniversityPage({
           </Link>
         }
         title={university.name}
-        actions={university.website ? (
-          <a href={university.website.startsWith("http") ? university.website : `https://${university.website}`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-brand-600 hover:underline">
+        actions={websiteHref ? (
+          <a href={websiteHref} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-brand-600 hover:underline">
             Official website ↗
           </a>
         ) : undefined}
         subtitle={`${multiCampus ? `Campuses in ${campuses.length > 5 ? `${campuses.slice(0, 5).join(", ")} and ${campuses.length - 5} more` : campuses.join(", ")} · ` : university.city ? `${university.city}, ` : ""}${university.country.name}${university.isPublic ? " · Public institution" : ""}`}
       />
+
+      {/* Plain text with its line breaks, never HTML: the profile came from the
+          MIOC app and could carry markup nobody meant to run. */}
+      {hasProfile && (
+        <Card className="mb-5" data-university-about>
+          <CardHeader title="About" subtitle={university.about?.trim() ? undefined : "Facts recorded for this university"} />
+          {university.about?.trim() && <p className="whitespace-pre-line px-4 py-3 text-sm leading-relaxed text-ink-soft">{university.about}</p>}
+          {facts.length > 0 && (
+            <ul className={cn("grid gap-x-6 gap-y-1.5 px-4 py-3 text-sm text-ink-soft sm:grid-cols-2", university.about?.trim() && "border-t border-line")} data-university-facts>
+              {facts.map((f, i) => (
+                <li key={i} className="whitespace-pre-line">{f}</li>
+              ))}
+            </ul>
+          )}
+          {websiteHref && (
+            <div className="border-t border-line px-4 py-3 text-sm">
+              <a href={websiteHref} target="_blank" rel="noopener noreferrer" className="break-all font-medium text-brand-600 hover:underline">
+                {university.website} ↗
+              </a>
+            </div>
+          )}
+        </Card>
+      )}
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
         <Card>
@@ -173,6 +202,7 @@ export default async function UniversityPage({
           )}
         </Card>
         <ScholarshipList rows={scholarships} />
+        <DestinationSnapshot country={university.country} />
         {history && (
           <ChangeHistory
             entity="university"

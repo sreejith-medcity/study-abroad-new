@@ -2,11 +2,13 @@
  * The catalogue kept in Medcity's older MIOC app (the mobile app's MySQL
  * database), turned into countries, universities and programs for this portal.
  *
- * It reads a phpMyAdmin SQL export. Only four tables are used:
+ * It reads a phpMyAdmin SQL export. Only these tables are used:
  * tb_destinations (countries), tb_universities, tb_courses and tb_main_course
- * (the study areas). Every other table in the file is stepped over without
- * being kept, so a full export with students in it can be given and nothing
- * about a student leaves the browser it was opened in.
+ * (the study areas), and for the descriptive content, when the export has
+ * them, tb_university_info (university profiles), tb_country_faq and
+ * tb_country_accomodation (the destination guides). Every other table in the
+ * file is stepped over without being kept, so a full export with students in
+ * it can be given and nothing about a student leaves the browser it was opened in.
  *
  * Pure functions only, so it runs in the browser and in the suites alike.
  * The writing lives in src/server/mioc-load.ts.
@@ -21,6 +23,9 @@
  *   nought in every box of rows nobody had filled in.
  * - Ranges ("7-10 months") and weeks are not turned into a number of months.
  * - The app's own university rank is not taken: it does not say whose ranking.
+ * - A university profile's ranking and "public" lines are kept as facts in
+ *   words, never set as a QS or THE rank or as a public institution: most do
+ *   not say whose ranking or which year, and "public" is worded a dozen ways.
  */
 
 export const MIOC_SOURCE = "MIOC";
@@ -32,8 +37,10 @@ export const nameKey = (name: string) => name.toLowerCase().replace(/&/g, " and 
 type Value = string | number | null;
 export type DumpTables = Record<string, Record<string, Value>[]>;
 
-/** The tables this import reads. */
-export const MIOC_TABLES = ["tb_destinations", "tb_universities", "tb_courses", "tb_main_course"] as const;
+/** The tables this import reads. The last three are optional: an export without them still loads the courses. */
+export const MIOC_TABLES = ["tb_destinations", "tb_universities", "tb_courses", "tb_main_course", "tb_university_info", "tb_country_faq", "tb_country_accomodation"] as const;
+/** The tables that carry profiles and guides rather than the catalogue itself. */
+export const MIOC_CONTENT_TABLES = ["tb_university_info", "tb_country_faq", "tb_country_accomodation"] as const;
 
 /**
  * Reads the INSERT statements of a phpMyAdmin (MySQL or MariaDB) export.
@@ -285,10 +292,40 @@ export type MiocProgram = {
   entryRequirements: string | null;
 };
 
+/** A university's profile from the app: its about text, its website and the short lines kept as written. */
+export type MiocProfile = { universityMiocId: number; about: string | null; website: string | null; facts: string[] };
+export type MiocFaq = { question: string; answer: string };
+/** A destination guide from the app, for the country with this ISO code. */
+export type MiocGuide = {
+  code: string;
+  guide: string | null;
+  capital: string | null;
+  languages: string | null;
+  climate: string | null;
+  accommodation: string | null;
+  faqs: MiocFaq[];
+};
+
 export type MiocBuild = {
   countries: MiocCountry[];
   universities: MiocUniversity[];
   programs: MiocProgram[];
+  /** Only for universities that come over, and only those with something to say. */
+  profiles: MiocProfile[];
+  /** Only for destinations switched on in the app. */
+  guides: MiocGuide[];
+  /** What the profile and guide tables held, for the check. */
+  content: {
+    /** Optional tables the export does not carry (or carries empty). */
+    missingTables: string[];
+    profiles: number;
+    about: number;
+    websites: number;
+    facts: number;
+    guides: number;
+    faqs: number;
+    accommodation: number;
+  };
   skipped: {
     /** Destinations the app has switched off, and everything under them. */
     hiddenCountries: string[];
@@ -317,6 +354,103 @@ const tidy = (v: Value) => {
   return s || null;
 };
 const on = (v: Value) => str(v) === "1";
+
+/**
+ * Text kept in its paragraphs: each line trimmed and its spaces collapsed,
+ * runs of blank lines brought down to one, nothing else changed.
+ */
+export function paragraphs(v: Value): string | null {
+  const out: string[] = [];
+  for (const raw of (v == null ? "" : String(v)).replace(/\r\n?/g, "\n").split("\n")) {
+    const line = raw.replace(/[ \t\u00a0]+/g, " ").trim();
+    if (!line && (!out.length || out[out.length - 1] === "")) continue;
+    out.push(line);
+  }
+  while (out.length && out[out.length - 1] === "") out.pop();
+  return out.join("\n") || null;
+}
+
+/**
+ * One of the app's short lines about a university, as written. Many were
+ * pasted from an encyclopedia's side panel with a tab between the label and
+ * the value ("Type<tab>Public"), which reads as "Type: Public" here.
+ */
+export function factText(v: Value): string | null {
+  const lines = (v == null ? "" : String(v))
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .map((l) => l.replace(/^([^\t:]{1,60}?) *\t\s*/, "$1: ").replace(/[ \t\u00a0]+/g, " ").trim())
+    .filter(Boolean);
+  return lines.join("\n") || null;
+}
+
+/** "Web Url : www.example.ac.uk/", "Web Url ; ...", "Web Url\n: ...", "Website: ...". The address has to be the whole rest of the line. */
+const WEB_LINE = /^\s*(?:web\s*url|web\s*site|web\s*address)\s*[:;-]?\s*(\S+)\s*$/i;
+
+/**
+ * A website as an https address, or null when it does not read as one.
+ * "www.example.ac.uk/" and "http://example.edu" both become https; anything
+ * with a space, another scheme, a port or no proper host name is refused.
+ */
+export function websiteUrl(raw: string): string | null {
+  let s = raw.trim().replace(/[.,;)]+$/, "");
+  if (!s || /\s/.test(s) || s.length > 300) return null;
+  if (/^http:\/\//i.test(s)) s = `https://${s.slice(7)}`;
+  else if (!/^https:\/\//i.test(s)) {
+    if (/^[a-z][a-z0-9+.-]*:/i.test(s)) return null;
+    s = `https://${s.replace(/^\/\//, "")}`;
+  }
+  let u: URL;
+  try {
+    u = new URL(s);
+  } catch {
+    return null;
+  }
+  if (u.protocol !== "https:" || u.username || u.password || u.port) return null;
+  const host = u.hostname.toLowerCase();
+  if (!/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/.test(host)) return null;
+  return `https://${host}${u.pathname === "/" ? "" : u.pathname}${u.search}${u.hash}`;
+}
+
+/** Two addresses for the same site, whatever the scheme, "www." or closing slash. */
+export const sameSite = (a: string, b: string) => {
+  const k = (x: string) => x.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/+$/, "");
+  return k(a) === k(b);
+};
+
+const blank = (v: unknown) => v == null || (typeof v === "string" && !v.trim()) || (Array.isArray(v) && v.length === 0);
+
+export type ProfileNow = { about: string | null; website: string | null; facts: string[] };
+
+/**
+ * What the import may write on one university: only fields that are blank,
+ * and none it filled on an earlier run (`filledBefore`), because a field that
+ * is blank again is one somebody cleared as wrong. A website the university
+ * already has is kept, and a different one from the app is kept among the
+ * facts so it is not lost.
+ */
+export function profileFill(now: ProfileNow, incoming: Omit<MiocProfile, "universityMiocId">, filledBefore: ReadonlySet<string> = new Set()): Partial<ProfileNow> {
+  const out: Partial<ProfileNow> = {};
+  if (incoming.about && blank(now.about) && !filledBefore.has("about")) out.about = incoming.about;
+  if (incoming.website && blank(now.website) && !filledBefore.has("website")) out.website = incoming.website;
+  let facts = incoming.facts;
+  if (incoming.website && !blank(now.website) && !sameSite(now.website!, incoming.website)) facts = [...facts, `Website in the MIOC app: ${incoming.website}`];
+  if (facts.length && blank(now.facts) && !filledBefore.has("facts")) out.facts = facts;
+  return out;
+}
+
+export const GUIDE_FIELDS = ["guide", "capital", "languages", "climate", "accommodation", "faqs"] as const;
+export type GuideNow = Omit<MiocGuide, "code">;
+
+/** The same rule for a destination guide: blank fields only, and none filled on an earlier run. */
+export function guideFill(now: GuideNow, incoming: GuideNow, filledBefore: ReadonlySet<string> = new Set()): Partial<GuideNow> {
+  const out: Partial<GuideNow> = {};
+  for (const f of GUIDE_FIELDS) {
+    if (blank(incoming[f]) || !blank(now[f]) || filledBefore.has(f)) continue;
+    (out as Record<string, unknown>)[f] = incoming[f];
+  }
+  return out;
+}
 const key = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
 
 /** A plain number, or null. Commas as thousands separators are allowed. */
@@ -574,11 +708,117 @@ export function buildMioc(t: DumpTables): MiocBuild {
     ielts: count((p) => p.minIelts != null),
     duration: count((p) => p.durationMonths != null),
   };
+  const profiles = buildProfiles(t, used);
+  const guides = buildGuides(t);
+  const content = {
+    missingTables: MIOC_CONTENT_TABLES.filter((x) => !t[x]?.length),
+    profiles: profiles.length,
+    about: profiles.filter((x) => x.about).length,
+    websites: profiles.filter((x) => x.website).length,
+    facts: profiles.filter((x) => x.facts.length).length,
+    guides: guides.length,
+    faqs: guides.reduce((sum, g) => sum + g.faqs.length, 0),
+    accommodation: guides.filter((g) => g.accommodation).length,
+  };
   return {
     countries: [...countries.values()].sort((a, b) => a.code.localeCompare(b.code)),
     universities: [...universities.values()].filter((u) => used.has(u.miocId)),
     programs,
+    profiles,
+    guides,
+    content,
     skipped,
     figures,
   };
+}
+
+/** The app's rows in its own order: by `order`, then by id where the order is the same (it mostly is nought). */
+const inOrder = (rows: Record<string, Value>[]) => [...rows].sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0) || Number(a.id) - Number(b.id));
+
+/**
+ * Profiles from tb_university_info. An "about" row is a paragraph; an "info"
+ * row is a short line. A "Web Url" line becomes the website when it reads as
+ * an address; every other line is kept as a fact, as written.
+ */
+function buildProfiles(t: DumpTables, universities: Set<number>): MiocProfile[] {
+  const rows = new Map<number, Record<string, Value>[]>();
+  for (const r of inOrder((t.tb_university_info ?? []).filter((x) => on(x.status)))) {
+    const id = Number(r.u_id);
+    if (!universities.has(id)) continue;
+    const list = rows.get(id);
+    if (list) list.push(r);
+    else rows.set(id, [r]);
+  }
+  const out: MiocProfile[] = [];
+  for (const [id, list] of [...rows].sort((a, b) => a[0] - b[0])) {
+    const about: string[] = [];
+    const facts: string[] = [];
+    let website: string | null = null;
+    for (const r of list) {
+      if (key(str(r.type)) === "about") {
+        const p = paragraphs(r.text);
+        if (p && !about.includes(p)) about.push(p);
+        continue;
+      }
+      const web = (r.text == null ? "" : String(r.text)).match(WEB_LINE);
+      const url: string | null = web && !website ? websiteUrl(web[1]) : null;
+      if (url) {
+        website = url;
+        continue;
+      }
+      const f = factText(r.text);
+      if (f && !facts.includes(f)) facts.push(f);
+    }
+    if (about.length || website || facts.length) out.push({ universityMiocId: id, about: about.join("\n\n") || null, website, facts });
+  }
+  return out;
+}
+
+/** Destination guides from tb_destinations, tb_country_faq and tb_country_accomodation, for destinations switched on in the app. */
+function buildGuides(t: DumpTables): MiocGuide[] {
+  const byDestination = new Map<string, MiocGuide>();
+  const byCode = new Map<string, MiocGuide>();
+  for (const d of [...(t.tb_destinations ?? [])].sort((a, b) => Number(a.id) - Number(b.id))) {
+    const c = MIOC_COUNTRIES[key(str(d.country))];
+    if (!c || !on(d.status)) continue;
+    // Two of the app's names for one country (Dubai and the UAE): the first
+    // stands, and the second's questions are added to it.
+    const known = byCode.get(c.code);
+    if (known) {
+      byDestination.set(str(d.id), known);
+      continue;
+    }
+    const g: MiocGuide = {
+      code: c.code,
+      guide: paragraphs(d.description),
+      capital: str(d.capital) || null,
+      languages: str(d.language) || null,
+      climate: str(d.temperature) || null,
+      accommodation: null,
+      faqs: [],
+    };
+    byDestination.set(str(d.id), g);
+    byCode.set(c.code, g);
+  }
+  for (const f of inOrder(t.tb_country_faq ?? [])) {
+    // The table has no status column today; one added later is respected.
+    if (f.status != null && !on(f.status)) continue;
+    const g = byDestination.get(str(f.d_id));
+    const question = str(f.question);
+    const answer = paragraphs(f.answer);
+    if (!g || !question || !answer) continue;
+    if (!g.faqs.some((x) => x.question === question && x.answer === answer)) g.faqs.push({ question, answer });
+  }
+  const notes = new Map<MiocGuide, string[]>();
+  for (const a of [...(t.tb_country_accomodation ?? [])].sort((x, y) => Number(x.id) - Number(y.id))) {
+    if (!on(a.status)) continue;
+    const g = byDestination.get(str(a.d_id));
+    const text = paragraphs(a.text);
+    if (!g || !text) continue;
+    const list = notes.get(g) ?? [];
+    if (!list.includes(text)) list.push(text);
+    notes.set(g, list);
+  }
+  for (const [g, list] of notes) g.accommodation = list.join("\n\n");
+  return [...byCode.values()].filter((g) => GUIDE_FIELDS.some((f) => !blank(g[f]))).sort((a, b) => a.code.localeCompare(b.code));
 }

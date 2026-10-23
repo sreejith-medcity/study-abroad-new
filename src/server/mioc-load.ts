@@ -1,6 +1,23 @@
 import { inArray, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { MIOC_COUNTRIES, MIOC_SOURCE, miocCode, nameKey, type MiocCountry, type MiocLevel, type MiocProgram, type MiocUniversity } from "@/lib/mioc";
+import {
+  GUIDE_FIELDS,
+  MIOC_COUNTRIES,
+  MIOC_SOURCE,
+  guideFill,
+  miocCode,
+  nameKey,
+  profileFill,
+  websiteUrl,
+  type GuideNow,
+  type MiocCountry,
+  type MiocFaq,
+  type MiocGuide,
+  type MiocLevel,
+  type MiocProfile,
+  type MiocProgram,
+  type MiocUniversity,
+} from "@/lib/mioc";
 import { changesOf, newBatchId, recordChanges, type ChangeInput } from "./catalogue-history";
 
 /**
@@ -25,6 +42,9 @@ import { changesOf, newBatchId, recordChanges, type ChangeInput } from "./catalo
  *   its level, because the app's levels are coarser than the portal's (its
  *   "Foundation" and "Pathway" both arrive as certificates).
  * - New programs land as drafts, for the desk to check and publish.
+ * - University profiles and destination guides only fill fields that are
+ *   blank, and never one this import filled before: a field that is blank
+ *   again is one somebody cleared as wrong.
  */
 
 const p = schema.programs;
@@ -354,5 +374,142 @@ export async function loadMiocPrograms(batch: MiocProgram[], universityIds: Reco
   const filled = await fillBlanks(fill, by);
   result.filled += filled;
   result.unchanged += fill.length - filled;
+  return result;
+}
+
+export type MiocContentResult = {
+  universitiesFilled: number;
+  about: number;
+  websites: number;
+  facts: number;
+  countriesFilled: number;
+  /** Guides for destinations that are not in the portal, so had nowhere to go. */
+  countriesNotHere: number;
+};
+
+const PROFILE_FIELDS = ["about", "website", "facts"] as const;
+type ProfileField = (typeof PROFILE_FIELDS)[number];
+
+/** Profiles as the browser sent them, checked. The website is read again here rather than taken on the browser's word. */
+function cleanProfile(x: MiocProfile): Omit<MiocProfile, "universityMiocId"> | null {
+  if (!x || typeof x !== "object") return null;
+  const facts = Array.isArray(x.facts) ? [...new Set(x.facts.map((f) => text(f, 1000)).filter((f): f is string => !!f))].slice(0, 100) : [];
+  const website = typeof x.website === "string" ? websiteUrl(x.website) : null;
+  return { about: text(x.about, 20000), website: website && website.length <= 500 ? website : null, facts };
+}
+
+function cleanGuide(x: MiocGuide): GuideNow {
+  const faqs: MiocFaq[] = Array.isArray(x.faqs)
+    ? x.faqs
+        .map((f) => ({ question: text(f?.question, 500), answer: text(f?.answer, 5000) }))
+        .filter((f): f is MiocFaq => !!f.question && !!f.answer)
+        .slice(0, 100)
+    : [];
+  return {
+    guide: text(x.guide, 20000),
+    capital: text(x.capital, 200),
+    languages: text(x.languages, 300),
+    climate: text(x.climate, 200),
+    accommodation: text(x.accommodation, 20000),
+    faqs,
+  };
+}
+
+/**
+ * University profiles and destination guides, once, after the universities
+ * are in place and before the courses. Every university field filled is
+ * recorded in the change history, which is also how a later run knows not to
+ * fill it again. Countries keep the same memory in their own mioc_filled list.
+ */
+export async function loadMiocContent(
+  input: { profiles: MiocProfile[]; guides: MiocGuide[] },
+  universityIds: Record<number, string>,
+  by: string | null = null,
+): Promise<MiocContentResult> {
+  const result: MiocContentResult = { universitiesFilled: 0, about: 0, websites: 0, facts: 0, countriesFilled: 0, countriesNotHere: 0 };
+
+  // ---- Universities. Only ids that exist are taken, as with the courses.
+  const claimed = [...new Set(Object.values(universityIds ?? {}).filter((v): v is string => typeof v === "string" && v.length > 0 && v.length < 64))];
+  const current = new Map(
+    claimed.length
+      ? (await db.select({ id: u.id, about: u.about, website: u.website, facts: u.facts }).from(u).where(sql`${u.id} = any(string_to_array(${claimed.join(",")}, ','))`)).map((x) => [x.id, x])
+      : [],
+  );
+  // Several MIOC universities can be one university here; the first to say
+  // something about a field is the one taken.
+  const incoming = new Map<string, Omit<MiocProfile, "universityMiocId">>();
+  for (const x of Array.isArray(input?.profiles) ? input.profiles : []) {
+    const id = universityIds?.[num(x?.universityMiocId, 1, 1e9) ?? 0];
+    const clean = id && current.has(id) ? cleanProfile(x) : null;
+    if (!id || !clean) continue;
+    const was = incoming.get(id);
+    incoming.set(id, was ? { about: was.about ?? clean.about, website: was.website ?? clean.website, facts: was.facts.length ? was.facts : clean.facts } : clean);
+  }
+  const ids = [...incoming.keys()];
+  const before = new Map<string, Set<string>>();
+  if (ids.length) {
+    const cc = schema.catalogueChanges;
+    const rows = await db
+      .select({ id: cc.entityId, field: cc.field })
+      .from(cc)
+      .where(sql`${cc.entity} = 'university' and ${cc.source} = 'mioc' and ${cc.field} in ('about', 'website', 'facts') and ${cc.entityId} = any(string_to_array(${ids.join(",")}, ','))`);
+    for (const r of rows) before.set(r.id, (before.get(r.id) ?? new Set()).add(r.field));
+  }
+  const fills: Record<ProfileField, { id: string; v: string | string[] }[]> = { about: [], website: [], facts: [] };
+  for (const [id, x] of incoming) {
+    const now = current.get(id)!;
+    const fill = profileFill({ about: now.about, website: now.website, facts: now.facts ?? [] }, x, before.get(id));
+    for (const f of PROFILE_FIELDS) if (fill[f] != null) fills[f].push({ id, v: fill[f]! });
+  }
+  const batchId = newBatchId();
+  const touched = new Set<string>();
+  for (const field of PROFILE_FIELDS) {
+    // The blank test is made again in the update itself, so a profile somebody
+    // writes while the import runs is not written over.
+    const isBlank = field === "facts" ? sql.raw("cardinality(universities.facts) = 0") : sql.raw(`(universities.${field} is null or btrim(universities.${field}) = '')`);
+    const type = sql.raw(field === "facts" ? "text[]" : "text");
+    for (const part of chunk(fills[field], 500)) {
+      const filled = await db.execute<{ id: string; v: string | string[] }>(sql`
+        update universities set ${sql.raw(field)} = x.v
+        from jsonb_to_recordset(${JSON.stringify(part)}::jsonb) as x(id text, v ${type})
+        where universities.id = x.id and ${isBlank}
+        returning universities.id as id, x.v as v`);
+      await recordChanges(
+        db,
+        filled.map((f) => ({ entity: "university" as const, entityId: f.id, field, before: field === "facts" ? [] : null, after: f.v })),
+        { by, source: "mioc", batchId },
+      );
+      result[field === "website" ? "websites" : field] += filled.length;
+      for (const f of filled) touched.add(f.id);
+    }
+  }
+  result.universitiesFilled = touched.size;
+
+  // ---- Countries, by the codes this import knows.
+  const guides = new Map<string, GuideNow>();
+  for (const g of Array.isArray(input?.guides) ? input.guides : []) {
+    if (g && KNOWN_CODES.has(String(g.code)) && !guides.has(String(g.code))) guides.set(String(g.code), cleanGuide(g));
+  }
+  if (!guides.size) return result;
+  const here = await db
+    .select({ id: c.id, code: c.code, guide: c.guide, capital: c.capital, languages: c.languages, climate: c.climate, accommodation: c.accommodation, faqs: c.faqs, miocFilled: c.miocFilled })
+    .from(c)
+    .where(inArray(c.code, [...guides.keys()]));
+  result.countriesNotHere = guides.size - here.length;
+  for (const row of here) {
+    const fill = guideFill({ ...row, faqs: Array.isArray(row.faqs) ? row.faqs : [] }, guides.get(row.code)!, new Set(row.miocFilled));
+    const fields = GUIDE_FIELDS.filter((f) => fill[f] !== undefined);
+    if (!fields.length) continue;
+    const sets = fields.map((f) =>
+      f === "faqs"
+        ? sql`faqs = case when jsonb_array_length(faqs) = 0 then ${JSON.stringify(fill.faqs)}::jsonb else faqs end`
+        : sql`${sql.raw(f)} = case when ${sql.raw(f)} is null or btrim(${sql.raw(f)}) = '' then ${fill[f] as string} else ${sql.raw(f)} end`,
+    );
+    await db.execute(sql`
+      update countries set ${sql.join(sets, sql`, `)},
+        mioc_filled = array(select distinct unnest(mioc_filled || string_to_array(${fields.join(",")}, ',')) order by 1)
+      where id = ${row.id}`);
+    result.countriesFilled++;
+  }
   return result;
 }

@@ -1,15 +1,23 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { buildMioc, durationMonths, feeFigure, intakeMonths, parseDump, tuitionFigure } from "../src/lib/mioc";
+import { MIOC_CONTENT_TABLES, buildMioc, durationMonths, factText, feeFigure, guideFill, intakeMonths, paragraphs, parseDump, profileFill, sameSite, tuitionFigure, websiteUrl } from "../src/lib/mioc";
 
 const sample = readFileSync(new URL("./fixtures/mioc-sample.sql", import.meta.url), "utf8");
 const tables = parseDump(sample);
 const built = buildMioc(tables);
 const course = (id: number) => built.programs.find((p) => p.miocId === id);
 
-test("only the four catalogue tables are kept; students are parsed past and dropped", () => {
-  assert.deepEqual(Object.keys(tables).sort(), ["tb_courses", "tb_destinations", "tb_main_course", "tb_universities"]);
+test("only the catalogue tables are kept; students are parsed past and dropped", () => {
+  assert.deepEqual(Object.keys(tables).sort(), [
+    "tb_country_accomodation",
+    "tb_country_faq",
+    "tb_courses",
+    "tb_destinations",
+    "tb_main_course",
+    "tb_universities",
+    "tb_university_info",
+  ]);
   assert.equal(tables.tb_courses.length, 12);
   assert.ok(!JSON.stringify(tables).includes("Never Kept"));
 });
@@ -139,4 +147,111 @@ test("a file cut between statements, or an INSERT with no VALUES, is refused", (
   assert.throws(() => parseDump(cut), /cut short/);
   assert.throws(() => parseDump("INSERT INTO `tb_courses` SELECT * FROM x;\nCOMMIT;"), /Could not read the rows/);
   assert.throws(() => parseDump(sample.slice(0, sample.indexOf("(105,") - 2)), /cut short/);
+});
+
+// ---------------------------------------------------------------- profiles and guides
+
+const profile = (id: number) => built.profiles.find((p) => p.universityMiocId === id);
+const guide = (code: string) => built.guides.find((g) => g.code === code);
+
+test("websites become https addresses, and only real-looking ones", () => {
+  assert.equal(websiteUrl("www.example.ac.uk/"), "https://www.example.ac.uk");
+  assert.equal(websiteUrl("  www.Example.edu/en/  "), "https://www.example.edu/en/");
+  assert.equal(websiteUrl("http://example.edu"), "https://example.edu", "http is read as https");
+  assert.equal(websiteUrl("https://www.example.edu/page/campuses/vancouver"), "https://www.example.edu/page/campuses/vancouver");
+  assert.equal(websiteUrl("example.com/courses/#foundation"), "https://example.com/courses/#foundation");
+  assert.equal(websiteUrl("www.example.com."), "https://www.example.com", "a full stop closing the sentence is not part of it");
+  assert.equal(websiteUrl("localhost"), null);
+  assert.equal(websiteUrl("not a web address"), null);
+  assert.equal(websiteUrl("javascript:alert(1)"), null);
+  assert.equal(websiteUrl("ftp://example.com"), null);
+  assert.equal(websiteUrl("example.com:8080"), null);
+  assert.equal(websiteUrl("https://user@example.com"), null);
+  assert.equal(websiteUrl(""), null);
+  assert.ok(sameSite("https://www.example.edu/", "http://example.edu"));
+  assert.ok(!sameSite("https://example.edu", "https://other.edu"));
+});
+
+test("the website comes from a Web Url line however it is punctuated, and leaves the facts", () => {
+  const p = profile(10)!;
+  assert.equal(p.website, "https://www.westbridge-mioc.example", "a line break before the colon is still a Web Url line");
+  assert.ok(!p.facts.some((f) => /web url/i.test(f)));
+  // An address that does not read as one stays as a fact, so it is not lost.
+  assert.equal(profile(12)!.website, null);
+  assert.ok(profile(12)!.facts.includes("Web Url : localhost"));
+});
+
+test("about text keeps its paragraphs", () => {
+  assert.equal(profile(10)!.about, "Westbridge Mioc University is invented for the suites.\n\nIts second paragraph is made up too.");
+  assert.equal(paragraphs("  One  line \r\n\r\n\r\n\r\n Two\r\n\r\n "), "One line\n\nTwo");
+  assert.equal(paragraphs("   "), null);
+});
+
+test("info lines are kept as facts, as written and in the app's order; rankings and 'public' are not taken as figures", () => {
+  assert.deepEqual(profile(10)!.facts, ["Type: Public research university", "QS World Ranking ; 1438", "34 in Webometrics Mioc National Ranking"]);
+  assert.deepEqual(profile(12)!.facts, ["Web Url : localhost", "Established: 1901"]);
+  // Nothing about rankings or public status is lifted out of the profile.
+  assert.deepEqual(Object.keys(profile(10)!).sort(), ["about", "facts", "universityMiocId", "website"]);
+  assert.equal(factText("Established:\t1967"), "Established: 1967");
+  assert.equal(factText("Address\t1 Example Drive\r\nExampletown"), "Address: 1 Example Drive\nExampletown");
+  assert.equal(factText("Location  - 1 Example Road"), "Location - 1 Example Road");
+});
+
+test("profiles come only for universities that come over, from rows switched on", () => {
+  assert.equal(profile(14), undefined, "a switched-off university brings no profile");
+  assert.equal(profile(99), undefined, "nor does one the app no longer has");
+  assert.equal(profile(13), undefined, "a university with nothing to say has no profile");
+  assert.ok(!profile(10)!.facts.some((f) => f.includes("Switched Off")));
+  assert.deepEqual(built.content, { missingTables: [], profiles: 2, about: 2, websites: 1, facts: 2, guides: 3, faqs: 2, accommodation: 2 });
+});
+
+test("destination guides: the app's fields as written, FAQs in the app's order, switched-off places left out", () => {
+  const gb = guide("GB")!;
+  assert.equal(gb.capital, "Mioc Capital Town");
+  assert.equal(gb.languages, "English, Mioc Welsh");
+  assert.equal(gb.climate, "1°C to 23°C");
+  assert.equal(gb.guide, "An invented overview of studying in the UK, for the suites only.\n\nA second paragraph, also made up.");
+  assert.deepEqual(
+    gb.faqs.map((f) => f.question),
+    ["What does a Mioc year cost?", "How long is a Mioc master's?"],
+    "by the app's order, not its ids, and a question with no answer is dropped",
+  );
+  assert.equal(gb.faqs[0].answer, "An invented answer,\nover two lines.");
+  assert.equal(gb.accommodation, "Invented halls and made-up shared flats.", "a switched-off note is left out");
+  assert.equal(guide("US")!.guide, null);
+  assert.equal(guide("VN")!.accommodation, "Made-up homestays.");
+  assert.equal(guide("SI"), undefined);
+  assert.ok(!JSON.stringify(built.guides).includes("Hidden"));
+});
+
+test("an export without the profile and guide tables still builds, and says what it lacks", () => {
+  const cut = sample
+    .replace(/INSERT INTO `tb_university_info`[\s\S]*?;\n/, "")
+    .replace(/INSERT INTO `tb_country_faq`[\s\S]*?;\n/, "")
+    .replace(/INSERT INTO `tb_country_accomodation`[\s\S]*?;\n/, "");
+  const b = buildMioc(parseDump(cut));
+  assert.equal(b.programs.length, built.programs.length);
+  assert.deepEqual(b.content.missingTables, [...MIOC_CONTENT_TABLES]);
+  assert.equal(b.profiles.length, 0);
+  assert.equal(guide("GB")!.capital, b.guides.find((g) => g.code === "GB")!.capital, "the guide's own fields come from tb_destinations");
+  assert.deepEqual(b.guides.find((g) => g.code === "GB")!.faqs, []);
+});
+
+test("fill blanks only: a profile somebody wrote, or a field the import filled once before, is left alone", () => {
+  const incoming = { about: "From the app.", website: "https://www.example.edu", facts: ["Type: Public"] };
+  assert.deepEqual(profileFill({ about: null, website: null, facts: [] }, incoming), incoming);
+  assert.deepEqual(profileFill({ about: "Written by the desk.", website: "https://www.example.edu/", facts: ["Kept"] }, incoming), {}, "nothing written over, and the same site is not repeated");
+  assert.deepEqual(profileFill({ about: "  ", website: "", facts: [] }, incoming, new Set(["about", "website"])), { facts: ["Type: Public"] }, "cleared after an earlier run stays cleared");
+  // A different website already here stays; the app's is kept among the facts.
+  assert.deepEqual(profileFill({ about: null, website: "https://other.example.edu", facts: [] }, incoming), {
+    about: "From the app.",
+    facts: ["Type: Public", "Website in the MIOC app: https://www.example.edu"],
+  });
+  assert.deepEqual(profileFill({ about: null, website: null, facts: [] }, { about: null, website: null, facts: [] }), {});
+
+  const empty = { guide: null, capital: null, languages: null, climate: null, accommodation: null, faqs: [] };
+  const g = { guide: "Overview.", capital: "Capital", languages: null, climate: "1°C to 2°C", accommodation: null, faqs: [{ question: "Q", answer: "A" }] };
+  assert.deepEqual(guideFill(empty, g), { guide: "Overview.", capital: "Capital", climate: "1°C to 2°C", faqs: [{ question: "Q", answer: "A" }] });
+  assert.deepEqual(guideFill({ ...empty, guide: "Our own words.", faqs: [{ question: "Ours", answer: "Ours" }] }, g), { capital: "Capital", climate: "1°C to 2°C" });
+  assert.deepEqual(guideFill(empty, g, new Set(["guide", "faqs"])), { capital: "Capital", climate: "1°C to 2°C" }, "fields filled on an earlier run are not filled again");
 });

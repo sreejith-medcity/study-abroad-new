@@ -22,14 +22,47 @@ DROP TABLE IF EXISTS `tb_destinations`;
 CREATE TABLE `tb_destinations` (
   `id` int(11) NOT NULL,
   `country` text NOT NULL,
+  `capital` text DEFAULT NULL,
+  `language` text DEFAULT NULL,
+  `temperature` text DEFAULT NULL,
+  `continent` text DEFAULT NULL,
+  `description` text DEFAULT NULL,
   `status` text NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
-INSERT INTO `tb_destinations` (`id`, `country`, `status`) VALUES
-(1, 'UK', '1'),
-(3, 'USA', '1'),
-(26, 'Vietnam', '1'),
-(32, 'Slovenia', '0');
+INSERT INTO `tb_destinations` (`id`, `country`, `capital`, `language`, `temperature`, `continent`, `description`, `status`) VALUES
+(1, 'UK', 'Mioc Capital Town', 'English, Mioc Welsh', '1°C to 23°C', 'WESTERN EUROPE', 'An invented overview of studying in the UK, for the suites only.\r\n\r\nA second paragraph, also made up.', '1'),
+(3, 'USA', 'Mioc Federal City', 'English', NULL, 'NORTH AMERICA', NULL, '1'),
+(26, 'Vietnam', NULL, NULL, '10°C to 35°C', 'Southeast Asia', 'A made-up line about Vietnam.', '1'),
+(32, 'Slovenia', 'Hidden Mioc City', 'Slovene', '-5°C to 30°C', 'CENTRAL EUROPE', 'Never shown: the destination is switched off.', '0');
+
+DROP TABLE IF EXISTS `tb_country_faq`;
+CREATE TABLE `tb_country_faq` (
+  `id` int(11) NOT NULL,
+  `d_id` text NOT NULL,
+  `question` text NOT NULL,
+  `answer` text NOT NULL,
+  `order` int(11) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
+
+INSERT INTO `tb_country_faq` (`id`, `d_id`, `question`, `answer`, `order`) VALUES
+(1, '1', 'How long is a Mioc master\'s?', 'One invented year.', 2),
+(2, '1', 'What does a Mioc year cost?', 'An invented answer,\r\nover two lines.', 1),
+(3, '1', 'A question nobody answered', '', 3),
+(4, '32', 'Hidden question', 'Never shown.', 1);
+
+DROP TABLE IF EXISTS `tb_country_accomodation`;
+CREATE TABLE `tb_country_accomodation` (
+  `id` int(11) NOT NULL,
+  `d_id` text NOT NULL,
+  `text` text NOT NULL,
+  `status` text NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+INSERT INTO `tb_country_accomodation` (`id`, `d_id`, `text`, `status`) VALUES
+(1, '1', 'Invented halls and made-up shared flats.', '1'),
+(2, '1', 'A switched-off note, never shown.', '0'),
+(3, '26', 'Made-up homestays.', '1');
 
 DROP TABLE IF EXISTS `tb_main_course`;
 CREATE TABLE `tb_main_course` (`id` int(11) NOT NULL, `name` text NOT NULL) ENGINE=InnoDB;
@@ -56,6 +89,30 @@ INSERT INTO `tb_universities` (`id`, `d_id`, `name`, `location`, `rank`, `status
 (14, '1', 'Closed Mioc College', 'Hull', NULL, '0'),
 (15, '32', 'Ljubljana Mioc School', NULL, NULL, '1'),
 (16, '1', 'Empty Mioc College', 'York', NULL, '1');
+
+DROP TABLE IF EXISTS `tb_university_info`;
+CREATE TABLE `tb_university_info` (
+  `id` bigint(20) NOT NULL,
+  `u_id` text NOT NULL,
+  `type` text NOT NULL,
+  `text` text NOT NULL,
+  `order` int(11) NOT NULL,
+  `status` text NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+INSERT INTO `tb_university_info` (`id`, `u_id`, `type`, `text`, `order`, `status`, `created_at`) VALUES
+(1, '10', 'info', '34 in Webometrics Mioc National Ranking', 2, '1', '2024-01-01 00:00:00'),
+(2, '10', 'about', 'Westbridge Mioc University is invented for the suites.\r\n\r\nIts second paragraph is made up too.', 0, '1', '2024-01-01 00:00:00'),
+(3, '10', 'info', 'Type\tPublic research university', 0, '1', '2024-01-01 00:00:00'),
+(4, '10', 'info', 'Web Url\r\n: www.westbridge-mioc.example/', 0, '1', '2024-01-01 00:00:00'),
+(5, '10', 'info', 'QS World Ranking ; 1438', 1, '1', '2024-01-01 00:00:00'),
+(6, '10', 'info', 'Address: 1 Switched Off Row', 0, '0', '2024-01-01 00:00:00'),
+(7, '12', 'about', 'Lakeshore Mioc College is a made-up college by an imaginary lake.', 0, '1', '2024-01-01 00:00:00'),
+(8, '12', 'info', 'Web Url : localhost', 0, '1', '2024-01-01 00:00:00'),
+(9, '12', 'info', 'Established\t1901', 0, '1', '2024-01-01 00:00:00'),
+(10, '14', 'about', 'Closed Mioc College is switched off and never comes over.', 0, '1', '2024-01-01 00:00:00'),
+(11, '99', 'about', 'A profile for a university the app no longer has.', 0, '1', '2024-01-01 00:00:00');
 
 DROP TABLE IF EXISTS `tb_courses`;
 CREATE TABLE `tb_courses` (

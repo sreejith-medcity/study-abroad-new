@@ -124,6 +124,8 @@ export const UNIVERSITY_FIELD_LABEL: Record<string, string> = {
   qsYear: "QS edition",
   theRank: "THE ranking",
   theYear: "THE edition",
+  about: "About",
+  facts: "Facts",
 };
 
 /**
@@ -197,7 +199,7 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 export function formatValue(entity: CatalogueEntity, field: string, value: unknown, ctx: { currency: string; docLabels?: Record<string, string> }): string {
   if (value == null || value === "") return NOT_RECORDED;
   if (typeof value === "boolean") return value ? "Yes" : "No";
-  if (entity === "university") return clip(String(value));
+  if (entity === "university") return Array.isArray(value) ? (value.length ? clip(value.map(String).join("; ")) : "None") : clip(String(value));
 
   const n = typeof value === "number" ? value : typeof value === "string" && value.trim() !== "" && Number.isFinite(Number(value)) ? Number(value) : null;
   if (field in MONEY_ZERO) return n == null ? clip(String(value)) : feeText(n, ctx.currency, { zero: MONEY_ZERO[field] });

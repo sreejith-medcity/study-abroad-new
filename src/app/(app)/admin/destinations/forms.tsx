@@ -2,7 +2,7 @@
 
 import { ActionForm, FieldError } from "@/components/action-form";
 import { Field, Input, Textarea } from "@/components/ui";
-import { importRankingsAction, saveLivingFundsAction } from "./actions";
+import { importRankingsAction, saveGuideAction, saveLivingFundsAction } from "./actions";
 import { saveServiceChargeCountryAction } from "@/server/ausbildung-actions";
 
 export function LivingFundsForm({ countryId, currency, amount, note, source }: { countryId: string; currency: string; amount: number | null; note: string | null; source: string | null }) {
@@ -22,6 +22,57 @@ export function LivingFundsForm({ countryId, currency, amount, note, source }: {
       <Field label="As the government words it" htmlFor={`lf-n-${countryId}`}>
         <Input id={`lf-n-${countryId}`} name="note" defaultValue={note ?? ""} />
       </Field>
+    </ActionForm>
+  );
+}
+
+type Guide = {
+  countryId: string;
+  guide: string | null;
+  capital: string | null;
+  languages: string | null;
+  climate: string | null;
+  accommodation: string | null;
+  faqs: { question: string; answer: string }[];
+};
+
+/**
+ * One destination's guide: the overview, the basics, accommodation and the
+ * questions students ask. Two empty question rows are always offered for
+ * adding; clearing a question and its answer removes it.
+ */
+export function GuideForm({ countryId, guide, capital, languages, climate, accommodation, faqs }: Guide) {
+  const rows = [...faqs, { question: "", answer: "" }, { question: "", answer: "" }];
+  return (
+    <ActionForm action={saveGuideAction} submitLabel="Save guide" submitVariant="secondary">
+      <input type="hidden" name="countryId" value={countryId} />
+      <Field label="Overview" htmlFor={`gd-g-${countryId}`} hint="Plain text. A blank line starts a new paragraph.">
+        <Textarea id={`gd-g-${countryId}`} name="guide" rows={6} defaultValue={guide ?? ""} />
+      </Field>
+      <div className="grid gap-2 sm:grid-cols-3">
+        <Field label="Capital" htmlFor={`gd-c-${countryId}`}>
+          <Input id={`gd-c-${countryId}`} name="capital" defaultValue={capital ?? ""} />
+        </Field>
+        <Field label="Languages" htmlFor={`gd-l-${countryId}`}>
+          <Input id={`gd-l-${countryId}`} name="languages" defaultValue={languages ?? ""} />
+        </Field>
+        <Field label="Climate" htmlFor={`gd-t-${countryId}`}>
+          <Input id={`gd-t-${countryId}`} name="climate" defaultValue={climate ?? ""} placeholder="5°C to 35°C" />
+        </Field>
+      </div>
+      <Field label="Accommodation" htmlFor={`gd-a-${countryId}`}>
+        <Textarea id={`gd-a-${countryId}`} name="accommodation" rows={3} defaultValue={accommodation ?? ""} />
+      </Field>
+      <fieldset className="space-y-2">
+        <legend className="text-2xs font-semibold uppercase tracking-wider text-muted">Questions students ask</legend>
+        {rows.map((f, i) => (
+          <div key={i} className="grid gap-1.5 rounded-lg border border-line p-2">
+            <Input name="faqQuestion" aria-label={`Question ${i + 1}`} defaultValue={f.question} placeholder="Question" />
+            <Textarea name="faqAnswer" aria-label={`Answer ${i + 1}`} rows={2} defaultValue={f.answer} placeholder="Answer" />
+          </div>
+        ))}
+        <FieldError name="faqs" />
+      </fieldset>
     </ActionForm>
   );
 }

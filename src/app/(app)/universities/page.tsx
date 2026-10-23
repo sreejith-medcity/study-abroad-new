@@ -7,6 +7,7 @@ import { LEVEL_LABEL } from "@/lib/catalogue";
 import { rankLabels } from "@/lib/rankings";
 import { readFilters } from "@/server/queries";
 import { Button, Card, Chip, EmptyState, Input, LinkButton, PageHeader, Select, Table, Td, Th, Toolbar } from "@/components/ui";
+import { DestinationStrip } from "@/components/destination-guide";
 import { IconBuilding, IconSearch } from "@/components/icons";
 
 export const metadata = { title: "Universities" };
@@ -87,6 +88,9 @@ export default async function UniversitiesPage({ searchParams }: { searchParams:
     .where(sql`exists (select 1 from ${u} where ${u.countryId} = ${c.id})`)
     .orderBy(asc(c.name));
 
+  // Filtered to one country, the list opens with that country's guide in a line.
+  const destination = f.country ? await db.query.countries.findFirst({ where: eq(c.code, f.country) }) : undefined;
+
   const qs = (extra: Record<string, string | undefined>) => {
     const sp = new URLSearchParams();
     for (const [k, v] of Object.entries({ ...f, ...extra })) if (v) sp.set(k, v);
@@ -137,6 +141,8 @@ export default async function UniversitiesPage({ searchParams }: { searchParams:
           </div>
         </form>
       </Toolbar>
+
+      {destination && <DestinationStrip country={destination} />}
 
       <Card>
         {list.length === 0 ? (

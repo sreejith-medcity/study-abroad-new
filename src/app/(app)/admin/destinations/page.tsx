@@ -7,7 +7,8 @@ import { fmtMoney } from "@/lib/format";
 import { ADMIN_ROLES } from "@/lib/permissions";
 import { rankLabels } from "@/lib/rankings";
 import { Card, CardHeader, Chip, PageHeader } from "@/components/ui";
-import { LivingFundsForm, RankingsImportForm, ServiceChargeForm } from "./forms";
+import { hasGuide } from "@/components/destination-guide";
+import { GuideForm, LivingFundsForm, RankingsImportForm, ServiceChargeForm } from "./forms";
 
 export const metadata = { title: "Destinations, service charge and rankings" };
 
@@ -52,6 +53,7 @@ export default async function DestinationsPage() {
         </details>
       </section>
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <div className="min-w-0 space-y-5">
         <Card>
           <CardHeader title="Living costs for the student visa" subtitle="What a student must show for the first year, as each government states it. Leave blank where there is no national figure." />
           <ul className="divide-y divide-line">
@@ -73,6 +75,30 @@ export default async function DestinationsPage() {
             ))}
           </ul>
         </Card>
+        {/* What counsellors read about each country. The MIOC import fills
+            these where blank; what is saved here is never overwritten by it. */}
+        <Card>
+          <CardHeader title="Destination guides" subtitle="Overview, capital, languages, climate, accommodation and the questions students ask. Plain text; line breaks are kept." />
+          <ul className="divide-y divide-line">
+            {countries.map((c) => (
+              <li key={c.id} id={`guide-${c.code}`} className="space-y-2 px-4 py-3" data-guide-country={c.code}>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-medium">
+                    <Link href={`/destinations/${c.code}`} className="hover:underline">{c.name}</Link>
+                  </p>
+                  {hasGuide(c) ? <Chip tone="ok">{`Guide recorded${c.faqs.length ? ` · ${c.faqs.length} questions` : ""}`}</Chip> : <Chip>Not recorded</Chip>}
+                </div>
+                <details>
+                  <summary className="cursor-pointer text-sm font-medium text-brand-600">Edit guide</summary>
+                  <div className="mt-2">
+                    <GuideForm countryId={c.id} guide={c.guide} capital={c.capital} languages={c.languages} climate={c.climate} accommodation={c.accommodation} faqs={c.faqs ?? []} />
+                  </div>
+                </details>
+              </li>
+            ))}
+          </ul>
+        </Card>
+        </div>
         <div className="space-y-5 self-start">
           <Card className="p-4">
             <h2 className="mb-1 font-semibold">University rankings</h2>

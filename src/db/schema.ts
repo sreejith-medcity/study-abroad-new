@@ -441,6 +441,24 @@ export const countries = pgTable("countries", {
    * it: never a nought standing in for unknown.
    */
   serviceChargeInr: integer("service_charge_inr"),
+  /**
+   * The destination guide counsellors read before talking a student through a
+   * country: an overview in plain paragraphs, the capital, the languages, the
+   * climate as written (a range like "5°C to 35°C", not a figure), notes on
+   * accommodation and the questions students ask. Plain text, never HTML.
+   * The MIOC import fills these only where they are blank.
+   */
+  guide: text("guide"),
+  capital: text("capital"),
+  languages: text("languages"),
+  climate: text("climate"),
+  accommodation: text("accommodation"),
+  faqs: jsonb("faqs").$type<{ question: string; answer: string }[]>().notNull().default(sql`'[]'::jsonb`),
+  /**
+   * The guide fields the MIOC import has filled here before. A field somebody
+   * later cleared as wrong is not filled again on the next run.
+   */
+  miocFilled: text("mioc_filled").array().notNull().default(sql`'{}'::text[]`),
 });
 
 export const universities = pgTable(
@@ -463,6 +481,11 @@ export const universities = pgTable(
     theYear: integer("the_year"),
     // The best position either ranking gives, for sorting: the top of a band.
     rankSort: integer("rank_sort"),
+    // A profile in plain paragraphs, and short facts kept as written
+    // ("Established 1967", "Address: ..."). Facts are not turned into figures:
+    // a ranking line there does not say whose ranking, or which year.
+    about: text("about"),
+    facts: text("facts").array().notNull().default(sql`'{}'::text[]`),
   },
   (t) => [uniqueIndex("universities_name_country_uq").on(t.name, t.countryId), uniqueIndex("universities_external_code_uq").on(t.externalCode)],
 );

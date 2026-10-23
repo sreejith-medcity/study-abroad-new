@@ -5,8 +5,8 @@ import { useRef, useState } from "react";
 import { Alert, Button, Field } from "@/components/ui";
 import { groupInr } from "@/lib/format";
 import { buildMioc, parseDump, type MiocBuild } from "@/lib/mioc";
-import type { MiocBatchResult, MiocPrepareResult } from "@/server/mioc-load";
-import { miocFinishAction, miocLoadAction, miocPrepareAction } from "./actions";
+import type { MiocBatchResult, MiocContentResult, MiocPrepareResult } from "@/server/mioc-load";
+import { miocContentAction, miocFinishAction, miocLoadAction, miocPrepareAction } from "./actions";
 
 const BATCH = 1000;
 const n = groupInr;
@@ -31,8 +31,9 @@ const breathe = () => new Promise((r) => setTimeout(r, 30));
  * The file is read here, in the browser, and only the catalogue rows are sent
  * on: a full export also carries the app's students, and none of that leaves
  * this page. Check first, which writes nothing; then load, which sends the
- * programs a thousand at a time so no request runs long, and which can be run
- * again from the start if it stops partway.
+ * university profiles and destination guides once, then the programs a
+ * thousand at a time so no request runs long, and which can be run again from
+ * the start if it stops partway.
  */
 export function MiocForm() {
   const router = useRouter();
@@ -80,6 +81,15 @@ export function MiocForm() {
       const prep = await miocPrepareAction({ countries: build.countries, universities: build.universities }, false);
       if (prep.error || !prep.result) throw new Error(prep.error ?? "Setting up the universities did not come back.");
       const ids = prep.result.ids;
+      let content: MiocContentResult | null = null;
+      if (build.profiles.length || build.guides.length) {
+        setBusy("Adding university profiles and destination guides…");
+        const input = { profiles: build.profiles, guides: build.guides };
+        let res = await miocContentAction(input, ids).catch((e: Error) => ({ error: e.message, result: undefined }));
+        if (res.error) res = await miocContentAction(input, ids).catch((e: Error) => ({ error: e.message, result: undefined }));
+        if (res.error || !res.result) throw new Error(`The universities are set up, but the profiles and guides did not save: ${res.error ?? "no answer"}. Load again to carry on; nothing is duplicated.`);
+        content = res.result;
+      }
       const total: MiocBatchResult = { created: 0, filled: 0, unchanged: 0, keptResearched: 0, noUniversity: 0 };
       setBusy("Loading programs…");
       setProgress({ done: 0, of: build.programs.length });
@@ -105,8 +115,11 @@ export function MiocForm() {
         total.keptResearched ? `${n(total.keptResearched)} left alone because the team researched them by hand` : null,
         total.noUniversity ? `${n(total.noUniversity)} skipped for want of a university` : null,
       ].filter(Boolean);
+      const profiles = content
+        ? ` Profiles filled where blank: about text for ${n(content.about)} ${content.about === 1 ? "university" : "universities"}, a website for ${n(content.websites)}, facts for ${n(content.facts)}. Destination guides filled in for ${n(content.countriesFilled)} ${content.countriesFilled === 1 ? "country" : "countries"}.`
+        : "";
       setDone(
-        `Loaded. ${prep.result.countriesNew.length ? `${prep.result.countriesNew.length} ${prep.result.countriesNew.length === 1 ? "country" : "countries"} added (${prep.result.countriesNew.join(", ")}). ` : ""}${n(prep.result.universitiesNew)} universities added, ${n(prep.result.universitiesHere)} matched to ones already here. ${parts.join("; ")}. Took ${seconds}s.`,
+        `Loaded. ${prep.result.countriesNew.length ? `${prep.result.countriesNew.length} ${prep.result.countriesNew.length === 1 ? "country" : "countries"} added (${prep.result.countriesNew.join(", ")}). ` : ""}${n(prep.result.universitiesNew)} universities added, ${n(prep.result.universitiesHere)} matched to ones already here. ${parts.join("; ")}.${profiles} Took ${seconds}s.`,
       );
       setCheck(null);
       built.current = null;
@@ -125,7 +138,9 @@ export function MiocForm() {
       <p className="text-sm leading-relaxed text-muted">
         The countries, universities and courses kept in the MIOC app. In phpMyAdmin, export <span className="font-mono text-xs">tb_destinations</span>,{" "}
         <span className="font-mono text-xs">tb_universities</span>, <span className="font-mono text-xs">tb_courses</span> and{" "}
-        <span className="font-mono text-xs">tb_main_course</span> as SQL (gzip is fine). The file is read in this browser and only the catalogue is sent on.
+        <span className="font-mono text-xs">tb_main_course</span> as SQL (gzip is fine), with <span className="font-mono text-xs">tb_university_info</span>,{" "}
+        <span className="font-mono text-xs">tb_country_faq</span> and <span className="font-mono text-xs">tb_country_accomodation</span> for university profiles
+        and destination guides. The file is read in this browser and only the catalogue is sent on. Profiles and guides only fill what is blank here.
         New courses land as drafts; nothing here is renamed or deleted, and a course the team researched by hand is left alone. Safe to run again: only
         courses not loaded before are added, and nothing already loaded is changed. A MIOC course deleted here comes back on the next run, so archive one
         rather than delete it.
@@ -170,6 +185,13 @@ export function MiocForm() {
               Left out: {n(b.skipped.duplicateCourses)} repeats of a course filed under a second study area, {n(b.skipped.orphanCourses)} courses whose university is gone or switched
               off{b.skipped.hiddenCountries.length ? `, and everything in ${b.skipped.hiddenCountries.join(", ")} (switched off in the app)` : ""}
               {b.skipped.unknownCountries.length ? `. Countries this import does not know: ${b.skipped.unknownCountries.join(", ")}` : ""}.
+            </li>
+            <li data-mioc-content>
+              Profiles: <span data-mioc-count="profiles">{n(b.content.profiles)}</span> universities, with about text for {n(b.content.about)}, a website for{" "}
+              {n(b.content.websites)} and other facts for {n(b.content.facts)}. Destination guides: <span data-mioc-count="guides">{n(b.content.guides)}</span>{" "}
+              {b.content.guides === 1 ? "country" : "countries"}, with {n(b.content.faqs)} questions and answers and accommodation notes for {n(b.content.accommodation)}. Only
+              fields that are blank here are filled; rankings and &ldquo;public&rdquo; in the profiles stay as facts in words.
+              {b.content.missingTables.length > 0 && <> Not in this file: {b.content.missingTables.join(", ")}.</>}
             </li>
           </ul>
           <p className="text-xs text-muted">Courses that match one already in the catalogue at the same university and level are not added twice. That count comes with the load.</p>

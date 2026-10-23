@@ -32,6 +32,47 @@ export async function saveLivingFundsAction(_: FormState, fd: FormData): Promise
   return { ok: "Saved." };
 }
 
+/**
+ * One destination's guide. Saved as typed: plain text with its line breaks,
+ * shown as text and never as HTML. A question needs its answer and the other
+ * way round; a pair left wholly blank is dropped, which is how one is removed.
+ * The import's memory of what it filled (mioc_filled) is left alone, so a
+ * field cleared here is not filled again by the next MIOC run.
+ */
+export async function saveGuideAction(_: FormState, fd: FormData): Promise<FormState> {
+  const user = await requireUser([...ADMIN_ROLES]);
+  const id = String(fd.get("countryId") ?? "");
+  const field = (name: string, max: number) => {
+    const v = String(fd.get(name) ?? "").replace(/\r\n?/g, "\n").trim();
+    return v ? v.slice(0, max) : null;
+  };
+  const questions = fd.getAll("faqQuestion").map((v) => String(v).trim());
+  const answers = fd.getAll("faqAnswer").map((v) => String(v).replace(/\r\n?/g, "\n").trim());
+  const faqs: { question: string; answer: string }[] = [];
+  for (let i = 0; i < Math.max(questions.length, answers.length); i++) {
+    const question = questions[i] ?? "";
+    const answer = answers[i] ?? "";
+    if (!question && !answer) continue;
+    if (!question || !answer) return { error: "Each question needs its answer, and each answer its question. Clear both to remove one.", fieldErrors: { faqs: ["Question and answer together"] } };
+    faqs.push({ question: question.slice(0, 500), answer: answer.slice(0, 5000) });
+  }
+  if (faqs.length > 100) return { error: "Keep it to a hundred questions." };
+  const next = {
+    guide: field("guide", 20000),
+    capital: field("capital", 200),
+    languages: field("languages", 300),
+    climate: field("climate", 200),
+    accommodation: field("accommodation", 20000),
+    faqs,
+  };
+  const [saved] = await db.update(schema.countries).set(next).where(eq(schema.countries.id, id)).returning({ code: schema.countries.code });
+  if (!saved) return { error: "That destination is no longer here." };
+  await audit(user.id, "country.guide", "country", id, { fields: Object.entries(next).filter(([, v]) => (Array.isArray(v) ? v.length : v)).map(([k]) => k), faqs: faqs.length });
+  revalidatePath("/admin/destinations");
+  revalidatePath(`/destinations/${saved.code}`);
+  return { ok: "Guide saved." };
+}
+
 /** Rankings from a CSV; a university is found by name (and country when given). */
 export async function importRankingsAction(_: FormState, fd: FormData): Promise<FormState> {
   const user = await requireUser([...ADMIN_ROLES]);

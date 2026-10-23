@@ -19,6 +19,7 @@ import { partnerEstimate, pickRule } from "@/lib/money";
 import { fxRates, getSettings } from "@/server/settings";
 import { ScholarshipList } from "@/components/scholarship-list";
 import { ShortlistButton } from "@/components/shortlist-button";
+import { DestinationSnapshot } from "@/components/destination-guide";
 import { Alert, Button, Card, CardHeader, Chip, DataList, LinkButton, PageHeader, Select } from "@/components/ui";
 import { IconAlert, IconCheck, IconClock, IconGlobe } from "@/components/icons";
 
@@ -379,6 +380,8 @@ export default async function ProgramPage({
           </Card>
 
           <ScholarshipList rows={scholarships} subtitle={`At ${university.name}, for this level. Check the page before promising one.`} />
+
+          <DestinationSnapshot country={country} />
 
           <Card>
             <CardHeader
