@@ -31,6 +31,13 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
   // can never disagree.
   const where = await studentWhere(user, f);
 
+  // Fifty at a time, newest first, with a link for the next fifty. The list
+  // used to draw two hundred rows at once and stop there, which made a large
+  // branch slow to open and hid everybody past the two hundredth.
+  const PAGE = 50;
+  const shown = Math.min(5000, Math.max(PAGE, Math.ceil((Number(f.show) || PAGE) / PAGE) * PAGE));
+  const [{ total }] = await db.select({ total: sql<number>`count(*)::int` }).from(s).where(where);
+
   const rows = await db
     .select({
       id: s.id,
@@ -53,8 +60,8 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
     .innerJoin(schema.organizations, eq(s.orgId, schema.organizations.id))
     .leftJoin(sql`users as creator`, sql`creator.id = ${s.createdById}`)
     .where(where)
-    .orderBy(desc(s.createdAt))
-    .limit(200);
+    .orderBy(desc(s.createdAt), desc(s.id))
+    .limit(shown);
 
   // Who each student can be handed to. A branch sees its own people, as before.
   // The head office sees the branch the student belongs to plus its own team,
@@ -83,7 +90,8 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
   // a button and then refused by it is how this was reported in the first place.
   const canRegister = await can(user, "REGISTER_STUDENT");
   // A filtered search that finds nothing needs a different answer from an empty branch.
-  const filtered = Object.keys(f).some((k) => k !== "view" && f[k]);
+  const filtered = Object.keys(f).some((k) => k !== "view" && k !== "show" && f[k]);
+  const more = new URLSearchParams({ ...f, show: String(shown + PAGE) }).toString();
 
   // When a search finds nobody, the same search against the archive usually
   // explains why: the branch is told the email is taken and then cannot find
@@ -293,6 +301,19 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
               ))}
             </tbody>
           </Table>
+        )}
+        {rows.length > 0 && (
+          <div data-list-foot className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3 text-sm text-muted">
+            <span>
+              Showing <span className="tabular font-medium text-ink">{rows.length.toLocaleString("en-IN")}</span> of{" "}
+              <span className="tabular font-medium text-ink">{Number(total).toLocaleString("en-IN")}</span>, newest first
+            </span>
+            {rows.length < Number(total) && (
+              <LinkButton variant="secondary" size="sm" href={`/students?${more}`} scroll={false}>
+                Show {Math.min(PAGE, Number(total) - rows.length)} more
+              </LinkButton>
+            )}
+          </div>
         )}
       </Card>
     </>
