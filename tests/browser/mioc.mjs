@@ -93,7 +93,7 @@ const again = await load();
 check(again.includes("0 new programs added"), `a second run adds nothing (${again.slice(0, 160)})`);
 check(miocRows() === 5, "still five MIOC rows");
 check(sql("select row(tuition_per_year, min_ielts)::text from programs where external_code = 'MIOC:105'") === "(33000,)", "a corrected fee stays corrected, and a score cleared as wrong stays cleared");
-check(again.includes("5 loaded before and left as they are"), "the second run says what it left alone");
+check(again.includes("6 already here and left as they are"), "the second run says what it left alone: its own five, and the register course it already filled");
 check(n("select count(*) from countries where code = 'VN'") === 1 && n("select count(*) from universities where name = 'Lakeshore Mioc College'") === 1, "nothing is made twice");
 
 /* ---------------- A file that is not an export ---------------- */

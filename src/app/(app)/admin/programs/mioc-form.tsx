@@ -101,7 +101,7 @@ export function MiocForm() {
       const parts = [
         `${n(total.created)} new programs added as drafts`,
         total.filled ? `${n(total.filled)} already here had empty fields filled` : null,
-        total.unchanged ? `${n(total.unchanged)} loaded before and left as they are` : null,
+        total.unchanged ? `${n(total.unchanged)} already here and left as they are` : null,
         total.keptResearched ? `${n(total.keptResearched)} left alone because the team researched them by hand` : null,
         total.noUniversity ? `${n(total.noUniversity)} skipped for want of a university` : null,
       ].filter(Boolean);

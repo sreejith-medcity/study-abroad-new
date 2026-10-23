@@ -135,7 +135,7 @@ export function parseDump(text: string, tables: readonly string[] = MIOC_TABLES)
   }
   // phpMyAdmin closes the export with COMMIT. A file cut between two
   // statements reads cleanly up to the cut, so its absence is the only sign.
-  if (!/COMMIT;/.test(text.slice(lastEnd === -1 ? 0 : lastEnd))) {
+  if (lastEnd !== -1 && !/COMMIT;/.test(text.slice(lastEnd))) {
     throw new Error('The file has no COMMIT at the end, so it may be cut short. Export again from phpMyAdmin with "Enclose export in a transaction" ticked (it is on by default).');
   }
   return out;
