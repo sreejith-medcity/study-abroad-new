@@ -30,6 +30,7 @@ export async function restoreCatalogueChangeAction(_: FormState, fd: FormData): 
     revalidatePath("/search");
   } else if (result.entity === "university" && result.entityId) {
     revalidatePath(`/universities/${result.entityId}`);
+    revalidatePath(`/admin/universities/${result.entityId}`);
   }
   return result.error ? { error: result.error } : { ok: result.ok };
 }

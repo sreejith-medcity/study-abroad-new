@@ -29,7 +29,7 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
   const { programs: p, universities: u, countries: c } = schema;
   const where = programFilterWhere(f);
   const rows = await db
-    .select({ id: p.id, name: p.name, level: p.level, pathway: p.pathway, intakeMonths: p.intakeMonths, tuition: p.tuitionPerYear, tuitionTotal: p.tuitionTotal, currency: c.currency, university: u.name, country: c.name, status: p.status, minIelts: p.minIelts, minPte: p.minPte, minOet: p.minOetGrade, minGerman: p.minGermanLevel, maxBacklogs: p.maxBacklogs, moi: p.moiAccepted, workRights: p.workRights, workRightsNote: p.workRightsNote, docs: p.requiredDocs })
+    .select({ id: p.id, name: p.name, level: p.level, pathway: p.pathway, intakeMonths: p.intakeMonths, tuition: p.tuitionPerYear, tuitionTotal: p.tuitionTotal, currency: c.currency, university: u.name, universityId: u.id, country: c.name, status: p.status, minIelts: p.minIelts, minPte: p.minPte, minOet: p.minOetGrade, minGerman: p.minGermanLevel, maxBacklogs: p.maxBacklogs, moi: p.moiAccepted, workRights: p.workRights, workRightsNote: p.workRightsNote, docs: p.requiredDocs })
     .from(p)
     .innerJoin(u, eq(p.universityId, u.id))
     .innerJoin(c, eq(u.countryId, c.id))
@@ -157,7 +157,7 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
                   {rows.map((r) => (
                     <tr key={r.id}>
                       <Td><Link prefetch={false} href={`/admin/programs/${r.id}`} className="font-medium hover:text-brand-700 hover:underline">{r.name}</Link>{r.pathway !== "DEGREE" && <Chip tone="info">{r.pathway === "AUSBILDUNG" ? "Ausbildung" : "Nursing"}</Chip>}</Td>
-                      <Td>{r.university}<p className="text-xs text-muted">{r.country}</p></Td>
+                      <Td><Link prefetch={false} href={`/admin/universities/${r.universityId}`} className="hover:text-brand-700 hover:underline" title={`Edit ${r.university}`}>{r.university}</Link><p className="text-xs text-muted">{r.country}</p></Td>
                       <Td>{r.level}</Td>
                       <Td className="whitespace-nowrap">{intakesText(r.intakeMonths)}</Td>
                       <Td className="whitespace-nowrap tabular">{tuitionText(r.tuition, r.tuitionTotal, r.currency)}</Td>

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { audit } from "@/lib/audit";
 import { createId } from "@/lib/id";
@@ -153,6 +153,18 @@ export async function restoreChanges(target: RestoreTarget, userId: string): Pro
   const changes = changesOf("university", entityId, current, values);
   if (!changes.length) return { ok: "Already at those values.", entity, entityId };
   const set: Record<string, unknown> = Object.fromEntries(changes.map((x) => [x.field, values[x.field]]));
+  // The edit screen's name rules, for the same reasons: a university needs a
+  // name, and two in one country under one name would trip the unique index
+  // or leave the rankings import unable to tell them apart.
+  if ("name" in set) {
+    const name = typeof set.name === "string" ? set.name.trim() : "";
+    if (!name) return { error: "A university needs a name, so a blank one cannot come back.", entity, entityId };
+    const clash = await db.query.universities.findFirst({
+      where: and(eq(schema.universities.countryId, current.countryId), ne(schema.universities.id, entityId), sql`lower(${schema.universities.name}) = lower(${name})`),
+      columns: { id: true },
+    });
+    if (clash) return { error: "Another university in this country now has that name, so the old name cannot come back.", entity, entityId };
+  }
   // The sort position is worked out from the two rankings, never stored on its own.
   if ("qsRank" in set || "theRank" in set) {
     const merged = { ...current, ...set } as typeof current;

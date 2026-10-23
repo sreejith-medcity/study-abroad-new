@@ -11,7 +11,7 @@ import { ScholarshipList } from "@/components/scholarship-list";
 import { ChangeHistory } from "@/components/change-history";
 import { DestinationSnapshot } from "@/components/destination-guide";
 import { changeHistory } from "@/server/catalogue-history";
-import { Card, CardHeader, Chip, DataList, EmptyState, PageHeader, Table, Td, Th, cn } from "@/components/ui";
+import { Card, CardHeader, Chip, DataList, EmptyState, LinkButton, PageHeader, Table, Td, Th, cn } from "@/components/ui";
 import { IconAlert, IconCheck, IconPrograms } from "@/components/icons";
 
 export const metadata = { title: "University" };
@@ -78,10 +78,20 @@ export default async function UniversityPage({
           </Link>
         }
         title={university.name}
-        actions={websiteHref ? (
-          <a href={websiteHref} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-brand-600 hover:underline">
-            Official website ↗
-          </a>
+        actions={websiteHref || isAdmin(user) ? (
+          <>
+            {websiteHref && (
+              <a href={websiteHref} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-brand-600 hover:underline">
+                Official website ↗
+              </a>
+            )}
+            {/* Admins only, the same people the edit screen and its action let in. */}
+            {isAdmin(user) && (
+              <LinkButton variant="secondary" size="sm" href={`/admin/universities/${university.id}`} data-edit-university="">
+                Edit university
+              </LinkButton>
+            )}
+          </>
         ) : undefined}
         subtitle={`${multiCampus ? `Campuses in ${campuses.length > 5 ? `${campuses.slice(0, 5).join(", ")} and ${campuses.length - 5} more` : campuses.join(", ")} · ` : university.city ? `${university.city}, ` : ""}${university.country.name}${university.isPublic ? " · Public institution" : ""}`}
       />
