@@ -6,6 +6,7 @@ import { DASHBOARD_KINDS, dashboardFor, kindLabel, mayViewAs } from "@/lib/dashb
 import { PERIODS, type Lens } from "@/server/dashboard-lens";
 import { LensBar } from "@/components/charts/lens-bar";
 import { ViewAs } from "@/components/dashboard/view-as";
+import { IconExport } from "@/components/icons";
 
 /** A dashboard's own address with some of what it is looking at changed. */
 export function hrefWith(sp: Record<string, string | string[] | undefined>, patch: Record<string, string | null>) {
@@ -55,7 +56,10 @@ export async function Controls({ lens, periods = true }: { lens: Lens; periods?:
         .orderBy(asc(schema.organizations.type), asc(schema.organizations.name))
     : [];
   const showLens = periods || orgs.length > 0;
-  if (!showLens && !mayViewAs(user.role)) return null;
+  // The workbook takes exactly what this screen is looking at.
+  const exportQuery = new URLSearchParams(
+    Object.entries({ as: lens.viewingAs ? kind : "", org: lens.org ?? "", who: lens.viewingAs ? (lens.person?.id ?? "") : "", period: lens.period === "all" ? "" : lens.period }).filter(([, v]) => v),
+  ).toString();
   return (
     <div className="flex flex-wrap items-center gap-2" data-print="hide">
       {mayViewAs(user.role) && (
@@ -64,6 +68,15 @@ export async function Controls({ lens, periods = true }: { lens: Lens; periods?:
       {showLens && (
         <LensBar periods={PERIODS} period={lens.period} hidePeriods={!periods} orgs={orgs.map((o) => ({ id: o.id, name: o.name, subAgent: o.type === "SUB_AGENT" }))} org={lens.org} />
       )}
+      {/* A plain link rather than a button: the browser downloads it, and it
+          works before the page's script has loaded. */}
+      <a
+        href={`/api/dashboard/export${exportQuery ? `?${exportQuery}` : ""}`}
+        data-export
+        className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line-strong bg-surface px-2.5 text-xs font-medium text-ink hover:bg-surface-2"
+      >
+        <IconExport className="size-3.5" /> Excel
+      </a>
     </div>
   );
 }
