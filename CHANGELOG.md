@@ -5,6 +5,11 @@ version in package.json and adds an entry here and in src/lib/releases.ts (the
 What's new page reads that one). After applying a release, tag it with the
 version so it can be found and rolled back to.
 
+## 1.0.1 (24 October 2026)
+
+- A course goes live only when it is ready, whichever way it is published: it needs an intake, and a work-rights answer needs its evidence. Publishing everything that matches the filters now says how many went live and how many stayed drafts, and why; publishing one course says why it cannot.
+- A course imported from a CSV as live but with a work-rights answer and no evidence comes in as a draft, and the import says so.
+
 ## 1.0.0 (23 October 2026)
 
 The first numbered release. Everything built before it is in the git history.

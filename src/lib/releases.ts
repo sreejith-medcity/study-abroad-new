@@ -12,6 +12,14 @@ export type Release = { version: string; date: string; changes: string[] };
 
 export const RELEASES: Release[] = [
   {
+    version: "1.0.1",
+    date: "2026-10-24",
+    changes: [
+      "A course goes live only when it is ready, whichever way it is published: it needs an intake, and a work-rights answer needs its evidence. Publishing everything that matches the filters now says how many went live and how many stayed drafts, and why; publishing one course says why it cannot.",
+      "A course imported from a CSV as live but with a work-rights answer and no evidence comes in as a draft, and the import says so.",
+    ],
+  },
+  {
     version: "1.0.0",
     date: "2026-10-23",
     changes: [
