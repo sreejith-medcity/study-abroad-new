@@ -519,6 +519,20 @@
       "when": 1792780726880,
       "tag": "0073_catalogue_history_and_document_versions",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1792785774399,
+      "tag": "0074_university_profiles_and_destination_guides",
+      "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1792785936476,
+      "tag": "0075_search_trigram_indexes",
+      "breakpoints": true
     }
   ]
 }

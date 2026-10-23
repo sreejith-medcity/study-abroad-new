@@ -40,6 +40,8 @@ for (const part of raw.split("--> statement-breakpoint").map((s) => s.trim()).fi
   } else if (/^ALTER TABLE .* ALTER COLUMN .* (DROP|SET) NOT NULL$/i.test(stmt)) {
     // Dropping or setting NOT NULL is already safe to run twice.
     out.push(stmt + ";");
+  } else if (/^CREATE EXTENSION /i.test(stmt)) {
+    out.push(stmt.replace(/^CREATE EXTENSION (IF NOT EXISTS )?/i, "CREATE EXTENSION IF NOT EXISTS ") + ";");
   } else if (/^CREATE (UNIQUE )?INDEX /i.test(stmt)) {
     out.push(stmt.replace(/^CREATE (UNIQUE )?INDEX /i, (m) => `${m}IF NOT EXISTS `) + ";");
   } else {

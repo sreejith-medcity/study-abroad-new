@@ -83,8 +83,10 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const seasonsOn = listOf(f.season);
   const tagsOn = listOf(f.tags);
 
-  // Totals and what each chip would leave, in one pass over the matches.
-  const [counts] = await db
+  // Totals and what each chip would leave, in one pass over the matches. The
+  // counts and the page of results do not depend on each other, so they are
+  // asked together rather than one after the other.
+  const countsQ = db
     .select({
       total: count(),
       unis: sql<number>`count(distinct ${u.id})`.mapWith(Number),
@@ -95,12 +97,10 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     .innerJoin(u, eq(p.universityId, u.id))
     .innerJoin(c, eq(u.countryId, c.id))
     .where(where);
-  const total = counts.total;
-  const chipCount = (k: string) => (counts as unknown as Record<string, number>)[k] ?? 0;
 
-  const rows =
+  const rowsQ =
     view === "programs"
-      ? await db
+      ? db
           .select({
             id: p.id,
             name: p.name,
@@ -170,12 +170,12 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           )
           .limit(PAGE + 1)
           .offset((page - 1) * PAGE)
-      : [];
+      : null;
 
   // The same matches, one line per university.
-  const uniRows =
+  const uniQ =
     view === "universities"
-      ? await db
+      ? db
           .select({
             id: u.id,
             name: u.name,
@@ -200,7 +200,12 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           .orderBy(...(f.sort === "rank" ? [sql`${u.rankSort} asc nulls last`, asc(u.name)] : f.sort === "name" ? [asc(u.name)] : [asc(c.name), asc(u.name)]))
           .limit(PAGE + 1)
           .offset((page - 1) * PAGE)
-      : [];
+      : null;
+  const [[counts], rowsFound, unisFound] = await Promise.all([countsQ, rowsQ, uniQ]);
+  const rows = rowsFound ?? [];
+  const uniRows = unisFound ?? [];
+  const total = counts.total;
+  const chipCount = (k: string) => (counts as unknown as Record<string, number>)[k] ?? 0;
 
   // One line per road to a course, for comparing two aggregators on the same
   // course rather than hovering over chips to find the difference.

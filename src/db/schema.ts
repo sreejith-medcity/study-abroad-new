@@ -487,7 +487,12 @@ export const universities = pgTable(
     about: text("about"),
     facts: text("facts").array().notNull().default(sql`'{}'::text[]`),
   },
-  (t) => [uniqueIndex("universities_name_country_uq").on(t.name, t.countryId), uniqueIndex("universities_external_code_uq").on(t.externalCode)],
+  (t) => [
+    uniqueIndex("universities_name_country_uq").on(t.name, t.countryId),
+    uniqueIndex("universities_external_code_uq").on(t.externalCode),
+    // Trigram index for "contains" search over a hundred thousand courses (needs pg_trgm).
+    index("universities_name_trgm").using("gin", t.name.op("gin_trgm_ops")),
+  ],
 );
 
 export const programs = pgTable(
@@ -567,7 +572,16 @@ export const programs = pgTable(
     createdAt: createdAt(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("programs_name_idx").on(t.name), uniqueIndex("programs_external_code_uq").on(t.externalCode), index("programs_university_idx").on(t.universityId)],
+  (t) => [
+    index("programs_name_idx").on(t.name),
+    uniqueIndex("programs_external_code_uq").on(t.externalCode),
+    index("programs_university_idx").on(t.universityId),
+    // Trigram indexes, so "contains" search on a name, a field or a campus is a
+    // lookup rather than a read of every course (needs pg_trgm).
+    index("programs_name_trgm").using("gin", t.name.op("gin_trgm_ops")),
+    index("programs_study_area_trgm").using("gin", t.studyArea.op("gin_trgm_ops")),
+    index("programs_campus_trgm").using("gin", t.campus.op("gin_trgm_ops")),
+  ],
 );
 
 // ---------- Status dictionary (per pathway) ----------

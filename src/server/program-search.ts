@@ -1,5 +1,5 @@
-import { and, eq, ilike, lte, or, sql, type AnyColumn, type SQL } from "drizzle-orm";
-import { schema } from "@/db";
+import { and, eq, ilike, inArray, lte, or, sql, type AnyColumn, type SQL } from "drizzle-orm";
+import { db, schema } from "@/db";
 import type { EligibilityInput } from "@/lib/eligibility";
 import { PROGRAM_TAGS, SEASONS, type ProgramTag } from "@/lib/program-tags";
 import { notBlockedWhere } from "@/server/eligibility-sql";
@@ -83,6 +83,19 @@ export function qualificationCond(held: "SCHOOL" | "UG" | "PG"): SQL {
   return sql`not (${needsUg} or ${needsPg})`;
 }
 
+/**
+ * Words typed into search, matched anywhere in the course's name, field or
+ * campus, or the university's name. Asked as two lists the trigram indexes can
+ * answer, rather than four "contains" tests on every course in the catalogue.
+ */
+export function textMatch(q: string): SQL {
+  const like = `%${q}%`;
+  return or(
+    inArray(p.id, db.select({ id: p.id }).from(p).where(or(ilike(p.name, like), ilike(p.studyArea, like), ilike(p.campus, like)))),
+    inArray(u.id, db.select({ id: u.id }).from(u).where(ilike(u.name, like))),
+  )!;
+}
+
 /** Applications open: a recorded deadline still ahead. Closed: deadlines recorded, all passed. */
 export const openCond = sql`programs.id in (select pd.program_id from program_deadlines pd where pd.deadline >= current_date)`;
 export const closedCond = sql`(programs.id in (select pd.program_id from program_deadlines pd) and not ${openCond})`;
@@ -164,7 +177,7 @@ export function searchConds(
   const conds: (SQL | undefined)[] = [eq(p.status, "LIVE")];
   const budget = Number(f.budget) > 0 ? Number(f.budget) * 1e5 : null;
   if (budget) conds.push(budgetWhere(budget, rates));
-  if (f.q) conds.push(or(ilike(p.name, `%${f.q}%`), ilike(u.name, `%${f.q}%`), ilike(p.studyArea, `%${f.q}%`), ilike(p.campus, `%${f.q}%`)));
+  if (f.q) conds.push(textMatch(f.q));
   const countries = listOf(f.country);
   if (countries.length === 1) conds.push(eq(c.code, countries[0]));
   else if (countries.length > 1) conds.push(sql`${c.code} in (${sql.join(countries.map((x) => sql`${x}`), sql`, `)})`);
