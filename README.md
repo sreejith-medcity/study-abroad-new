@@ -460,6 +460,42 @@ about 30 ms at that size; it is left unindexed on purpose, because the index
 would be paid for on every write in the portal to speed up a screen a super
 admin opens occasionally.
 
+## The MIOC app's catalogue
+
+Medcity's older mobile app (the MIOC database on Hostinger) holds about
+104,000 courses at 1,300 universities in 39 countries. Programs, "From the
+MIOC app", reads a phpMyAdmin SQL export of tb_destinations, tb_universities,
+tb_courses and tb_main_course (and, when present, tb_university_info,
+tb_country_faq and tb_country_accomodation). The file is parsed in the
+browser; only catalogue rows are sent to the server, in batches of a
+thousand, so a full export with the app's students in it never leaves the
+page.
+
+- New courses land as drafts with source MIOC and code MIOC:<course id>.
+  A course the team researched by hand is never touched or duplicated; a
+  register's course (CRICOS) only has its empty fields filled; a second run
+  adds only what is new and changes nothing already loaded.
+- The fee is taken as a yearly figure only when it is a plain number in the
+  country's own currency (checked against hand-researched courses, the app
+  recorded yearly fees). Semester, nine-month and other-currency figures, and
+  anything else that does not fit a field, are kept in words in the entry
+  notes. A nought is "not recorded".
+- Programs, Review drafts goes through the drafts university by university
+  before anything is published.
+
+## Change history and document versions
+
+Every change to a course or a university is kept field by field in
+catalogue_changes, with who and when (or which sync), and shows on the course
+and university pages for admins with Restore buttons. A restore never
+overwrites a value that was changed again since; it says which fields it left.
+
+A student's document is never overwritten: replacing it keeps the old file as
+an earlier version, removing it sets it aside (the stored file stays), and the
+people who decide documents can make an earlier version current or put a
+removed one back. Counts and checks read current versions only. Stored files
+are never deleted by the portal.
+
 ## Releases
 
 Every release has a number (1.0.0, 1.1.0, ...). The release commit bumps
