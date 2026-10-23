@@ -13,8 +13,9 @@ import { PROGRAM_FILTER_KEYS, programFilterWhere } from "@/server/program-filter
 import { CricosForm } from "./cricos-form";
 import { RegistryForm } from "./registry-form";
 import { MiocForm } from "./mioc-form";
-import { fmtDateTime } from "@/lib/format";
+import { fmtDateTime, groupInr } from "@/lib/format";
 import { ADMIN_ROLES } from "@/lib/permissions";
+import { draftTotal } from "@/server/draft-review";
 
 export const metadata = { title: "Programs" };
 // The CRICOS sync runs from this page and takes up to a minute on a full release.
@@ -54,6 +55,7 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
     .orderBy(desc(schema.auditLogs.createdAt))
     .limit(1);
   const countries = await db.select().from(c).orderBy(asc(c.name));
+  const drafts = await draftTotal();
   const qs = (extra: Record<string, string>) => {
     const sp = new URLSearchParams();
     for (const [k, v] of Object.entries({ ...f, ...extra })) if (v) sp.set(k, v);
@@ -146,6 +148,16 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
                 <Button type="submit">Filter</Button>
               </div>
             </form>
+            {drafts > 0 && (
+              // Publishing every draft a filter matches puts courses nobody has
+              // checked in front of counsellors; this is the way to check them first.
+              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line pt-3 text-sm">
+                <Link href="/admin/programs/review" className="font-medium text-brand-600 hover:underline" data-review-link data-count={drafts}>
+                  Review {groupInr(drafts)} draft{drafts === 1 ? "" : "s"} university by university
+                </Link>
+                <span className="text-muted">Check each university&apos;s courses and publish the ones that are ready.</span>
+              </div>
+            )}
           </Card>
           <Card>
             {rows.length === 0 ? (Object.entries(f).some(([k, v]) => k !== "page" && v)

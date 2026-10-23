@@ -8,7 +8,7 @@ import { PROGRAM_TAGS } from "./program-tags";
  */
 
 export type CatalogueEntity = "program" | "university";
-export type ChangeSource = "edit" | "bulk" | "import" | "cricos" | "registry" | "mioc" | "restore";
+export type ChangeSource = "edit" | "bulk" | "review" | "import" | "cricos" | "registry" | "mioc" | "restore";
 export type FieldChange = { field: string; before: unknown; after: unknown };
 
 /** Bookkeeping columns that move on every write and say nothing about the course. */
@@ -241,6 +241,7 @@ export function fieldLabel(entity: CatalogueEntity, field: string) {
 export const SOURCE_LABEL: Record<string, string> = {
   edit: "Edited",
   bulk: "Bulk change",
+  review: "Draft review",
   import: "CSV import",
   cricos: "CRICOS sync",
   registry: "Register sync",
