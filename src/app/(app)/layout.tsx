@@ -179,6 +179,7 @@ const ADMIN_NAV: NavGroup[] = [
     items: [
       { href: "/admin/insights", label: "Insights", icon: "insights" },
       { href: "/journal/report", label: "Journal report", icon: "deadlines" },
+      { href: "/targets", label: "Targets", icon: "insights" },
       { href: "/learning", label: "Learning resources", icon: "learning" },
       { href: "/support", label: "Help desk", icon: "support" },
     ],
@@ -390,6 +391,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       items: [
         // The day's journal, for everybody who is issued one.
         ...(journalIssued(user.role, user.orgType) ? [{ href: "/journal", label: "Daily journal", icon: "deadlines" as const }] : []),
+        // A branch head sets their people's monthly targets.
+        ...(user.role === "PARTNER" ? [{ href: "/targets", label: "Targets", icon: "insights" as const }] : []),
         { href: "/settings", label: "Settings", icon: "settings" },
       ],
     },

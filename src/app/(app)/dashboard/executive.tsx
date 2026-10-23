@@ -8,6 +8,7 @@ import { Card, CardHeader } from "@/components/ui";
 import { PrintButton } from "@/components/print-button";
 import { ActivityFeed, BranchTable, CountryBars } from "@/components/charts/dashboard-pictures";
 import { AreaLine, AttentionList, ExecHero, FlowRibbon, Gauge, MiniTiles, Placements } from "@/components/dashboard/role-pieces";
+import { TargetsCard } from "./targets-card";
 import { Controls, ViewingAsNote, firstName, partOfDay, periodLinks } from "./controls";
 
 /**
@@ -121,6 +122,8 @@ export default async function Executive({ lens, sp }: { lens: Lens; sp: Record<s
           />
         </Card>
       </div>
+
+      <TargetsCard lens={lens} className="mt-5" />
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
         <Card className="min-w-0">

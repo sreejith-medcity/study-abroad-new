@@ -1741,6 +1741,34 @@ export const gateOverrides = pgTable(
 
 // ---------- Notifications, messaging and audit ----------
 
+/** What a monthly target is set on. */
+export const targetMetric = pgEnum("target_metric", ["REGISTRATIONS", "APPLICATIONS", "VISAS"]);
+
+/**
+ * A monthly target, for a branch or for one person in it.
+ *
+ * The desk sets a branch's; a branch head sets their own people's. The
+ * subject is written out ("org:<id>" or "user:<id>") so one unique rule
+ * covers both, and the organisation or person is kept beside it so that
+ * deleting either takes their targets with them.
+ */
+export const targets = pgTable(
+  "targets",
+  {
+    id: id(),
+    subject: text("subject").notNull(),
+    orgId: text("org_id").references(() => organizations.id, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
+    /** The month, as YYYY-MM in India time. */
+    month: text("month").notNull(),
+    metric: targetMetric("metric").notNull(),
+    value: integer("value").notNull(),
+    setById: text("set_by_id").references(() => users.id, { onDelete: "set null" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("targets_subject_month_metric_uq").on(t.subject, t.month, t.metric), index("targets_month_idx").on(t.month)],
+);
+
 /** How somebody answered their journal for a day, or that they never did. */
 export const journalState = pgEnum("journal_state", ["VERIFIED", "FLAGGED", "MISSED"]);
 

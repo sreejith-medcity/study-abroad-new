@@ -498,6 +498,13 @@
       "when": 1792723928759,
       "tag": "0070_daily_journal",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1792726774432,
+      "tag": "0071_targets",
+      "breakpoints": true
     }
   ]
 }

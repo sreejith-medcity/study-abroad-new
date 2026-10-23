@@ -675,3 +675,68 @@ export function Placements({
     </div>
   );
 }
+
+/* ---------------- Targets ---------------- */
+
+type TargetProgress = { metric: string; label: string; actual: number; target: number | null };
+
+/**
+ * One bar per target: what has happened against what was set, with a thin
+ * mark for where the month has got to, so "on pace" can be read without
+ * working it out. Green at or past the target, amber behind the pace, the
+ * brand colour otherwise. A metric with no target says so.
+ */
+export function TargetBars({ progress, elapsed, compact = false }: { progress: TargetProgress[]; elapsed: number; compact?: boolean }) {
+  return (
+    <div className={cn("grid gap-3", compact ? "sm:grid-cols-3" : "sm:grid-cols-3")}>
+      {progress.map((p) => {
+        const share = p.target ? p.actual / p.target : 0;
+        const behind = p.target != null && share < elapsed && share < 1;
+        return (
+          <div key={p.metric} data-target={p.metric} className="min-w-0">
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-xs font-medium text-ink-soft">{p.label}</span>
+              <span className="text-xs tabular text-muted">
+                {p.target == null ? (
+                  "No target"
+                ) : (
+                  <>
+                    <span data-figure className="font-semibold text-ink">
+                      {fmt(p.actual)}
+                    </span>{" "}
+                    of {fmt(p.target)}
+                  </>
+                )}
+              </span>
+            </div>
+            <div className="relative mt-1.5 h-2 rounded-full bg-surface-2 ring-1 ring-inset ring-line">
+              {p.target != null && (
+                <span
+                  className={cn("block h-full rounded-full", share >= 1 ? "bg-good-500" : behind ? "bg-warn-500" : "bg-brand-600")}
+                  style={{ width: `${Math.min(100, Math.max(p.actual > 0 ? 3 : 0, share * 100))}%` }}
+                />
+              )}
+              {p.target != null && elapsed > 0 && elapsed < 1 && (
+                <span className="absolute -top-1 h-4 w-px bg-ink/40" style={{ left: `${elapsed * 100}%` }} title="Where the month has got to" aria-hidden="true" />
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** A list of people or branches, each with their three bars. */
+export function TargetRows({ rows, elapsed }: { rows: { id: string; name: string; progress: TargetProgress[] }[]; elapsed: number }) {
+  return (
+    <ul className="divide-y divide-line">
+      {rows.map((r) => (
+        <li key={r.id} data-target-row={r.id} className="px-4 py-3">
+          <p className="mb-2 text-sm font-semibold text-ink">{r.name}</p>
+          <TargetBars progress={r.progress} elapsed={elapsed} compact />
+        </li>
+      ))}
+    </ul>
+  );
+}
