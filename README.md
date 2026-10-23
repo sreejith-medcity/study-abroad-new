@@ -265,7 +265,7 @@ Four endpoints need calling on a schedule, all with `Authorization: Bearer $CRON
 | `POST /api/cron/crm` | Every ten minutes | The outbound queue to Medcity's CRM only moves when somebody presses the button on The CRM link |
 | `POST /api/cron/documents` | Daily, early morning IST | Nobody is chased for a document, no expiry is flagged and no gate notice goes out |
 | `POST /api/cron/cricos` | Monthly | Australia's course register goes stale |
-| `POST /api/cron/journal` | Just after 5:30 PM and just after 7 PM IST (or every fifteen minutes) | The journals still work, but "your journal is ready" and the admin's report only go out when somebody next opens a page |
+| `POST /api/cron/journal` | Just after 5 PM and just after midnight IST (or every fifteen minutes) | The journals still work, but "your journal is ready" and the admin's report only go out when somebody next opens a page |
 
 Pick one of these three places to call them from. The portal does not care which.
 

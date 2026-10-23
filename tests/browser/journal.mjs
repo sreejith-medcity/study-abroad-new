@@ -4,7 +4,7 @@
 // and who signed in after hours.
 //
 // The clock is set in platform settings for the run, relative to now, so the
-// suite can stand in each part of the day without waiting for 5:30 PM.
+// suite can stand in each part of the day without waiting for 5 PM.
 // Wants the plain seed.
 import { chromium } from "playwright";
 import { knownWarning, hydrated } from "./_errors.mjs";
@@ -59,6 +59,14 @@ const go = async (page, path) => {
   return (await page.locator("main").innerText()).replace(/\s+/g, " ");
 };
 const standingOf = (page, id) => page.locator(`[data-person="${id}"]`).getAttribute("data-standing");
+
+// Out of the box the day ends at 5 PM and the journal can be verified until
+// 11:59 PM, India time.
+check(
+  sql("select string_agg(column_default, ' ' order by column_name) from information_schema.columns where table_name = 'app_settings' and column_name in ('journal_cutoff','journal_day_end','journal_out_of_hours')") ===
+    "'23:59'::text '17:00'::text '17:45'::text",
+  "the journal opens at 5 PM, counts sign-ins from 5:45 PM as after hours, and closes at 11:59 PM",
+);
 
 const staffCount = n(`select count(*) from users u join organizations o on o.id = u.org_id where u.active and o.type in ('HQ','BRANCH') and u.role not in ('SUPER_ADMIN','MANAGEMENT','STUDENT','PARENT')`);
 
@@ -224,7 +232,7 @@ sql(`update daily_journals set decided_at = now() - interval '8 minutes' where u
   check(res.status === 401, "the scheduler's endpoint refuses a call without the secret");
 }
 
-clock("17:30", "17:45", "19:00");
+clock("17:00", "17:45", "23:59");
 await browser.close();
 console.log(fails.length === 0 ? "\nall passed" : `\n${fails.length} failed`);
 process.exit(fails.length === 0 ? 0 : 1);

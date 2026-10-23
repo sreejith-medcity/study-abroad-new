@@ -3,7 +3,7 @@
  * scheduler and the suites all read the working day the same way.
  *
  * Every time here is India time, whatever the server's own clock is set to:
- * the day ends at 5:30 PM in Kottayam, not in the data centre.
+ * the day ends at 5 PM in Kottayam, not in the data centre.
  */
 
 export const IST = "Asia/Kolkata";
@@ -13,7 +13,7 @@ export function istDay(at: Date = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: IST, year: "numeric", month: "2-digit", day: "2-digit" }).format(at);
 }
 
-/** A clock time on a working day, "17:30" on "2026-10-23", as an instant. */
+/** A clock time on a working day, "17:00" on "2026-10-23", as an instant. */
 export function istAt(day: string, hhmm: string): Date {
   const [h, m] = hhmm.split(":");
   return new Date(`${day}T${h.padStart(2, "0")}:${(m ?? "00").padStart(2, "0")}:00+05:30`);

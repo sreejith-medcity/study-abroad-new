@@ -2409,9 +2409,9 @@ export const appSettings = pgTable("app_settings", {
    * has not verified is marked as missed and the consolidated report goes to
    * the Overseas admin. Sundays have no journal unless asked for.
    */
-  journalDayEnd: text("journal_day_end").notNull().default("17:30"),
+  journalDayEnd: text("journal_day_end").notNull().default("17:00"),
   journalOutOfHours: text("journal_out_of_hours").notNull().default("17:45"),
-  journalCutoff: text("journal_cutoff").notNull().default("19:00"),
+  journalCutoff: text("journal_cutoff").notNull().default("23:59"),
   journalOnSundays: boolean("journal_on_sundays").notNull().default(false),
 
   updatedById: text("updated_by_id").references(() => users.id),

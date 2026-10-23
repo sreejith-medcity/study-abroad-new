@@ -175,9 +175,9 @@ const platformShape = z.object({
   supportEmail: z.string().trim().toLowerCase().email("Enter a valid email").optional().or(z.literal("")).transform((v) => v || null),
   supportPhone: optional(20),
   supportHours: optional(80),
-  journalDayEnd: z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "A time like 17:30"),
+  journalDayEnd: z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "A time like 17:00"),
   journalOutOfHours: z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "A time like 17:45"),
-  journalCutoff: z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "A time like 19:00"),
+  journalCutoff: z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "A time like 23:59"),
 });
 
 export async function savePlatformAction(_: FormState, formData: FormData): Promise<FormState> {
