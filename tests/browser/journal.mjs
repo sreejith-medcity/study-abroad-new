@@ -106,12 +106,15 @@ clock(ist(-10), ist(30), ist(60));
 const germany = idOf("germany@medcity.test");
 const uk = idOf("uk.docs@medcity.test");
 const trainee = idOf("trainee@medcity.test");
-// Some of today's work, done by the counsellor.
+// Some of today's work, done by the counsellor. "Two hours ago" is yesterday
+// in India for a run just after midnight, so it is never earlier than today's
+// first minute (the suite skips the first forty).
+const earlier = (interval) => `greatest(now() - interval '${interval}', '${today} 00:01:00+05:30'::timestamptz)`;
 const org = sql(`select org_id from users where id = '${uk}'`);
 sql(`insert into students (id, org_id, created_by_id, assigned_to_id, portal_token, first_name, last_name, phone, created_at)
-     values ('jr_s1', '${org}', '${uk}', '${uk}', 'jr_t1', 'Journal', 'Student', '9100000777', now() - interval '2 hours')`);
+     values ('jr_s1', '${org}', '${uk}', '${uk}', 'jr_t1', 'Journal', 'Student', '9100000777', ${earlier("2 hours")})`);
 sql(`insert into tasks (id, org_id, student_id, title, due_on, assigned_to_id, created_by_id, done_at, done_by_id)
-     values ('jr_k1', '${org}', 'jr_s1', 'Call about the visa', current_date, '${uk}', '${uk}', now() - interval '1 hour', '${uk}')`);
+     values ('jr_k1', '${org}', 'jr_s1', 'Call about the visa', '${today}', '${uk}', '${uk}', ${earlier("1 hour")}, '${uk}')`);
 {
   const g = await open("germany@medcity.test");
   await go(g.page, "/dashboard");

@@ -83,11 +83,22 @@ fi
 # The daily journal opens over every page from the end of the working day
 # until it is answered, which is right for people and wrong for suites that
 # sign in as staff and press things: run at 6 PM, every one of them would be
-# clicking into the popup. So the template's working day ends at the cutoff
-# itself, which leaves no minute in which the journal is open (a minute's
-# window at 23:58 was enough for a late run to land in it). The journal suite
+# clicking into the popup. So the template's working day ends a minute before
+# midnight (Settings refuses a cutoff that is not after the day's end, so the
+# window cannot be shut altogether), and no suite starts in the last few
+# minutes of the day in India: see wait_past_midnight below. The journal suite
 # sets its own clock.
-psqlq "$TEMPLATE" "insert into app_settings (id) values ('app') on conflict do nothing; update app_settings set journal_day_end = '23:59', journal_out_of_hours = '23:59', journal_cutoff = '23:59' where id = 'app'" > /dev/null
+psqlq "$TEMPLATE" "insert into app_settings (id) values ('app') on conflict do nothing; update app_settings set journal_day_end = '23:58', journal_out_of_hours = '23:58', journal_cutoff = '23:59' where id = 'app'" > /dev/null
+
+# The journal is open from 23:58 to 23:59 in India on the template's clock.
+# A suite that starts just before then could be clicking into it, so it waits.
+wait_past_midnight() {
+  while :; do
+    t=$(TZ=Asia/Kolkata date +%H%M)
+    [ "$t" -ge 2345 ] && [ "$t" -le 2359 ] || return 0
+    sleep 20
+  done
+}
 
 # Postgres will not copy or drop a database that anything is connected to, so
 # the server has to be down for both, which it has to be anyway: the sign-in
@@ -104,6 +115,7 @@ for f in tests/browser/*.mjs; do
   # file, not a suite.
   case "$b" in _*) continue;; esac
   stop
+  wait_past_midnight
   reset_db || { echo "$b: the database could not be reset" >> "$OUT/summary.txt"; continue; }
   start || break
   # Most suites are done inside a couple of minutes. The two that walk every
