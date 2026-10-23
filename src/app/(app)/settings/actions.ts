@@ -175,6 +175,9 @@ const platformShape = z.object({
   supportEmail: z.string().trim().toLowerCase().email("Enter a valid email").optional().or(z.literal("")).transform((v) => v || null),
   supportPhone: optional(20),
   supportHours: optional(80),
+  journalDayEnd: z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "A time like 17:30"),
+  journalOutOfHours: z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "A time like 17:45"),
+  journalCutoff: z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "A time like 19:00"),
 });
 
 export async function savePlatformAction(_: FormState, formData: FormData): Promise<FormState> {
@@ -183,6 +186,11 @@ export async function savePlatformAction(_: FormState, formData: FormData): Prom
   const parsed = platformShape.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Check the highlighted fields." };
   const d = parsed.data;
+  // The day has to end before its sign-ins count as after hours, and the
+  // journal has to have been open a while before it closes. "HH:MM" strings
+  // compare in clock order.
+  if (d.journalOutOfHours < d.journalDayEnd) return { fieldErrors: { journalOutOfHours: ["After the end of the day"] }, error: "Check the highlighted fields." };
+  if (d.journalCutoff <= d.journalDayEnd) return { fieldErrors: { journalCutoff: ["After the end of the day"] }, error: "Check the highlighted fields." };
 
   // "GBP 112" or "GBP:112" per line, so the box is forgiving.
   const rates: Record<string, number> = {};
@@ -217,6 +225,10 @@ export async function savePlatformAction(_: FormState, formData: FormData): Prom
       supportEmail: d.supportEmail,
       supportPhone: d.supportPhone,
       supportHours: d.supportHours,
+      journalDayEnd: d.journalDayEnd,
+      journalOutOfHours: d.journalOutOfHours,
+      journalCutoff: d.journalCutoff,
+      journalOnSundays: formData.get("journalOnSundays") === "on",
       updatedById: user.id,
       updatedAt: new Date(),
     })

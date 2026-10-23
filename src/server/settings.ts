@@ -50,6 +50,10 @@ const FALLBACK: AppSettings = {
   supportEmail: null,
   supportPhone: null,
   supportHours: null,
+  journalDayEnd: "17:30",
+  journalOutOfHours: "17:45",
+  journalCutoff: "19:00",
+  journalOnSundays: false,
   updatedById: null,
   updatedAt: new Date(0),
 };

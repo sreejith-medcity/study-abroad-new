@@ -16,6 +16,8 @@ import { logoutAction } from "@/app/login/actions";
 import { APP_ROLES, PARTNER_ROLES, ROLE_LABEL, isAdmin, isSuperAdmin } from "@/lib/permissions";
 import { getSettings } from "@/server/settings";
 import { navCounts } from "@/server/nav-counts";
+import { journalTick, journalWaiting } from "@/server/journal";
+import { journalIssued } from "@/lib/journal";
 
 /*
   The branch menu, in the order of a branch's day: who to see today, the
@@ -176,6 +178,7 @@ const ADMIN_NAV: NavGroup[] = [
     title: "Reports",
     items: [
       { href: "/admin/insights", label: "Insights", icon: "insights" },
+      { href: "/journal/report", label: "Journal report", icon: "deadlines" },
       { href: "/learning", label: "Learning resources", icon: "learning" },
       { href: "/support", label: "Help desk", icon: "support" },
     ],
@@ -316,6 +319,7 @@ const MANAGEMENT_NAV: NavGroup[] = [
       { href: "/ausbildung", label: "Placement tracker", icon: "services" },
       { href: "/admin/commission", label: "Commission", icon: "commission" },
       { href: "/admin/insights", label: "Insights", icon: "insights" },
+      { href: "/journal/report", label: "Journal report", icon: "deadlines" },
       { href: "/learning", label: "Learning resources", icon: "learning" },
     ],
   },
@@ -381,11 +385,24 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           },
         ]
       : []),
-    { title: "Account", items: [{ href: "/settings", label: "Settings", icon: "settings" }] },
+    {
+      title: "Account",
+      items: [
+        // The day's journal, for everybody who is issued one.
+        ...(journalIssued(user.role, user.orgType) ? [{ href: "/journal", label: "Daily journal", icon: "deadlines" as const }] : []),
+        { href: "/settings", label: "Settings", icon: "settings" },
+      ],
+    },
   ];
 
   // Four things the shell needs, asked for together rather than one after
   // another: on a page that renders quickly the waiting was most of the wait.
+  // The journals move with the clock even where no scheduler was set up:
+  // whoever opens a page after the day ends announces it, and after the cutoff
+  // closes it. At most once every few minutes per server.
+  await journalTick();
+  const journalDue = await journalWaiting(user);
+
   const [settings, counts, unreadRows, me] = await Promise.all([
     getSettings(),
     navCounts(user),
@@ -530,7 +547,21 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </aside>
         <main className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">
-          <div className="mx-auto max-w-[1400px]">{children}</div>
+          <div className="mx-auto max-w-[1400px]">
+            {journalDue && (
+              <Link
+                href="/journal"
+                data-journal-banner
+                data-print="hide"
+                className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-warn-500/30 bg-warn-50 px-4 py-3 text-sm text-warn-700 hover:border-warn-500/60"
+              >
+                <strong className="font-semibold">Your journal for today is ready.</strong>
+                <span>View and verify what you did today before you leave. It closes at {journalDue.closesAt}.</span>
+                <span className="ml-auto font-semibold underline">Open my journal</span>
+              </Link>
+            )}
+            {children}
+          </div>
         </main>
       </div>
     </div>

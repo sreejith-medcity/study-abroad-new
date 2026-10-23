@@ -179,6 +179,18 @@ export function PlatformForm({ settings }: { settings: PlatformValues }) {
         </p>
       </Section>
 
+      <Section title="Daily journal" hint="Times in India time. Each person's journal of the day is issued when the day ends, to view and verify before they leave.">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <TextField label="Day ends" name="journalDayEnd" type="time" defaultValue={settings.journalDayEnd} required />
+          <TextField label="Sign-ins after hours from" name="journalOutOfHours" type="time" defaultValue={settings.journalOutOfHours} required />
+          <TextField label="Unanswered journals missed at" name="journalCutoff" type="time" defaultValue={settings.journalCutoff} required />
+        </div>
+        <Checkbox name="journalOnSundays" defaultChecked={settings.journalOnSundays} label="Issue journals on Sundays too" />
+        <p className="mt-1 text-xs text-muted">
+          At the last time, anybody who has not verified is marked as missed and the Overseas admin is sent the consolidated report. It goes earlier if everybody has answered.
+        </p>
+      </Section>
+
       <Section title="Enquiries" hint="Defaults for follow-ups and for calling an enquiry stale.">
         <div className="grid gap-3 sm:grid-cols-2">
           <NumberField label="Follow up after (days)" name="followUpDays" defaultValue={settings.followUpDays} />
@@ -241,6 +253,10 @@ export type PlatformValues = {
   supportEmail: string | null;
   supportPhone: string | null;
   supportHours: string | null;
+  journalDayEnd: string;
+  journalOutOfHours: string;
+  journalCutoff: string;
+  journalOnSundays: boolean;
 };
 
 function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {

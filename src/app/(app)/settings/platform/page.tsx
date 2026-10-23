@@ -110,6 +110,10 @@ export default async function PlatformSettingsPage() {
             supportEmail: settings.supportEmail,
             supportPhone: settings.supportPhone,
             supportHours: settings.supportHours,
+            journalDayEnd: settings.journalDayEnd,
+            journalOutOfHours: settings.journalOutOfHours,
+            journalCutoff: settings.journalCutoff,
+            journalOnSundays: settings.journalOnSundays,
           }}
         />
         </div>

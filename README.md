@@ -167,6 +167,7 @@ All seeded users share the password `Password@123`. Every person, university and
 | `POST /api/cron/cricos` | Monthly CRICOS refresh for a scheduler, with `Authorization: Bearer $CRON_SECRET`. New courses land as drafts |
 | `POST /api/cron/documents` | Daily documentation chasing, same header. Reminders at three days of silence, the counsellor's desk at seven, expiry flags and gate notices |
 | `POST /api/cron/crm` | Drains the queue of events waiting for Medcity's own CRM, same header. Every few minutes. Without it the queue only moves when somebody presses the button on The CRM link |
+| `POST /api/cron/journal` | The daily journal, same header. Just after the day ends it tells everybody their journal is ready; just after the cutoff it marks unanswered journals missed and sends the Overseas admin the consolidated report. Safe to call as often as you like |
 | `POST /api/crm/students` | Medcity's CRM registers or updates a student. Keyed and optionally signed; see **For the vendor** on The CRM link |
 | `GET /api/crm/students` | The same CRM looks a student up by its own id, the Medcity ID, an email or a number |
 | `POST /api/crm/enquiries` | A lead from that CRM, before anybody has decided it is a student |
@@ -255,19 +256,20 @@ tests/                          node:test unit tests
 - AI features (assistant, practice interviews, reading documents) use Anthropic's Messages API with `ANTHROPIC_API_KEY`, or a key sealed in Settings, Platform. They are off without a key and the owner's switch, count against a monthly allowance per branch tier, and never save anything a person has not checked. The assistant sees only the catalogue; interviews send the course, university, country and intake, never the student's name.
 - A portal student opens only their own documents: what they uploaded and what the branch shared with them.
 
-## The three scheduled jobs
+## The four scheduled jobs
 
-Three endpoints need calling on a schedule, all with `Authorization: Bearer $CRON_SECRET`:
+Four endpoints need calling on a schedule, all with `Authorization: Bearer $CRON_SECRET`:
 
 | Endpoint | How often | What happens without it |
 | --- | --- | --- |
 | `POST /api/cron/crm` | Every ten minutes | The outbound queue to Medcity's CRM only moves when somebody presses the button on The CRM link |
 | `POST /api/cron/documents` | Daily, early morning IST | Nobody is chased for a document, no expiry is flagged and no gate notice goes out |
 | `POST /api/cron/cricos` | Monthly | Australia's course register goes stale |
+| `POST /api/cron/journal` | Just after 5:30 PM and just after 7 PM IST (or every fifteen minutes) | The journals still work, but "your journal is ready" and the admin's report only go out when somebody next opens a page |
 
 Pick one of these three places to call them from. The portal does not care which.
 
-**From GitHub.** `.github/workflows/schedules.yml` in this repository does all three.
+**From GitHub.** `.github/workflows/schedules.yml` in this repository does all four.
 Add two repository secrets under Settings, then Secrets and variables, then Actions:
 `PORTAL_URL` (`https://doc.medcityoverseas.com`) and `CRON_SECRET` (the same value as
 in the portal's own environment). Nothing to install, and it survives a hosting move.
@@ -291,6 +293,7 @@ application in Coolify, or plain `crontab -e`:
 */10 * * * * curl -fsS -X POST https://doc.medcityoverseas.com/api/cron/crm -H "Authorization: Bearer YOUR_CRON_SECRET" >/dev/null
 30 3 * * * curl -fsS -X POST https://doc.medcityoverseas.com/api/cron/documents -H "Authorization: Bearer YOUR_CRON_SECRET" >/dev/null
 0 4 1 * * curl -fsS -X POST https://doc.medcityoverseas.com/api/cron/cricos -H "Authorization: Bearer YOUR_CRON_SECRET" >/dev/null
+*/15 * * * * curl -fsS -X POST https://doc.medcityoverseas.com/api/cron/journal -H "Authorization: Bearer YOUR_CRON_SECRET" >/dev/null
 ```
 
 Whichever is chosen, `CRON_SECRET` must be at least 24 characters. Shorter than that,

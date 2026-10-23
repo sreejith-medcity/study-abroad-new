@@ -1,4 +1,4 @@
-# The portal's three scheduled jobs, run from GitHub rather than from the host,
+# The portal's four scheduled jobs, run from GitHub rather than from the host,
 # so they keep working through a hosting move.
 #
 # Before this does anything, add two repository secrets under
@@ -29,6 +29,15 @@ on:
     # The CRICOS register: monthly, a little after the documents run so the two
     # are not competing for the same database.
     - cron: "30 22 1 * *"
+    # The daily journal: just after the day ends at 5:30 PM in Kerala, to tell
+    # everybody their journal is ready, once at 6:31 PM in case GitHub was late,
+    # and just after the 7 PM cutoff, to mark
+    # the unanswered ones missed and send the Overseas admin the report. Either
+    # is safe to run twice. If the times change in Platform settings, change
+    # these too (they are UTC: Kerala less five and a half hours).
+    - cron: "1 12 * * *"
+    - cron: "1 13 * * *"
+    - cron: "31 13 * * *"
   workflow_dispatch:
     inputs:
       which:
@@ -36,7 +45,7 @@ on:
         required: true
         default: crm
         type: choice
-        options: [crm, documents, cricos]
+        options: [crm, documents, cricos, journal]
 
 concurrency:
   # One at a time per job. A slow run must not have a second one started on top
@@ -55,10 +64,12 @@ jobs:
             "*/10 * * * *") echo "path=/api/cron/crm" >> "$GITHUB_OUTPUT" ;;
             "0 22 * * *") echo "path=/api/cron/documents" >> "$GITHUB_OUTPUT" ;;
             "30 22 1 * *") echo "path=/api/cron/cricos" >> "$GITHUB_OUTPUT" ;;
+            "1 12 * * *" | "1 13 * * *" | "31 13 * * *") echo "path=/api/cron/journal" >> "$GITHUB_OUTPUT" ;;
             *)
               case "${{ github.event.inputs.which }}" in
                 documents) echo "path=/api/cron/documents" >> "$GITHUB_OUTPUT" ;;
                 cricos) echo "path=/api/cron/cricos" >> "$GITHUB_OUTPUT" ;;
+                journal) echo "path=/api/cron/journal" >> "$GITHUB_OUTPUT" ;;
                 *) echo "path=/api/cron/crm" >> "$GITHUB_OUTPUT" ;;
               esac
               ;;

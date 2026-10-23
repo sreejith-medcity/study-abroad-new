@@ -948,23 +948,31 @@ export const statusHistory = pgTable(
   },
   // Every "has this file ever had an offer" question reads one application's
   // history, newest or oldest first.
-  (t) => [index("status_history_application_idx").on(t.applicationId, t.createdAt)],
+  (t) => [
+    index("status_history_application_idx").on(t.applicationId, t.createdAt),
+    // What one person moved on one day, for their daily journal.
+    index("status_history_changer_idx").on(t.changedById, t.createdAt),
+  ],
 );
 
-export const comments = pgTable("comments", {
-  id: id(),
-  applicationId: text("application_id")
-    .notNull()
-    .references(() => applications.id, { onDelete: "cascade" }),
-  channel: commentChannel("channel").notNull(),
-  body: text("body").notNull(),
-  source: messageSource("source").notNull().default("WEB"),
-  authorId: text("author_id").references(() => users.id),
-  authorLabel: text("author_label"),
-  deliveredAt: timestamp("delivered_at", { withTimezone: true }),
-  readAt: timestamp("read_at", { withTimezone: true }),
-  createdAt: createdAt(),
-});
+export const comments = pgTable(
+  "comments",
+  {
+    id: id(),
+    applicationId: text("application_id")
+      .notNull()
+      .references(() => applications.id, { onDelete: "cascade" }),
+    channel: commentChannel("channel").notNull(),
+    body: text("body").notNull(),
+    source: messageSource("source").notNull().default("WEB"),
+    authorId: text("author_id").references(() => users.id),
+    authorLabel: text("author_label"),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("comments_author_idx").on(t.authorId, t.createdAt)],
+);
 
 // ---------- Documents ----------
 
@@ -981,25 +989,29 @@ export const documentTypes = pgTable("document_types", {
   sampleMimeType: text("sample_mime_type"),
 });
 
-export const documents = pgTable("documents", {
-  id: id(),
-  studentId: text("student_id")
-    .notNull()
-    .references(() => students.id, { onDelete: "cascade" }),
-  applicationId: text("application_id").references(() => applications.id),
-  commentId: text("comment_id").references(() => comments.id),
-  typeCode: text("type_code").references(() => documentTypes.code),
-  /** What this one is, when the type is "Something else" and only a person can say. */
-  label: text("label"),
-  fileName: text("file_name").notNull(),
-  storageKey: text("storage_key").notNull(),
-  mimeType: text("mime_type").notNull(),
-  sizeBytes: integer("size_bytes").notNull(),
-  uploadedById: text("uploaded_by_id").references(() => users.id),
-  /** Shown in the student's portal. Files the student uploaded are always theirs to see. */
-  sharedWithStudent: boolean("shared_with_student").notNull().default(false),
-  createdAt: createdAt(),
-});
+export const documents = pgTable(
+  "documents",
+  {
+    id: id(),
+    studentId: text("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    applicationId: text("application_id").references(() => applications.id),
+    commentId: text("comment_id").references(() => comments.id),
+    typeCode: text("type_code").references(() => documentTypes.code),
+    /** What this one is, when the type is "Something else" and only a person can say. */
+    label: text("label"),
+    fileName: text("file_name").notNull(),
+    storageKey: text("storage_key").notNull(),
+    mimeType: text("mime_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    uploadedById: text("uploaded_by_id").references(() => users.id),
+    /** Shown in the student's portal. Files the student uploaded are always theirs to see. */
+    sharedWithStudent: boolean("shared_with_student").notNull().default(false),
+    createdAt: createdAt(),
+  },
+  (t) => [index("documents_uploader_idx").on(t.uploadedById, t.createdAt)],
+);
 
 // ---------- The documentation spine ----------
 
@@ -1290,7 +1302,7 @@ export const checklistFiles = pgTable(
     decidedAt: timestamp("decided_at", { withTimezone: true }),
     decidedById: text("decided_by_id").references(() => users.id),
   },
-  (t) => [uniqueIndex("checklist_files_version_uq").on(t.itemId, t.version)],
+  (t) => [uniqueIndex("checklist_files_version_uq").on(t.itemId, t.version), index("checklist_files_decider_idx").on(t.decidedById, t.decidedAt)],
 );
 
 /**
@@ -1470,7 +1482,7 @@ export const contactLog = pgTable(
     taskId: text("task_id").references(() => tasks.id, { onDelete: "set null" }),
     createdAt: createdAt(),
   },
-  (t) => [index("contact_log_student_idx").on(t.studentId, t.happenedAt)],
+  (t) => [index("contact_log_student_idx").on(t.studentId, t.happenedAt), index("contact_log_by_idx").on(t.byId, t.createdAt)],
 );
 
 /**
@@ -1728,6 +1740,52 @@ export const gateOverrides = pgTable(
 );
 
 // ---------- Notifications, messaging and audit ----------
+
+/** How somebody answered their journal for a day, or that they never did. */
+export const journalState = pgEnum("journal_state", ["VERIFIED", "FLAGGED", "MISSED"]);
+
+/**
+ * One person's journal for one working day: the batch journal a bank teller
+ * signs off at close. Everything they did that day is listed from the records
+ * themselves; what they saw when they answered is kept here as it was, so a
+ * change made to a file afterwards cannot alter what was verified.
+ *
+ * A row exists from the moment they first open it, or from the cutoff for
+ * anybody who never did, when it is written as missed.
+ */
+export const dailyJournals = pgTable(
+  "daily_journals",
+  {
+    id: id(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** The working day, in India time. */
+    day: date("day").notNull(),
+    viewedAt: timestamp("viewed_at", { withTimezone: true }),
+    state: journalState("state"),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    /** Why it was flagged, in their words. */
+    note: text("note"),
+    /** What the journal held when they answered, line by line. */
+    entries: jsonb("entries").$type<{ at: string; kind: string; text: string; href?: string | null; outOfHours?: boolean }[]>(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("daily_journals_user_day_uq").on(t.userId, t.day), index("daily_journals_day_idx").on(t.day)],
+);
+
+/**
+ * The day as a whole: when the journals were announced, and when the
+ * consolidated report went to the Overseas admin, so neither is sent twice
+ * however often the scheduler calls.
+ */
+export const journalDays = pgTable("journal_days", {
+  day: date("day").primaryKey(),
+  issuedAt: timestamp("issued_at", { withTimezone: true }),
+  reportSentAt: timestamp("report_sent_at", { withTimezone: true }),
+  /** ALL_DONE when the last person answered before the cutoff, CUTOFF otherwise. */
+  reportReason: text("report_reason"),
+});
 
 export const notifications = pgTable(
   "notifications",
@@ -2315,6 +2373,18 @@ export const appSettings = pgTable("app_settings", {
   supportEmail: text("support_email"),
   supportPhone: text("support_phone"),
   supportHours: text("support_hours"),
+
+  /**
+   * The daily journal. The working day ends at the first time (India time),
+   * when each person's journal of the day is issued to view and verify. A
+   * sign-in at or after the second is out of hours. At the third, anybody who
+   * has not verified is marked as missed and the consolidated report goes to
+   * the Overseas admin. Sundays have no journal unless asked for.
+   */
+  journalDayEnd: text("journal_day_end").notNull().default("17:30"),
+  journalOutOfHours: text("journal_out_of_hours").notNull().default("17:45"),
+  journalCutoff: text("journal_cutoff").notNull().default("19:00"),
+  journalOnSundays: boolean("journal_on_sundays").notNull().default(false),
 
   updatedById: text("updated_by_id").references(() => users.id),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -2934,6 +3004,8 @@ export const auditLogs = pgTable(
      */
     index("audit_action_time_idx").on(t.action, t.createdAt.desc()),
     index("audit_time_idx").on(t.createdAt.desc()),
+    // One person's actions on one day, for their daily journal.
+    index("audit_actor_time_idx").on(t.actorId, t.createdAt),
   ],
 );
 
