@@ -41,12 +41,26 @@ test("the fonts are in the bundle", () => {
   }
 });
 
+/*
+  Faces the portal names on purpose without bundling them: licensed, so they
+  cannot be served from here, and used wherever the machine already has them.
+  Anything else a token asks for first has to be imported.
+*/
+const SYSTEM_FACES = new Set(["Avenir Next"]);
+const GENERIC = /(?:^|,)\s*(?:sans-serif|serif|monospace|system-ui|ui-sans-serif|ui-monospace)\s*$/;
+
 test("the families the stylesheet asks for are the ones imported", () => {
   const imported = new Set([...layout.matchAll(/@fontsource\/([a-z0-9-]+)\//g)].map((m) => m[1]));
-  const token = (name: string) => css.match(new RegExp(`--font-${name}:\\s*"([^"]+)"`))?.[1];
-  for (const name of ["display", "sans", "mono"]) {
-    const family = token(name);
+  const stack = (name: string) => css.match(new RegExp(`--font-${name}:\\s*([^;]+);`))?.[1].trim();
+  for (const name of ["display", "sans", "data", "mono"]) {
+    const value = stack(name);
+    const family = value?.match(/^"([^"]+)"/)?.[1];
     assert.ok(family, `--font-${name} should name a family`);
+    if (SYSTEM_FACES.has(family)) {
+      // Not every machine has it, so the stack has to end somewhere every machine does.
+      assert.match(value!, GENERIC, `--font-${name} is ${family}, a system face, and needs a generic fallback at the end`);
+      continue;
+    }
     const slug = family.toLowerCase().replace(/\s+/g, "-");
     assert.ok(imported.has(slug), `--font-${name} is ${family}, which is not imported (imported: ${[...imported].join(", ")})`);
   }
