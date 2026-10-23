@@ -52,13 +52,14 @@ on 3200, and run the same suites against both.
 | `app-deadlines.mjs` | Typed application deadlines: adding, telling the partner, dashboard windows, the list filter, ticking off, and the offer's accept-by date |
 | `artwork.mjs` | The logo and favicon uploader, what it serves, and who may change it |
 | `golive.mjs` | The sample-data cleanup: what it lists, what it refuses, what survives |
-| `catalogue.mjs` | The catalogue at full size: paging, the count, a bulk publish across every match, and post-study work rights |
-| `cricos.mjs` | The full CRICOS register through the admin upload, a bulk publish of 25,889 drafts, a second sync, and the partner screens at 27,000 programs (needs `CRICOS_DIR`) |
+| `catalogue.mjs` | The catalogue at full size: paging, the count, a bulk publish across every match that leaves the drafts not ready to go live, and post-study work rights |
+| `cricos.mjs` | The full CRICOS register through the admin upload, a bulk publish that keeps every draft with no intake a draft, a bulk publish of 25,889 drafts once intakes are recorded, a second sync, and the partner screens at 27,000 programs (needs `CRICOS_DIR`) |
 | `scholarships.mjs` | Adding a scholarship and its rules, where it shows, the search filter, and pausing it |
 | `deadlines.mjs` | Recording deadlines and a fee waiver, the date rules, and where partners see them: program page, search filters, the deadlines page and the apply form warning |
 | `offer-visa.mjs` | Recording an offer, a CAS number and a visa decision with their rules, what the partner sees and is told, and the portal view |
 | `catalogue-history.mjs` | A program edit landing in the change history with its old value, restoring it, the university history card, and a counsellor kept out of both |
 | `draft-review.mjs` | Reviewing drafts a university at a time: the list's counts and filters, publishing ticked drafts with one that has no intake refused and the reason given, archiving, publishing all, the history and audit entries, and a counsellor kept out |
+| `publish-rules.mjs` | The publish rules on the Programs list: the row's Set refusing a course with no intake or with work rights and no evidence and saying why beside the row, the bulk Publish leaving those as drafts with the counts and reasons, Back to draft and archiving unaffected, and a CSV row marked LIVE with no evidence coming in as a draft |
 | `university-edit.mjs` | Editing a university's city, website and about text, the page and history showing it, restoring the old city, the duplicate name and bad website refusals, and a counsellor kept out |
 | `destinations.mjs` | The visa living-cost figures, a rankings CSV with errors, and where rankings and funds show: search, the universities index, program and university pages |
 | `events.mjs` | Publishing a webinar with its rules, the partner's notice, taking a seat and the join link, registering a student, seat counts and cancelling |

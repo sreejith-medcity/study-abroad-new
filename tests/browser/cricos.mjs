@@ -1,6 +1,7 @@
 // Australia's CRICOS register at full size, through the admin screen: the
-// upload path of the sync, a bulk publish of every draft, and the partner
-// screens with 27,000 programs behind them.
+// upload path of the sync, a bulk publish that leaves every draft with no
+// intake a draft and says so, a bulk publish of every draft once intakes are
+// recorded, and the partner screens with 27,000 programs behind them.
 // Wants a seeded database with the catalogue and the three register files:
 //   CRICOS_DIR=/path/to/folder node tests/browser/cricos.mjs
 import { chromium } from "playwright";
@@ -8,6 +9,7 @@ import { hydrated, knownWarning } from "./_errors.mjs";
 import { studentIdByName } from "./_student.mjs";
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 
 const DIR = process.env.CRICOS_DIR;
 // The register itself is not in this repository: it is three large files
@@ -22,6 +24,8 @@ const file = (part) => path.join(DIR, fs.readdirSync(DIR).find((f) => f.includes
 const OUT = "/tmp/smoke-cricos";
 fs.mkdirSync(OUT, { recursive: true });
 const BASE = process.env.BASE ?? "http://localhost:3000";
+const DB = (fs.readFileSync(".env", "utf8").match(/localhost:5432\/([a-z0-9_]+)/) || [])[1];
+const sql = (q) => execFileSync("psql", ["-h", "localhost", "-U", "postgres", "-d", DB, "-qAtc", q], { env: { ...process.env, PGPASSWORD: "local" } }).toString().trim();
 const fails = [];
 const ok = (m) => console.log("  ok  " + m);
 const bad = (m) => { console.log("FAIL  " + m); fails.push(m); };
@@ -69,14 +73,38 @@ const total = Number((text.match(/([\d,]+) matches/) || [])[1]?.replace(/,/g, ""
 check(total > 26000, `admin list counts everything (${total})`);
 check(/Last sync:/.test(text), "admin: the card shows the last sync");
 
-await timed("bulk publish of every Australian draft", async () => {
+// The register gives no intakes, and a course may only go live with one, so
+// a bulk publish straight after the sync leaves every register draft a draft
+// and the answer says why. Drafts somebody added by hand with an intake are
+// the only ones it may take.
+const AU = "programs p join universities u on u.id = p.university_id join countries c on c.id = u.country_id where c.code = 'AU' and p.status = 'DRAFT'";
+const NOT_READY = "(cardinality(p.intake_months) = 0 or (p.work_rights <> 'UNKNOWN' and coalesce(p.work_rights_note, '') !~ '[^[:space:]]'))";
+const pressPublish = async () => {
   await go(ap, "/admin/programs?country=AU&status=DRAFT");
   await hydrated(ap);
-  await ap.getByRole("button", { name: "Publish" }).first().click();
+  await ap.getByRole("button", { name: "Publish", exact: true }).click();
+  await ap.locator("[data-bulk-result]").waitFor({ timeout: 240000 }).catch(() => {});
+  return ap.locator("[data-bulk-result]");
+};
+await timed("bulk publish with no intakes recorded", async () => {
+  const notReady = Number(sql(`select count(*) from ${AU} and ${NOT_READY}`));
+  const answer = await pressPublish();
+  const said = (await answer.innerText().catch(() => "")).replace(/\s+/g, " ");
+  check(Number(await answer.getAttribute("data-left-drafts").catch(() => -1)) === notReady, `bulk publish: the ${notReady} drafts with no intake or no evidence stay drafts (${said.slice(0, 160)})`);
+  check(Number(sql(`select count(*) from ${AU} and ${NOT_READY}`)) === notReady, "bulk publish: none of them went live");
+  check(/left as drafts/.test(said) && /no intakes/.test(said), "bulk publish: the answer says how many were left and why");
+});
+
+// Once the desk has recorded intakes, the same press publishes every draft
+// in one action, which is the full-size run of the bulk control.
+sql(`update programs set intake_months = '{2,7}' where id in (select p.id from ${AU} and cardinality(p.intake_months) = 0)`);
+await timed("bulk publish of every Australian draft", async () => {
+  await pressPublish();
   // The list does not always redraw after the action, so reload to read the result.
   let t0 = Date.now(), n = -1;
-  while (Date.now() - t0 < 180000) { await ap.waitForTimeout(3000); const t = await go(ap, "/admin/programs?country=AU&status=DRAFT"); n = Number((t.match(/([\d,]+) match/) || [])[1]?.replace(/,/g, "") ?? -1); if (n === 0) break; }
-  check(n === 0, "bulk publish: every Australian draft published in one action");
+  while (Date.now() - t0 < 180000) { const t = await go(ap, "/admin/programs?country=AU&status=DRAFT"); n = Number((t.match(/([\d,]+) match/) || [])[1]?.replace(/,/g, "") ?? -1); if (n === 0) break; await ap.waitForTimeout(3000); }
+  const stuck = Number(sql(`select count(*) from ${AU}`));
+  check(stuck === Number(sql(`select count(*) from ${AU} and ${NOT_READY}`)), `bulk publish: every Australian draft that meets the publish rules published in one action (${stuck} left, all of them not ready)`);
 });
 
 // Running it again changes nothing but refreshes.
@@ -121,6 +149,10 @@ check(/Page 1 of \d+/.test(text), "university page: a large university pages its
 check(/Official website/.test(await pp.locator("main").innerText()), "university page: links the official website");
 await pp.screenshot({ path: `${OUT}/university.png`, fullPage: true });
 
+// Thousands of register courses went live before the intake rule and are
+// still live with no intake recorded. Monash's register courses stand in for
+// them here, so the apply panel's answer for such a course is still checked.
+sql(`update programs set intake_months = '{}' where source = 'CRICOS' and status = 'LIVE' and university_id in (select id from universities where name ilike 'Monash%')`);
 const sid = await studentIdByName(pp, BASE, "Arathi Krishnan");
 text = await timed("apply panel, keyword", () => go(pp, `/students/${sid}/applications?tab=apply&q=Monash&country=AU`));
 const options = await pp.locator('select[name="programId"] option').count();

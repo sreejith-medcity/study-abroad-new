@@ -1,6 +1,7 @@
 import { TAG_KEYS } from "./program-tags";
 import Papa from "papaparse";
 import { MONTHS } from "./format";
+import { count, heldBackText, publishProblems, type PublishProblem } from "./publish-rules";
 
 /** Sample shown in the admin paste box. Kept here so a test can prove it parses. */
 export const PROGRAM_CSV_TEMPLATE = `program,university,city,country_code,pathway,level,study_area,duration_months,tuition_per_year,application_fee,initial_deposit,intakes,min_ielts,min_pte,min_oet_grade,min_german_level,max_backlogs,max_gap_years,moi_accepted,work_rights,work_rights_note,required_docs,status
@@ -77,6 +78,13 @@ export type ImportRow = {
   workRightsNote: string | null;
   requiredDocs: string[];
   status: (typeof STATUSES)[number];
+  /**
+   * Set when the file asked for LIVE but the row breaks a publish rule that
+   * the checks above do not already refuse it for, so it comes in as a draft
+   * instead. Today that is a work rights answer with no evidence: a live row
+   * with no intake is refused outright, as it always has been.
+   */
+  heldBack?: PublishProblem[];
 };
 
 export type ImportError = { line: number; message: string };
@@ -195,9 +203,31 @@ export function parseProgramCsv(text: string, validDocCodes: string[]): { rows: 
       workRightsNote: r.work_rights_note?.trim() || null,
       requiredDocs,
     };
-    if (e.length) errors.push({ line, message: e.join("; ") });
-    else rows.push(row);
+    if (e.length) {
+      errors.push({ line, message: e.join("; ") });
+      return;
+    }
+    if (row.status === "LIVE") {
+      const problems = publishProblems(row);
+      if (problems.length) {
+        row.status = "DRAFT";
+        row.heldBack = problems;
+      }
+    }
+    rows.push(row);
   });
 
   return { rows, errors };
+}
+
+/**
+ * The sentence the import result adds for rows the file marked LIVE that came
+ * in as drafts, or an empty string when there were none.
+ */
+export function heldBackSummary(rows: Pick<ImportRow, "heldBack">[]): string {
+  const held = rows.filter((r) => r.heldBack?.length);
+  if (!held.length) return "";
+  const n = held.length;
+  const h = { left: n, noIntakes: held.filter((r) => r.heldBack!.includes("intakes")).length, noEvidence: held.filter((r) => r.heldBack!.includes("evidence")).length };
+  return `${heldBackText(h, count(n, "row marked LIVE came in as a draft", "rows marked LIVE came in as drafts"))} ${n === 1 ? "Open it to add what is missing, then set it live." : "Open each one to add what is missing, then set it live."}`;
 }

@@ -33,7 +33,7 @@ export function CricosForm({ lastSync }: { lastSync: string | null }) {
       {lastSync && <p className="text-xs text-muted">Last sync: {lastSync}</p>}
       {state.error && <Alert tone="bad">{state.error}</Alert>}
       {state.ok && <Alert tone="ok">{state.ok}</Alert>}
-      <Checkbox name="publish" label="Publish new courses straight away (otherwise they land as drafts)" />
+      <Checkbox name="publish" label="Publish new courses that are ready to go live (otherwise they land as drafts). The register gives no intakes, so a new course stays a draft until one is added." />
       <details className="text-sm">
         <summary className="cursor-pointer font-medium text-brand-600">Server cannot reach data.gov.au? Upload the files</summary>
         <div className="mt-2 space-y-2">

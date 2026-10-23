@@ -12,6 +12,8 @@
  *   stay empty rather than guessed, and the program lands as a draft.
  */
 import Papa from "papaparse";
+import { groupInr } from "./format";
+import { count, heldBackText } from "./publish-rules";
 
 export const CRICOS_SOURCE = "CRICOS";
 
@@ -239,4 +241,16 @@ export function buildCricos(files: { institutions: string; courses: string; loca
   }
   const used = new Set(out.map((c) => c.providerCode));
   return { providers: [...providers.values()].filter((p) => used.has(p.code)), courses: out };
+}
+
+/**
+ * What the sync's publish option did with the new courses, for the end of its
+ * report. Only new courses are published; the register gives no intakes, so
+ * the publish rules usually keep every one of them a draft.
+ */
+export function cricosPublishText(r: { published: number; keptAsDrafts: number; keptNoIntakes: number; keptNoEvidence: number }): string {
+  const published = r.published ? `Published ${groupInr(r.published)} new.` : "No new course was published.";
+  if (!r.keptAsDrafts) return published;
+  const kept = heldBackText({ left: r.keptAsDrafts, noIntakes: r.keptNoIntakes, noEvidence: r.keptNoEvidence }, count(r.keptAsDrafts, "new course was kept as a draft", "new courses were kept as drafts"));
+  return `${published} ${kept}`;
 }

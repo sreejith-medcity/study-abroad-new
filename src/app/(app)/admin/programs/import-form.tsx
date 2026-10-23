@@ -6,6 +6,7 @@ import { Alert, Button, Chip, Textarea } from "@/components/ui";
 import { MONTHS } from "@/lib/format";
 import { importProgramsAction, type ImportState } from "./actions";
 import { PROGRAM_CSV_TEMPLATE as TEMPLATE } from "@/lib/program-import";
+import { PROBLEM_LABEL } from "@/lib/publish-rules";
 
 
 export function ImportForm() {
@@ -34,7 +35,7 @@ export function ImportForm() {
           <summary className="cursor-pointer text-brand-600">Or paste CSV (template)</summary>
           <label htmlFor="csv-text" className="sr-only">CSV text</label>
           <Textarea id="csv-text" name="csv" rows={5} className="mt-2 font-mono text-xs" defaultValue={TEMPLATE} />
-          <p className="mt-1 text-xs text-muted">Intakes: month names or numbers separated by |. Required docs: document codes separated by |. Existing programs with the same name and university are updated. Optional columns: min_toefl, min_duolingo, min_gre, min_gmat, min_sat, min_academic_percent, fee_waiver, program_url, min_ielts_band, entry_requirements, balance_deposit, typical_scholarship, tags (STEM|NO_INTERVIEW), and deadlines as 2027-09=2027-06-30|2028-01=2027-10-31; a file without one of them leaves that value as it is.</p>
+          <p className="mt-1 text-xs text-muted">Intakes: month names or numbers separated by |. A LIVE row needs at least one intake, and a LIVE row with a work_rights answer but no work_rights_note comes in as a draft. Required docs: document codes separated by |. Existing programs with the same name and university are updated. Optional columns: min_toefl, min_duolingo, min_gre, min_gmat, min_sat, min_academic_percent, fee_waiver, program_url, min_ielts_band, entry_requirements, balance_deposit, typical_scholarship, tags (STEM|NO_INTERVIEW), and deadlines as 2027-09=2027-06-30|2028-01=2027-10-31; a file without one of them leaves that value as it is.</p>
         </details>
         <div className="flex gap-2">
           <Button type="submit" name="mode" value="preview" variant="secondary" disabled={pending}>{pending ? "Checking…" : "Preview import"}</Button>
@@ -47,8 +48,18 @@ export function ImportForm() {
       {state.preview && (
         <div className="rounded-md border border-line p-3">
           <p className="mb-2">
-            <Chip tone="ok">{state.preview.valid} ready</Chip> {state.preview.errors.length > 0 && <Chip tone="bad">{state.preview.errors.length} with errors</Chip>}
+            <Chip tone="ok">{state.preview.valid} ready</Chip> {state.preview.errors.length > 0 && <Chip tone="bad">{state.preview.errors.length} with errors</Chip>}{" "}
+            {state.preview.heldBack.length > 0 && <Chip tone="warn">{state.preview.heldBack.length} will come in as {state.preview.heldBack.length === 1 ? "a draft" : "drafts"}</Chip>}
           </p>
+          {state.preview.heldBack.length > 0 && (
+            // Marked LIVE in the file but breaking a publish rule, so they are
+            // imported as drafts rather than refused or published as they are.
+            <ul className="mb-3 max-h-40 space-y-1 overflow-y-auto text-xs text-warn-700" data-import-held-back={state.preview.heldBack.length}>
+              {state.preview.heldBack.map((h) => (
+                <li key={h.line}>Line {h.line}: {h.program} is marked LIVE but comes in as a draft ({h.problems.map((x) => PROBLEM_LABEL[x].toLowerCase()).join(", ")})</li>
+              ))}
+            </ul>
+          )}
           {state.preview.errors.length > 0 && (
             <ul className="mb-3 max-h-40 space-y-1 overflow-y-auto text-xs text-stop-700">
               {state.preview.errors.map((e, i) => <li key={i}>Line {e.line}: {e.message}</li>)}

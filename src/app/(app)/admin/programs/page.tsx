@@ -5,8 +5,9 @@ import { intakesText, LEVEL_LABEL, tuitionText } from "@/lib/catalogue";
 import { requireUser } from "@/lib/auth";
 import { readFilters } from "@/server/queries";
 import { Button, Card, Chip, EmptyState, Input, LinkButton, PageHeader, Select, Table, Td, Th } from "@/components/ui";
-import { BulkStatusButtons } from "./bulk-buttons";
-import { bulkStatusAction, bulkTagAction, bulkTurnaroundAction, setProgramStatusAction } from "./actions";
+import { BulkStatusForm } from "./bulk-buttons";
+import { RowStatusForm } from "./row-status-form";
+import { bulkTagAction, bulkTurnaroundAction } from "./actions";
 import { PROGRAM_TAGS, TAG_KEYS } from "@/lib/program-tags";
 import { ImportForm } from "./import-form";
 import { PROGRAM_FILTER_KEYS, programFilterWhere } from "@/server/program-filters";
@@ -68,23 +69,20 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
         title="Programs"
         subtitle={`${total} match${total === 1 ? "" : "es"}. Structured requirements drive the pre-submission check.`}
         actions={
-          total > 0 ? (
-            // Acts on exactly what the filters above have selected, so a country
-            // or a pathway can be reviewed and published as one batch.
-            <div className="flex flex-wrap items-center gap-2">
-              <LinkButton href="/admin/programs/new" variant="secondary" size="sm">Add a course</LinkButton>
-              <form action={bulkStatusAction} className="flex flex-wrap items-center gap-2">
-                {PROGRAM_FILTER_KEYS.map((k) => <input key={k} type="hidden" name={k} value={f[k] ?? ""} />)}
-                <a href={`/api/programs/export?${new URLSearchParams(Object.entries(f).filter(([k, v]) => v && (PROGRAM_FILTER_KEYS as readonly string[]).includes(k)))}`} className="mr-2 text-sm font-medium text-brand-600 hover:underline">
-                  Export CSV
-                </a>
-                <span className="text-sm text-muted">All {total} matching:</span>
-                <BulkStatusButtons total={total} />
-              </form>
-            </div>
-          ) : (
+          // Acts on exactly what the filters above have selected, so a country
+          // or a pathway can be reviewed and published as one batch. Rendered
+          // whatever the count, so the answer to a press that empties the
+          // filter stays on screen; keyed by the filters, so a new filter
+          // starts without the last filter's answer.
+          <div className="flex flex-wrap items-start gap-2">
             <LinkButton href="/admin/programs/new" variant="secondary" size="sm">Add a course</LinkButton>
-          )
+            <BulkStatusForm
+              key={PROGRAM_FILTER_KEYS.map((k) => f[k] ?? "").join("|")}
+              filters={Object.fromEntries(PROGRAM_FILTER_KEYS.map((k) => [k, f[k] ?? ""]))}
+              exportHref={`/api/programs/export?${new URLSearchParams(Object.entries(f).filter(([k, v]) => v && (PROGRAM_FILTER_KEYS as readonly string[]).includes(k)))}`}
+              total={total}
+            />
+          </div>
         }
       />
       {total > 0 && (
@@ -167,7 +165,7 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
                 <thead><tr><Th>Program</Th><Th>University</Th><Th>Level</Th><Th>Intakes</Th><Th>Tuition</Th><Th>Requirements</Th><Th>Status</Th></tr></thead>
                 <tbody>
                   {rows.map((r) => (
-                    <tr key={r.id}>
+                    <tr key={r.id} data-program-row={r.id}>
                       <Td><Link prefetch={false} href={`/admin/programs/${r.id}`} className="font-medium hover:text-brand-700 hover:underline">{r.name}</Link>{r.pathway !== "DEGREE" && <Chip tone="info">{r.pathway === "AUSBILDUNG" ? "Ausbildung" : "Nursing"}</Chip>}</Td>
                       <Td><Link prefetch={false} href={`/admin/universities/${r.universityId}`} className="hover:text-brand-700 hover:underline" title={`Edit ${r.university}`}>{r.university}</Link><p className="text-xs text-muted">{r.country}</p></Td>
                       <Td>{r.level}</Td>
@@ -183,13 +181,7 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
                         </div>
                       </Td>
                       <Td>
-                        <form action={setProgramStatusAction} className="flex gap-1">
-                          <input type="hidden" name="programId" value={r.id} />
-                          <Select name="status" defaultValue={r.status} aria-label={`Status of ${r.name}`} className="w-28 py-1 text-xs">
-                            <option>LIVE</option><option>DRAFT</option><option>ARCHIVED</option>
-                          </Select>
-                          <Button variant="quiet" className="px-2 py-1 text-xs">Set</Button>
-                        </form>
+                        <RowStatusForm programId={r.id} name={r.name} status={r.status} />
                       </Td>
                     </tr>
                   ))}

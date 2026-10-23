@@ -1,5 +1,6 @@
 import { durationText, feeText, intakesText, LEVEL_LABEL, PATHWAY_LABEL } from "./catalogue";
 import { PROGRAM_TAGS } from "./program-tags";
+import { publishProblems } from "./publish-rules";
 
 /**
  * The pure half of the catalogue's change history: which fields changed, what
@@ -225,10 +226,18 @@ export function programRestoreProblem(
   if (t.has("pathway") && !(String(row.pathway) in PATHWAY_LABEL)) return "That pathway is not one the catalogue uses any more.";
   if (t.has("status") && !STATUSES.includes(String(row.status))) return "That status is not one the catalogue uses any more.";
   if (t.has("workRights") && !WORK_RIGHTS.includes(String(row.workRights))) return "That post-study work answer is not one the catalogue uses any more.";
-  if ((t.has("status") || t.has("intakeMonths")) && row.status === "LIVE" && !(Array.isArray(row.intakeMonths) && row.intakeMonths.length)) {
+  // The shared publish rules, read from a row whose values came out of the
+  // history as plain JSON and so may be of any type.
+  const problems = publishProblems({
+    intakeMonths: Array.isArray(row.intakeMonths) ? (row.intakeMonths as number[]) : null,
+    workRights: String(row.workRights),
+    workRightsNote: typeof row.workRightsNote === "string" ? row.workRightsNote : null,
+  });
+  if ((t.has("status") || t.has("intakeMonths")) && row.status === "LIVE" && problems.includes("intakes")) {
     return "That would leave a live program with no intake, and nobody could apply. Restore the intakes too, or set it to draft first.";
   }
-  if ((t.has("workRights") || t.has("workRightsNote")) && row.workRights !== "UNKNOWN" && !(typeof row.workRightsNote === "string" && row.workRightsNote.trim())) {
+  // Evidence is asked for whatever the status, as the edit screen asks for it.
+  if ((t.has("workRights") || t.has("workRightsNote")) && problems.includes("evidence")) {
     return "That would leave a post-study work answer with no evidence behind it. Restore the evidence too.";
   }
   return null;

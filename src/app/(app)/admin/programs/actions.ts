@@ -6,11 +6,14 @@ import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { parseProgramCsv, type ImportError, type ImportRow } from "@/lib/program-import";
+import { heldBackSummary, parseProgramCsv, type ImportError, type ImportRow } from "@/lib/program-import";
+import { publishProblems, type BulkOutcome, type PublishProblem } from "@/lib/publish-rules";
+import { HAS_EVIDENCE, HAS_INTAKES, READY, READY_TARGET } from "@/server/publish-rules";
 import { ADMIN_ROLES, PROCESSING_ROLES } from "@/lib/permissions";
 import type { FormState } from "@/lib/form-state";
 import { programFilterWhere, readProgramFilters } from "@/server/program-filters";
 import { fetchCricosFiles, syncCricos } from "@/server/cricos-sync";
+import { cricosPublishText } from "@/lib/cricos";
 import { fetchRegistry, syncRegistry } from "@/server/registry-sync";
 import { REGISTRY_SOURCES } from "@/lib/registry";
 import type { MiocCountry, MiocGuide, MiocProfile, MiocProgram, MiocUniversity } from "@/lib/mioc";
@@ -20,7 +23,14 @@ import { changesOf, newBatchId, recordChanges, updateWithHistory, type ChangeInp
 export type ImportState = {
   error?: string;
   ok?: string;
-  preview?: { valid: number; errors: ImportError[]; sample: Pick<ImportRow, "line" | "program" | "university" | "countryCode" | "level" | "intakeMonths">[]; csv: string };
+  preview?: {
+    valid: number;
+    errors: ImportError[];
+    sample: Pick<ImportRow, "line" | "program" | "university" | "countryCode" | "level" | "intakeMonths">[];
+    /** Rows the file marked LIVE that will come in as drafts, and why. */
+    heldBack: { line: number; program: string; problems: PublishProblem[] }[];
+    csv: string;
+  };
 };
 
 export async function importProgramsAction(prev: ImportState, formData: FormData): Promise<ImportState> {
@@ -44,7 +54,15 @@ export async function importProgramsAction(prev: ImportState, formData: FormData
   const valid = rows.filter((r) => byCode[r.countryCode]);
 
   if (mode !== "commit") {
-    return { preview: { valid: valid.length, errors: errors.sort((a, b) => a.line - b.line), sample: valid.slice(0, 8).map(({ line, program, university, countryCode, level, intakeMonths }) => ({ line, program, university, countryCode, level, intakeMonths })), csv: text } };
+    return {
+      preview: {
+        valid: valid.length,
+        errors: errors.sort((a, b) => a.line - b.line),
+        sample: valid.slice(0, 8).map(({ line, program, university, countryCode, level, intakeMonths }) => ({ line, program, university, countryCode, level, intakeMonths })),
+        heldBack: valid.filter((r) => r.heldBack?.length).map((r) => ({ line: r.line, program: r.program, problems: r.heldBack! })),
+        csv: text,
+      },
+    };
   }
 
   let created = 0;
@@ -109,46 +127,79 @@ export async function importProgramsAction(prev: ImportState, formData: FormData
     }
     await recordChanges(tx, changes, { by: user.id, source: "import" });
   });
-  await audit(user.id, "programs.import", "program", "*", { created, updated, skipped: errors.length });
+  const heldBack = valid.filter((r) => r.heldBack?.length).length;
+  await audit(user.id, "programs.import", "program", "*", { created, updated, skipped: errors.length, heldBackAsDrafts: heldBack });
   // The form refreshes the list itself once it has the result. Revalidating the
   // calling page from inside the action is what left imports stuck on "Checking…".
-  return { ok: `Imported: ${created} new, ${updated} updated${errors.length ? `, ${errors.length} rows skipped` : ""}.` };
+  const held = heldBackSummary(valid);
+  return { ok: `Imported: ${created} new, ${updated} updated${errors.length ? `, ${errors.length} rows skipped` : ""}.${held ? ` ${held}` : ""}` };
 }
 
-export async function setProgramStatusAction(formData: FormData) {
+/** The answer to one row's Set: nothing when it worked, or why it did not. `at` tells one answer from the next. */
+export type RowStatusState = { problems?: PublishProblem[]; error?: string; at?: number };
+
+/**
+ * Sets one program's status from its row on the Programs list. Setting it
+ * live goes through the same publish rules as the edit screen, and a course
+ * that fails them keeps its status and the row says why.
+ */
+export async function setProgramStatusAction(_: RowStatusState, formData: FormData): Promise<RowStatusState> {
   const user = await requireUser([...ADMIN_ROLES]);
+  const at = Date.now();
   const id = String(formData.get("programId"));
   const status = String(formData.get("status")) as "DRAFT" | "LIVE" | "ARCHIVED";
-  if (!["DRAFT", "LIVE", "ARCHIVED"].includes(status)) return;
+  if (!["DRAFT", "LIVE", "ARCHIVED"].includes(status)) return { error: "Choose a status.", at };
   // Read locked in the same transaction as the write, so the history's old
-  // status is the one this write replaced even when two land together.
-  const found = await db.transaction(async (tx) => {
-    const [current] = await tx.select({ status: schema.programs.status }).from(schema.programs).where(eq(schema.programs.id, id)).for("update");
-    if (!current) return false;
-    await tx.update(schema.programs).set({ status, updatedAt: new Date() }).where(eq(schema.programs.id, id));
-    await recordChanges(tx, changesOf("program", id, current, { status }), { by: user.id, source: "edit" });
-    return true;
+  // status is the one this write replaced even when two land together, and
+  // the publish rules are checked against the row as it is when written.
+  const result = await db.transaction(async (tx) => {
+    const p = schema.programs;
+    const [current] = await tx
+      .select({ status: p.status, intakeMonths: p.intakeMonths, workRights: p.workRights, workRightsNote: p.workRightsNote })
+      .from(p)
+      .where(eq(p.id, id))
+      .for("update");
+    if (!current) return { gone: true as const };
+    // A course already live is left alone rather than refused: nothing would change.
+    if (status === "LIVE" && current.status !== "LIVE") {
+      const problems = publishProblems(current);
+      if (problems.length) return { problems };
+    }
+    await tx.update(p).set({ status, updatedAt: new Date() }).where(eq(p.id, id));
+    await recordChanges(tx, changesOf("program", id, { status: current.status }, { status }), { by: user.id, source: "edit" });
+    return {};
   });
-  if (!found) return;
+  if ("gone" in result) return { error: "That program no longer exists.", at };
+  if (result.problems) return { problems: result.problems, at };
   await audit(user.id, "program.status", "program", id, { status });
   revalidatePath("/admin/programs");
+  return { at };
 }
+
+/** The answer to a bulk status press, as counts; the form words it. `at` tells one answer from the next. */
+export type BulkStatusState = { outcome?: BulkOutcome; error?: string; at?: number };
 
 /**
  * Publishes, or withdraws, every program matching the filters currently on
  * screen. An import lands 255 rows as drafts on purpose, and approving those one
  * at a time is not a review, it is data entry.
+ *
+ * Publishing takes only the courses that meet the publish rules (see
+ * src/lib/publish-rules.ts). The rest keep their status, and the answer counts
+ * them with their reasons so they can be found and fixed.
  */
-export async function bulkStatusAction(formData: FormData) {
+export async function bulkStatusAction(_: BulkStatusState, formData: FormData): Promise<BulkStatusState> {
   const user = await requireUser([...ADMIN_ROLES]);
-  const to = String(formData.get("to"));
-  if (!["LIVE", "DRAFT", "ARCHIVED"].includes(to)) return;
+  const at = Date.now();
+  const to = String(formData.get("to")) as BulkOutcome["to"];
+  if (!["LIVE", "DRAFT", "ARCHIVED"].includes(to)) return { error: "Choose publish or back to draft.", at };
 
   const f = readProgramFilters((k) => formData.get(k)?.toString());
   // The old form sent the status filter as "from"; keep reading it.
   if (!f.status && formData.get("from")) f.status = String(formData.get("from"));
 
   const { programs: p, universities: u, countries: c } = schema;
+  const publishing = to === "LIVE";
   // The country lives on the university, so the filter reaches across two
   // joins. The update runs in batches: one statement over the whole CRICOS
   // register (about 27,000 rows) could outlast the hosting's request limit or
@@ -162,9 +213,15 @@ export async function bulkStatusAction(formData: FormData) {
   // of forty batches, so the run goes on until the filter is empty. It stops
   // well inside the page's five minutes, and pressing again carries on: the
   // filter still finds whatever is left.
+  //
+  // When publishing, a batch only picks courses that meet the publish rules.
+  // Picking the others too would fill a batch with rows the update then
+  // refuses, and the run would stop early thinking it had reached the end.
+  // The update checks the rules again on the row as it is by then.
   const BATCH = 2000;
   const started = Date.now();
   let total = 0;
+  let finished = false;
   const batchId = newBatchId();
   for (let i = 0; i < 200 && Date.now() - started < 200_000; i++) {
     const scope = db
@@ -172,7 +229,7 @@ export async function bulkStatusAction(formData: FormData) {
       .from(p)
       .innerJoin(u, eq(p.universityId, u.id))
       .innerJoin(c, eq(u.countryId, c.id))
-      .where(and(programFilterWhere(f), ne(p.status, to as "LIVE")))
+      .where(and(programFilterWhere(f), ne(p.status, to), publishing ? READY : undefined))
       .limit(BATCH);
     const changed = await updateWithHistory(
       db,
@@ -180,18 +237,55 @@ export async function bulkStatusAction(formData: FormData) {
       sql`
         update programs set status = ${to}::program_status, updated_at = now()
         from programs o
-        where o.id = programs.id and ${inArray(p.id, scope)}
+        where o.id = programs.id and ${inArray(p.id, scope)}${publishing ? sql` and ${READY_TARGET}` : sql``}
         returning programs.id as entity_id, 'status'::text as field, to_jsonb(o.status) as before, to_jsonb(programs.status) as after`,
       { by: user.id, source: "bulk", batchId },
     );
     total += changed;
-    if (changed < BATCH) break;
+    if (changed < BATCH) {
+      finished = true;
+      break;
+    }
   }
-  if (!total) return;
 
-  await audit(user.id, "programs.bulk_status", "program", "*", { to, ...f, count: total });
+  // What is left in the filter, counted in one pass: the courses held back
+  // and why, and any the time guard stopped the run from reaching.
+  const [left] = await db
+    .select({
+      leftDrafts: publishing ? sql<number>`count(*) filter (where ${p.status} = 'DRAFT' and not (${READY}))`.mapWith(Number) : sql<number>`0`.mapWith(Number),
+      leftArchived: publishing ? sql<number>`count(*) filter (where ${p.status} = 'ARCHIVED' and not (${READY}))`.mapWith(Number) : sql<number>`0`.mapWith(Number),
+      noIntakes: publishing ? sql<number>`count(*) filter (where ${p.status} <> 'LIVE' and not ${HAS_INTAKES})`.mapWith(Number) : sql<number>`0`.mapWith(Number),
+      noEvidence: publishing ? sql<number>`count(*) filter (where ${p.status} <> 'LIVE' and not ${HAS_EVIDENCE})`.mapWith(Number) : sql<number>`0`.mapWith(Number),
+      unreached: finished
+        ? sql<number>`0`.mapWith(Number)
+        : sql<number>`count(*) filter (where ${p.status} <> ${to}::program_status${publishing ? sql` and ${READY}` : sql``})`.mapWith(Number),
+    })
+    .from(p)
+    .innerJoin(u, eq(p.universityId, u.id))
+    .innerJoin(c, eq(u.countryId, c.id))
+    .where(programFilterWhere(f));
+  const outcome: BulkOutcome = {
+    to,
+    done: total,
+    leftDrafts: left?.leftDrafts ?? 0,
+    leftArchived: left?.leftArchived ?? 0,
+    noIntakes: left?.noIntakes ?? 0,
+    noEvidence: left?.noEvidence ?? 0,
+    unreached: left?.unreached ?? 0,
+  };
+  if (!total) return { outcome, at };
+
+  await audit(user.id, "programs.bulk_status", "program", "*", {
+    to,
+    ...f,
+    count: total,
+    leftNoIntakes: outcome.noIntakes,
+    leftNoEvidence: outcome.noEvidence,
+    unreached: outcome.unreached,
+  });
   revalidatePath("/admin/programs");
   revalidatePath("/search");
+  return { outcome, at };
 }
 
 const LEVELS = ["SCHOOL", "UG_DIPLOMA", "UG", "PG_DIPLOMA", "PG", "PHD", "VOCATIONAL", "REGISTRATION", "CERTIFICATE"] as const;
@@ -236,15 +330,18 @@ export async function updateProgramAction(_: FormState, fd: FormData): Promise<F
   const workRights = String(fd.get("workRights") ?? "") as "UNKNOWN" | "ELIGIBLE" | "INELIGIBLE";
   if (!["UNKNOWN", "ELIGIBLE", "INELIGIBLE"].includes(workRights)) errors.workRights = ["Choose an answer"];
   const workRightsNote = String(fd.get("workRightsNote") ?? "").trim() || null;
-  // A verdict without its evidence is exactly what this column exists to stop.
-  if (workRights !== "UNKNOWN" && !workRightsNote) errors.workRightsNote = ["Say where this comes from, for example the institution's page"];
   const minGermanLevel = String(fd.get("minGermanLevel") ?? "").trim().toUpperCase() || null;
   if (minGermanLevel && !CEFR.includes(minGermanLevel as (typeof CEFR)[number])) errors.minGermanLevel = ["Use A1 to C2"];
   const minOetGrade = String(fd.get("minOetGrade") ?? "").trim().toUpperCase() || null;
   if (minOetGrade && !["A", "B", "C+", "C", "D", "E"].includes(minOetGrade)) errors.minOetGrade = ["Use A, B, C+, C, D or E"];
 
   const intakeMonths = fd.getAll("intake").map(Number).filter((m) => m >= 1 && m <= 12).sort((a, b) => a - b);
-  if (status === "LIVE" && !intakeMonths.length) errors.intake = ["A live program needs at least one intake, or nobody can apply"];
+  // The shared publish rules. A verdict without its evidence is exactly what
+  // the note exists to stop, so that one holds whatever the status; the
+  // intake one only binds a live program.
+  const problems = publishProblems({ intakeMonths, workRights, workRightsNote });
+  if (problems.includes("evidence")) errors.workRightsNote = ["Say where this comes from, for example the institution's page"];
+  if (status === "LIVE" && problems.includes("intakes")) errors.intake = ["A live program needs at least one intake, or nobody can apply"];
   const docCodes = new Set((await db.select({ code: schema.documentTypes.code }).from(schema.documentTypes)).map((d) => d.code));
   const requiredDocs = fd.getAll("doc").map(String).filter((d) => docCodes.has(d));
 
@@ -355,7 +452,7 @@ export async function syncCricosAction(_: FormState, fd: FormData): Promise<Form
     await audit(user.id, "programs.cricos_sync", "program", "*", { ...r, publish, via: uploaded ? "upload" : "data.gov.au" });
     // No revalidatePath here: the form refreshes the page itself once it has the report.
     return {
-      ok: `CRICOS: ${r.courses.toLocaleString("en-IN")} live courses from ${r.providers.toLocaleString("en-IN")} providers. ${r.created.toLocaleString("en-IN")} new${publish ? " and published" : " as drafts"}, ${r.updated.toLocaleString("en-IN")} refreshed, ${r.archived} archived because they left the register${r.claimed ? `, ${r.claimed} matched to programs already in the catalogue` : ""}. Took ${r.seconds}s.`,
+      ok: `CRICOS: ${r.courses.toLocaleString("en-IN")} live courses from ${r.providers.toLocaleString("en-IN")} providers. ${r.created.toLocaleString("en-IN")} new${publish ? "" : " as drafts"}, ${r.updated.toLocaleString("en-IN")} refreshed, ${r.archived} archived because they left the register${r.claimed ? `, ${r.claimed} matched to programs already in the catalogue` : ""}.${publish ? ` ${cricosPublishText(r)}` : ""} Took ${r.seconds}s.`,
     };
   } catch (e) {
     return { error: (e as Error).message };

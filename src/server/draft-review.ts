@@ -3,6 +3,7 @@ import { and, asc, count, desc, eq, ilike, inArray, ne, sql, type SQL } from "dr
 import { db, schema } from "@/db";
 import { newBatchId, updateWithHistory } from "@/server/catalogue-history";
 import type { ReviewFilters, ReviewOutcome, ReviewSource } from "@/lib/draft-review";
+import { HAS_EVIDENCE, HAS_INTAKES, READY, READY_TARGET } from "@/server/publish-rules";
 
 /**
  * The queries behind the draft review screens. Everything is counted in
@@ -17,16 +18,6 @@ export const DRAFTS_PAGE = 100;
 
 /** A draft, from one source when the desk has narrowed to one. */
 const draftWhere = (source?: ReviewSource): SQL => (source ? sql`(${p.status} = 'DRAFT' and ${p.source} = ${source})` : sql`(${p.status} = 'DRAFT')`);
-
-/**
- * The publish rules from publishProblems in src/lib/draft-review.ts, written
- * against the row being updated (`programs` in the update below), so a course
- * somebody changed while the press was on its way is judged as it is now.
- * Keep the two in step.
- */
-const READY_TARGET = sql.raw(`cardinality(programs.intake_months) > 0 and (programs.work_rights = 'UNKNOWN' or coalesce(programs.work_rights_note, '') ~ '[^[:space:]]')`);
-const HAS_INTAKES = sql`cardinality(${p.intakeMonths}) > 0`;
-const HAS_EVIDENCE = sql`(${p.workRights} = 'UNKNOWN' or coalesce(${p.workRightsNote}, '') ~ '[^[:space:]]')`;
 
 /** Every draft in the catalogue, for the link from the Programs screen. */
 export async function draftTotal(): Promise<number> {
@@ -172,7 +163,7 @@ async function moveDrafts(s: Scope, to: "LIVE" | "ARCHIVED", by: string): Promis
   const started = Date.now();
   let total = 0;
   for (let i = 0; i < 100 && Date.now() - started < 200_000; i++) {
-    const scope = db.select({ id: p.id }).from(p).where(and(scopeWhere(s), to === "LIVE" ? and(HAS_INTAKES, HAS_EVIDENCE) : undefined)).limit(BATCH);
+    const scope = db.select({ id: p.id }).from(p).where(and(scopeWhere(s), to === "LIVE" ? READY : undefined)).limit(BATCH);
     const changed = await updateWithHistory(
       db,
       "program",
@@ -193,7 +184,7 @@ async function moveDrafts(s: Scope, to: "LIVE" | "ARCHIVED", by: string): Promis
 async function stillDrafts(s: Scope) {
   const [row] = await db
     .select({
-      left: sql<number>`count(*) filter (where not (${HAS_INTAKES} and ${HAS_EVIDENCE}))`.mapWith(Number),
+      left: sql<number>`count(*) filter (where not (${READY}))`.mapWith(Number),
       noIntakes: sql<number>`count(*) filter (where not ${HAS_INTAKES})`.mapWith(Number),
       noEvidence: sql<number>`count(*) filter (where not ${HAS_EVIDENCE})`.mapWith(Number),
       drafts: count(),

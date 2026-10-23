@@ -5,7 +5,8 @@
  * register brings more. Publishing all of them from the Programs filter in one
  * press puts every course nobody has looked at in front of counsellors, so the
  * desk works through them university by university instead. This file holds
- * the rules and the wording; the queries are in src/server/draft-review.ts.
+ * the filters and the wording; the queries are in src/server/draft-review.ts,
+ * and the publish rules themselves in src/lib/publish-rules.ts.
  */
 
 /** The sources a draft can be narrowed to. Anything else means any source. */
@@ -22,6 +23,8 @@ export type ReviewFilters = {
   sort: "drafts" | "name";
   page: number;
 };
+
+import { count, heldBackText } from "./publish-rules";
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)?.trim() ?? "";
 
@@ -57,25 +60,11 @@ export function reviewQuery(f: Partial<ReviewFilters>, extra: Record<string, str
 }
 
 /**
- * Why a course cannot go live yet. These are the rules the course's own edit
- * screen applies when somebody sets it live there: nobody can apply to a
- * course with no intake, and a post-study work answer needs the evidence
- * behind it. The publish in src/server/draft-review.ts checks the same two in
- * SQL, so a course this says is ready is one the publish will take.
+ * The publish rules live in src/lib/publish-rules.ts, shared with every other
+ * path that can set a course live. They are re-exported here because the
+ * review screens and their tests have always read them from this file.
  */
-export type PublishProblem = "intakes" | "evidence";
-
-export function publishProblems(row: { intakeMonths: number[] | null | undefined; workRights: string; workRightsNote: string | null | undefined }): PublishProblem[] {
-  const out: PublishProblem[] = [];
-  if (!row.intakeMonths?.length) out.push("intakes");
-  if (row.workRights !== "UNKNOWN" && !row.workRightsNote?.trim()) out.push("evidence");
-  return out;
-}
-
-export const PROBLEM_LABEL: Record<PublishProblem, string> = {
-  intakes: "No intakes",
-  evidence: "Work rights with no evidence",
-};
+export { PROBLEM_LABEL, publishProblems, type PublishProblem } from "./publish-rules";
 
 /** What one press did, counted by the database. */
 export type ReviewOutcome = {
@@ -90,14 +79,6 @@ export type ReviewOutcome = {
   gone: number;
 };
 
-const count = (n: number, oneWord: string, many: string) => `${n} ${n === 1 ? oneWord : many}`;
-
-/** One reason for the courses left as drafts, worded for how many it covers. */
-function reasonText(problem: PublishProblem, n: number) {
-  if (problem === "intakes") return `${n} ${n === 1 ? "has" : "have"} no intakes`;
-  return `${n} ${n === 1 ? "has" : "have"} a post-study work answer with no evidence behind ${n === 1 ? "it" : "them"}`;
-}
-
 /**
  * The answer after a press, in the words the desk reads: what was done, what
  * was left and why, so the courses still waiting can be opened and fixed.
@@ -109,15 +90,7 @@ export function outcomeText(o: ReviewOutcome): string {
   } else {
     parts.push(o.done ? `Published ${o.done}.` : "Nothing published.");
     if (o.left) {
-      const reasons = ([["intakes", o.noIntakes], ["evidence", o.noEvidence]] as const).filter(([, n]) => n > 0);
-      const asDrafts = count(o.left, "left as a draft", "left as drafts");
-      if (reasons.length === 1 && reasons[0][1] === o.left) {
-        const [problem] = reasons[0];
-        const they = o.left === 1 ? "it has" : "they have";
-        parts.push(problem === "intakes" ? `${asDrafts} because ${they} no intakes.` : `${asDrafts} because ${they} a post-study work answer with no evidence behind ${o.left === 1 ? "it" : "them"}.`);
-      } else {
-        parts.push(`${asDrafts}: ${reasons.map(([p, n]) => reasonText(p, n)).join(", ")}.`);
-      }
+      parts.push(heldBackText(o, count(o.left, "left as a draft", "left as drafts")));
       parts.push(o.left === 1 ? "Open it to add what is missing." : "Open each one to add what is missing.");
     }
   }

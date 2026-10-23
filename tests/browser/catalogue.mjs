@@ -1,5 +1,6 @@
 // The catalogue at real size: paging, an honest count, a bulk publish that acts
-// on every match rather than the visible page, and the work rights column.
+// on every match rather than the visible page (and only on the courses that
+// meet the publish rules), and the work rights column.
 import { chromium } from "playwright";
 import { knownWarning } from "./_errors.mjs";
 import fs from "node:fs";
@@ -148,6 +149,21 @@ german > 0 && (await page.locator("main tbody tr").count()) > 0
   : bad("filtering from a deep page came back empty");
 
 // ---- Bulk publish acts on every match, not the visible page ----
+// Only courses that meet the publish rules go live: at least one intake, and
+// evidence behind any post-study work answer. The rest stay drafts and the
+// answer counts them, so what is left afterwards is exactly those.
+const NOT_READY = "(cardinality(p.intake_months) = 0 or (p.work_rights <> 'UNKNOWN' and coalesce(p.work_rights_note, '') !~ '[^[:space:]]'))";
+/** Presses Publish and returns the answer's counts, read before the page is left. */
+async function publishAll() {
+  await page.getByRole("button", { name: "Publish", exact: true }).click();
+  const answer = page.locator("[data-bulk-result]");
+  await answer.waitFor({ timeout: 120000 }).catch(() => {});
+  return {
+    done: Number(await answer.getAttribute("data-done").catch(() => -1)),
+    left: Number(await answer.getAttribute("data-left-drafts").catch(() => -1)),
+    text: (await answer.innerText().catch(() => "")).replace(/\s+/g, " "),
+  };
+}
 await page.goto(`${BASE}/admin/programs?country=DE&status=DRAFT`);
 await settle(page);
 t = await page.locator("main").innerText();
@@ -156,14 +172,17 @@ if (drafts <= 50) {
   bad(`test needs more than one page of German drafts, found ${drafts}`);
 } else {
   /All \d+ matching/.test(t) ? ok("the bulk control says it acts on every match") : bad("the bulk label still talks about the page");
-  await page.getByRole("button", { name: "Publish", exact: true }).click();
-  await page.waitForTimeout(8000);
+  const notReady = Number(sql(`select count(*) from ${GERMAN} where p.status = 'DRAFT' and c.code = 'DE' and ${NOT_READY}`));
+  const said = await publishAll();
+  said.done === drafts - notReady && said.left === notReady
+    ? ok(`publishing took all ${said.done} ready German drafts in one go and left ${notReady} that are not ready`)
+    : bad(`the answer counted ${said.done} published and ${said.left} left, expected ${drafts - notReady} and ${notReady} (${said.text.slice(0, 160)})`);
   await page.goto(`${BASE}/admin/programs?country=DE&status=DRAFT`);
   await settle(page);
   const left = countOf(await page.locator("main").innerText());
-  left === 0 || left === -1
-    ? ok(`publishing cleared all ${drafts} German drafts in one go`)
-    : bad(`${left} German drafts survived a bulk publish of ${drafts}`);
+  left === notReady || (notReady === 0 && left === -1)
+    ? ok(`only the ${notReady} German drafts that are not ready survived`)
+    : bad(`${left} German drafts survived a bulk publish of ${drafts}, expected ${notReady}`);
 }
 await page.screenshot({ path: `${OUT}/02-after-publish.png`, fullPage: true });
 
@@ -180,14 +199,14 @@ await page.goto(`${BASE}/admin/programs?status=DRAFT`);
 await settle(page);
 const remaining = countOf(await page.locator("main").innerText());
 if (remaining > 0) {
-  await page.getByRole("button", { name: "Publish", exact: true }).click();
-  await page.waitForTimeout(12000);
+  const notReady = Number(sql(`select count(*) from programs p where p.status = 'DRAFT' and ${NOT_READY}`));
+  await publishAll();
   await page.goto(`${BASE}/admin/programs?status=DRAFT`);
   await settle(page);
   const stillDraft = countOf(await page.locator("main").innerText());
-  stillDraft <= 0
-    ? ok(`one action published all ${remaining} remaining drafts`)
-    : bad(`${stillDraft} of ${remaining} drafts survived`);
+  stillDraft === notReady || (notReady === 0 && stillDraft <= 0)
+    ? ok(`one action published all ${remaining - notReady} remaining drafts that are ready, leaving the ${notReady} that are not`)
+    : bad(`${stillDraft} of ${remaining} drafts survived, expected the ${notReady} that are not ready`);
 }
 
 await page.goto(`${BASE}/search?workRights=1`);

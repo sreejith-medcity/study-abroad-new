@@ -1,6 +1,7 @@
 import { and, eq, isNull, ne, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { buildCricos, CRICOS_SOURCE, nameKey } from "@/lib/cricos";
+import { publishProblems, type PublishProblem } from "@/lib/publish-rules";
 import { changesOf, newBatchId, recordChanges, updateWithHistory, type ChangeInput } from "./catalogue-history";
 
 /** data.gov.au's stable download links for the three register files. */
@@ -33,6 +34,12 @@ export type CricosSyncResult = {
   updated: number;
   archived: number;
   claimed: number;
+  /** New courses set live because publishing was asked for and they met the publish rules. */
+  published: number;
+  /** New courses kept as drafts although publishing was asked for, and why. */
+  keptAsDrafts: number;
+  keptNoIntakes: number;
+  keptNoEvidence: number;
   seconds: number;
 };
 
@@ -53,7 +60,9 @@ const chunk = <T,>(list: T[], size: number) => Array.from({ length: Math.ceil(li
  * - Providers attach to an existing university by register code, then by name,
  *   and are created otherwise.
  * - Courses are keyed by their CRICOS course code. New ones land as drafts
- *   unless `publish` is set. Existing CRICOS rows get the register's fields
+ *   unless `publish` is set, and even then only the ones that meet the
+ *   publish rules go live. The register gives no intakes, so in practice a
+ *   new course stays a draft until somebody adds one. Existing CRICOS rows get the register's fields
  *   refreshed (name, level, field, duration, fee, campus); anything a person
  *   added (intakes, IELTS, documents, their own work rights note) is kept.
  * - A course that has left the register is archived, never deleted, so any
@@ -181,6 +190,20 @@ export async function syncCricos(files: { institutions: string; courses: string;
   // ---- Courses ----
   let created = 0;
   let updated = 0;
+  let published = 0;
+  let keptAsDrafts = 0;
+  let keptNoIntakes = 0;
+  let keptNoEvidence = 0;
+  // Why each course could not go live, worked out once from what a new row
+  // would hold: no intakes (the register has none) and the register's own
+  // work rights answer and note.
+  const heldBack = new Map<string, PublishProblem[]>();
+  if (opts.publish) {
+    for (const c of courses) {
+      const problems = publishProblems({ intakeMonths: [], workRights: c.workRights, workRightsNote: c.workRightsNote });
+      if (problems.length) heldBack.set(c.code, problems);
+    }
+  }
   const ruleNote = sql.join(RULE_NOTE_PREFIXES.map((x) => sql`${p.workRightsNote} like ${x + "%"}`), sql` or `);
   // The fields the upsert below can move, read before and returned after, so
   // the history holds exactly what changed on rows that were already here.
@@ -220,7 +243,10 @@ export async function syncCricos(files: { institutions: string; courses: string;
             workRightsNote: c.workRightsNote,
             source: CRICOS_SOURCE,
             externalCode: c.code,
-            status: opts.publish ? ("LIVE" as const) : ("DRAFT" as const),
+            // Only a new row takes this status: the update below never changes
+            // a status the catalogue already holds, except to bring an
+            // archived register course back as a draft.
+            status: opts.publish && !heldBack.has(c.code) ? ("LIVE" as const) : ("DRAFT" as const),
           })),
         )
         .onConflictDoUpdate({
@@ -244,8 +270,15 @@ export async function syncCricos(files: { institutions: string; courses: string;
         .returning({ inserted: sql<boolean>`(xmax = 0)`, ...tracked });
       const changes: ChangeInput[] = [];
       for (const r of rows) {
-        if (r.inserted) created++;
-        else updated++;
+        if (r.inserted) {
+          created++;
+          const problems = r.externalCode ? heldBack.get(r.externalCode) : undefined;
+          if (problems) {
+            keptAsDrafts++;
+            if (problems.includes("intakes")) keptNoIntakes++;
+            if (problems.includes("evidence")) keptNoEvidence++;
+          } else if (opts.publish) published++;
+        } else updated++;
         const was = before.get(r.id);
         if (!r.inserted && was) {
           changes.push(...changesOf("program", r.id, was, r, ["inserted", "externalCode"]));
@@ -280,6 +313,10 @@ export async function syncCricos(files: { institutions: string; courses: string;
     updated,
     archived: gone,
     claimed,
+    published,
+    keptAsDrafts,
+    keptNoIntakes,
+    keptNoEvidence,
     seconds: Math.round((Date.now() - started) / 1000),
   };
 }
