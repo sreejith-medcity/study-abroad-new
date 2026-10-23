@@ -18,6 +18,7 @@ import { getSettings } from "@/server/settings";
 import { navCounts } from "@/server/nav-counts";
 import { journalTick, journalWaiting } from "@/server/journal";
 import { JournalPopup } from "@/components/journal-popup";
+import { APP_VERSION } from "@/lib/version";
 import { journalIssued } from "@/lib/journal";
 
 /*
@@ -545,9 +546,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <SideNav groups={navGroups} />
             {/* Hidden once the menu is put away: four characters and an
                 ellipsis is not the name of a company. */}
-            <p className="truncate border-t border-line/70 px-4 py-3 text-2xs leading-relaxed text-muted/70 [[data-nav-rail='1']_&]:hidden">
+            <p className="truncate border-t border-line/70 px-4 pt-3 text-2xs leading-relaxed text-muted/70 [[data-nav-rail='1']_&]:hidden">
               {settings.organisationName}
             </p>
+            {/* Which release this is, so anybody can say which version they
+                saw a problem on, and the desk can see a deploy has landed. */}
+            <Link
+              href="/whats-new"
+              data-app-version
+              className="block truncate px-4 pb-3 text-2xs leading-relaxed text-muted/70 hover:text-brand-700 [[data-nav-rail='1']_&]:hidden"
+            >
+              Version {APP_VERSION}
+            </Link>
           </div>
         </aside>
         <main className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">

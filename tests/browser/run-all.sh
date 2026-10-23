@@ -83,9 +83,11 @@ fi
 # The daily journal opens over every page from the end of the working day
 # until it is answered, which is right for people and wrong for suites that
 # sign in as staff and press things: run at 6 PM, every one of them would be
-# clicking into the popup. So the template's working day ends a minute before
-# midnight. The journal suite sets its own clock.
-psqlq "$TEMPLATE" "insert into app_settings (id) values ('app') on conflict do nothing; update app_settings set journal_day_end = '23:58', journal_out_of_hours = '23:58', journal_cutoff = '23:59' where id = 'app'" > /dev/null
+# clicking into the popup. So the template's working day ends at the cutoff
+# itself, which leaves no minute in which the journal is open (a minute's
+# window at 23:58 was enough for a late run to land in it). The journal suite
+# sets its own clock.
+psqlq "$TEMPLATE" "insert into app_settings (id) values ('app') on conflict do nothing; update app_settings set journal_day_end = '23:59', journal_out_of_hours = '23:59', journal_cutoff = '23:59' where id = 'app'" > /dev/null
 
 # Postgres will not copy or drop a database that anything is connected to, so
 # the server has to be down for both, which it has to be anyway: the sign-in

@@ -460,6 +460,27 @@ about 30 ms at that size; it is left unindexed on purpose, because the index
 would be paid for on every write in the portal to speed up a screen a super
 admin opens occasionally.
 
+## Releases
+
+Every release has a number (1.0.0, 1.1.0, ...). The release commit bumps
+`version` in package.json and adds an entry to CHANGELOG.md and to
+src/lib/releases.ts, which the What's new page reads; tests/releases.test.ts
+fails if the three disagree. The last figure goes up for a fix, the middle one
+for something new, the first for a change that needs the team to work
+differently.
+
+The build stamps the number, the build time and the commit in, so the portal
+shows which release it is running at the foot of the menu and on What's new,
+and `/api/version` answers the same as JSON for checking a deploy.
+
+After applying a release, tag it and push the tag with the code, so any
+release can be found again and rolled back to:
+
+```
+git tag -a v1.0.0 -m "Release 1.0.0"
+git push origin main --follow-tags
+```
+
 ## Deploying a schema change
 
 The Hostinger build does not touch the database, so a migration is applied on purpose:

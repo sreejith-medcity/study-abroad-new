@@ -1,4 +1,22 @@
 import type { NextConfig } from "next";
+import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+
+/**
+ * Which release this build is, stamped in at build time so the portal can say
+ * which version Hostinger is serving: the number from package.json, when the
+ * build ran, and the commit it was built from where the build can see git.
+ */
+const release = (() => {
+  const version = (JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")) as { version: string }).version;
+  let commit = "";
+  try {
+    commit = execSync("git rev-parse --short HEAD", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+  } catch {
+    // No git where the build runs: the number and the time still say enough.
+  }
+  return { APP_VERSION: version, APP_BUILT_AT: new Date().toISOString(), APP_COMMIT: commit };
+})();
 
 /**
  * Headers that apply to every response. The portal holds student passports and
@@ -51,6 +69,7 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  env: release,
   // The Docker image runs the standalone server Next emits. Left off
   // everywhere else so `next start` and the test suites behave as they always
   // have.

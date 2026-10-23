@@ -512,6 +512,13 @@
       "when": 1792748941244,
       "tag": "0072_journal_times",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1792780726880,
+      "tag": "0073_catalogue_history_and_document_versions",
+      "breakpoints": true
     }
   ]
 }
