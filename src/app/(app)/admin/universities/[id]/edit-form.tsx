@@ -10,7 +10,7 @@ const v = (x: number | string | null) => (x == null ? "" : String(x));
 
 export function UniversityEditForm({ university, country }: { university: UniversityNow & { id: string }; country: string }) {
   return (
-    <ActionForm action={updateUniversityAction} submitLabel="Save university" className="space-y-6">
+    <ActionForm action={updateUniversityAction} submitLabel="Save university" trackUnsaved className="space-y-6">
       <input type="hidden" name="universityId" value={university.id} />
 
       <Section title="University" note={`In ${country}. The country cannot be changed here.`}>

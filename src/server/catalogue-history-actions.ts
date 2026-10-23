@@ -32,5 +32,5 @@ export async function restoreCatalogueChangeAction(_: FormState, fd: FormData): 
     revalidatePath(`/universities/${result.entityId}`);
     revalidatePath(`/admin/universities/${result.entityId}`);
   }
-  return result.error ? { error: result.error } : { ok: result.ok };
+  return result.error ? { error: result.error } : { ok: result.ok, keep: result.keep };
 }

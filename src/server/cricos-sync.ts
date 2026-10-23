@@ -1,7 +1,7 @@
 import { and, eq, isNull, ne, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { buildCricos, CRICOS_SOURCE, nameKey } from "@/lib/cricos";
-import { changesOf, newBatchId, recordChanges, type ChangeInput } from "./catalogue-history";
+import { changesOf, newBatchId, recordChanges, updateWithHistory, type ChangeInput } from "./catalogue-history";
 
 /** data.gov.au's stable download links for the three register files. */
 export const CRICOS_FILES = {
@@ -78,51 +78,59 @@ export async function syncCricos(files: { institutions: string; courses: string;
   const p = schema.programs;
 
   // ---- Providers ----
-  const existing = await db
-    .select({ id: u.id, name: u.name, externalCode: u.externalCode, website: u.website, isPublic: u.isPublic, city: u.city })
-    .from(u)
-    .where(eq(u.countryId, au.id));
-  // What each university holds as the run goes, to know what the update below
-  // changes. Two providers can match one university by name, so it is kept current.
-  const uniNow = new Map(existing.map((x) => [x.id, { externalCode: x.externalCode, website: x.website, isPublic: x.isPublic, city: x.city }]));
-  const uniChanges: ChangeInput[] = [];
-  const byCode = new Map(existing.filter((x) => x.externalCode).map((x) => [x.externalCode!, x.id]));
-  const byName = new Map(existing.map((x) => [x.name.toLowerCase(), x.id]));
-  const providerId = new Map<string, string>();
-  const toCreate: typeof providers = [];
-  for (const pr of providers) {
-    const id = byCode.get(pr.code) ?? byName.get(pr.name.toLowerCase());
-    if (id) providerId.set(pr.code, id);
-    else toCreate.push(pr);
-  }
-  // Existing universities learn their code (unless they already have one) and website.
-  for (const pr of providers) {
-    const id = providerId.get(pr.code);
-    if (!id) continue;
-    const was = uniNow.get(id);
-    if (was) {
-      // The same rules as the statement below, worked out here to see what moves.
-      const next = {
-        externalCode: was.externalCode ?? (byCode.has(pr.code) ? null : pr.code),
-        website: was.website ?? pr.website,
-        isPublic: was.isPublic || pr.isPublic,
-        city: was.city ?? pr.city,
-      };
-      uniChanges.push(...changesOf("university", id, was, next));
-      uniNow.set(id, next);
+  // One transaction for the read, the updates and their history: the history
+  // is worked out from the read, so a change and its record are kept or lost
+  // together, and the rows stay locked until both are written. Australia's
+  // universities are a few thousand rows at most, a small transaction.
+  const { providerId, toCreate } = await db.transaction(async (tx) => {
+    const existing = await tx
+      .select({ id: u.id, name: u.name, externalCode: u.externalCode, website: u.website, isPublic: u.isPublic, city: u.city })
+      .from(u)
+      .where(eq(u.countryId, au.id))
+      .for("update");
+    // What each university holds as the run goes, to know what the update below
+    // changes. Two providers can match one university by name, so it is kept current.
+    const uniNow = new Map(existing.map((x) => [x.id, { externalCode: x.externalCode, website: x.website, isPublic: x.isPublic, city: x.city }]));
+    const uniChanges: ChangeInput[] = [];
+    const byCode = new Map(existing.filter((x) => x.externalCode).map((x) => [x.externalCode!, x.id]));
+    const byName = new Map(existing.map((x) => [x.name.toLowerCase(), x.id]));
+    const providerId = new Map<string, string>();
+    const toCreate: typeof providers = [];
+    for (const pr of providers) {
+      const id = byCode.get(pr.code) ?? byName.get(pr.name.toLowerCase());
+      if (id) providerId.set(pr.code, id);
+      else toCreate.push(pr);
     }
-    await db
-      .update(u)
-      .set({
-        externalCode: sql`coalesce(${u.externalCode}, ${byCode.has(pr.code) ? null : pr.code})`,
-        website: sql`coalesce(${u.website}, ${pr.website})`,
-        isPublic: sql`${u.isPublic} or ${pr.isPublic}`,
-        city: sql`coalesce(${u.city}, ${pr.city})`,
-      })
-      .where(eq(u.id, id));
-    byCode.set(pr.code, id);
-  }
-  await recordChanges(db, uniChanges, history);
+    // Existing universities learn their code (unless they already have one) and website.
+    for (const pr of providers) {
+      const id = providerId.get(pr.code);
+      if (!id) continue;
+      const was = uniNow.get(id);
+      if (was) {
+        // The same rules as the statement below, worked out here to see what moves.
+        const next = {
+          externalCode: was.externalCode ?? (byCode.has(pr.code) ? null : pr.code),
+          website: was.website ?? pr.website,
+          isPublic: was.isPublic || pr.isPublic,
+          city: was.city ?? pr.city,
+        };
+        uniChanges.push(...changesOf("university", id, was, next));
+        uniNow.set(id, next);
+      }
+      await tx
+        .update(u)
+        .set({
+          externalCode: sql`coalesce(${u.externalCode}, ${byCode.has(pr.code) ? null : pr.code})`,
+          website: sql`coalesce(${u.website}, ${pr.website})`,
+          isPublic: sql`${u.isPublic} or ${pr.isPublic}`,
+          city: sql`coalesce(${u.city}, ${pr.city})`,
+        })
+        .where(eq(u.id, id));
+      byCode.set(pr.code, id);
+    }
+    await recordChanges(tx, uniChanges, history);
+    return { providerId, toCreate };
+  });
   for (const part of chunk(toCreate, 500)) {
     const rows = await db
       .insert(u)
@@ -190,73 +198,78 @@ export async function syncCricos(files: { institutions: string; courses: string;
     status: p.status,
   };
   for (const part of chunk(courses, 800)) {
-    const before = new Map(
-      (await db.select(tracked).from(p).where(sql`${p.externalCode} = any(string_to_array(${part.map((c) => c.code).join(",")}, ','))`)).map((x) => [x.id, x]),
-    );
-    const rows = await db
-      .insert(p)
-      .values(
-        part.map((c) => ({
-          name: c.name,
-          universityId: providerId.get(c.providerCode)!,
-          campus: c.campus,
-          pathway: "DEGREE" as const,
-          level: c.level,
-          studyArea: c.studyArea,
-          durationMonths: c.durationMonths,
-          tuitionTotal: c.tuitionTotal,
-          workRights: c.workRights,
-          workRightsNote: c.workRightsNote,
-          source: CRICOS_SOURCE,
-          externalCode: c.code,
-          status: opts.publish ? ("LIVE" as const) : ("DRAFT" as const),
-        })),
-      )
-      .onConflictDoUpdate({
-        target: p.externalCode,
-        // Only the register's own fields move. A row a person researched by hand
-        // (source is not CRICOS) is never touched beyond its claimed code.
-        set: {
-          name: sql`case when ${p.source} = ${CRICOS_SOURCE} then excluded.name else ${p.name} end`,
-          level: sql`case when ${p.source} = ${CRICOS_SOURCE} then excluded.level else ${p.level} end`,
-          studyArea: sql`case when ${p.source} = ${CRICOS_SOURCE} then excluded.study_area else ${p.studyArea} end`,
-          durationMonths: sql`case when ${p.source} = ${CRICOS_SOURCE} then excluded.duration_months else ${p.durationMonths} end`,
-          tuitionTotal: sql`excluded.tuition_total`,
-          campus: sql`case when ${p.source} = ${CRICOS_SOURCE} then excluded.campus else coalesce(${p.campus}, excluded.campus) end`,
-          workRights: sql`case when ${p.source} = ${CRICOS_SOURCE} and (${p.workRightsNote} is null or ${ruleNote}) then excluded.work_rights else ${p.workRights} end`,
-          workRightsNote: sql`case when ${p.source} = ${CRICOS_SOURCE} and (${p.workRightsNote} is null or ${ruleNote}) then excluded.work_rights_note else ${p.workRightsNote} end`,
-          // A course that came back to the register comes back as a draft to review.
-          status: sql`case when ${p.status} = 'ARCHIVED' and ${p.source} = ${CRICOS_SOURCE} then 'DRAFT'::program_status else ${p.status} end`,
-          updatedAt: sql`now()`,
-        },
-      })
-      .returning({ inserted: sql<boolean>`(xmax = 0)`, ...tracked });
-    const changes: ChangeInput[] = [];
-    for (const r of rows) {
-      if (r.inserted) created++;
-      else updated++;
-      const was = before.get(r.id);
-      if (!r.inserted && was) {
-        changes.push(...changesOf("program", r.id, was, r, ["inserted", "externalCode"]));
+    // Each part's read, upsert and history in one transaction: the history is
+    // worked out from the read, and is kept or lost with the upsert it records.
+    await db.transaction(async (tx) => {
+      const before = new Map(
+        (await tx.select(tracked).from(p).where(sql`${p.externalCode} = any(string_to_array(${part.map((c) => c.code).join(",")}, ','))`).for("update")).map((x) => [x.id, x]),
+      );
+      const rows = await tx
+        .insert(p)
+        .values(
+          part.map((c) => ({
+            name: c.name,
+            universityId: providerId.get(c.providerCode)!,
+            campus: c.campus,
+            pathway: "DEGREE" as const,
+            level: c.level,
+            studyArea: c.studyArea,
+            durationMonths: c.durationMonths,
+            tuitionTotal: c.tuitionTotal,
+            workRights: c.workRights,
+            workRightsNote: c.workRightsNote,
+            source: CRICOS_SOURCE,
+            externalCode: c.code,
+            status: opts.publish ? ("LIVE" as const) : ("DRAFT" as const),
+          })),
+        )
+        .onConflictDoUpdate({
+          target: p.externalCode,
+          // Only the register's own fields move. A row a person researched by hand
+          // (source is not CRICOS) is never touched beyond its claimed code.
+          set: {
+            name: sql`case when ${p.source} = ${CRICOS_SOURCE} then excluded.name else ${p.name} end`,
+            level: sql`case when ${p.source} = ${CRICOS_SOURCE} then excluded.level else ${p.level} end`,
+            studyArea: sql`case when ${p.source} = ${CRICOS_SOURCE} then excluded.study_area else ${p.studyArea} end`,
+            durationMonths: sql`case when ${p.source} = ${CRICOS_SOURCE} then excluded.duration_months else ${p.durationMonths} end`,
+            tuitionTotal: sql`excluded.tuition_total`,
+            campus: sql`case when ${p.source} = ${CRICOS_SOURCE} then excluded.campus else coalesce(${p.campus}, excluded.campus) end`,
+            workRights: sql`case when ${p.source} = ${CRICOS_SOURCE} and (${p.workRightsNote} is null or ${ruleNote}) then excluded.work_rights else ${p.workRights} end`,
+            workRightsNote: sql`case when ${p.source} = ${CRICOS_SOURCE} and (${p.workRightsNote} is null or ${ruleNote}) then excluded.work_rights_note else ${p.workRightsNote} end`,
+            // A course that came back to the register comes back as a draft to review.
+            status: sql`case when ${p.status} = 'ARCHIVED' and ${p.source} = ${CRICOS_SOURCE} then 'DRAFT'::program_status else ${p.status} end`,
+            updatedAt: sql`now()`,
+          },
+        })
+        .returning({ inserted: sql<boolean>`(xmax = 0)`, ...tracked });
+      const changes: ChangeInput[] = [];
+      for (const r of rows) {
+        if (r.inserted) created++;
+        else updated++;
+        const was = before.get(r.id);
+        if (!r.inserted && was) {
+          changes.push(...changesOf("program", r.id, was, r, ["inserted", "externalCode"]));
+        }
       }
-    }
-    await recordChanges(db, changes, history);
+      await recordChanges(tx, changes, history);
+    });
   }
 
   // ---- Courses that left the register ----
   // One text parameter, not 26,000: a bound array is expanded into a parameter
   // per element, which is past Postgres's limit of 65,535.
   // The second copy of the table (o) still holds each row's status from
-  // before the update, which is what the history records.
+  // before the update, which is what the history records, and the history is
+  // written by the same statement.
   const codes = courses.map((c) => c.code);
-  const gone = await db.execute<{ id: string; was: string }>(sql`
-    update programs set status = 'ARCHIVED', updated_at = now()
-    from programs o
-    where o.id = programs.id and ${and(eq(p.source, CRICOS_SOURCE), ne(p.status, "ARCHIVED"), sql`not (${p.externalCode} = any(string_to_array(${codes.join(",")}, ',')))`)}
-    returning programs.id as id, o.status as was`);
-  await recordChanges(
+  const gone = await updateWithHistory(
     db,
-    gone.map((r) => ({ entity: "program" as const, entityId: r.id, field: "status", before: r.was, after: "ARCHIVED" })),
+    "program",
+    sql`
+      update programs set status = 'ARCHIVED', updated_at = now()
+      from programs o
+      where o.id = programs.id and ${and(eq(p.source, CRICOS_SOURCE), ne(p.status, "ARCHIVED"), sql`not (${p.externalCode} = any(string_to_array(${codes.join(",")}, ',')))`)}
+      returning programs.id as entity_id, 'status'::text as field, to_jsonb(o.status) as before, to_jsonb(programs.status) as after`,
     history,
   );
 
@@ -265,7 +278,7 @@ export async function syncCricos(files: { institutions: string; courses: string;
     courses: courses.length,
     created,
     updated,
-    archived: gone.length,
+    archived: gone,
     claimed,
     seconds: Math.round((Date.now() - started) / 1000),
   };

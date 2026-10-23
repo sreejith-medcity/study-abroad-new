@@ -18,7 +18,7 @@ import {
   type MiocProgram,
   type MiocUniversity,
 } from "@/lib/mioc";
-import { changesOf, newBatchId, recordChanges, type ChangeInput } from "./catalogue-history";
+import { changesOf, newBatchId, recordChanges, updateWithHistory, type ChangeInput } from "./catalogue-history";
 
 /**
  * Writes the MIOC app's catalogue into the portal, in two steps the browser
@@ -121,15 +121,17 @@ export async function prepareMioc(input: { countries: MiocCountry[]; universitie
   // Only a missing city is filled, so each one the update reports is a change
   // from nothing to that city, and that is what the history records.
   const cityBatch = newBatchId();
+  // The history is written by the update's own statement, so the two are
+  // kept or lost together.
   for (const part of chunk(cityFor, 500)) {
-    const filled = await db.execute<{ id: string; city: string }>(sql`
-      update universities set city = x.city
-      from jsonb_to_recordset(${JSON.stringify(part)}::jsonb) as x(id text, city text)
-      where universities.id = x.id and universities.city is null
-      returning universities.id as id, x.city as city`);
-    await recordChanges(
+    await updateWithHistory(
       db,
-      filled.map((f) => ({ entity: "university" as const, entityId: f.id, field: "city", before: null, after: f.city })),
+      "university",
+      sql`
+        update universities set city = x.city
+        from jsonb_to_recordset(${JSON.stringify(part)}::jsonb) as x(id text, city text)
+        where universities.id = x.id and universities.city is null
+        returning universities.id as entity_id, 'city'::text as field, null::jsonb as before, to_jsonb(x.city) as after`,
       { by: opts.by ?? null, source: "mioc", batchId: cityBatch },
     );
   }
@@ -252,28 +254,32 @@ async function fillBlanks(rows: ReturnType<typeof asRow>[], by: string | null) {
   const batchId = newBatchId();
   let filled = 0;
   for (const part of chunk(rows, 500)) {
-    const changed = await db.execute<{ id: string; was: unknown; now: unknown }>(sql`
-      update programs p set
-        ${sql.join(sets, sql`, `)},
-        -- A yearly fee only where there is no fee at all: a register's
-        -- whole-course fee is not to be joined by a yearly one from elsewhere.
-        tuition_per_year = case when p.tuition_per_year is null and p.tuition_total is null then x.tuition_per_year else p.tuition_per_year end,
-        intake_months = case when cardinality(p.intake_months) = 0 then x.intake_months else p.intake_months end,
-        updated_at = now()
-      from jsonb_to_recordset(${JSON.stringify(part)}::jsonb) as x(id text, ${sql.join(cols, sql`, `)}, tuition_per_year int, intake_months int[]), programs o
-      where p.id = x.id and o.id = p.id and (
-        ${sql.join(gains, sql` or `)}
-        or (p.tuition_per_year is null and p.tuition_total is null and x.tuition_per_year is not null)
-        or (cardinality(p.intake_months) = 0 and cardinality(x.intake_months) > 0)
-      )
-      returning p.id as id, ${snapshot("o")} as was, ${snapshot("p")} as now`);
-    filled += changed.length;
-    const changes: ChangeInput[] = [];
-    for (const r of changed) {
-      const rename = (o: Record<string, unknown>) => Object.fromEntries(Object.entries(o).map(([k, v]) => [camel(k), v]));
-      changes.push(...changesOf("program", r.id, rename(asObject(r.was)), rename(asObject(r.now))));
-    }
-    await recordChanges(db, changes, { by, source: "mioc", batchId });
+    // The update and its history in one transaction, so they are kept or lost
+    // together. Five hundred rows come back, which is cheap.
+    await db.transaction(async (tx) => {
+      const changed = await tx.execute<{ id: string; was: unknown; now: unknown }>(sql`
+        update programs p set
+          ${sql.join(sets, sql`, `)},
+          -- A yearly fee only where there is no fee at all: a register's
+          -- whole-course fee is not to be joined by a yearly one from elsewhere.
+          tuition_per_year = case when p.tuition_per_year is null and p.tuition_total is null then x.tuition_per_year else p.tuition_per_year end,
+          intake_months = case when cardinality(p.intake_months) = 0 then x.intake_months else p.intake_months end,
+          updated_at = now()
+        from jsonb_to_recordset(${JSON.stringify(part)}::jsonb) as x(id text, ${sql.join(cols, sql`, `)}, tuition_per_year int, intake_months int[]), programs o
+        where p.id = x.id and o.id = p.id and (
+          ${sql.join(gains, sql` or `)}
+          or (p.tuition_per_year is null and p.tuition_total is null and x.tuition_per_year is not null)
+          or (cardinality(p.intake_months) = 0 and cardinality(x.intake_months) > 0)
+        )
+        returning p.id as id, ${snapshot("o")} as was, ${snapshot("p")} as now`);
+      filled += changed.length;
+      const changes: ChangeInput[] = [];
+      for (const r of changed) {
+        const rename = (o: Record<string, unknown>) => Object.fromEntries(Object.entries(o).map(([k, v]) => [camel(k), v]));
+        changes.push(...changesOf("program", r.id, rename(asObject(r.was)), rename(asObject(r.now))));
+      }
+      await recordChanges(tx, changes, { by, source: "mioc", batchId });
+    });
   }
   return filled;
 }
@@ -469,16 +475,21 @@ export async function loadMiocContent(
     const isBlank = field === "facts" ? sql.raw("cardinality(universities.facts) = 0") : sql.raw(`(universities.${field} is null or btrim(universities.${field}) = '')`);
     const type = sql.raw(field === "facts" ? "text[]" : "text");
     for (const part of chunk(fills[field], 500)) {
-      const filled = await db.execute<{ id: string; v: string | string[] }>(sql`
-        update universities set ${sql.raw(field)} = x.v
-        from jsonb_to_recordset(${JSON.stringify(part)}::jsonb) as x(id text, v ${type})
-        where universities.id = x.id and ${isBlank}
-        returning universities.id as id, x.v as v`);
-      await recordChanges(
-        db,
-        filled.map((f) => ({ entity: "university" as const, entityId: f.id, field, before: field === "facts" ? [] : null, after: f.v })),
-        { by, source: "mioc", batchId },
-      );
+      // The update and its history in one transaction, so they are kept or
+      // lost together.
+      const filled = await db.transaction(async (tx) => {
+        const done = await tx.execute<{ id: string; v: string | string[] }>(sql`
+          update universities set ${sql.raw(field)} = x.v
+          from jsonb_to_recordset(${JSON.stringify(part)}::jsonb) as x(id text, v ${type})
+          where universities.id = x.id and ${isBlank}
+          returning universities.id as id, x.v as v`);
+        await recordChanges(
+          tx,
+          done.map((f) => ({ entity: "university" as const, entityId: f.id, field, before: field === "facts" ? [] : null, after: f.v })),
+          { by, source: "mioc", batchId },
+        );
+        return done;
+      });
       result[field === "website" ? "websites" : field] += filled.length;
       for (const f of filled) touched.add(f.id);
     }

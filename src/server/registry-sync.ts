@@ -1,7 +1,7 @@
 import { eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { matchKey, REGISTRY_SOURCES, type RegistryRow } from "@/lib/registry";
-import { changesOf, recordChanges, type ChangeInput } from "./catalogue-history";
+import { changesOf, newBatchId, recordChanges, type ChangeInput } from "./catalogue-history";
 
 export type RegistrySyncResult = {
   source: string;
@@ -179,19 +179,26 @@ export async function syncRegistry(key: string, raw: string, opts: { dryRun: boo
     // Only a blank city or website is ever filled, so the history is small:
     // what each university had (nothing, usually) and what the register gave it.
     // A register that lists one institution twice fills it twice, so what it
-    // holds is followed as the patches land.
+    // holds is followed as the patches land. Each part's updates and their
+    // history go in one transaction, so they are kept or lost together, and
+    // the whole run is one batch in the history.
     const holds = new Map(here.map((x) => [x.id, { city: x.city, website: x.website }]));
-    const changes: ChangeInput[] = [];
-    for (const patch of toFill) {
-      const { id, ...set } = patch;
-      await db.update(u).set(set).where(eq(u.id, id));
-      const was = holds.get(id);
-      if (was) {
-        changes.push(...changesOf("university", id, was, set));
-        holds.set(id, { ...was, ...set });
-      }
+    const batchId = newBatchId();
+    for (let i = 0; i < toFill.length; i += 500) {
+      await db.transaction(async (tx) => {
+        const changes: ChangeInput[] = [];
+        for (const patch of toFill.slice(i, i + 500)) {
+          const { id, ...set } = patch;
+          await tx.update(u).set(set).where(eq(u.id, id));
+          const was = holds.get(id);
+          if (was) {
+            changes.push(...changesOf("university", id, was, set));
+            holds.set(id, { ...was, ...set });
+          }
+        }
+        await recordChanges(tx, changes, { by: opts.by ?? null, source: "registry", batchId });
+      });
     }
-    await recordChanges(db, changes, { by: opts.by ?? null, source: "registry" });
   }
 
   return {

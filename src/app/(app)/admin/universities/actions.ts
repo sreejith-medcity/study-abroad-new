@@ -56,17 +56,23 @@ export async function updateUniversityAction(_: FormState, fd: FormData): Promis
     if (clash) return nameTaken(current.country.name);
   }
 
-  const diff = changesOf("university", id, current, values);
-  if (!diff.length) return { ok: "Nothing changed." };
-  const set: Record<string, unknown> = Object.fromEntries(diff.map((d) => [d.field, values[d.field as keyof typeof values]]));
-  // The sort position follows from the two rankings, worked out the way the
-  // rankings import and a restore work it out, and is not a change of its own.
-  if ("qsRank" in set || "theRank" in set) set.rankSort = bestRankSort(values.qsRank, values.theRank);
-
+  // Compared against the row read locked inside the transaction that writes
+  // it, so a save landing at the same moment waits, and the history records
+  // the value this save replaced rather than one read before the other save.
+  let diff;
   try {
-    await db.transaction(async (tx) => {
+    diff = await db.transaction(async (tx) => {
+      const [locked] = await tx.select().from(schema.universities).where(eq(schema.universities.id, id)).for("update");
+      if (!locked) return null;
+      const d = changesOf("university", id, locked, values);
+      if (!d.length) return d;
+      const set: Record<string, unknown> = Object.fromEntries(d.map((x) => [x.field, values[x.field as keyof typeof values]]));
+      // The sort position follows from the two rankings, worked out the way the
+      // rankings import and a restore work it out, and is not a change of its own.
+      if ("qsRank" in set || "theRank" in set) set.rankSort = bestRankSort(values.qsRank, values.theRank);
       await tx.update(schema.universities).set(set).where(eq(schema.universities.id, id));
-      await recordChanges(tx, diff, { by: user.id, source: "edit", batchId: newBatchId() });
+      await recordChanges(tx, d, { by: user.id, source: "edit", batchId: newBatchId() });
+      return d;
     });
   } catch (e) {
     // Two admins renaming at the same moment can both pass the check above;
@@ -74,6 +80,8 @@ export async function updateUniversityAction(_: FormState, fd: FormData): Promis
     if ((e as { code?: string }).code === "23505" || (e as { cause?: { code?: string } }).cause?.code === "23505") return nameTaken(current.country.name);
     throw e;
   }
+  if (!diff) return { error: "That university no longer exists." };
+  if (!diff.length) return { ok: "Nothing changed." };
   const changed = Object.fromEntries(diff.map((d) => [d.field, { from: d.before, to: d.after }]));
   await audit(user.id, "university.update", "university", id, { changed });
   revalidatePath(`/admin/universities/${id}`);

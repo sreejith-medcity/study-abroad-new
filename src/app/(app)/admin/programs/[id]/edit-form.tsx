@@ -50,7 +50,7 @@ const v = (x: number | string | null) => (x == null ? "" : String(x));
 
 export function ProgramEditForm({ program, currency, docs }: { program: EditableProgram; currency: string; docs: { code: string; label: string }[] }) {
   return (
-    <ActionForm action={updateProgramAction} submitLabel="Save program" className="space-y-6">
+    <ActionForm action={updateProgramAction} submitLabel="Save program" trackUnsaved className="space-y-6">
       <input type="hidden" name="programId" value={program.id} />
 
       <Section title="Program">

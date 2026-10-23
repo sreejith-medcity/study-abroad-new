@@ -37,7 +37,8 @@ export default async function EditUniversityPage({ params, searchParams }: { par
         <Card className="p-5" data-university-edit={university.id}>
           {/* Started afresh after a restore, as the program screen does: a form
               still holding the value a restore replaced would quietly undo the
-              restore on its next save. An ordinary save keeps its state. */}
+              restore on its next save. An ordinary save keeps its state, and
+              Restore refuses while the form holds unsaved changes. */}
           <UniversityEditForm
             key={restoredBy ?? "no-restore"}
             university={{

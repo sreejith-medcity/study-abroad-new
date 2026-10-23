@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { diffFields, fieldLabel, formatValue, programRestoreProblem, restorable, sameValue, storable } from "../src/lib/catalogue-history";
+import { diffFields, fieldLabel, formatValue, mergeRepeats, planRestore, plainText, programRestoreProblem, restorable, sameValue, skippedText, storable } from "../src/lib/catalogue-history";
 import { fmtMoney } from "../src/lib/format";
 
 test("only the fields being written are compared, and only real changes come back", () => {
@@ -126,4 +126,88 @@ test("a restore is held to the edit screen's rules, only for the fields it touch
   assert.equal(programRestoreProblem({ ...live, intakeMonths: [9], workRights: "ELIGIBLE", workRightsNote: "Institution page" }, ["workRights", "workRightsNote"]), null);
   assert.match(programRestoreProblem({ ...live, name: " " }, ["name"]) ?? "", /name/);
   assert.match(programRestoreProblem({ ...live, level: "NOPE" }, ["level"]) ?? "", /level/);
+});
+
+test("text ignores Windows line endings and trailing spaces, and nothing else", () => {
+  assert.equal(plainText("One line.  \r\nTwo lines. \r\n"), "One line.\nTwo lines.");
+  assert.equal(sameValue("About us\r\nWe teach.", "About us\nWe teach."), true);
+  assert.equal(sameValue("About us   \nWe teach.\t", "About us\nWe teach."), true);
+  assert.equal(sameValue("  indented", "indented"), false);
+  assert.equal(sameValue("About us\nWe teach.", "About us We teach."), false);
+  assert.equal(sameValue("   ", null), true);
+  // A save of another field must not record the About text it sent back unchanged.
+  assert.deepEqual(diffFields({ about: "Founded 1901.\r\nIn Leeds. ", city: "Leeds" }, { about: "Founded 1901.\nIn Leeds.", city: "York" }), [{ field: "city", before: "Leeds", after: "York" }]);
+});
+
+test("a row and field changed twice in one batch is recorded once, earliest before to latest after", () => {
+  const twice = [
+    { entity: "program" as const, entityId: "p1", field: "tuitionPerYear", before: 1000, after: 1200 },
+    { entity: "program" as const, entityId: "p2", field: "tuitionPerYear", before: 900, after: 950 },
+    { entity: "program" as const, entityId: "p1", field: "tuitionPerYear", before: 1200, after: 1500 },
+    { entity: "program" as const, entityId: "p1", field: "applicationFee", before: null, after: 50 },
+  ];
+  assert.deepEqual(mergeRepeats(twice), [
+    { entity: "program", entityId: "p1", field: "tuitionPerYear", before: 1000, after: 1500 },
+    { entity: "program", entityId: "p2", field: "tuitionPerYear", before: 900, after: 950 },
+    { entity: "program", entityId: "p1", field: "applicationFee", before: null, after: 50 },
+  ]);
+  // Changed and changed back within the batch: nothing to record.
+  assert.deepEqual(
+    mergeRepeats([
+      { entity: "university", entityId: "u1", field: "city", before: null, after: "Perth" },
+      { entity: "university", entityId: "u1", field: "city", before: "Perth", after: "" },
+    ]),
+    [],
+  );
+  // The same id under the other entity is a different row.
+  assert.equal(
+    mergeRepeats([
+      { entity: "program", entityId: "x", field: "name", before: "A", after: "B" },
+      { entity: "university", entityId: "x", field: "name", before: "A", after: "C" },
+    ]).length,
+    2,
+  );
+});
+
+test("a restore puts back only fields that still hold the value the change gave them", () => {
+  const change = [
+    { field: "tuitionPerYear", before: 1000, after: 1200 },
+    { field: "applicationFee", before: null, after: 50 },
+    { field: "campus", before: "Perth", after: "Sydney" },
+  ];
+  // Tuition was saved again since; the fee is as the change left it; the campus is already back.
+  const plan = planRestore({ tuitionPerYear: 1500, applicationFee: 50, campus: "Perth" }, change);
+  assert.deepEqual(plan.values, { applicationFee: null });
+  assert.deepEqual(plan.skipped, [{ field: "tuitionPerYear", now: 1500 }]);
+  // Nothing moved since: everything goes back.
+  assert.deepEqual(planRestore({ tuitionPerYear: 1200, applicationFee: 50, campus: "Sydney" }, change), {
+    values: { tuitionPerYear: 1000, applicationFee: null, campus: "Perth" },
+    skipped: [],
+  });
+  // Moved since to nothing at all is still moved.
+  assert.deepEqual(planRestore({ applicationFee: null }, [{ field: "applicationFee", before: 30, after: 50 }]).skipped, [{ field: "applicationFee", now: null }]);
+  // The comparison is the history's own: order of a list and CRLF do not count as a change since.
+  assert.deepEqual(planRestore({ intakeMonths: [9, 1] }, [{ field: "intakeMonths", before: [1], after: [1, 9] }]).values, { intakeMonths: [1] });
+  assert.deepEqual(planRestore({ about: "A\r\nB" }, [{ field: "about", before: null, after: "A\nB" }]).values, { about: null });
+  // An old batch holding one field twice runs from its first before to its last after.
+  assert.deepEqual(
+    planRestore({ tuitionPerYear: 1500 }, [
+      { field: "tuitionPerYear", before: 1000, after: 1200 },
+      { field: "tuitionPerYear", before: 1200, after: 1500 },
+    ]).values,
+    { tuitionPerYear: 1000 },
+  );
+});
+
+test("a field left alone says what it holds now, in plain words", () => {
+  const ctx = { currency: "AUD" };
+  assert.equal(
+    skippedText("program", [{ field: "tuitionPerYear", now: 1500 }], ctx),
+    `Tuition per year was changed again since, to ${fmtMoney(1500, "AUD")}; it was left as it is.`,
+  );
+  assert.equal(skippedText("program", [{ field: "applicationFee", now: null }], ctx), "Application fee was changed again since and is now not recorded; it was left as it is.");
+  assert.equal(
+    skippedText("university", [{ field: "city", now: "York" }, { field: "qsRank", now: "154" }], ctx),
+    "City was changed again since, to York; it was left as it is. QS ranking was changed again since, to 154; it was left as it is.",
+  );
 });

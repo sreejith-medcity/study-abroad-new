@@ -60,7 +60,9 @@ export default async function EditProgramPage({ params, searchParams }: { params
               for a save and wrong after a restore: it would still hold the value
               the restore replaced, and the next save would quietly undo it. So
               the form starts afresh whenever a newer restore is on record, and
-              keeps its state (and its "Saved" message) across an ordinary save. */}
+              keeps its state (and its "Saved" message) across an ordinary save.
+              Nothing typed is lost that way: Restore refuses while the form
+              holds changes that have not been saved. */}
           <ProgramEditForm key={restoredBy ?? "no-restore"} program={program} currency={program.university.country.currency} docs={docs} />
         </Card>
         <div className="space-y-5 self-start">

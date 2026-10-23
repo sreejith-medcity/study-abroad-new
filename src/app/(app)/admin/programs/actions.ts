@@ -15,7 +15,7 @@ import { fetchRegistry, syncRegistry } from "@/server/registry-sync";
 import { REGISTRY_SOURCES } from "@/lib/registry";
 import type { MiocCountry, MiocGuide, MiocProfile, MiocProgram, MiocUniversity } from "@/lib/mioc";
 import { loadMiocContent, loadMiocPrograms, prepareMioc, type MiocBatchResult, type MiocContentResult, type MiocPrepareResult } from "@/server/mioc-load";
-import { changesOf, newBatchId, recordChanges, type ChangeInput } from "@/server/catalogue-history";
+import { changesOf, newBatchId, recordChanges, updateWithHistory, type ChangeInput } from "@/server/catalogue-history";
 
 export type ImportState = {
   error?: string;
@@ -120,12 +120,16 @@ export async function setProgramStatusAction(formData: FormData) {
   const id = String(formData.get("programId"));
   const status = String(formData.get("status")) as "DRAFT" | "LIVE" | "ARCHIVED";
   if (!["DRAFT", "LIVE", "ARCHIVED"].includes(status)) return;
-  const current = await db.query.programs.findFirst({ where: eq(schema.programs.id, id), columns: { status: true } });
-  if (!current) return;
-  await db.transaction(async (tx) => {
+  // Read locked in the same transaction as the write, so the history's old
+  // status is the one this write replaced even when two land together.
+  const found = await db.transaction(async (tx) => {
+    const [current] = await tx.select({ status: schema.programs.status }).from(schema.programs).where(eq(schema.programs.id, id)).for("update");
+    if (!current) return false;
     await tx.update(schema.programs).set({ status, updatedAt: new Date() }).where(eq(schema.programs.id, id));
     await recordChanges(tx, changesOf("program", id, current, { status }), { by: user.id, source: "edit" });
+    return true;
   });
+  if (!found) return;
   await audit(user.id, "program.status", "program", id, { status });
   revalidatePath("/admin/programs");
 }
@@ -152,7 +156,8 @@ export async function bulkStatusAction(formData: FormData) {
   //
   // Each batch reads the status it replaced from a second copy of the table in
   // the same statement (Postgres shows that copy as it was before the update),
-  // so the history costs one insert per batch and no extra read.
+  // and writes its history in that statement too, so a batch and its history
+  // are kept or lost together and no rows travel to the app and back.
   // The MIOC app alone brought about 104,000 courses, more than the old cap
   // of forty batches, so the run goes on until the filter is empty. It stops
   // well inside the page's five minutes, and pressing again carries on: the
@@ -169,14 +174,18 @@ export async function bulkStatusAction(formData: FormData) {
       .innerJoin(c, eq(u.countryId, c.id))
       .where(and(programFilterWhere(f), ne(p.status, to as "LIVE")))
       .limit(BATCH);
-    const changed = await db.execute<{ id: string; was: string }>(sql`
-      update programs set status = ${to}::program_status, updated_at = now()
-      from programs o
-      where o.id = programs.id and ${inArray(p.id, scope)}
-      returning programs.id as id, o.status as was`);
-    await recordChanges(db, changed.map((r) => ({ entity: "program" as const, entityId: r.id, field: "status", before: r.was, after: to })), { by: user.id, source: "bulk", batchId });
-    total += changed.length;
-    if (changed.length < BATCH) break;
+    const changed = await updateWithHistory(
+      db,
+      "program",
+      sql`
+        update programs set status = ${to}::program_status, updated_at = now()
+        from programs o
+        where o.id = programs.id and ${inArray(p.id, scope)}
+        returning programs.id as entity_id, 'status'::text as field, to_jsonb(o.status) as before, to_jsonb(programs.status) as after`,
+      { by: user.id, source: "bulk", batchId },
+    );
+    total += changed;
+    if (changed < BATCH) break;
   }
   if (!total) return;
 
@@ -294,15 +303,22 @@ export async function updateProgramAction(_: FormState, fd: FormData): Promise<F
   if (clash && clash.id !== current.id && !current.externalCode && !clash.externalCode) return { error: "This university already has a program with that name at that level.", fieldErrors: { name: ["Already used at this university"] } };
 
   // The same comparison the change history uses, so the count in the message
-  // and the rows in the history always agree.
-  const diff = changesOf("program", id, current, values);
+  // and the rows in the history always agree. It is made against the row read
+  // locked inside the transaction that writes it: a save landing at the same
+  // moment then waits, and the history records the value this save replaced
+  // rather than one read before the other save.
+  const diff = await db.transaction(async (tx) => {
+    const [locked] = await tx.select().from(schema.programs).where(eq(schema.programs.id, id)).for("update");
+    if (!locked) return null;
+    const d = changesOf("program", id, locked, values);
+    if (!d.length) return d;
+    await tx.update(schema.programs).set({ ...values, updatedAt: new Date() }).where(eq(schema.programs.id, id));
+    await recordChanges(tx, d, { by: user.id, source: "edit" });
+    return d;
+  });
+  if (!diff) return { error: "That program no longer exists." };
   if (!diff.length) return { ok: "Nothing changed." };
   const changed = Object.fromEntries(diff.map((d) => [d.field, { from: d.before, to: d.after }]));
-
-  await db.transaction(async (tx) => {
-    await tx.update(schema.programs).set({ ...values, updatedAt: new Date() }).where(eq(schema.programs.id, id));
-    await recordChanges(tx, diff, { by: user.id, source: "edit" });
-  });
   await audit(user.id, "program.update", "program", id, { changed });
   revalidatePath("/admin/programs");
   revalidatePath(`/admin/programs/${id}`);
@@ -361,27 +377,20 @@ export async function bulkTurnaroundAction(formData: FormData) {
   const { programs: p, universities: u, countries: c } = schema;
   const scope = db.select({ id: p.id }).from(p).innerJoin(u, eq(p.universityId, u.id)).innerJoin(c, eq(u.countryId, c.id)).where(programFilterWhere(f));
   // The second copy of the table (o) still holds each row's figure from before
-  // the update, which is what the change history needs.
-  const changed = await db.execute<{ id: string; was: number | null }>(sql`
-    update programs set offer_tat_days = ${days}::int, updated_at = now()
-    from programs o
-    where o.id = programs.id and ${and(inArray(p.id, scope), days == null ? sql`${p.offerTatDays} is not null` : sql`${p.offerTatDays} is distinct from ${days}::int`)}
-    returning programs.id as id, o.offer_tat_days as was`);
-  await recordChanges(db, changed.map((r) => ({ entity: "program" as const, entityId: r.id, field: "offerTatDays", before: r.was, after: days })), { by: user.id, source: "bulk" });
-  await audit(user.id, "programs.bulk_turnaround", "program", "*", { days, count: changed.length, filters: f });
+  // the update, which is what the change history needs, and the history is
+  // written by the same statement, so the two cannot part.
+  const changed = await updateWithHistory(
+    db,
+    "program",
+    sql`
+      update programs set offer_tat_days = ${days}::int, updated_at = now()
+      from programs o
+      where o.id = programs.id and ${and(inArray(p.id, scope), days == null ? sql`${p.offerTatDays} is not null` : sql`${p.offerTatDays} is distinct from ${days}::int`)}
+      returning programs.id as entity_id, 'offerTatDays'::text as field, to_jsonb(o.offer_tat_days) as before, to_jsonb(programs.offer_tat_days) as after`,
+    { by: user.id, source: "bulk" },
+  );
+  await audit(user.id, "programs.bulk_turnaround", "program", "*", { days, count: changed, filters: f });
   revalidatePath("/admin/programs");
-}
-
-/** A jsonb list as the driver hands it back: parsed already, or still as text. */
-function asList(v: unknown): unknown[] {
-  if (Array.isArray(v)) return v;
-  if (typeof v !== "string") return [];
-  try {
-    const parsed = JSON.parse(v);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
 }
 
 export async function bulkTagAction(formData: FormData) {
@@ -392,17 +401,21 @@ export async function bulkTagAction(formData: FormData) {
   const f = readProgramFilters((k) => formData.get(k)?.toString());
   const { programs: p, universities: u, countries: c } = schema;
   const scope = db.select({ id: p.id }).from(p).innerJoin(u, eq(p.universityId, u.id)).innerJoin(c, eq(u.countryId, c.id)).where(programFilterWhere(f));
-  // As with the turnaround, o is each row before the update. Both lists come
-  // back as JSON, so they read the same whatever the driver does with arrays.
-  const changed = await db.execute<{ id: string; was: unknown; now: unknown }>(sql`
-    update programs set
-      tags = ${op === "add" ? sql`(select array_agg(distinct t order by t) from unnest(array_append(${p.tags}, ${tag})) t)` : sql`array_remove(${p.tags}, ${tag})`},
-      updated_at = now()
-    from programs o
-    where o.id = programs.id and ${and(inArray(p.id, scope), op === "add" ? sql`not (${tag} = any(${p.tags}))` : sql`${tag} = any(${p.tags})`)}
-    returning programs.id as id, to_jsonb(o.tags) as was, to_jsonb(programs.tags) as now`);
-  await recordChanges(db, changed.map((r) => ({ entity: "program" as const, entityId: r.id, field: "tags", before: asList(r.was), after: asList(r.now) })), { by: user.id, source: "bulk" });
-  await audit(user.id, "programs.bulk_tag", "program", "*", { tag, op, count: changed.length, filters: f });
+  // As with the turnaround, o is each row before the update, and the history
+  // is written by the same statement.
+  const changed = await updateWithHistory(
+    db,
+    "program",
+    sql`
+      update programs set
+        tags = ${op === "add" ? sql`(select array_agg(distinct t order by t) from unnest(array_append(${p.tags}, ${tag})) t)` : sql`array_remove(${p.tags}, ${tag})`},
+        updated_at = now()
+      from programs o
+      where o.id = programs.id and ${and(inArray(p.id, scope), op === "add" ? sql`not (${tag} = any(${p.tags}))` : sql`${tag} = any(${p.tags})`)}
+      returning programs.id as entity_id, 'tags'::text as field, to_jsonb(o.tags) as before, to_jsonb(programs.tags) as after`,
+    { by: user.id, source: "bulk" },
+  );
+  await audit(user.id, "programs.bulk_tag", "program", "*", { tag, op, count: changed, filters: f });
   revalidatePath("/admin/programs");
 }
 

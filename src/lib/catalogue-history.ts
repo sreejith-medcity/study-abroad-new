@@ -23,6 +23,12 @@ export function storable(v: unknown): unknown {
   return v;
 }
 
+/** Text as it reads: Unix line endings, and no spaces at the end of a line or of the whole. */
+export function plainText(v: unknown): unknown {
+  if (typeof v !== "string") return v;
+  return v.replace(/\r\n?/g, "\n").replace(/[ \t]+$/gm, "").trimEnd();
+}
+
 /**
  * Whether two stored values mean the same thing.
  *
@@ -31,9 +37,14 @@ export function storable(v: unknown): unknown {
  * to order, because the edit screen sorts intakes and tags while a sync may
  * not, and reordering is not a change anybody made. Numbers allow for the
  * rounding a real column brings back (6.1 can return as 6.0999999), and a number
- * that came back from jsonb as text still matches itself.
+ * that came back from jsonb as text still matches itself. Text is compared
+ * without Windows line endings or trailing spaces, because a browser sends a
+ * text box back with CRLF and an import may have left spaces at line ends, and
+ * saving some other field must not record the About text as changed.
  */
 export function sameValue(a: unknown, b: unknown): boolean {
+  a = plainText(a);
+  b = plainText(b);
   const empty = (v: unknown) => v == null || v === "" || (Array.isArray(v) && v.length === 0);
   if (empty(a) || empty(b)) return empty(a) && empty(b);
   if (a instanceof Date || b instanceof Date) return storable(a) === storable(b);
@@ -72,6 +83,62 @@ export function diffFields(current: Record<string, unknown>, next: Record<string
     out.push({ field, before: storable(before), after: storable(after) });
   }
   return out;
+}
+
+/**
+ * One entry per row and field. A CSV that lists a program twice, or a register
+ * that names one institution twice, changes the same field twice in one batch;
+ * kept as two entries, a restore of the batch could put back the middle value.
+ * The merged entry runs from the earliest before to the latest after, and is
+ * dropped when those two are the same, since the batch then changed nothing.
+ */
+export function mergeRepeats<T extends FieldChange & { entity: string; entityId: string }>(changes: readonly T[]): T[] {
+  const byKey = new Map<string, T>();
+  for (const c of changes) {
+    const key = JSON.stringify([c.entity, c.entityId, c.field]);
+    const seen = byKey.get(key);
+    byKey.set(key, seen ? { ...seen, after: c.after } : c);
+  }
+  return [...byKey.values()].filter((c) => !sameValue(c.before, c.after));
+}
+
+export type SkippedField = { field: string; now: unknown };
+
+/**
+ * What a restore may write. A field goes back to its old value only while it
+ * still holds the value the change gave it: if somebody, or a sync, has
+ * changed it again since, writing the old value would silently throw that
+ * newer value away, so the field is left alone and reported. A field already
+ * back at its old value needs nothing and is not reported.
+ */
+export function planRestore(current: Record<string, unknown>, rows: readonly FieldChange[]): { values: Record<string, unknown>; skipped: SkippedField[] } {
+  const byField = new Map<string, FieldChange>();
+  for (const r of rows) {
+    const seen = byField.get(r.field);
+    byField.set(r.field, seen ? { ...seen, after: r.after } : r);
+  }
+  const values: Record<string, unknown> = {};
+  const skipped: SkippedField[] = [];
+  for (const r of byField.values()) {
+    const now = current[r.field];
+    if (sameValue(now, r.before)) continue;
+    if (sameValue(now, r.after)) values[r.field] = r.before;
+    else skipped.push({ field: r.field, now: storable(now) });
+  }
+  return { values, skipped };
+}
+
+/** Why each skipped field was left, in the words the history card uses for it. */
+export function skippedText(entity: CatalogueEntity, skipped: readonly SkippedField[], ctx: { currency: string; docLabels?: Record<string, string> }): string {
+  return skipped
+    .map((s) => {
+      const label = fieldLabel(entity, s.field);
+      const shown = formatValue(entity, s.field, s.now, ctx);
+      return shown === NOT_RECORDED
+        ? `${label} was changed again since and is now not recorded; it was left as it is.`
+        : `${label} was changed again since, to ${shown}; it was left as it is.`;
+    })
+    .join(" ");
 }
 
 export const PROGRAM_FIELD_LABEL: Record<string, string> = {

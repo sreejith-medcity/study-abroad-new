@@ -88,28 +88,35 @@ export async function importRankingsAction(_: FormState, fd: FormData): Promise<
   const byCode = new Map(countries.map((c) => [c.code, c.id]));
   const missing: string[] = [];
   let updated = 0;
+  const u = schema.universities;
   // The rankings each university had before, for the change history. The sort
-  // position is left out: it follows from the two rankings and is restored with them.
-  const changes: ChangeInput[] = [];
-  for (const r of rows) {
-    const countryId = r.countryCode ? byCode.get(r.countryCode) : undefined;
-    const found = await db.query.universities.findMany({
-      where: and(ilike(schema.universities.name, r.university), countryId ? eq(schema.universities.countryId, countryId) : undefined),
-      columns: { id: true, qsRank: true, qsYear: true, theRank: true, theYear: true },
-    });
-    if (found.length !== 1) {
-      missing.push(`line ${r.line}: ${r.university}${found.length > 1 ? " (in more than one country, add country_code)" : ""}`);
-      continue;
+  // position is left out: it follows from the two rankings and is restored with
+  // them. One transaction for the file, each university read locked before its
+  // update, so the history holds the values each update replaced and is kept
+  // or lost with the updates.
+  await db.transaction(async (tx) => {
+    const changes: ChangeInput[] = [];
+    for (const r of rows) {
+      const countryId = r.countryCode ? byCode.get(r.countryCode) : undefined;
+      const found = await tx
+        .select({ id: u.id, qsRank: u.qsRank, qsYear: u.qsYear, theRank: u.theRank, theYear: u.theYear })
+        .from(u)
+        .where(and(ilike(u.name, r.university), countryId ? eq(u.countryId, countryId) : undefined))
+        .for("update");
+      if (found.length !== 1) {
+        missing.push(`line ${r.line}: ${r.university}${found.length > 1 ? " (in more than one country, add country_code)" : ""}`);
+        continue;
+      }
+      const next = { qsRank: r.qsRank, qsYear: r.qsYear, theRank: r.theRank, theYear: r.theYear };
+      await tx
+        .update(u)
+        .set({ ...next, rankSort: bestRankSort(r.qsRank, r.theRank) })
+        .where(eq(u.id, found[0].id));
+      changes.push(...changesOf("university", found[0].id, found[0], next));
+      updated++;
     }
-    const next = { qsRank: r.qsRank, qsYear: r.qsYear, theRank: r.theRank, theYear: r.theYear };
-    await db
-      .update(schema.universities)
-      .set({ ...next, rankSort: bestRankSort(r.qsRank, r.theRank) })
-      .where(eq(schema.universities.id, found[0].id));
-    changes.push(...changesOf("university", found[0].id, found[0], next));
-    updated++;
-  }
-  await recordChanges(db, changes, { by: user.id, source: "import" });
+    await recordChanges(tx, changes, { by: user.id, source: "import" });
+  });
   await audit(user.id, "universities.rankings", "university", "*", { updated, skipped: errors.length + missing.length });
   revalidatePath("/admin/destinations");
   const problems = [...errors.map((e) => `line ${e.line}: ${e.message}`), ...missing.map((m) => `${m}: no such university`)];

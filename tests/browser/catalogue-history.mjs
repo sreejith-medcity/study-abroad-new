@@ -1,7 +1,9 @@
 // Catalogue change history: an admin edits a program, the history card shows
 // the value from before the edit, and Restore puts it back. A counsellor
 // neither sees the history nor gets anywhere by sending the restore request
-// an admin sent. Works on the plain seed or the full catalogue.
+// an admin sent. A restore of an old save leaves a field that has been saved
+// again since, and says so, and Restore refuses while the edit form holds
+// typing nobody has saved. Works on the plain seed or the full catalogue.
 import { chromium } from "playwright";
 import { knownWarning, hydrated } from "./_errors.mjs";
 import { execFileSync } from "node:child_process";
@@ -36,6 +38,14 @@ const fee = () => sql(`select coalesce(application_fee::text, '') from programs 
 const restores = () => n(`select count(*) from catalogue_changes where entity = 'program' and entity_id = '${id}' and source = 'restore'`);
 const adminName = sql("select name from users where email = 'admin@medcityoverseas.test'");
 const digits = (s) => String(s).replace(/[^0-9]/g, "");
+const until = async (fn, ms = 10000) => {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    if (await fn()) return true;
+    await new Promise((r) => setTimeout(r, 200));
+  }
+  return false;
+};
 
 const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--no-first-run", "--disable-background-networking"] });
 let ip = 60;
@@ -121,6 +131,51 @@ let captured = null;
   const top = await a.page.locator("[data-change-history] [data-change-batch]").first().innerText().catch(() => "");
   check(/Restored/.test(top) && /Application fee/.test(top), "the history shows the restore at the top");
 
+  /* ---------------- A restore never throws away a newer value ---------------- */
+  const f1 = (oldFee ?? 100) + 51;
+  const f2 = f1 + 13;
+  for (const v of [f1, f2]) {
+    await a.page.fill('input[name="applicationFee"]', String(v));
+    await a.page.getByRole("button", { name: "Save program" }).click();
+    await until(() => fee() === String(v));
+  }
+  check(fee() === String(f2), `two saves in a row land (${fee()} against ${f2})`);
+  const editOf = (after) =>
+    sql(`select id from catalogue_changes where entity = 'program' and entity_id = '${id}' and field = 'applicationFee' and source = 'edit' and after = '${after}'::jsonb order by created_at desc limit 1`);
+  const older = editOf(f1);
+  const newer = editOf(f2);
+  check(!!older && !!newer, "both saves are in the history");
+  await go(a.page, `/admin/programs/${id}`);
+  const restoreOf = (changeId) => a.page.locator(`[data-change-history] form:has(input[name="changeId"][value="${changeId}"])`);
+  const restoresBefore = restores();
+
+  // Unsaved typing in the edit form: Restore says so and does nothing, rather
+  // than starting the form afresh and losing what was typed.
+  await a.page.fill('input[name="applicationFee"]', "999");
+  await restoreOf(newer).getByRole("button").click();
+  const guard = restoreOf(newer).locator('[role="alert"]');
+  await guard.waitFor({ timeout: 5000 }).catch(() => {});
+  check(/Save or undo your changes first/.test(await guard.innerText().catch(() => "")), "Restore refuses while the edit form holds unsaved changes");
+  await a.page.waitForTimeout(500);
+  check(fee() === String(f2) && restores() === restoresBefore, "and changes nothing in the database");
+  check((await a.page.locator('input[name="applicationFee"]').inputValue()) === "999", "and what was typed is still in the form");
+  // Typing the old value back is undoing the change, so Restore works again.
+  await a.page.fill('input[name="applicationFee"]', String(f2));
+
+  // The older save set the fee to f1, but the newer one has moved it on to
+  // f2 since. Putting the older save's value back would throw f2 away.
+  await restoreOf(older).getByRole("button").click();
+  const refusal = restoreOf(older).locator('[role="alert"]');
+  await refusal.waitFor({ timeout: 10000 }).catch(() => {});
+  const said = await refusal.innerText().catch(() => "");
+  check(/Application fee was changed again since/.test(said) && /left as it is/.test(said) && digits(said).includes(String(f2)), `restoring the older save says the fee was changed since, and to what (${said})`);
+  check(fee() === String(f2) && restores() === restoresBefore, `and leaves the newer fee in place (${fee()})`);
+
+  // The newer save still holds, so its own Restore goes through.
+  await restoreOf(newer).getByRole("button").click();
+  await until(() => fee() === String(f1));
+  check(fee() === String(f1) && restores() === restoresBefore + 1, `restoring the newer save puts its old fee back (${fee()})`);
+
   /* ---------------- The university page has one too, for admins ---------------- */
   sql(`insert into catalogue_changes (id, entity, entity_id, field, before, after, source, batch_id)
        values ('cch_test_uni', 'university', '${uniId}', 'website', 'null'::jsonb, '"https://example.org"'::jsonb, 'registry', 'cch_test_batch')
@@ -143,12 +198,13 @@ let captured = null;
 
   check(!!captured, "the admin's restore request was captured to replay");
   if (captured) {
-    // Move the fee away from the old value, so a restore that wrongly went
-    // through would show.
-    sql(`update programs set application_fee = 4242 where id = '${id}'`);
+    // Put the fee back to what the captured change set it to: a restore that
+    // wrongly went through would show, and the admin's replay is one that may
+    // go through (a field changed again since would be left alone).
+    sql(`update programs set application_fee = ${newFee} where id = '${id}'`);
     const before = restores();
     await replay(c.ctx, captured);
-    check(fee() === "4242" && restores() === before, "a counsellor sending the same restore changes nothing");
+    check(fee() === String(newFee) && restores() === before, "a counsellor sending the same restore changes nothing");
 
     // The same request from the admin does go through, so the check above is
     // a refusal and not a request that could never have worked.

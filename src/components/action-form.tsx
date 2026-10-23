@@ -21,6 +21,7 @@ export function ActionForm({
   submitVariant = "primary",
   hideSubmit = false,
   beforeSubmit,
+  trackUnsaved = false,
 }: {
   action: Action;
   children: ReactNode;
@@ -37,6 +38,13 @@ export function ActionForm({
    * which otherwise comes back as a dead screen rather than an answer.
    */
   beforeSubmit?: (fd: FormData) => string | null;
+  /**
+   * Marks the form with data-unsaved while what is in it differs from what
+   * was last loaded or saved, so something else on the page that would
+   * replace the form (a Restore in the change history) can refuse rather than
+   * throw away somebody's typing. Typing a value back to what it was clears it.
+   */
+  trackUnsaved?: boolean;
 }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(action, {});
   const [dismissed, setDismissed] = useState(false);
@@ -49,18 +57,28 @@ export function ActionForm({
   // submit answers.
   const [editedSince, setEditedSince] = useState(false);
   const ref = useRef<HTMLFormElement>(null);
+  // What the form held when it was loaded or last saved, to tell typing apart
+  // from typing that has been undone.
+  const savedSnapshot = useRef<string | null>(null);
   const router = useRouter();
+  useEffect(() => {
+    if (trackUnsaved && ref.current) savedSnapshot.current = snapshotOf(ref.current);
+  }, [trackUnsaved]);
   // The toast is raised before any navigation, because an action that both says
   // something and moves the page would otherwise say it to a screen the person
   // never sees. The toast host lives in the shell, so it survives the move.
   useEffect(() => {
     if (!state.ok) return;
     if (resetOnSuccess) ref.current?.reset();
+    if (trackUnsaved && ref.current) {
+      savedSnapshot.current = snapshotOf(ref.current);
+      ref.current.removeAttribute("data-unsaved");
+    }
     setDismissed(false);
     // Anything worth keeping stays on the page. Everything else is a toast, which
     // keeps the confirmation visible even when the form has scrolled away.
     if (!state.keep) toast(state.ok);
-  }, [state, resetOnSuccess]);
+  }, [state, resetOnSuccess, trackUnsaved]);
   useEffect(() => {
     if (state.redirectTo) router.push(state.redirectTo);
   }, [state, router]);
@@ -83,6 +101,8 @@ export function ActionForm({
   }
   const complaining = !editedSince;
   const noteEdit = () => {
+    const form = ref.current;
+    if (trackUnsaved && form) form.toggleAttribute("data-unsaved", snapshotOf(form) !== savedSnapshot.current);
     if (refused) setRefused(null);
     if (!editedSince && (state.error || state.fieldErrors)) setEditedSince(true);
   };
@@ -102,6 +122,11 @@ export function ActionForm({
       </form>
     </ErrorsContext.Provider>
   );
+}
+
+/** Everything a form would send, as one string to compare. */
+function snapshotOf(form: HTMLFormElement) {
+  return JSON.stringify([...new FormData(form).entries()].map(([k, v]) => [k, typeof v === "string" ? v : v.name]));
 }
 
 export function FieldError({ name }: { name: string }) {
