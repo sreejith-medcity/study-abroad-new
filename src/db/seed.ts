@@ -4,6 +4,7 @@ import { BACKGROUND_QUESTIONS } from "../lib/background";
 import { branchCodeFrom, formatStudentId } from "../lib/medcity-id";
 import { AGENT_CONSENT } from "../lib/agents";
 import { AUSBILDUNG_CONTACT_AREA, AUSBILDUNG_TEAM } from "../lib/ausbildung";
+import { STAFF_GUIDES, guideHref } from "../lib/staff-guides";
 import { LIVING_FUNDS } from "./living-funds";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
@@ -664,6 +665,33 @@ async function main() {
       createdById: admin.id,
     },
   ]);
+
+  // The staff guides: each a GUIDE in the library pointing at its page under
+  // /learning/guides, and a published course that quizzes on it with the
+  // guide as its reading. The text lives in src/lib/staff-guides.ts; only
+  // the rows that list it are seeded here, which is also what the deploy SQL
+  // writes on a live database.
+  for (const g of STAFF_GUIDES) {
+    const [resource] = await db
+      .insert(schema.resources)
+      .values({
+        title: g.title,
+        summary: g.summary,
+        kind: "GUIDE" as const,
+        url: guideHref(g.slug),
+        audience: [...g.audience],
+        pinned: true,
+        createdById: admin.id,
+      })
+      .returning({ id: schema.resources.id });
+    const [course] = await db
+      .insert(schema.trainingCourses)
+      .values({ title: g.course.title, description: g.course.description, resourceIds: [resource.id], passMark: g.course.passMark, published: true, createdById: admin.id })
+      .returning({ id: schema.trainingCourses.id });
+    await db.insert(schema.trainingQuestions).values(
+      g.course.questions.map((q, i) => ({ courseId: course.id, prompt: q.prompt, options: [...q.options], correctIndex: q.correctIndex, sortOrder: (i + 1) * 10 })),
+    );
+  }
 
   // One student with portal access, so the portal can be seen without an invite.
   const portalStudent = await db.query.students.findFirst({ where: eq(schema.students.firstName, "Fathima") });

@@ -4,6 +4,7 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { APP_ROLES, ROLE_LABEL } from "@/lib/permissions";
 import { FIGURE_KEYS, FIGURE_LABEL, KIND_LABEL, STANDING_LABEL, clockText, dayText, istClock, istDay, journalIssued, readsJournalReport, type JournalStanding } from "@/lib/journal";
+import { guideHref } from "@/lib/staff-guides";
 import { catchUp, journalFor, journalHistory, kindCounts, markViewed } from "@/server/journal";
 import { Card, CardHeader, Chip, EmptyState, LinkButton, PageHeader, cn } from "@/components/ui";
 import { AnswerJournal } from "./forms";
@@ -85,6 +86,10 @@ export default async function JournalPage({ searchParams }: { searchParams: Prom
         subtitle={`${dayText(day, true)}${own ? "" : ` · ${ROLE_LABEL[subject.role] ?? subject.role}, ${subject.branch}`}`}
         actions={
           <>
+            {/* The staff guide on this screen, in the learning library. */}
+            <Link href={guideHref("day-end-report")} data-how-this-works className="text-sm font-medium text-brand-600 hover:underline">
+              How this works
+            </Link>
             {readsJournalReport(me.role) && (
               <LinkButton variant="secondary" href={`/journal/report?day=${day}`}>
                 Everybody&apos;s reports

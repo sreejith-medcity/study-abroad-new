@@ -16,6 +16,7 @@ import {
   toIstInput,
   MODULE_STATE_LABEL,
 } from "@/lib/ausbildung";
+import { guideHref } from "@/lib/staff-guides";
 import { getStudentForUser } from "@/server/queries";
 import { chargingCountries, studentAusbildung } from "@/server/ausbildung";
 import { commissionVisible } from "@/server/commission-visibility";
@@ -85,11 +86,17 @@ export default async function StudentAusbildungPage({ params }: { params: Promis
                 : "No open Ausbildung application yet. The steps begin when one is created."
             }
             action={
-              a.status && tat.days != null ? (
-                <Chip tone={tat.over ? "warn" : "neutral"}>
-                  {tat.days} {tat.days === 1 ? "day" : "days"} at this step{tat.step && tat.step.tatDays != null ? `, guide: ${tat.step.tatDays ? tatText(tat.step) : tatText(tat.step).toLowerCase()}` : ""}
-                </Chip>
-              ) : undefined
+              <span className="flex flex-wrap items-center gap-2">
+                {a.status && tat.days != null && (
+                  <Chip tone={tat.over ? "warn" : "neutral"}>
+                    {tat.days} {tat.days === 1 ? "day" : "days"} at this step{tat.step && tat.step.tatDays != null ? `, guide: ${tat.step.tatDays ? tatText(tat.step) : tatText(tat.step).toLowerCase()}` : ""}
+                  </Chip>
+                )}
+                {/* The staff guide on the process, in the learning library. */}
+                <Link href={guideHref("ausbildung-process")} data-how-this-works className="text-sm font-medium text-brand-600 hover:underline">
+                  How this works
+                </Link>
+              </span>
             }
           />
           <ol className="flex flex-wrap gap-1.5 px-4 pb-4" aria-label="Desks in the written process">

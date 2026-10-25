@@ -1,6 +1,8 @@
 // Training: the team builds a course with a quiz and publishes it; a counsellor
 // fails, retakes, passes and opens a certificate; the branch head sees the
-// team's progress; another branch cannot open the certificate.
+// team's progress; another branch cannot open the certificate. The two staff
+// guides the sample data seeds are listed as courses and in the library, and a
+// course's reading opens the guide page.
 // Wants the sample data (npm run db:seed).
 import { chromium } from "playwright";
 import { hydrated, knownWarning } from "./_errors.mjs";
@@ -46,30 +48,51 @@ await ap.getByRole("button", { name: "Create course" }).click();
 check(await toast(ap, /Course created as a draft/), "admin: the course is created as a draft");
 await ap.reload();
 await hydrated(ap);
-check(await ap.getByRole("button", { name: "Publish" }).isDisabled(), "admin: a course without questions cannot be published");
+// The seeded guide courses sit on the same screen, each with its own forms and
+// an Unpublish button, so everything below is scoped to the new course's card.
+const card = () => ap.locator('h2:text-is("UK Graduate visa basics")').locator("xpath=ancestor::div[contains(@class, 'shadow-card')][1]");
+check(await card().getByRole("button", { name: "Publish", exact: true }).isDisabled(), "admin: a course without questions cannot be published");
 
-await ap.getByText("Add a question").first().click();
-await ap.fill('input[name="prompt"]', "How long is the Graduate visa for a master's graduate applying from 1 January 2027?");
-await ap.fill('input[name="option0"]', "18 months");
-await ap.getByRole("button", { name: "Add question" }).click();
+await card().getByText("Add a question").click();
+await card().locator('input[name="prompt"]').fill("How long is the Graduate visa for a master's graduate applying from 1 January 2027?");
+await card().locator('input[name="option0"]').fill("18 months");
+await card().getByRole("button", { name: "Add question" }).click();
 await ap.waitForTimeout(1000);
 check(/At least two answers/.test(await main(ap)), "admin: a question needs two answers");
-await ap.fill('input[name="option1"]', "3 years");
-await ap.check('input[name="correct"][value="0"]');
-await ap.getByRole("button", { name: "Add question" }).click();
+await card().locator('input[name="option1"]').fill("3 years");
+await card().locator('input[name="correct"][value="0"]').check();
+await card().getByRole("button", { name: "Add question" }).click();
 check(await toast(ap, /Question added/), "admin: a question is added");
 await ap.reload();
 await hydrated(ap);
-check(/✓ 18 months · 3 years/.test(await main(ap)), "admin: the right answer is marked");
-await ap.getByRole("button", { name: "Publish" }).click();
+check(/✓ 18 months · 3 years/.test(await card().innerText()), "admin: the right answer is marked");
+await card().getByRole("button", { name: "Publish", exact: true }).click();
 await ap.waitForTimeout(1500);
-check(/Published/.test(await main(ap)), "admin: published");
+check(/Published/.test(await card().innerText()), "admin: published");
 
 const counsellor = await signIn("uk.docs@medcity.test", "10.78.1.2");
 const cp = counsellor.page;
 await clickInMenu(cp, "Training");
 await cp.waitForURL(/\/training$/);
 check(/UK Graduate visa basics/.test(await main(cp)) && /Not started/.test(await main(cp)), "counsellor: sees the course");
+
+// The staff guides seeded with the sample data: a course each, whose reading is
+// the guide's row in the library, which opens the guide page under /learning.
+const listed = await main(cp);
+check(/The day end report/.test(listed) && /The Ausbildung process in the portal/.test(listed), "counsellor: the two staff guide courses are listed");
+await cp.getByRole("link", { name: /The Ausbildung process in the portal/ }).click();
+await cp.waitForURL(/\/training\/[^/]+$/);
+await hydrated(cp);
+const reading = cp.locator("main a", { hasText: "The Ausbildung process in the portal" }).first();
+check((await reading.count()) > 0 && /\/learning\/guides\/ausbildung-process$/.test((await reading.getAttribute("href")) ?? ""), "guide course: Read first links to the guide page");
+const guide = await go(cp, "/learning/guides/ausbildung-process");
+check(/Hand to the documentation desk/.test(guide) && /does not send the hand-over emails/.test(guide), "guide page: the Ausbildung guide reads for a counsellor");
+check((await cp.locator('main a[href^="/training/"]', { hasText: "Take the course" }).count()) === 1, "guide page: links to its course");
+const library = await go(cp, "/learning");
+check(/The day end report/.test(library) && /The Ausbildung process in the portal/.test(library), "library: both guides are listed for a counsellor");
+check((await cp.locator('main a[href="/learning/guides/day-end-report"]').count()) === 1, "library: the day end guide's card opens the guide page");
+await go(cp, "/training");
+await hydrated(cp);
 await cp.getByRole("link", { name: /UK Graduate visa basics/ }).click();
 await cp.waitForURL(/\/training\/[^/]+$/);
 await hydrated(cp);
@@ -93,7 +116,8 @@ check(/Certificate of completion/.test(cert) && /UK Documentation/.test(cert) &&
 
 const head = await signIn("kottayam@medcity.test", "10.78.1.3");
 const text = await go(head.page, "/training");
-check(/Your team/.test(text) && /UK Documentation\s*Passed/.test(text), "branch head: sees who passed");
+// The row reads across the courses in title order, so the pass sits after the two guide courses' "Not yet".
+check(/Your team/.test(text) && /UK Documentation(?:\s*Not yet)*\s*Passed/.test(text), "branch head: sees who passed");
 const other = await signIn("kochi@medcity.test", "10.78.1.4");
 const r = await other.page.goto(certUrl);
 check(r && r.status() === 404, "another branch cannot open the certificate");
