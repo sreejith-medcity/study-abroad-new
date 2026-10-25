@@ -178,7 +178,7 @@ export type CountedFigures = Partial<DayEndFigures>;
  * knows what they are correcting. The typed value always wins over the count.
  */
 export const FIGURE_SOURCE: Record<FigureKey, string> = {
-  leadsReceived: "from the enquiries given to you today",
+  leadsReceived: "from the enquiries entered today that you hold",
   callsMade: "from the calls you logged",
   connectedCalls: "from the calls you logged as reached",
   followUpsDone: "from the follow-ups you marked done",

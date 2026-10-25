@@ -220,6 +220,9 @@ export async function setMentorAction(_: FormState, fd: FormData): Promise<FormS
   // branch's steps moves: a file at language training or beyond has a mentor
   // already in all but name, and its status says where the work is.
   let moved: string | null = null;
+  // A status that would not move says so in the answer; the mentor is set
+  // either way, and everybody is still told.
+  let stayed: string | null = null;
   if (beforeTheDesk(app.statusCode)) {
     const to = await db.query.statusDefinitions.findFirst({
       where: and(eq(schema.statusDefinitions.pathway, "AUSBILDUNG"), eq(schema.statusDefinitions.code, "MENTOR_ASSIGNED")),
@@ -230,7 +233,7 @@ export async function setMentorAction(_: FormState, fd: FormData): Promise<FormS
         moved = to.label;
       } catch (e) {
         if (!(e instanceof StatusChangeError)) throw e;
-        return { ok: `${mentor.name} is the mentor. The status did not move: ${e.message}` };
+        stayed = e.message;
       }
     }
   }
@@ -250,5 +253,5 @@ export async function setMentorAction(_: FormState, fd: FormData): Promise<FormS
 
   refresh(studentId);
   revalidatePath("/students");
-  return { ok: `${mentor.name} is the mentor.${moved ? ` Status moved to ${moved}.` : ""} The counsellor has been told.` };
+  return { ok: `${mentor.name} is the mentor.${moved ? ` Status moved to ${moved}.` : ""}${stayed ? ` The status did not move: ${stayed}` : ""} The counsellor has been told.` };
 }

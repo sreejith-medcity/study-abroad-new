@@ -181,7 +181,7 @@ const counted = (id) => ({
   const gc = counted(germany);
   check((await figureValue(g.page, "[data-journal-popup]", "callsMade")) === String(gc.calls), `with the calls the portal counted for them (${gc.calls})`);
   check((await figureValue(g.page, "[data-journal-popup]", "leadsReceived")) === String(gc.leads) && (await figureValue(g.page, "[data-journal-popup]", "connectedCalls")) === String(gc.connected), `and leads received and connected calls counted too (${gc.leads}, ${gc.connected})`);
-  check((await g.page.locator('[data-journal-popup] [data-figure-source="leadsReceived"]').innerText()).trim() === "from the enquiries given to you today", "the popup says where leads received came from");
+  check((await g.page.locator('[data-journal-popup] [data-figure-source="leadsReceived"]').innerText()).trim() === "from the enquiries entered today that you hold", "the popup says where leads received came from");
   const text = await go(g.page, "/journal");
   check(/Read every line below/.test(text), "the report page is open to verify");
   check((await g.page.locator("[data-journal-popup]").count()) === 0, "and does not pop up over itself");
@@ -237,7 +237,7 @@ sql(`update daily_journals set decided_at = now() - interval '8 minutes' where u
   check((await figureValue(c.page, "main", "connectedCalls")) === String(uc.connected), `connected calls is pre-filled from the calls logged as reached, not the no-answer call (${await figureValue(c.page, "main", "connectedCalls")}; 1 on a seed older than today)`);
   check((await figureValue(c.page, "main", "leadsReceived")) === String(uc.leads), `leads received from the enquiries given to them today (${await figureValue(c.page, "main", "leadsReceived")}; 1 on a seed older than today)`);
   check((await c.page.locator('main [data-figure-source="connectedCalls"]').innerText()).trim() === "from the calls you logged as reached", "and the box says where connected calls came from");
-  check((await c.page.locator('main [data-figure-source="leadsReceived"]').innerText()).trim() === "from the enquiries given to you today", "and where leads received came from");
+  check((await c.page.locator('main [data-figure-source="leadsReceived"]').innerText()).trim() === "from the enquiries entered today that you hold", "and where leads received came from");
   check((await c.page.locator("main [data-day-end-figures] [data-figure-source]").count()) === 5, "every box says where its number came from");
   // Flagging needs a reason.
   await c.page.locator("summary", { hasText: "Something here is wrong" }).click();

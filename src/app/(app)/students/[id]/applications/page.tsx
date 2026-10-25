@@ -14,7 +14,7 @@ import { ChooseRoute, DeskStageChip, HandOver, RecordSubmission, RecordUpdate, R
 import { getSettings } from "@/server/settings";
 import { checkApplication, statusesFor } from "@/server/applications";
 import { getStudentForUser } from "@/server/queries";
-import { Button, Card, CardHeader, Chip, DataList, EmptyState, Input, Select, StatusBadge, cn } from "@/components/ui";
+import { Button, Card, Chip, DataList, EmptyState, Input, Select, StatusBadge, cn } from "@/components/ui";
 import { Section } from "@/components/section";
 import { confirmationLabel, dayText, daysUntil, deadlineText } from "@/lib/catalogue";
 import { markFeePaidAction, setDeadlineDoneAction, setDocumentTypeAction, setPriorityAction, setVendorReferenceAction } from "./actions";
@@ -237,7 +237,10 @@ async function ApplicationDetail({ appId, studentId, channel, canProcess, canChe
           {app.handedOverAt && <span className="text-muted">Handed over {fmtDate(app.handedOverAt)}</span>}
           {app.submittedToVendorAt && <span className="text-muted">Lodged {fmtDate(app.submittedToVendorAt)}</span>}
           {took != null && <Chip tone="ok">{turnaroundText(took, app.route?.offerTatDays ?? app.program.offerTatDays)}</Chip>}
-          {canWrite && (app.deskStage === "PREPARING" || app.deskStage === "RETURNED") && (
+          {/* An Ausbildung file is handed to the documentation desk from its
+              own tab, the written process's way; the vendor desk's hand-over
+              would put it in the vendor queue, where it does not belong. */}
+          {canWrite && app.status.pathway !== "AUSBILDUNG" && (app.deskStage === "PREPARING" || app.deskStage === "RETURNED") && (
             <span className="ml-auto"><HandOver applicationId={app.id} ready={handover.ready} why={handover.why} /></span>
           )}
         </div>

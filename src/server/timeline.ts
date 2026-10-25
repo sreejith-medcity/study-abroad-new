@@ -48,7 +48,7 @@ export async function studentTimeline(studentId: string, limit = 120): Promise<T
     db.query.applications.findMany({
       where: eq(schema.applications.studentId, studentId),
       with: {
-        program: { columns: { name: true }, with: { university: { columns: { name: true } } } },
+        program: { columns: { name: true, pathway: true }, with: { university: { columns: { name: true } } } },
         createdBy: { columns: { name: true, deskLabel: true } },
         handedOverBy: { columns: { name: true, deskLabel: true } },
         submittedBy: { columns: { name: true, deskLabel: true } },
@@ -149,7 +149,9 @@ export async function studentTimeline(studentId: string, limit = 120): Promise<T
         id: `ho-${a.id}`,
         at: a.handedOverAt,
         kind: "HANDOVER",
-        title: `${a.ackNo} handed to the Overseas desk`,
+        // An Ausbildung file goes to the documentation desk, as the written
+        // process has it; everything else to the vendor desk.
+        title: `${a.ackNo} handed to the ${a.program.pathway === "AUSBILDUNG" ? "documentation" : "Overseas"} desk`,
         detail: a.handoverNote,
         who: who(a.handedOverBy),
       });

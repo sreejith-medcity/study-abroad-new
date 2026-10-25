@@ -87,7 +87,7 @@ test("a count the portal could not make opens at 0 too, never blank", () => {
 test("each box says where its number came from", () => {
   for (const k of FIGURE_KEYS) assert.match(FIGURE_SOURCE[k], /^from the /, k);
   assert.equal(FIGURE_SOURCE.connectedCalls, "from the calls you logged as reached");
-  assert.equal(FIGURE_SOURCE.leadsReceived, "from the enquiries given to you today");
+  assert.equal(FIGURE_SOURCE.leadsReceived, "from the enquiries entered today that you hold");
 });
 
 /* ---------------- Which calls count as connected ---------------- */
