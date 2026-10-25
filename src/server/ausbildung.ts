@@ -4,7 +4,7 @@ import type { PgColumn } from "drizzle-orm/pg-core";
 import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { orgScope } from "@/lib/permissions";
-import { AUSBILDUNG_CONTACT_AREA, AUSBILDUNG_STEPS, AUSBILDUNG_TEAM, departmentOfStatus, moduleStanding, timedStatusCodes, type AusbildungDepartment, type ModuleState } from "@/lib/ausbildung";
+import { AUSBILDUNG_CONTACT_AREA, AUSBILDUNG_STEPS, AUSBILDUNG_TEAM, MENTOR_PART, departmentOfStatus, moduleStanding, timedStatusCodes, type AusbildungDepartment, type ModuleState } from "@/lib/ausbildung";
 import { nclexStanding, type NclexResult } from "@/lib/nclex";
 
 const { nclexCases: nc, nclexSteps: ns } = schema;
@@ -75,8 +75,8 @@ const destinationSql = sql<string | null>`coalesce(
  * a round still being worked. Null where there is no Ausbildung application
  * yet, which the tracker says in words.
  */
-const currentAusbildungStatus = <T>(column: "code" | "label" | "status_changed_at") => sql<T>`(
-  select ${sql.raw(column === "status_changed_at" ? "xa.status_changed_at" : `xs.${column}`)}
+const currentAusbildungStatus = <T>(column: "code" | "label" | "status_changed_at" | "id" | "handed_over_at") => sql<T>`(
+  select ${sql.raw(column === "code" || column === "label" ? `xs.${column}` : `xa.${column}`)}
   from applications xa
   join programs xp on xp.id = xa.program_id
   join status_definitions xs on xs.id = xa.status_id
@@ -102,6 +102,23 @@ export const overTurnaroundSql = (code: SQL | PgColumn, since: SQL | PgColumn) =
     sql` or `,
   )})`;
 };
+
+/*
+ * The documentation mentor named on the file: the person on the student's file
+ * under the mentor's part. Read with the student rows, so the tracker says who
+ * carries each file without a query per row. One mentor at a time: naming a
+ * new one replaces the row, and the latest row is read in case two ever exist.
+ * The person's own name, not their desk label: a desk label reads "Documentation",
+ * and the guide's mentor is a person the counsellor can ring.
+ */
+const mentorSql = <T>(column: "name" | "user_id") => sql<T>`(
+  select ${sql.raw(column === "name" ? "xu.name" : "xsp.user_id")}
+  from student_people xsp
+  join users xu on xu.id = xsp.user_id
+  where xsp.student_id = "students"."id" and xsp.part = ${MENTOR_PART} and xu.active
+  order by xsp.created_at desc
+  limit 1
+)`;
 
 /** Whether the student's current Ausbildung application is over its step's turnaround. */
 const currentAusbildungOver = sql<boolean>`coalesce((
@@ -213,6 +230,8 @@ export async function trackerRows(user: SessionUser, f: TrackerFilters, limit = 
       // The driver hands a timestamp back as text, the way the other raw
       // fragments here are read, so it is made a Date below.
       statusSince: currentAusbildungStatus<string | Date | null>("status_changed_at"),
+      handedOverAt: currentAusbildungStatus<string | Date | null>("handed_over_at"),
+      mentor: mentorSql<string | null>("name"),
       nclexOpened: nc.createdAt,
       boardState: nc.boardState,
       nclexResult: nc.result,
@@ -242,6 +261,7 @@ export async function trackerRows(user: SessionUser, f: TrackerFilters, limit = 
   let out = rows.map((r) => ({
     ...r,
     statusSince: r.statusSince ? new Date(r.statusSince) : null,
+    handedOverAt: r.handedOverAt ? new Date(r.handedOverAt) : null,
     department: departmentOfStatus(r.statusCode),
     german: moduleStanding(modulesBy.get(r.id) ?? []),
     charge: charges.get(r.id) ?? emptyCharge(),
@@ -280,6 +300,10 @@ export async function studentAusbildung(studentId: string) {
         statusCode: currentAusbildungStatus<string | null>("code"),
         statusLabel: currentAusbildungStatus<string | null>("label"),
         statusSince: currentAusbildungStatus<string | Date | null>("status_changed_at"),
+        applicationId: currentAusbildungStatus<string | null>("id"),
+        handedOverAt: currentAusbildungStatus<string | Date | null>("handed_over_at"),
+        mentorId: mentorSql<string | null>("user_id"),
+        mentorName: mentorSql<string | null>("name"),
       })
       .from(s)
       .where(eq(s.id, studentId)),
@@ -311,14 +335,50 @@ export async function studentAusbildung(studentId: string) {
     destination: flags?.destination ?? null,
     /** The open Ausbildung application's status, for placing the file on the written process. */
     status: flags?.statusCode
-      ? { code: flags.statusCode, label: flags.statusLabel ?? flags.statusCode, since: flags.statusSince ? new Date(flags.statusSince) : null }
+      ? {
+          code: flags.statusCode,
+          label: flags.statusLabel ?? flags.statusCode,
+          since: flags.statusSince ? new Date(flags.statusSince) : null,
+          applicationId: flags.applicationId ?? null,
+          /** When the branch handed the file to the documentation desk; null while it is still the branch's. */
+          handedOverAt: flags.handedOverAt ? new Date(flags.handedOverAt) : null,
+        }
       : null,
+    /** The documentation mentor named on the file, or null while nobody is. */
+    mentor: flags?.mentorId ? { id: flags.mentorId, name: flags.mentorName ?? "" } : null,
     profile: profile ?? null,
     modules,
     german: moduleStanding(modules),
     charge: charges.get(studentId) ?? emptyCharge(),
     lines,
   };
+}
+
+/**
+ * The student's current Ausbildung application as a row, for the actions that
+ * hand it over or move it: the same one the tab and the tracker read the status
+ * off, chosen by the same rule, so a button on the tab acts on the file the
+ * tab describes. Null where there is no open Ausbildung application.
+ */
+export async function currentAusbildungApplication(studentId: string) {
+  const { applications: a, programs: pg, statusDefinitions: sd } = schema;
+  const [row] = await db
+    .select({
+      id: a.id,
+      orgId: a.orgId,
+      statusId: a.statusId,
+      statusCode: sd.code,
+      statusLabel: sd.label,
+      statusGroup: sd.group,
+      handedOverAt: a.handedOverAt,
+    })
+    .from(a)
+    .innerJoin(pg, eq(pg.id, a.programId))
+    .innerJoin(sd, eq(sd.id, a.statusId))
+    .where(and(eq(a.studentId, studentId), eq(pg.pathway, "AUSBILDUNG"), sql`${sd.group} <> 'CLOSED'`))
+    .orderBy(sql`(${sd.group} = 'SUCCESS') asc`, desc(a.statusChangedAt))
+    .limit(1);
+  return row ?? null;
 }
 
 /** Whether a student belongs on the tab at all: Ausbildung, nursing, or a charging country. */

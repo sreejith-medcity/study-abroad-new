@@ -1,4 +1,4 @@
-import { AUSBILDUNG_DEPARTMENTS, DEPARTMENT_LABEL, chargeMoney, milestoneDueAt, percentPaid, tatStanding, tatText, type AusbildungDepartment } from "@/lib/ausbildung";
+import { AUSBILDUNG_DEPARTMENTS, DEPARTMENT_LABEL, beforeTheDesk, chargeMoney, milestoneDueAt, percentPaid, tatStanding, tatText, type AusbildungDepartment } from "@/lib/ausbildung";
 import { IconClock } from "@/components/icons";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
@@ -392,8 +392,30 @@ function StepCell({ r }: { r: TrackerRow }) {
       ) : (
         <p className="text-xs text-muted">Not a step of the written process</p>
       )}
+      <MentorLine r={r} />
     </Td>
   );
+}
+
+/**
+ * Who carries the file at the desk. The mentor's name once one is named; before
+ * that, whether the desk has the file at all, because a file handed over at
+ * document collection sits with the desk without a mentor until it names one,
+ * and that gap is the one the guide gives a same-day turnaround to.
+ */
+function MentorLine({ r }: { r: TrackerRow }) {
+  if (r.mentor) {
+    return (
+      <p className="text-xs" data-mentor={r.mentor}>
+        Mentor: <span className="font-medium">{r.mentor}</span>
+      </p>
+    );
+  }
+  if (r.handedOverAt && beforeTheDesk(r.statusCode)) {
+    return <p className="text-xs text-muted" data-mentor="">With the documentation desk, no mentor yet</p>;
+  }
+  if (r.handedOverAt) return <p className="text-xs text-muted" data-mentor="">No mentor named</p>;
+  return null;
 }
 
 /**

@@ -2,6 +2,7 @@ import "server-only";
 import { and, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { studentIdFromHref } from "@/lib/notification-links";
+import { DOCUMENTATION_ROLES } from "@/lib/permissions";
 import { whoMayOpenStudent } from "@/server/scope";
 
 /**
@@ -58,6 +59,19 @@ export async function partnerRecipients(orgId: string, assignedToId?: string | n
     .from(schema.users)
     .where(and(eq(schema.users.orgId, orgId), inArray(schema.users.role, ["PARTNER"])));
   return [...owners.map((o) => o.id), assignedToId ?? null];
+}
+
+/**
+ * The documentation desk alone: the documentation officers and the team leader
+ * who runs them. What reaches them here is the Ausbildung file the branch has
+ * just handed over, which is theirs to pick up and name a mentor for.
+ */
+export async function documentationIds() {
+  const rows = await db
+    .select({ id: schema.users.id })
+    .from(schema.users)
+    .where(and(inArray(schema.users.role, [...DOCUMENTATION_ROLES]), eq(schema.users.active, true)));
+  return rows.map((r) => r.id);
 }
 
 /**

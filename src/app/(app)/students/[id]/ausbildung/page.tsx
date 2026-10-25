@@ -2,12 +2,27 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { fmtDate, istDateTime } from "@/lib/format";
 import { APP_ROLES, isAdmin } from "@/lib/permissions";
-import { AUSBILDUNG_DEPARTMENTS, chargeMoney, departmentOfStatus, milestoneDueAt, paymentMilestones, tatStanding, tatText, toIstInput, MODULE_STATE_LABEL } from "@/lib/ausbildung";
+import {
+  AUSBILDUNG_DEPARTMENTS,
+  AUSBILDUNG_HANDOVER_ROLES,
+  MENTOR_SETTING_ROLES,
+  canHandToDesk,
+  chargeMoney,
+  departmentOfStatus,
+  milestoneDueAt,
+  paymentMilestones,
+  tatStanding,
+  tatText,
+  toIstInput,
+  MODULE_STATE_LABEL,
+} from "@/lib/ausbildung";
 import { getStudentForUser } from "@/server/queries";
 import { chargingCountries, studentAusbildung } from "@/server/ausbildung";
 import { commissionVisible } from "@/server/commission-visibility";
+import { deskOfficers, stageGate, studentChecklist, studentContext } from "@/server/documentation";
 import { Alert, Card, CardHeader, Chip, cn } from "@/components/ui";
 import { AusbildungForm, ModuleForm, RaiseServiceCharge, RecordPayment } from "./forms";
+import { HandToDesk, MentorForm } from "./desk-forms";
 import { NclexCaseForm, NclexResultForm, NclexStepForm, NclexStepUpload } from "./nclex-forms";
 import { NCLEX_STATES } from "@/lib/nclex";
 
@@ -45,6 +60,16 @@ export default async function StudentAusbildungPage({ params }: { params: Promis
   // guide, and nothing here stops a move.
   const tat = tatStanding(a.status?.code, a.status?.since);
   const department = departmentOfStatus(a.status?.code);
+
+  // The hand-over and the mentor. The branch hands the file over once the
+  // profile documents are in; the gate is the same one the documentation tab
+  // shows, so what is still needed is named here before anybody presses the
+  // button. The desk names the mentor from the documentation officers.
+  const handedOver = !!a.status?.handedOverAt;
+  const mayHandOver = a.isAusbildung && !!a.status && (AUSBILDUNG_HANDOVER_ROLES as readonly string[]).includes(user.role);
+  const mayNameMentor = a.isAusbildung && !!a.status && (MENTOR_SETTING_ROLES as readonly string[]).includes(user.role);
+  const handover = mayHandOver && !handedOver ? await handoverVerdict(id) : null;
+  const officers = mayNameMentor ? await deskOfficers() : [];
 
   return (
     <div className="space-y-5">
@@ -90,6 +115,26 @@ export default async function StudentAusbildungPage({ params }: { params: Promis
               {tat.step?.tatDays == null && tat.step?.tatNote && <>. Turnaround: {tat.step.tatNote.toLowerCase()}</>}
               {tat.step?.handover && <>. Handed over to {tat.step.handover} at the end of this step</>}.
             </p>
+          )}
+          {a.status && (
+            <div className="space-y-3 border-t border-line px-4 py-3 text-sm" data-desk>
+              <dl className="grid gap-x-8 gap-y-2 sm:grid-cols-2">
+                <div>
+                  <dt className="text-2xs font-semibold uppercase tracking-wide text-muted">Documentation desk</dt>
+                  <dd data-handed-over={handedOver ? "yes" : "no"}>
+                    {a.status.handedOverAt ? `With the desk since ${fmtDate(a.status.handedOverAt)}` : "Not handed over yet: the branch's file"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-2xs font-semibold uppercase tracking-wide text-muted">Mentor</dt>
+                  <dd data-mentor={a.mentor?.id ?? ""}>
+                    {a.mentor ? <span className="font-medium text-ink">{a.mentor.name}</span> : handedOver ? "No mentor yet" : <span className="text-muted">Named by the desk after the hand-over</span>}
+                  </dd>
+                </div>
+              </dl>
+              {handover && a.status.applicationId && <HandToDesk studentId={id} ready={handover.ready} why={handover.why} />}
+              {mayNameMentor && <MentorForm studentId={id} current={a.mentor?.id ?? null} officers={officers} />}
+            </div>
           )}
         </Card>
       )}
@@ -294,6 +339,19 @@ export default async function StudentAusbildungPage({ params }: { params: Promis
         ))}
     </div>
   );
+}
+
+/**
+ * Whether the branch may hand this file to the documentation desk, read off
+ * the profile documents the guide has it collect at step 3. An empty list (a
+ * file whose documentation tab was never opened) does not block here; the
+ * action brings the list up to date and asks again before anything moves.
+ */
+async function handoverVerdict(studentId: string) {
+  const rows = await studentChecklist(studentId);
+  const ctx = rows.length ? await studentContext(studentId) : null;
+  const gate = rows.length ? stageGate(rows, "PROFILE", ctx?.courseStart ?? null) : null;
+  return canHandToDesk({ handedOver: false, closed: false, gateClear: gate ? gate.clear : true, missing: gate ? gate.missing.map((m) => m.label) : [] });
 }
 
 /**

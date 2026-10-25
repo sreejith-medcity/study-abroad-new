@@ -129,8 +129,9 @@ desk, naming the student, the step and the days over, with a link to the
 application. Who owns a step is `tatOwners`: the documentation desk roles for
 the documentation and language steps; the application team leader and the
 admins for the placement, visa and travel steps; the student's counsellor and
-the branch head for the counselling steps. The task goes to the officer
-carrying the file where they are on that desk, else the first of the desk, or
+the branch head for the counselling steps. The task goes to the file's mentor
+on a documentation or language step, else the officer carrying the file where
+they are on that desk, else the first of the desk in its preferred order, or
 the counsellor at a branch. Once per stay in a step: the task carries a key
 (`ausbildung-tat:<application>:<step>:<status entered at>`), and a file with a
 turnaround task raised since it entered its current status is skipped, ticked
@@ -140,6 +141,40 @@ Steps whose turnaround depends on something else are never late. The tracker
 has an "Over turnaround" filter and a tile with the count, and the
 documentation desk's dashboard shows the count while it is above zero. No
 schema change: the follow-ups are rows in `tasks` and `notifications`.
+
+**The hand-over to the documentation desk.** The guide has the branch collect
+the documents (step 3) and transfer the candidate to the documentation
+department, which names a mentor (step 4). In the portal a documentation
+officer can only open a student whose application has been handed over
+(`applications.handed_over_at`), so the hand-over is the moment the desk is
+let in. The student's Ausbildung tab has a "Hand to the documentation desk"
+button for the branch (the partner roles, the desk counsellors and the
+admins), gated on the required profile documents the way the Overseas desk's
+hand-over is gated on the application documents: what is missing is named in
+place of the button. Pressing it marks the application handed over, by whom,
+with the branch's note, keeps the status at document collection (no mentor is
+assumed), writes `application.handover` to the audit log and tells the
+documentation officers and their team leader, with a link to the tab. The
+same hand-over happens by itself when anybody moves an Ausbildung application
+to "Mentor assigned" or any later step of the written process and nobody has
+handed it over yet (`handedToDeskByStatus` in `src/lib/ausbildung.ts`, step 4
+or later by the step constants); the audit row then says `via: status`. The
+tracker's desk cell reads "With the documentation desk, no mentor yet" for a
+file handed over at document collection.
+
+**The mentor.** The documentation desk (and the admins) name the mentor on
+the Ausbildung tab from the documentation officers. The mentor is a row in
+`student_people` under the part "Documentation mentor" (`MENTOR_PART`), which
+is free text, so no schema change: being on the file is what opens the
+student to the mentor and what the people-on-file panel shows. One mentor at a
+time; naming another replaces the row and tells the new one, and the old one.
+Naming a mentor on a file still at the branch's steps moves it to "Mentor
+assigned" (the documentation team may make this one move); a file further
+along keeps its status. The counsellor and the branch head are told the
+mentor's name, email and phone, which is the guide's email intimation. The
+tracker's desk cell and the tab show the mentor, and the turnaround
+follow-through puts a task on a documentation or language step on the mentor
+before anyone else on the desk.
 
 **Hand-over addresses.** The four addresses the guide names are seeded as
 Contacts under the area "Ausbildung (Germany)" (ausbildung@miak.in,
@@ -160,8 +195,9 @@ still carries the seed's first wording. No schema change was needed.
 
 - The hand-over emails themselves, with the branch head and the regional head
   in copy. The portal lists the addresses; it does not send to them.
-- Assigning the mentor and telling the counsellor and the candidate. The status
-  records it; the people on a student's file is where to name the mentor.
+- Telling the candidate who their mentor is. The portal names the mentor,
+  moves the status and tells the counsellor and the branch head; the student
+  hears it as the milestone's WhatsApp line where that is on.
 - The Saturday language assessments, the grouping (excellent, good, average,
   poor) and the interview readiness report. The portal has no grading field for
   them; the status and a comment carry the outcome.

@@ -325,6 +325,154 @@ const ausbStatusBefore = sql(`select status_id from applications where id = '${a
   check(!/EZB/.test(degreeRows) && !/ZAV approval/.test(degreeRows), "a study-abroad file is not asked for the EZB or the ZAV");
 }
 
+/* ---------------- The hand-over and the mentor ---------------- */
+// The branch collects the documents (step 3) and hands the file to the
+// documentation desk, which can open it from that moment and names a mentor
+// (step 4); the counsellor is told who. Akshara's file is put back where the
+// branch has it first: at document collection, not handed over, no mentor.
+// Everything this section changes about her applications, her paper and the
+// notices it raises is restored at the end, so the other suites read the seed.
+{
+  const q = (v) => String(v).replace(/'/g, "''");
+  const docsId = sql("select id from users where email = 'documentation@medcityoverseas.test'");
+  const leadId = sql("select id from users where email = 'teamlead@medcityoverseas.test'");
+  const headId = sql("select id from users where email = 'kottayam@medcity.test'");
+  const adminId = sql("select id from users where email = 'sreejith@miak.in'");
+  const counsellorId = sql(`select assigned_to_id from students where id = '${akshara}'`);
+  const docCollection = sql("select id from status_definitions where pathway = 'AUSBILDUNG' and code = 'DOCUMENT_COLLECTION'");
+  const appIds = sql(`select string_agg(id, ' ') from applications where student_id = '${akshara}'`).split(" ").filter(Boolean);
+  const appsBefore = appIds.map((id) => sql(`select concat_ws(chr(9), status_id, status_changed_at::text, coalesce(handed_over_at::text, ''), coalesce(handed_over_by_id, ''), coalesce(handover_note, '')) from applications where id = '${id}'`).split("\t"));
+  const paperBefore = sql(`select coalesce(string_agg(id || chr(9) || state || chr(9) || coalesce(valid_to::text, ''), chr(10)), '') from checklist_items where student_id = '${akshara}' and stage = 'PROFILE' and required`).split("\n").filter(Boolean).map((l) => l.split("\t"));
+  const noticesBefore = sql("select coalesce(max(created_at)::text, '1970-01-01') from notifications");
+  const tabHref = `/students/${akshara}/ausbildung`;
+  const mentorRowSql = `select coalesce(string_agg(user_id, ','), '') from student_people where student_id = '${akshara}' and part = 'Documentation mentor'`;
+  const toldAbout = (userId, title) => sql(`select count(*) from notifications where user_id = '${userId}' and title = '${q(title)}' and href = '${tabHref}' and created_at > '${noticesBefore}'`);
+  const lastBody = (userId, title) => sql(`select coalesce(body, '') from notifications where user_id = '${userId}' and title = '${q(title)}' and created_at > '${noticesBefore}' order by created_at desc limit 1`);
+  const statusCodeSql = `select sd.code from applications a join status_definitions sd on sd.id = a.status_id where a.id = '${ausbApp}'`;
+  const statusCode = () => sql(statusCodeSql);
+  const reset = () => {
+    sql(`update applications set handed_over_at = null, handed_over_by_id = null, handover_note = null where student_id = '${akshara}'`);
+    sql(`update applications set status_id = '${docCollection}', status_changed_at = now() where id = '${ausbApp}'`);
+    sql(`delete from student_people where student_id = '${akshara}' and part = 'Documentation mentor'`);
+  };
+
+  // Moving the status to the desk's first step hands the file over by itself.
+  reset();
+  {
+    const page = admin.page;
+    await go(page, `/students/${akshara}/applications?app=${ausbApp}`);
+    await page.locator(`#status-${ausbApp}`).selectOption({ label: "Mentor assigned" });
+    await page.getByRole("button", { name: "Update status" }).click();
+    check((await wait(statusCodeSql, "MENTOR_ASSIGNED")) === "MENTOR_ASSIGNED", "an admin moves a file at document collection to 'Mentor assigned'");
+    const handed = await wait(`select coalesce(handed_over_by_id, '') from applications where id = '${ausbApp}'`, adminId);
+    check(handed === adminId, "and the move hands the file to the desk, by the person who moved it");
+    check(sql(`select count(*) from audit_logs where action = 'application.handover' and entity_id = '${ausbApp}' and meta->>'via' = 'status' and meta->>'to' = 'MENTOR_ASSIGNED'`) !== "0", "with the hand-over in the audit log, marked as made by the status move");
+    check(toldAbout(docsId, "Akshara Anilkumar: Ausbildung file handed to the documentation desk") !== "0", "and the documentation desk is told the file has arrived");
+  }
+
+  // Back to the branch's end: not handed over, at document collection.
+  reset();
+  const docs = await signIn("documentation@medcityoverseas.test");
+  {
+    await docs.page.goto(`${BASE}${tabHref}`);
+    await docs.page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
+    const body = await docs.page.locator("body").innerText();
+    check(/could not be found/i.test(body), "before the hand-over a documentation officer cannot open the file");
+  }
+
+  // The branch head hands it over, once the profile paper is in.
+  {
+    const page = owner.page;
+    let text = await go(page, tabHref);
+    check(/Not handed over yet/.test(text) && /Named by the desk after the hand-over/.test(text), "the Ausbildung tab says the file is still the branch's, with no mentor to name yet");
+    const short = sql(`select count(*) from checklist_items where student_id = '${akshara}' and stage = 'PROFILE' and required and state <> 'ACCEPTED'`);
+    if (short !== "0") {
+      const blocked = (await page.locator("[data-handover-blocked]").innerText().catch(() => "")).replace(/\s+/g, " ");
+      check(/Still needed before this can go:/.test(blocked), `short of profile paper, the button is the list of what is missing (${blocked.slice(0, 100)})`);
+      check((await page.locator("[data-hand-to-desk]").count()) === 0, "and there is no hand-over button");
+    }
+    sql(`update checklist_items set state = 'ACCEPTED', valid_to = null where student_id = '${akshara}' and stage = 'PROFILE' and required`);
+    await go(page, tabHref);
+    check((await page.locator("[data-hand-to-desk]").count()) === 1, "with the paper accepted, the branch head has the hand-over button");
+    await page.locator("[data-hand-to-desk]").click();
+    await page.locator('textarea[name="note"]').fill("B1 done, B2 in progress. Wants nursing.");
+    await page.getByRole("button", { name: "Hand it over" }).click();
+    check(await toast(page, /Handed to the documentation desk/), "the branch head is told it is handed over");
+    const handed = await wait(`select coalesce(handed_over_by_id, '') || '|' || coalesce(handover_note, '') from applications where id = '${ausbApp}'`, `${headId}|B1 done, B2 in progress. Wants nursing.`);
+    check(handed === `${headId}|B1 done, B2 in progress. Wants nursing.`, "the application is marked handed over by the branch head, with the note");
+    check(statusCode() === "DOCUMENT_COLLECTION", "and the status stays at document collection: no mentor is assumed");
+    check(sql(`select count(*) from audit_logs where action = 'application.handover' and entity_id = '${ausbApp}' and meta->>'via' = 'ausbildung'`) !== "0", "the hand-over is in the audit log");
+    check(toldAbout(docsId, "Akshara Anilkumar: Ausbildung file handed to the documentation desk") !== "0" && toldAbout(leadId, "Akshara Anilkumar: Ausbildung file handed to the documentation desk") !== "0", "the documentation officers and their team leader are told, with a link to the file");
+    text = await go(page, tabHref);
+    check(/With the desk since/.test(text) && /No mentor yet/.test(text), "the tab now says the file is with the desk, waiting for a mentor");
+  }
+
+  // The desk can open it now, and the tracker says it is waiting for a mentor.
+  {
+    const page = docs.page;
+    const text = await go(page, tabHref);
+    check(/The written process/.test(text) && (await page.locator('[data-handed-over="yes"]').count()) === 1, "after the hand-over the documentation officer opens the file");
+    await go(page, "/ausbildung");
+    const cell = (await page.locator(`[data-tracker-row="${akshara}"] [data-mentor]`).innerText().catch(() => "")).replace(/\s+/g, " ");
+    check(/With the documentation desk, no mentor yet/.test(cell), `the tracker says the desk has it and no mentor is named (${cell})`);
+  }
+
+  // The desk names the mentor.
+  {
+    const page = docs.page;
+    await go(page, tabHref);
+    const picker = page.locator('select[name="mentorId"]');
+    check((await picker.count()) === 1, "a documentation officer has the mentor picker");
+    await picker.selectOption(docsId);
+    await page.getByRole("button", { name: "Set the mentor" }).click();
+    check(await toast(page, /Nithin Jose is the mentor/), "setting the mentor is confirmed by name");
+    check((await wait(mentorRowSql, docsId)) === docsId, "the mentor is on the student's file as the documentation mentor");
+    check((await wait(statusCodeSql, "MENTOR_ASSIGNED")) === "MENTOR_ASSIGNED", "and the application moves to 'Mentor assigned'");
+    check(toldAbout(counsellorId, "Akshara Anilkumar: mentor assigned") !== "0" && /Nithin Jose/.test(lastBody(counsellorId, "Akshara Anilkumar: mentor assigned")), "the counsellor is told, with the mentor's name");
+    check(toldAbout(headId, "Akshara Anilkumar: mentor assigned") !== "0", "and so is the branch head");
+    check(toldAbout(docsId, "You are the mentor for Akshara Anilkumar") !== "0", "the mentor is told, with a link to the file");
+    const text = await go(page, tabHref);
+    check(/Mentor/.test(text) && (await page.locator(`[data-desk] [data-mentor="${docsId}"]`).count()) === 1 && /Nithin Jose/.test(text), "the tab shows the mentor");
+    check((await page.getByRole("button", { name: "Change the mentor" }).count()) === 1, "and the button now reads 'Change the mentor'");
+  }
+  {
+    const page = admin.page;
+    await go(page, "/ausbildung");
+    const cell = (await page.locator(`[data-tracker-row="${akshara}"] [data-mentor]`).innerText().catch(() => "")).replace(/\s+/g, " ");
+    check(/Mentor: Nithin Jose/.test(cell), `the tracker's desk cell names the mentor (${cell})`);
+    const line = (await page.locator(`[data-tracker-row="${akshara}"]`).innerText()).replace(/\s+/g, " ");
+    check(/Mentor assigned/.test(line) && /Step 4/.test(line), "at step 4, mentor assigned");
+  }
+
+  // Changing the mentor replaces the row and tells the new one.
+  {
+    const page = admin.page;
+    await go(page, tabHref);
+    await page.locator('select[name="mentorId"]').selectOption(leadId);
+    await page.getByRole("button", { name: "Change the mentor" }).click();
+    check(await toast(page, /Jeslin Varghese is the mentor/), "the change is confirmed by name");
+    check((await wait(mentorRowSql, leadId)) === leadId, "the new mentor replaces the old one on the file, one row only");
+    check(toldAbout(leadId, "You are the mentor for Akshara Anilkumar") !== "0", "the new mentor is told");
+    check(toldAbout(counsellorId, "Akshara Anilkumar: the mentor has changed") !== "0" && /Jeslin Varghese/.test(lastBody(counsellorId, "Akshara Anilkumar: the mentor has changed")), "and the counsellor hears the new name");
+    check(toldAbout(docsId, "Akshara Anilkumar: Jeslin Varghese is the mentor now") !== "0", "the previous mentor hears they are off the file");
+    check(statusCode() === "MENTOR_ASSIGNED", "the status does not move again");
+    await go(page, "/ausbildung");
+    const cell = (await page.locator(`[data-tracker-row="${akshara}"] [data-mentor]`).innerText().catch(() => "")).replace(/\s+/g, " ");
+    check(/Mentor: Jeslin Varghese/.test(cell), "and the tracker names the new mentor");
+  }
+  await docs.ctx.close();
+
+  // Back to the seed: applications, paper and the notices this raised.
+  sql(`delete from student_people where student_id = '${akshara}' and part = 'Documentation mentor'`);
+  for (const [i, id] of appIds.entries()) {
+    const [statusId, changedAt, handedAt, handedBy, note] = appsBefore[i];
+    sql(`update applications set status_id = '${statusId}', status_changed_at = '${changedAt}', handed_over_at = ${handedAt ? `'${handedAt}'` : "null"}, handed_over_by_id = ${handedBy ? `'${handedBy}'` : "null"}, handover_note = ${note ? `'${q(note)}'` : "null"} where id = '${id}'`);
+  }
+  for (const [id, state, validTo] of paperBefore) sql(`update checklist_items set state = '${state}', valid_to = ${validTo ? `'${validTo}'` : "null"} where id = '${id}'`);
+  sql(`delete from notifications where href = '${tabHref}' and created_at > '${noticesBefore}'`);
+  check(sql(`select status_id from applications where id = '${ausbApp}'`) === ausbStatusBefore, "and the application is back where the seed left it");
+}
+
 for (const a of all) check(a.errors.length === 0, `${a.email}: no page errors or 500s ${a.errors.slice(0, 2).join(" | ")}`);
 await browser.close();
 console.log(fails.length ? `\n${fails.length} failed` : "\nall passed");

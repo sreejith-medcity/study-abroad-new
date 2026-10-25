@@ -5,9 +5,10 @@ import type { SessionUser } from "@/lib/auth";
 import { runPreSubmissionCheck, type CheckResult } from "@/lib/checks";
 import { fullName, intakeLabel } from "@/lib/format";
 import { audit } from "@/lib/audit";
-import { notifyUsers, partnerRecipients } from "./notify";
+import { documentationIds, notifyUsers, partnerRecipients } from "./notify";
 import { sendWhatsApp } from "./whatsapp";
 import { isAdmin, isDocumentationTeam } from "@/lib/permissions";
+import { handedToDeskByStatus } from "@/lib/ausbildung";
 import { EARNING_CODES, accrueCommission } from "./commission";
 import { sendStatusChange } from "@/server/crm-out";
 
@@ -35,9 +36,12 @@ export async function changeStatus(
   applicationId: string,
   toStatusId: string,
   reason?: string,
-  opts: { viaVendorUpdate?: boolean } = {},
+  opts: { viaVendorUpdate?: boolean; viaMentor?: boolean } = {},
 ) {
-  const allowed = isAdmin(user) || (isDocumentationTeam(user) && opts.viaVendorUpdate === true);
+  // The documentation desk also moves an Ausbildung file to "Mentor assigned"
+  // when it names the mentor: the guide gives that step to the desk, and the
+  // mentor field is the one place it is recorded.
+  const allowed = isAdmin(user) || (isDocumentationTeam(user) && (opts.viaVendorUpdate === true || opts.viaMentor === true));
   if (!allowed) throw new StatusChangeError("Only the Medcity Overseas team can change status.");
 
   const app = await db.query.applications.findFirst({
@@ -52,10 +56,22 @@ export async function changeStatus(
   if (to.id === app.statusId) return;
   if (to.requiresReason && !reason?.trim()) throw new StatusChangeError(`A reason is required for "${to.label}".`);
 
+  // An Ausbildung file moved to the mentor's step or past it is with the
+  // documentation desk, whoever moved it, so it is handed over here if the
+  // branch never pressed the button: the desk can only open a handed-over file.
+  const handsOver = app.program.pathway === "AUSBILDUNG" && !app.handedOverAt && handedToDeskByStatus(to.code);
+
   await db.transaction(async (tx) => {
+    const now = new Date();
     await tx
       .update(schema.applications)
-      .set({ statusId: to.id, statusChangedAt: new Date(), updatedAt: new Date(), officerId: app.officerId ?? user.id })
+      .set({
+        statusId: to.id,
+        statusChangedAt: now,
+        updatedAt: now,
+        officerId: app.officerId ?? user.id,
+        ...(handsOver ? { handedOverAt: now, handedOverById: user.id } : {}),
+      })
       .where(eq(schema.applications.id, app.id));
     // Once the team is actively working an application, the student's profile is locked for partners.
     if (!["NEW", "PENDING_PARTNER"].includes(to.group)) {
@@ -81,6 +97,10 @@ export async function changeStatus(
   const href = `/students/${app.studentId}/applications?app=${app.id}`;
   await notifyUsers(await partnerRecipients(app.orgId, app.student.assignedToId), title, fullName(app.student), href);
   await audit(user.id, "application.status", "application", app.id, { from: app.status.code, to: to.code, reason });
+  if (handsOver) {
+    await audit(user.id, "application.handover", "application", app.id, { via: "status", to: to.code });
+    await tellDeskAusbildungArrived({ studentId: app.studentId, student: fullName(app.student), branch: app.orgId, because: `moved to ${to.label}` });
+  }
   await sendStatusChange(app.id, {
     ackNo: app.ackNo,
     studentId: app.studentId,
@@ -114,6 +134,24 @@ export async function changeStatus(
       body: `Hi ${app.student.firstName}, update on your application to ${app.program.university.name} (${app.program.name}, ${intakeLabel(app.intakeMonth, app.intakeYear)}): ${to.studentLabel}. Reply here if you have questions. Medcity Overseas`,
     });
   }
+}
+
+/**
+ * Tells the documentation desk that an Ausbildung file has reached it.
+ *
+ * Sent at the hand-over, whether the branch pressed the button or somebody
+ * moved the status to the desk's first step, because that is the first moment
+ * the desk can open the student: before it the desk hears nothing about the
+ * file. The link goes to the Ausbildung tab, where the mentor is named.
+ */
+export async function tellDeskAusbildungArrived(args: { studentId: string; student: string; branch: string; because: string }) {
+  const org = await db.query.organizations.findFirst({ where: eq(schema.organizations.id, args.branch), columns: { name: true } });
+  await notifyUsers(
+    await documentationIds(),
+    `${args.student}: Ausbildung file handed to the documentation desk`,
+    `From ${org?.name ?? "the branch"}, ${args.because}. Name the mentor on the Ausbildung tab.`,
+    `/students/${args.studentId}/ausbildung`,
+  );
 }
 
 /** Loads everything the pre-submission check needs for one application. */

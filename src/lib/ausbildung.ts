@@ -2,7 +2,7 @@
  * Plain helpers for Ausbildung and the service charge, shared by the server
  * and the screens.
  */
-import { ADMIN_ROLES, DOCUMENTATION_ROLES } from "./permissions";
+import { ADMIN_ROLES, DOCUMENTATION_ROLES, PARTNER_ROLES } from "./permissions";
 
 /** The German levels a student works through, in order. */
 export const GERMAN_LEVELS = ["A1", "A2", "B1", "B2"] as const;
@@ -141,6 +141,73 @@ export function stepOfStatus(code: string | null | undefined): AusbildungStep | 
 
 /** The desk a file is with, read off its status. */
 export const departmentOfStatus = (code: string | null | undefined): AusbildungDepartment | null => stepOfStatus(code)?.department ?? null;
+
+/* ---------------- The hand-over to the documentation desk ---------------- */
+
+/*
+ * The guide has the branch collect the documents (step 3) and then transfer
+ * the candidate to the documentation department, which names a mentor (step
+ * 4). In the portal the documentation desk can only open a student whose
+ * application has been handed over, so the hand-over is the moment the desk
+ * is let in. The branch does it on purpose with the hand-over button, and it
+ * also happens by itself when somebody moves the status to step 4 or later:
+ * a file at "Mentor assigned" is with the desk whatever button was pressed.
+ */
+
+/** The first step the guide gives to the documentation desk: assigning a mentor. */
+export const DESK_HANDOVER_STEP = 4;
+
+/**
+ * Whether a status means the file is with the documentation desk or past it,
+ * so moving an Ausbildung application there hands it over if nobody has. A
+ * status the guide does not place (on hold, closed) hands nothing over.
+ */
+export function handedToDeskByStatus(code: string | null | undefined): boolean {
+  const step = stepOfStatus(code);
+  return step != null && step.step >= DESK_HANDOVER_STEP;
+}
+
+/** Whether a status is at the branch's end of the process, before the desk has it. */
+export function beforeTheDesk(code: string | null | undefined): boolean {
+  const step = stepOfStatus(code);
+  return step != null && step.step < DESK_HANDOVER_STEP;
+}
+
+/** Who hands an Ausbildung file to the desk: the branch, the head office counsellors, and the admins on their behalf. */
+export const AUSBILDUNG_HANDOVER_ROLES = [...PARTNER_ROLES, ...ADMIN_ROLES, "DESK_COUNSELLOR"] as const;
+
+/** Who names the mentor: the documentation desk, and the admins. */
+export const MENTOR_SETTING_ROLES = [...DOCUMENTATION_ROLES, ...ADMIN_ROLES] as const;
+
+export type DeskHandoverCheck = { ready: boolean; why: string | null };
+
+/**
+ * Whether the branch may hand an Ausbildung file to the documentation desk.
+ *
+ * The gate is the profile documents the guide has the branch collect at step
+ * 3, named rather than hidden behind a refusal, because a file that reaches the
+ * desk short of paper only comes back. A file already with the desk, or one
+ * that is closed, is not handed over again.
+ */
+export function canHandToDesk(args: { handedOver: boolean; closed: boolean; gateClear: boolean; missing: string[] }): DeskHandoverCheck {
+  if (args.closed) return { ready: false, why: "This application is closed." };
+  if (args.handedOver) return { ready: false, why: "Already with the documentation desk." };
+  if (!args.gateClear) return { ready: false, why: `Still needed before this can go: ${args.missing.join(", ")}.` };
+  return { ready: true, why: null };
+}
+
+/*
+ * The mentor the documentation desk names at step 4 is kept as a person on
+ * the student's file, under this part, which is the guide's own name for the
+ * role. Being on the file is what opens the student to them and what the
+ * people-on-file panel shows, so no new column was needed.
+ */
+export const MENTOR_PART = "Documentation mentor";
+
+/** The desks whose steps the mentor carries, so a follow-up task on one goes to the mentor first. */
+export const MENTOR_DEPARTMENTS: AusbildungDepartment[] = ["DOCUMENTATION", "LANGUAGE"];
+
+export const mentorOwnsStep = (department: AusbildungDepartment | null | undefined) => department != null && MENTOR_DEPARTMENTS.includes(department);
 
 /** Whole days between two instants, never negative. */
 export const daysBetween = (from: Date, to: Date) => Math.max(0, Math.floor((to.getTime() - from.getTime()) / 86_400_000));

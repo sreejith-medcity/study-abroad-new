@@ -2,14 +2,14 @@ import "server-only";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { audit } from "@/lib/audit";
-import { DEPARTMENT_LABEL, TAT_TASK_KEY_PREFIX, tatOverdue, tatOwners, tatTaskKey } from "@/lib/ausbildung";
+import { DEPARTMENT_LABEL, MENTOR_PART, TAT_TASK_KEY_PREFIX, mentorOwnsStep, tatOverdue, tatOwners, tatTaskKey } from "@/lib/ausbildung";
 import { istDay } from "@/lib/journal";
 import { overTurnaroundSql } from "@/server/ausbildung";
 import { notifyUsers } from "@/server/notify";
 import { whoMayOpenStudent } from "@/server/scope";
 import { raiseTask } from "@/server/tasks";
 
-const { applications: a, programs: p, statusDefinitions: sd, students: st, users: us } = schema;
+const { applications: a, programs: p, statusDefinitions: sd, students: st, users: us, studentPeople: sp } = schema;
 type Role = (typeof us.role.enumValues)[number];
 
 export type TurnaroundRun = {
@@ -95,6 +95,17 @@ export async function runAusbildungTurnaround(now = new Date(), limit = TAT_RUN_
   for (const u of roleUsers) byRole.set(u.role, [...(byRole.get(u.role) ?? []), u.id]);
   const headsByOrg = new Map<string, string[]>();
   for (const u of branchHeads) headsByOrg.set(u.orgId, [...(headsByOrg.get(u.orgId) ?? []), u.id]);
+  // The mentor named on each file, where one is: the guide gives the
+  // documentation and language steps to the mentor, so a task on one of those
+  // steps is theirs before it is anybody else's on the desk.
+  const mentors = await db
+    .select({ studentId: sp.studentId, userId: sp.userId })
+    .from(sp)
+    .innerJoin(us, eq(us.id, sp.userId))
+    .where(and(inArray(sp.studentId, [...new Set(files.map((f) => f.studentId))]), eq(sp.part, MENTOR_PART), eq(us.active, true)))
+    .orderBy(asc(sp.createdAt));
+  const mentorOf = new Map<string, string>();
+  for (const m of mentors) mentorOf.set(m.studentId, m.userId);
 
   const day = istDay(now);
 
@@ -106,8 +117,14 @@ export async function runAusbildungTurnaround(now = new Date(), limit = TAT_RUN_
     const step = tat.step;
     const owners = tatOwners(step.department);
 
-    // The desk's people, in the order one of them is preferred as the assignee.
-    const deskIds = owners.roles.slice().sort((x, y) => ASSIGNEE_ORDER.indexOf(x) - ASSIGNEE_ORDER.indexOf(y)).flatMap((r) => byRole.get(r) ?? []);
+    // The desk's people, in the order one of them is preferred as the assignee:
+    // the file's mentor first on the steps the guide gives the mentor, then
+    // the desk in its usual order.
+    const mentor = mentorOwnsStep(step.department) ? (mentorOf.get(f.studentId) ?? null) : null;
+    const deskIds = [
+      ...(mentor ? [mentor] : []),
+      ...owners.roles.slice().sort((x, y) => ASSIGNEE_ORDER.indexOf(x) - ASSIGNEE_ORDER.indexOf(y)).flatMap((r) => byRole.get(r) ?? []),
+    ];
     const branchIds = owners.branch ? [f.counsellorId, ...(headsByOrg.get(f.orgId) ?? [])].filter((x): x is string => !!x) : [];
     const wanted = [...new Set([...deskIds, ...branchIds])];
     // Only people who can open the student are told, and the task goes to one
@@ -119,8 +136,16 @@ export async function runAusbildungTurnaround(now = new Date(), limit = TAT_RUN_
       run.nobodyToTell += 1;
       continue;
     }
-    // The officer carrying the file gets the task when the step is their desk's; otherwise the first who can open it.
-    const assignee = f.officerId && deskIds.includes(f.officerId) && recipients.includes(f.officerId) ? f.officerId : recipients[0];
+    // The mentor gets the task on the mentor's steps; otherwise the officer
+    // carrying the file when the step is their desk's; otherwise the first in
+    // the desk's preferred order who can open it. The mentor is on the file by
+    // name, so they can always open it.
+    const assignee =
+      mentor && recipients.includes(mentor)
+        ? mentor
+        : f.officerId && deskIds.includes(f.officerId) && recipients.includes(f.officerId)
+          ? f.officerId
+          : wanted.find((id) => recipients.includes(id)) ?? recipients[0];
 
     const name = `${f.firstName} ${f.lastName}`.trim();
     const dayWord = (n: number) => `${n} ${n === 1 ? "day" : "days"}`;
