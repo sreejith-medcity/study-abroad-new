@@ -12,6 +12,15 @@ export type Release = { version: string; date: string; changes: string[] };
 
 export const RELEASES: Release[] = [
   {
+    version: "1.3.0",
+    date: "2026-10-26",
+    changes: [
+      "An Ausbildung file reaches the documentation desk the way the written process says: the branch hands it over from the Ausbildung tab once the registration papers are in, or it is handed over by itself when its status reaches step 4, and the desk can open it from that moment. The desk names a documentation mentor on the file; the counsellor and branch head are told who it is and how to reach them, the status moves to Mentor assigned, and the tracker shows the mentor.",
+      "The day end report pre-fills connected calls from the calls logged as reached and leads received from the enquiries entered that day that the person holds, both still editable, with a line under each box saying where the number came from.",
+      "Each branch head is told how their branch's day end went: one notice a day with the counts and the day's figures, and a flagged report reaches them at once with the note.",
+    ],
+  },
+  {
     version: "1.2.0",
     date: "2026-10-26",
     changes: [

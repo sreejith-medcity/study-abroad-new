@@ -5,6 +5,12 @@ version in package.json and adds an entry here and in src/lib/releases.ts (the
 What's new page reads that one). After applying a release, tag it with the
 version so it can be found and rolled back to.
 
+## 1.3.0 (26 October 2026)
+
+- An Ausbildung file reaches the documentation desk the way the written process says: the branch hands it over from the Ausbildung tab once the registration papers are in, or it is handed over by itself when its status reaches step 4, and the desk can open it from that moment. The desk names a documentation mentor on the file; the counsellor and branch head are told who it is, the status moves to Mentor assigned, and the tracker shows the mentor.
+- The day end report pre-fills connected calls from the calls logged as reached and leads received from the enquiries entered that day that the person holds, both still editable, with a line under each box saying where the number came from.
+- Each branch head is told how their branch's day end went: one notice a day with the counts and the day's figures, and a flagged report reaches them at once with the note.
+
 ## 1.2.0 (26 October 2026)
 
 - The day end figures have a month view: each counsellor's leads, calls, connected calls, follow-ups and registrations added up over the month, with days answered and missed, branch and overall totals, a day-by-day list per counsellor, and a download as Excel. A branch head sees their own branch; the report roles see every branch.
