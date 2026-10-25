@@ -55,7 +55,8 @@ const text = async (page) => { await settle(page); return page.locator("main").i
   // Release: the version is the number from package.json, or "dev" without a build.
   /version\s*\n?\s*(\d+\.\d+\.\d+|dev)/i.test(t) ? ok("the version is shown") : bad("no version on the screen");
   /what's new/i.test(t) ? ok("it links to What's new") : bad("no What's new link");
-  (await page.getByRole("link", { name: /what's new/i }).getAttribute("href")) === "/whats-new" ? ok("the What's new link goes to the page") : bad("the What's new link goes elsewhere");
+  // The menu has a What's new too, so the page's own link is asked for.
+  (await page.locator('main a[href="/whats-new"]').count()) === 1 ? ok("the What's new link goes to the page") : bad("the What's new link goes elsewhere");
 
   // Database: reachable, a Postgres version, the six counts, the migrations line.
   /reachable/i.test(t) ? ok("the database is reported reachable") : bad("the database is not reported reachable");

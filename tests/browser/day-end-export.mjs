@@ -127,7 +127,7 @@ const exportsBefore = n("select count(*) from audit_logs where action = 'journal
   const cover = d.wb.getWorksheet("Cover");
   check(rowWhere(cover, 1, "Day")?.getCell(2).value === yesterday, "the cover says which day");
   check(/^Closed\. Sent at/.test(String(rowWhere(cover, 1, "Where it stands")?.getCell(2).value)), "and that the day is closed and sent");
-  check(rowWhere(cover, 1, "Report sent at")?.getCell(2).value instanceof Date, "with the time it went");
+  check(/^\d{1,2} \w{3} \d{4}, \d{1,2}:\d{2} (AM|PM)$/.test(String(rowWhere(cover, 1, "Report sent at")?.getCell(2).value)), "with the time it went, in India time in words");
   check(/cutoff/.test(String(rowWhere(cover, 1, "Report sent because")?.getCell(2).value)), "and that it went at the cutoff");
   check(rowWhere(cover, 1, "People issued a report")?.getCell(2).value === staffCount, `and how many were issued one (${staffCount})`);
   check(rowWhere(cover, 1, "Downloaded by")?.getCell(2).value === "Anita Menon", "and who downloaded it");

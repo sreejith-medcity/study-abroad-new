@@ -397,7 +397,9 @@ const ausbStatusBefore = sql(`select status_id from applications where id = '${a
     await page.locator("[data-hand-to-desk]").click();
     await page.locator('textarea[id^="hand-note-"]').fill("B1 done, B2 in progress. Wants nursing.");
     await page.getByRole("button", { name: "Hand it over" }).click();
-    check(await toast(page, /Handed to the documentation desk/), "the branch head is told it is handed over");
+    // The hand-over form leaves the page with the hand-over, so the page
+    // itself is what says it is done.
+    check(await page.locator('[data-handed-over="yes"]').first().waitFor({ timeout: 10000 }).then(() => true, () => false), "the branch head sees it is handed over");
     const handed = await wait(`select coalesce(handed_over_by_id, '') || '|' || coalesce(handover_note, '') from applications where id = '${ausbApp}'`, `${headId}|B1 done, B2 in progress. Wants nursing.`);
     check(handed === `${headId}|B1 done, B2 in progress. Wants nursing.`, "the application is marked handed over by the branch head, with the note");
     check(statusCode() === "DOCUMENT_COLLECTION", "and the status stays at document collection: no mentor is assumed");
