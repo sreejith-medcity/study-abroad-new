@@ -20,7 +20,8 @@ import {
 } from "@/lib/journal";
 import { thisMonth } from "@/lib/month";
 import { catchUp, consolidated } from "@/server/journal";
-import { Card, CardHeader, Chip, LinkButton, PageHeader, cn } from "@/components/ui";
+import { getSettings } from "@/server/settings";
+import { Button, Card, CardHeader, Chip, Input, LinkButton, PageHeader, cn } from "@/components/ui";
 import { FigureStrip } from "@/components/dashboard/role-pieces";
 import { PrintButton } from "@/components/print-button";
 import { MonthFigures, type MonthParams } from "./month";
@@ -60,7 +61,7 @@ export default async function JournalReportPage({ searchParams }: { searchParams
   if (sp.view === "month" || !readsJournalReport(me.role)) return <MonthFigures user={me} sp={sp} />;
   const today = istDay();
   const day = sp.day && /^\d{4}-\d{2}-\d{2}$/.test(sp.day) && sp.day <= today ? sp.day : today;
-  const r = await consolidated(day);
+  const [r, settings] = await Promise.all([consolidated(day), getSettings()]);
   const t = r.totals;
   const dayEnd = clockText(r.clock.dayEnd);
   const afterHours = clockText(r.clock.outOfHours);
@@ -68,22 +69,40 @@ export default async function JournalReportPage({ searchParams }: { searchParams
 
   return (
     <>
+      {/* The printed page says whose report it is and for which day; on screen the header above the tables already does. */}
+      <div data-print="only" data-print-header className="mb-4 border-b border-line pb-3">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted">{settings.organisationName}</p>
+        <p className="text-sm text-ink-soft">
+          Day end reports for {dayText(day, true)} {day.slice(0, 4)}. Printed {istClock(new Date())}, {dayText(today)}.
+        </p>
+      </div>
       <PageHeader
         title="Day end reports"
         subtitle={`${dayText(day, true)}. Every day end report issued for the day, how each was answered, and the counsellors' figures.`}
         actions={
           <div className="flex flex-wrap items-center gap-2" data-print="hide">
-            <LinkButton variant="secondary" size="sm" href={`/journal/report?day=${previousDay(day)}`}>
+            <LinkButton variant="secondary" size="sm" href={`/journal/report?day=${previousDay(day)}`} data-day-previous>
               Day before
             </LinkButton>
             {day < today && (
-              <LinkButton variant="secondary" size="sm" href={day === previousDay(today) ? "/journal/report" : `/journal/report?day=${nextDay(day)}`}>
+              <LinkButton variant="secondary" size="sm" href={day === previousDay(today) ? "/journal/report" : `/journal/report?day=${nextDay(day)}`} data-day-next>
                 Day after
               </LinkButton>
             )}
+            {/* A plain form: the browser does the picking and the page reloads with the day in the address, in India time like everything else here. */}
+            <form method="get" action="/journal/report" className="flex items-center gap-1.5" data-day-picker>
+              <Input type="date" name="day" defaultValue={day} max={today} aria-label="Day" className="w-40 py-1 text-sm" />
+              <Button type="submit" variant="secondary" size="sm">
+                Show
+              </Button>
+            </form>
             <LinkButton variant="secondary" size="sm" href={`/journal/report?view=month&month=${day.slice(0, 7) <= thisMonth() ? day.slice(0, 7) : thisMonth()}`} data-month-view>
               Month
             </LinkButton>
+            {/* A plain link rather than a button: the browser downloads it, and it works before the page's script has loaded. */}
+            <a href={`/api/journal/day?day=${day}`} data-export-day className={cn("inline-flex h-8 items-center rounded-lg border border-line-strong bg-surface px-2.5 text-xs font-medium text-ink hover:bg-surface-2")}>
+              Download as Excel
+            </a>
             <PrintButton />
           </div>
         }
