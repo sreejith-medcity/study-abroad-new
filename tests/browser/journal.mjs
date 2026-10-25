@@ -39,6 +39,13 @@ const clock = (dayEnd, outOfHours, cutoff) =>
   sql(`insert into app_settings (id) values ('app') on conflict do nothing;
        update app_settings set journal_day_end = '${dayEnd}', journal_out_of_hours = '${outOfHours}', journal_cutoff = '${cutoff}', journal_on_sundays = true where id = 'app'`);
 const idOf = (email) => sql(`select id from users where email = '${email}'`);
+// The scheduler's secret, when .env has one, so the cutoff run can be repeated the way the scheduler would.
+const SECRET = (fs.readFileSync(".env", "utf8").match(/^CRON_SECRET="?([^"\n]*)"?/m) || [])[1] ?? "";
+/** "23 Oct 2026", the way the notices say a day. */
+const dayWords = (day) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${day}T12:00:00Z`));
+// The Kottayam branch head, and how many at Kottayam are issued a report (the head among them).
+const kottayamHead = idOf("kottayam@medcity.test");
+const kottayamCount = n(`select count(*) from users u join organizations o on o.id = u.org_id where u.active and o.id = (select org_id from users where id = '${kottayamHead}') and u.role not in ('SUPER_ADMIN','MANAGEMENT','STUDENT','PARENT')`);
 
 const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--no-first-run", "--disable-background-networking"] });
 let ip = 20;
@@ -100,6 +107,23 @@ clock(ist(30), ist(45), ist(90));
   await go(a.page, `/journal/report?day=${yesterday}`);
   check(n(`select count(*) from notifications n join users u on u.id = n.user_id where u.email = 'admin@medcityoverseas.test' and n.title like 'Day end reports:%'`) === 1, "opening it again sends nothing more");
   check(a.errors.length === 0, `the report draws without an error ${a.errors.slice(0, 2).join(" | ")}`);
+  // The branch head hears about their own branch's day: everybody at Kottayam
+  // missed it, the head included, so 0 verified and no figures.
+  const headNotices = () => sql(`select coalesce(string_agg(n.title || ' / ' || n.body || ' / ' || n.href, ' ;; '), '') from notifications n where n.user_id = '${kottayamHead}' and n.title like '%day end:%'`);
+  check(
+    headNotices() === `Medcity Kottayam's day end: 0 of ${kottayamCount} verified / Day end reports for ${dayWords(yesterday)}: 0 verified, ${kottayamCount} missed. Figures: Not given. / /journal/report?view=month&month=${yesterday.slice(0, 7)}`,
+    `the Kottayam branch head is sent their branch's day end once, with the counts, Not given for the figures, and a link to the month view (${headNotices()})`,
+  );
+  check(n(`select count(*) from notifications where user_id = '${idOf("kochi@medcity.test")}' and title like 'Medcity Kottayam%'`) === 0, "the Kochi branch head hears nothing about Kottayam");
+  check(n(`select count(*) from notifications where user_id = '${idOf("kochi@medcity.test")}' and title like 'Medcity Kochi''s day end:%'`) === 1, "and is sent Kochi's own");
+  check(n(`select count(*) from notifications n join users u on u.id = n.user_id where u.email = 'admin@medcityoverseas.test' and n.title like '%day end:%'`) === 0, "the Overseas admin gets the consolidated report, not a branch's notice");
+  // The scheduler running again, or the page opened again, sends nothing more.
+  if (SECRET.length >= 24) {
+    const res = await fetch(`${BASE}/api/cron/journal`, { method: "POST", headers: { authorization: `Bearer ${SECRET}` } });
+    check(res.status === 200, "the scheduler runs again after the cutoff");
+  }
+  await go(a.page, `/journal/report?day=${yesterday}`);
+  check(n(`select count(*) from notifications where user_id = '${kottayamHead}' and title like 'Medcity Kottayam''s day end:%'`) === 1, "and the branch head's notice is not sent twice");
   await a.ctx.close();
 }
 
@@ -260,6 +284,14 @@ sql(`update daily_journals set decided_at = now() - interval '8 minutes' where u
   check(sql(`select state || '|' || note from daily_journals where user_id = '${trainee}' and day = '${today}'`) === "FLAGGED|The call at noon was Rohit's, not mine.", "a flag is kept with its reason");
   const tc = counted(trainee);
   check(storedFigures(trainee) === `2|${tc.calls}|1|${tc.followUps}|${tc.registrations}`, `and with the figures (${storedFigures(trainee)})`);
+  // The branch head hears about the flag at once, with the note, and a link to the trainee's month day by day.
+  const flagNotice = sql(`select coalesce(string_agg(body || ' / ' || href, ' ;; '), '') from notifications where user_id = '${kottayamHead}' and title = 'Rohit Das flagged a problem on their day end report'`);
+  check(
+    flagNotice === `${dayWords(today)}. Rohit Das wrote: The call at noon was Rohit's, not mine. / /journal/report?view=month&month=${today.slice(0, 7)}&user=${trainee}`,
+    `the Kottayam branch head is told of the flag straight away, with the note (${flagNotice})`,
+  );
+  check(n(`select count(*) from notifications where user_id = '${trainee}' and title like '%flagged a problem%'`) === 0, "the trainee is not told about their own flag");
+  check(n(`select count(*) from notifications n join users u on u.id = n.user_id where u.email = 'admin@medcityoverseas.test' and n.title like 'Rohit Das flagged%'`) === 0, "a branch's flag goes to its head, not the Overseas admin");
   await t.ctx.close();
 }
 {
@@ -325,6 +357,18 @@ sql(`update daily_journals set decided_at = now() - interval '8 minutes' where u
   await s.page.waitForFunction(() => !document.querySelector("[data-verify]"), null, { timeout: 15000 }).catch(() => {});
   check(sql(`select report_reason from journal_days where day = '${today}'`) === "ALL_DONE", "the last answer sends the report straight away");
   check(n(`select count(*) from notifications n join users u on u.id = n.user_id where u.email = 'admin@medcityoverseas.test' and n.title = 'Every day end report for today is verified'`) === 1, "and the Overseas admin is told every report is in");
+  // Kottayam today: everybody verified but the trainee, who flagged. The
+  // figures come from the reports answered with figures, which leaves out the
+  // ones written straight into the table above. The branch head is told once
+  // for today, so with yesterday's that is two in all.
+  const givers = n(`select count(*) from users u where u.active and u.org_id = '${org}' and u.role in ('COUNSELLOR','SENIOR_COUNSELLOR','TRAINEE_COUNSELLOR','SUB_AGENT_COUNSELLOR','DESK_COUNSELLOR','PARTNER')`);
+  const gave = n(`select count(*) from daily_journals d join users u on u.id = d.user_id where u.org_id = '${org}' and d.day = '${today}' and d.state in ('VERIFIED','FLAGGED') and d.figures is not null`);
+  const leads = n(`select coalesce(sum((d.figures->>'leadsReceived')::int), 0) from daily_journals d join users u on u.id = d.user_id where u.org_id = '${org}' and d.day = '${today}' and d.state in ('VERIFIED','FLAGGED') and d.figures is not null`);
+  check(
+    n(`select count(*) from notifications where user_id = '${kottayamHead}' and title = 'Medcity Kottayam''s day end: ${kottayamCount - 1} of ${kottayamCount} verified' and body like '%1 flagged a problem%' and body like '%Figures from ${gave} of ${givers} reports: ${leads} ${leads === 1 ? "lead" : "leads"},%'`) === 1,
+    `the Kottayam branch head is sent today's day end when the last person answers, with the flag counted and the branch's figures (${gave} of ${givers} reports, ${leads} leads)`,
+  );
+  check(n(`select count(*) from notifications where user_id = '${kottayamHead}' and title like 'Medcity Kottayam''s day end:%'`) === 2, "one per day and no more");
   // Yesterday is the history view: closed, everybody missed, so no figures.
   const a = await open("admin@medcityoverseas.test");
   await go(a.page, `/journal/report?day=${yesterday}`);

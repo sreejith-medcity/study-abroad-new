@@ -11,14 +11,17 @@ import {
   FIGURES_ROLES,
   KIND_LABEL,
   NOT_ISSUED,
+  branchDayNotices,
   dayText,
   figuresByBranch,
+  flagNotice,
   givesFigures,
   istAt,
   istClock,
   istDay,
   journalIssued,
   journalPhase,
+  monthViewHref,
   nextDay,
   parseFigures,
   prefillFigures,
@@ -467,6 +470,8 @@ export async function answerJournal(user: SessionUser, verdict: "VERIFIED" | "FL
     })
     .returning({ id: dj.id });
   if (!saved) return { ok: false as const, error: "You have already answered today's day end report." };
+  // The insert above went through exactly once, so this cannot go twice either.
+  if (verdict === "FLAGGED") await tellOfFlag(user, day, note!.trim());
   const waiting = await stillWaiting(day);
   if (waiting === 0) await sendReport(day, "ALL_DONE");
   return { ok: true as const };
@@ -674,8 +679,9 @@ export async function issueDay(day: string) {
 
 /**
  * Close a day: anybody who has not answered is written down as missed, with
- * the journal they would have seen, and the report goes to the Overseas
- * admin. Once a day, however many times it is asked for.
+ * the journal they would have seen, the report goes to the Overseas admin, and
+ * each branch head is told how their own branch's day went. Once a day,
+ * however many times it is asked for.
  */
 export async function sendReport(day: string, reason: "ALL_DONE" | "CUTOFF") {
   await dayRow(day);
@@ -719,7 +725,33 @@ export async function sendReport(day: string, reason: "ALL_DONE" | "CUTOFF") {
     reason === "ALL_DONE" ? `All ${t.staff} people answered before the cutoff. ${bits.join(", ")}.` : `The cutoff has passed. ${bits.join(", ")}.`,
     `/journal/report?day=${day}`,
   );
+  // Each branch head hears how their own branch's day went, once. This sits
+  // behind the same stamp as the admin's notice, so a second run of the
+  // scheduler, or the page view that races it, sends nothing more.
+  for (const b of branchDayNotices(day, report.people, report.figures)) await notifyUsers(b.heads, b.title, b.body, b.href);
   return true;
+}
+
+/**
+ * A flagged report is not left for the end of the day: the branch head(s) of
+ * the person who flagged it hear at once, with what was written. A flag from
+ * the head office, or from a branch head with no other head to tell, goes to
+ * the Overseas admin and operations instead. The flagger is never told about
+ * their own flag. The consolidated report at day end still counts the flag,
+ * but that is the day's summary under its own title, not this notice twice.
+ */
+async function tellOfFlag(user: SessionUser, day: string, note: string) {
+  const heads =
+    user.orgType === "BRANCH"
+      ? (await db.select({ id: us.id }).from(us).where(and(eq(us.orgId, user.orgId), eq(us.role, "PARTNER"), eq(us.active, true)))).map((r) => r.id).filter((id) => id !== user.id)
+      : [];
+  const notice = flagNotice(user.name, day, note);
+  if (heads.length > 0) {
+    await notifyUsers(heads, notice.title, notice.body, monthViewHref(day, user.id));
+    return;
+  }
+  const desk = (await db.select({ id: us.id }).from(us).where(and(eq(us.active, true), inArray(us.role, ["ADMIN", "OPS_MANAGER"])))).map((r) => r.id).filter((id) => id !== user.id);
+  await notifyUsers(desk, notice.title, notice.body, `/journal/report?day=${day}`);
 }
 
 /**

@@ -10,11 +10,15 @@ import {
   FIGURE_SOURCE,
   FIGURE_TOO_BIG,
   FIGURES_ROLES,
+  branchDayNotices,
   figuresByBranch,
+  figuresSentence,
+  flagNotice,
   givesFigures,
   journalIssued,
   monthFiguresByBranch,
   monthScopeFor,
+  monthViewHref,
   parseFigures,
   prefillFigures,
   readsMonthFigures,
@@ -281,4 +285,77 @@ test("the month's scope: every branch or the one picked for the report's readers
   assert.deepEqual(monthScopeFor({ role: "PARTNER", orgId: "kot", orgType: "BRANCH" }, "koc"), { every: false, orgIds: ["kot"], org: "kot" });
   assert.equal(monthScopeFor({ role: "COUNSELLOR", orgId: "kot", orgType: "BRANCH" }), null);
   assert.equal(monthScopeFor({ role: "PARTNER", orgId: "hor", orgType: "SUB_AGENT" }), null);
+});
+
+/* ---------------- What a branch head is told ---------------- */
+
+const fig = (leads: number, calls: number, connected: number, followUps: number, registrations: number): DayEndFigures => ({
+  leadsReceived: leads,
+  callsMade: calls,
+  connectedCalls: connected,
+  followUpsDone: followUps,
+  registrationsDone: registrations,
+});
+
+test("the month view link carries the day's month, and the person when one is named", () => {
+  assert.equal(monthViewHref("2026-10-23"), "/journal/report?view=month&month=2026-10");
+  assert.equal(monthViewHref("2026-10-23", "u1"), "/journal/report?view=month&month=2026-10&user=u1");
+});
+
+test("the figures sentence lists the five in order, says where they came from, and reads Not given when nobody gave any", () => {
+  assert.equal(figuresSentence(sumFigures([fig(12, 30, 18, 9, 2)]), 5, 6), "Figures from 5 of 6 reports: 12 leads, 30 calls, 18 connected, 9 follow-ups, 2 registrations.");
+  assert.equal(figuresSentence(sumFigures([fig(3, 4, 1, 0, 0)]), 1, 1), "Figures from 1 of 1 report: 3 leads, 4 calls, 1 connected, 0 follow-ups, 0 registrations.");
+  assert.equal(figuresSentence(sumFigures([]), 0, 4), "Figures: Not given.");
+});
+
+test("one notice per branch for its heads, with the counts and the branch's figures, and none for the head office", () => {
+  const kot = { orgId: "kot", orgType: "BRANCH", branch: "Medcity Kottayam" };
+  const hq = { orgId: "hq", orgType: "HQ", branch: "Medcity International Overseas Corporation" };
+  const people = [
+    { id: "head", name: "Kottayam Branch Head", role: "PARTNER", standing: "VERIFIED" as const, figures: fig(1, 2, 1, 0, 0), ...kot },
+    { id: "uk", name: "UK Documentation", role: "COUNSELLOR", standing: "VERIFIED_LATE" as const, figures: fig(4, 5, 2, 1, 1), ...kot },
+    { id: "de", name: "Germany Counsellor", role: "COUNSELLOR", standing: "VERIFIED" as const, figures: fig(0, 2, 0, 0, 0), ...kot },
+    { id: "tr", name: "Rohit Das", role: "TRAINEE_COUNSELLOR", standing: "FLAGGED" as const, figures: fig(2, 1, 1, 0, 0), ...kot },
+    { id: "sr", name: "Anju Mathew", role: "SENIOR_COUNSELLOR", standing: "MISSED" as const, figures: null, ...kot },
+    { id: "adm", name: "Anita Menon", role: "ADMIN", standing: "VERIFIED" as const, figures: null, ...hq },
+    { id: "doc", name: "Nithin Jose", role: "DOCUMENTATION", standing: "MISSED" as const, figures: null, ...hq },
+  ];
+  const notices = branchDayNotices("2026-10-23", people, figuresByBranch(people));
+  assert.equal(notices.length, 1, "the head office is not a branch");
+  const [n] = notices;
+  assert.equal(n.orgId, "kot");
+  assert.deepEqual(n.heads, ["head"]);
+  assert.equal(n.title, "Medcity Kottayam's day end: 3 of 5 verified");
+  assert.equal(n.body, "Day end reports for 23 Oct 2026: 2 verified, 1 verified after hours, 1 flagged a problem, 1 missed. Figures from 4 of 5 reports: 7 leads, 10 calls, 4 connected, 1 follow-up, 1 registration.");
+  assert.equal(n.href, "/journal/report?view=month&month=2026-10");
+  assert.ok(!n.body.includes("—"), "no em dashes");
+});
+
+test("a branch with two heads is told once, to both; a branch with no head is left out", () => {
+  const people = [
+    { id: "h1", name: "Head One", role: "PARTNER", orgId: "koc", orgType: "BRANCH", branch: "Medcity Kochi", standing: "VERIFIED" as const, figures: fig(1, 1, 1, 1, 1) },
+    { id: "h2", name: "Head Two", role: "PARTNER", orgId: "koc", orgType: "BRANCH", branch: "Medcity Kochi", standing: "PENDING" as const, figures: null },
+    { id: "c", name: "Counsellor", role: "COUNSELLOR", orgId: "tvm", orgType: "BRANCH", branch: "Medcity Trivandrum", standing: "VERIFIED" as const, figures: fig(1, 1, 1, 1, 1) },
+  ];
+  const notices = branchDayNotices("2026-10-23", people, figuresByBranch(people));
+  assert.equal(notices.length, 1);
+  assert.deepEqual(notices[0].heads, ["h1", "h2"]);
+  assert.equal(notices[0].title, "Medcity Kochi's day end: 1 of 2 verified");
+  assert.equal(notices[0].body, "Day end reports for 23 Oct 2026: 1 verified, 1 not yet answered. Figures from 1 of 2 reports: 1 lead, 1 call, 1 connected, 1 follow-up, 1 registration.");
+});
+
+test("a branch where nobody answered reads 0 verified and Not given", () => {
+  const people = [
+    { id: "h", name: "Head", role: "PARTNER", orgId: "kot", orgType: "BRANCH", branch: "Medcity Kottayam", standing: "MISSED" as const, figures: null },
+    { id: "c", name: "Counsellor", role: "COUNSELLOR", orgId: "kot", orgType: "BRANCH", branch: "Medcity Kottayam", standing: "MISSED" as const, figures: null },
+  ];
+  const [n] = branchDayNotices("2026-10-22", people, figuresByBranch(people));
+  assert.equal(n.title, "Medcity Kottayam's day end: 0 of 2 verified");
+  assert.equal(n.body, "Day end reports for 22 Oct 2026: 0 verified, 2 missed. Figures: Not given.");
+});
+
+test("a flag notice names the person and carries their note", () => {
+  const n = flagNotice("Rohit Das", "2026-10-23", "The call at noon was Rohit's, not mine.");
+  assert.equal(n.title, "Rohit Das flagged a problem on their day end report");
+  assert.equal(n.body, "23 Oct 2026. Rohit Das wrote: The call at noon was Rohit's, not mine.");
 });

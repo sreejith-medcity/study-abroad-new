@@ -282,6 +282,79 @@ export function figuresByBranch(people: FiguresPerson[]) {
   return { branches, totals: sumFigures(all.map((p) => p.figures)), people: all.length, given: all.filter((p) => p.figures).length };
 }
 
+/* ---------------- What a branch head is told ---------------- */
+
+/** The month view of the day end figures, which is the one page a branch head can open; with a person named, their month day by day. */
+export function monthViewHref(day: string, userId?: string | null) {
+  return `/journal/report?view=month&month=${day.slice(0, 7)}${userId ? `&user=${userId}` : ""}`;
+}
+
+export type BranchDayPerson = { id: string; role: string; orgId: string; orgType: string; branch: string; standing: JournalStanding };
+export type BranchDayNotice = { orgId: string; branch: string; heads: string[]; title: string; body: string; href: string };
+
+/** The standings of a branch's people counted up, in the words the report uses. */
+function standingBits(people: BranchDayPerson[]) {
+  const count = (st: JournalStanding) => people.filter((p) => p.standing === st).length;
+  const verified = count("VERIFIED");
+  const late = count("VERIFIED_LATE");
+  const flagged = count("FLAGGED");
+  const missed = count("MISSED");
+  const pending = count("PENDING");
+  const bits = [
+    `${verified} verified`,
+    late ? `${late} verified after hours` : null,
+    flagged ? `${flagged} flagged a problem` : null,
+    missed ? `${missed} missed` : null,
+    pending ? `${pending} not yet answered` : null,
+  ].filter((x): x is string => !!x);
+  return { verified: verified + late, bits };
+}
+
+/** The branch's five figures for the day in one sentence, or "Not given" when nobody gave any. */
+export function figuresSentence(totals: Record<FigureKey, number>, given: number, people: number) {
+  if (given === 0) return "Figures: Not given.";
+  const from = `${given} of ${people} ${people === 1 ? "report" : "reports"}`;
+  const some = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  return `Figures from ${from}: ${some(totals.leadsReceived, "lead", "leads")}, ${some(totals.callsMade, "call", "calls")}, ${totals.connectedCalls} connected, ${some(totals.followUpsDone, "follow-up", "follow-ups")}, ${some(totals.registrationsDone, "registration", "registrations")}.`;
+}
+
+/**
+ * One notice per Medcity branch for its head(s): how the branch's day end
+ * reports were answered and what the branch's figures came to. Built from the
+ * consolidated report, so the counts are the report's own. A branch is one
+ * whose people were issued a report that day; its heads are its branch head
+ * accounts (role PARTNER), who are themselves on the report. A branch with no
+ * head to tell is left out, and the head office is not a branch.
+ */
+export function branchDayNotices(day: string, people: BranchDayPerson[], figures: ReturnType<typeof figuresByBranch>): BranchDayNotice[] {
+  const out: BranchDayNotice[] = [];
+  for (const p of people) {
+    if (p.orgType !== "BRANCH" || out.some((b) => b.orgId === p.orgId)) continue;
+    const own = people.filter((x) => x.orgId === p.orgId);
+    const heads = own.filter((x) => x.role === "PARTNER").map((x) => x.id);
+    if (heads.length === 0) continue;
+    const { verified, bits } = standingBits(own);
+    const f = figures.branches.find((b) => b.orgId === p.orgId);
+    out.push({
+      orgId: p.orgId,
+      branch: p.branch,
+      heads,
+      title: `${p.branch}'s day end: ${verified} of ${own.length} verified`,
+      body: `Day end reports for ${dayText(day)}: ${bits.join(", ")}. ${figuresSentence(f?.totals ?? sumFigures([]), f?.given ?? 0, f?.people.length ?? 0)}`,
+      href: monthViewHref(day),
+    });
+  }
+  return out;
+}
+
+/** What the people looking after somebody are told the moment they flag their day end report. */
+export function flagNotice(name: string, day: string, note: string) {
+  return {
+    title: `${name} flagged a problem on their day end report`,
+    body: `${dayText(day)}. ${name} wrote: ${note}`,
+  };
+}
+
 /* ---------------- A month of figures ---------------- */
 
 /** One counsellor's month: the five figures added up over the days they answered, and how many days they answered or missed. */
