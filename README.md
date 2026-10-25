@@ -175,6 +175,7 @@ All seeded users share the password `Password@123`. Every person, university and
 | `npx tsx scripts/sync-cricos.ts <folder> [--publish]` | Load the CRICOS register from its three downloaded CSVs (the admin screen does the same from data.gov.au) |
 | `npx tsx scripts/supabase-part.ts <migration tag> "<title>"` | Write a migration as SQL that is safe to run twice in the Supabase SQL editor, with the migration recorded |
 | `npx tsx scripts/cricos-reconcile-sql.ts > out.sql` | Write SQL that links hand-researched Australian programs to their CRICOS codes from the catalogue CSVs and removes any untouched draft twin a sync added |
+| `npx tsx scripts/ausbildung-process-sql.ts > deploy/ausbildung-process.sql` | Write the written Ausbildung process (statuses, document types, stage requirements, hand-over contacts) as SQL that is safe to run twice on a live database. See `docs/ausbildung-process.md` for the process against the portal |
 | `npm run db:studio` | Browse the database |
 
 ## Project layout

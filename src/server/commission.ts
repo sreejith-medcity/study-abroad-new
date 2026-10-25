@@ -40,7 +40,7 @@ export const STATUS_TONE: Record<CommissionStatus, "neutral" | "info" | "warn" |
 };
 
 /** Statuses that earn the milestone: the placement actually happened. */
-export const EARNING_CODES = ["VISA_RECEIVED", "ENROLLED", "JOINED", "DEPLOYED"];
+export const EARNING_CODES = ["VISA_RECEIVED", "PRE_DEPARTURE", "ENROLLED", "JOINED", "HAPPY_CALL", "DEPLOYED"];
 
 
 /**

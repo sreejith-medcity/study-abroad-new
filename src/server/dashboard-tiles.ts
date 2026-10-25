@@ -11,7 +11,7 @@ import { lensApps, lensOrg, lensStudents, type Lens } from "./dashboard-lens";
 const { applications: a, statusDefinitions: sd, statusHistory: sh, students: s, organizations: og, checklistItems: ci, commissions: cm } = schema;
 
 /** The statuses that mean a visa is in hand, or the student has gone further. */
-const VISA_OR_LATER = ["VISA_RECEIVED", "ENROLLED", "JOINED", "DEPLOYED"] as const;
+const VISA_OR_LATER = ["VISA_RECEIVED", "PRE_DEPARTURE", "ENROLLED", "JOINED", "HAPPY_CALL", "DEPLOYED"] as const;
 
 /**
  * The figures the dashboard opens with.

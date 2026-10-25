@@ -3,7 +3,7 @@ import { and, asc, desc, eq, ilike, inArray, or, sql, type SQL } from "drizzle-o
 import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { orgScope } from "@/lib/permissions";
-import { moduleStanding, type ModuleState } from "@/lib/ausbildung";
+import { AUSBILDUNG_CONTACT_AREA, AUSBILDUNG_STEPS, AUSBILDUNG_TEAM, departmentOfStatus, moduleStanding, type AusbildungDepartment, type ModuleState } from "@/lib/ausbildung";
 import { nclexStanding, type NclexResult } from "@/lib/nclex";
 
 const { nclexCases: nc, nclexSteps: ns } = schema;
@@ -67,9 +67,25 @@ const destinationSql = sql<string | null>`coalesce(
   nullif(trim("students"."preferred_country"), '')
 )`;
 
+/**
+ * Where the student's Ausbildung application stands: the status of the open
+ * one that moved most recently, so a file with a closed first round and a live
+ * second reads from the live one. Null where there is no Ausbildung
+ * application yet, which the tracker says in words.
+ */
+const currentAusbildungStatus = <T>(column: "code" | "label" | "status_changed_at") => sql<T>`(
+  select ${sql.raw(column === "status_changed_at" ? "xa.status_changed_at" : `xs.${column}`)}
+  from applications xa
+  join programs xp on xp.id = xa.program_id
+  join status_definitions xs on xs.id = xa.status_id
+  where xa.student_id = "students"."id" and xp.pathway = 'AUSBILDUNG' and xs."group" <> 'CLOSED'
+  order by xa.status_changed_at desc
+  limit 1
+)`;
+
 export type TrackerTab = "ausbildung" | "nclex" | "service";
 export type TrackerShow = "all" | "interview" | "contract" | "german" | "unpaid";
-export type TrackerFilters = { tab: TrackerTab; org?: string; counsellor?: string; q?: string; show?: TrackerShow };
+export type TrackerFilters = { tab: TrackerTab; org?: string; counsellor?: string; q?: string; show?: TrackerShow; department?: AusbildungDepartment };
 
 export type ServiceCharge = {
   /** Per currency, what was raised (invoiced where it was, else expected) and what came in. */
@@ -132,6 +148,13 @@ export async function trackerRows(user: SessionUser, f: TrackerFilters, limit = 
   if (f.show === "interview") conds.push(sql`${ap.interviewOn} >= now() - interval '1 day' and ${ap.contractReceivedOn} is null`);
   if (f.show === "contract") conds.push(sql`${ap.contractReceivedOn} is not null`);
   if (f.show === "german") conds.push(sql`(select count(*) from german_modules xg where xg.student_id = "students"."id" and xg.state = 'COMPLETED') < 4`);
+  // A desk's files are the ones whose current status the guide puts with that
+  // desk. The map lives in code, so the codes are listed here rather than
+  // joined.
+  if (f.department) {
+    const codes = AUSBILDUNG_STEPS.filter((st) => st.department === f.department).flatMap((st) => st.statusCodes);
+    conds.push(codes.length ? sql`${currentAusbildungStatus("code")} in (${sql.join(codes.map((c) => sql`${c}`), sql`, `)})` : sql`false`);
+  }
 
   const rows = await db
     .select({
@@ -151,6 +174,11 @@ export async function trackerRows(user: SessionUser, f: TrackerFilters, limit = 
       interviewWith: ap.interviewWith,
       contractReceivedOn: ap.contractReceivedOn,
       contractEmployer: ap.contractEmployer,
+      statusCode: currentAusbildungStatus<string | null>("code"),
+      statusLabel: currentAusbildungStatus<string | null>("label"),
+      // The driver hands a timestamp back as text, the way the other raw
+      // fragments here are read, so it is made a Date below.
+      statusSince: currentAusbildungStatus<string | Date | null>("status_changed_at"),
       nclexOpened: nc.createdAt,
       boardState: nc.boardState,
       nclexResult: nc.result,
@@ -179,6 +207,8 @@ export async function trackerRows(user: SessionUser, f: TrackerFilters, limit = 
 
   let out = rows.map((r) => ({
     ...r,
+    statusSince: r.statusSince ? new Date(r.statusSince) : null,
+    department: departmentOfStatus(r.statusCode),
     german: moduleStanding(modulesBy.get(r.id) ?? []),
     charge: charges.get(r.id) ?? emptyCharge(),
     nclex: nclexStanding(doneBy.get(r.id) ?? new Set(), (r.nclexResult as NclexResult | null) ?? null),
@@ -194,7 +224,15 @@ export type TrackerRow = Awaited<ReturnType<typeof trackerRows>>[number];
 export async function studentAusbildung(studentId: string) {
   const [[flags], profile, modules, charges, lines] = await Promise.all([
     db
-      .select({ ausbildung: isAusbildungSql, charging: goesToChargingCountrySql, nursing: isNursingSql, destination: destinationSql })
+      .select({
+        ausbildung: isAusbildungSql,
+        charging: goesToChargingCountrySql,
+        nursing: isNursingSql,
+        destination: destinationSql,
+        statusCode: currentAusbildungStatus<string | null>("code"),
+        statusLabel: currentAusbildungStatus<string | null>("label"),
+        statusSince: currentAusbildungStatus<string | Date | null>("status_changed_at"),
+      })
       .from(s)
       .where(eq(s.id, studentId)),
     db.query.ausbildungProfiles.findFirst({ where: eq(ap.studentId, studentId) }),
@@ -223,6 +261,10 @@ export async function studentAusbildung(studentId: string) {
     isAusbildung: Boolean(flags?.ausbildung),
     goesToChargingCountry: Boolean(flags?.charging),
     destination: flags?.destination ?? null,
+    /** The open Ausbildung application's status, for placing the file on the written process. */
+    status: flags?.statusCode
+      ? { code: flags.statusCode, label: flags.statusLabel ?? flags.statusCode, since: flags.statusSince ? new Date(flags.statusSince) : null }
+      : null,
     profile: profile ?? null,
     modules,
     german: moduleStanding(modules),
@@ -255,6 +297,22 @@ export async function trackerChoices(user: SessionUser) {
       .orderBy(asc(us.name)),
   ]);
   return { orgs, people };
+}
+
+/**
+ * The Ausbildung hand-over addresses on the Contacts list, where the team
+ * edits them. While the list has no row for the area (a database the SQL has
+ * not yet been run on), the guide's own addresses are shown instead.
+ */
+export async function ausbildungContacts() {
+  const t = schema.teamContacts;
+  const rows = await db
+    .select({ id: t.id, name: t.name, title: t.title, email: t.email, phone: t.phone, level: t.level })
+    .from(t)
+    .where(and(eq(t.area, AUSBILDUNG_CONTACT_AREA), eq(t.active, true)))
+    .orderBy(asc(t.level), asc(t.sortOrder), asc(t.name));
+  if (rows.length) return { rows, fromList: true };
+  return { rows: AUSBILDUNG_TEAM.map((c) => ({ id: c.email, name: c.name, title: c.title, email: c.email, phone: null, level: c.level })), fromList: false };
 }
 
 /** The countries ticked as collecting a service charge, for saying so on screen. */

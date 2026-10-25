@@ -3,6 +3,7 @@ import "dotenv/config";
 import { BACKGROUND_QUESTIONS } from "../lib/background";
 import { branchCodeFrom, formatStudentId } from "../lib/medcity-id";
 import { AGENT_CONSENT } from "../lib/agents";
+import { AUSBILDUNG_CONTACT_AREA, AUSBILDUNG_TEAM } from "../lib/ausbildung";
 import { LIVING_FUNDS } from "./living-funds";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
@@ -83,7 +84,7 @@ async function main() {
   for (const [pw, list] of Object.entries(STATUS_SEED)) {
     const rows = await db
       .insert(schema.statusDefinitions)
-      .values(list.map((s, i) => ({ ...s, pathway: pw as schema.Pathway, sortOrder: (i + 1) * 10 })))
+      .values(list.map((s, i) => ({ ...s, pathway: pw as schema.Pathway, sortOrder: s.sortOrder ?? (i + 1) * 10 })))
       .returning();
     for (const r of rows) statusIds[`${pw}.${r.code}`] = r.id;
   }
@@ -163,6 +164,9 @@ async function main() {
   await db.insert(schema.teamContacts).values([
     { area: "UK admissions", name: "Sample Admissions Officer", title: "Admissions, United Kingdom", phone: "+91 90000 00001", email: "uk.admissions@medcityoverseas.test", whatsapp: true, level: 1, hours: "Mon to Sat, 9.30 to 6 IST" },
     { area: "UK admissions", name: "Sample Team Lead", title: "Head of admissions", phone: "+91 90000 00002", email: "admissions.lead@medcityoverseas.test", level: 2 },
+    // The Ausbildung hand-over addresses are the real ones from the written
+    // process, not samples: the tracker points the desk at them.
+    ...AUSBILDUNG_TEAM.map((t) => ({ area: AUSBILDUNG_CONTACT_AREA, ...t })),
   ]);
   await db.insert(schema.quickLinks).values([
     { label: "UK Student visa", url: "https://www.gov.uk/student-visa", note: "UKVI's own guidance", sortOrder: 10 },
@@ -556,7 +560,7 @@ async function main() {
     .innerJoin(schema.statusDefinitions, sql`${schema.statusDefinitions.id} = ${schema.applications.statusId}`);
 
   for (const app of earning) {
-    if (!["VISA_RECEIVED", "ENROLLED", "JOINED", "DEPLOYED"].includes(app.code)) continue;
+    if (!["VISA_RECEIVED", "PRE_DEPARTURE", "ENROLLED", "JOINED", "HAPPY_CALL", "DEPLOYED"].includes(app.code)) continue;
     // A university rule beats the country rule, the same way findRule scores them.
     const rule = ruleByUniversity.get(app.universityId) ?? ruleByCountry.get(app.countryId);
     if (!rule) continue;

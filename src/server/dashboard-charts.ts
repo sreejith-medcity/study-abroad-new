@@ -6,8 +6,8 @@ import { MONTHS } from "@/lib/format";
 import { lensApps, lensStudents, type Lens } from "./dashboard-lens";
 
 /** The statuses that mean a visa is in hand, or the student has gone further. */
-export const VISA_OR_LATER = ["VISA_RECEIVED", "ENROLLED", "JOINED", "DEPLOYED"] as const;
-const ENROLLED = ["ENROLLED", "JOINED", "DEPLOYED"] as const;
+export const VISA_OR_LATER = ["VISA_RECEIVED", "PRE_DEPARTURE", "ENROLLED", "JOINED", "HAPPY_CALL", "DEPLOYED"] as const;
+const ENROLLED = ["ENROLLED", "JOINED", "HAPPY_CALL", "DEPLOYED"] as const;
 
 const { applications: a, statusDefinitions: sd, statusHistory: sh, students: s, users: us, organizations: og, documents: dc, documentTypes: dt } = schema;
 

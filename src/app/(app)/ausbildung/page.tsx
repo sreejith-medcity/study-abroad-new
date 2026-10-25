@@ -1,10 +1,10 @@
-import { chargeMoney } from "@/lib/ausbildung";
+import { AUSBILDUNG_DEPARTMENTS, DEPARTMENT_LABEL, chargeMoney, milestoneDueAt, percentPaid, tatStanding, tatText, type AusbildungDepartment } from "@/lib/ausbildung";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { fmtDate, fullName, istTime } from "@/lib/format";
 import { STUDENT_WORK_ROLES, isStaff } from "@/lib/permissions";
 import { NCLEX_STATES } from "@/lib/nclex";
-import { chargingCountries, trackerChoices, trackerRows, type TrackerRow, type TrackerShow, type TrackerTab } from "@/server/ausbildung";
+import { ausbildungContacts, chargingCountries, trackerChoices, trackerRows, type TrackerRow, type TrackerShow, type TrackerTab } from "@/server/ausbildung";
 import { commissionVisible } from "@/server/commission-visibility";
 import { FilterBar } from "@/components/filter-bar";
 import { Card, EmptyState, PageHeader, Table, Td, Th, cn } from "@/components/ui";
@@ -35,11 +35,15 @@ export default async function AusbildungTrackerPage({ searchParams }: { searchPa
   const sp = await searchParams;
   const tab: TrackerTab = sp.tab === "service" ? "service" : sp.tab === "nclex" ? "nclex" : "ausbildung";
   const show = SHOW.some((s) => s.value === sp.show) ? (sp.show as TrackerShow) : undefined;
-  const [rows, choices, money, charging] = await Promise.all([
-    trackerRows(user, { tab, org: sp.branch, counsellor: sp.who, q: sp.q, show }),
+  // The desk filter belongs to the Ausbildung tab alone: the written process
+  // is Ausbildung's, and the other tabs have no statuses it places.
+  const department = tab === "ausbildung" && AUSBILDUNG_DEPARTMENTS.some((d) => d.key === sp.dept) ? (sp.dept as AusbildungDepartment) : undefined;
+  const [rows, choices, money, charging, contacts] = await Promise.all([
+    trackerRows(user, { tab, org: sp.branch, counsellor: sp.who, q: sp.q, show, department }),
     trackerChoices(user),
     commissionVisible(user),
     chargingCountries(),
+    tab === "ausbildung" ? ausbildungContacts() : Promise.resolve(null),
   ]);
   const staff = isStaff(user);
 
@@ -88,11 +92,14 @@ export default async function AusbildungTrackerPage({ searchParams }: { searchPa
       </div>
 
       <FilterBar
-        primary={4}
+        primary={5}
         fields={[
           { kind: "search", name: "q", label: "Student", placeholder: "Name, Medcity ID or phone" },
           ...(choices.orgs.length > 1 ? [{ kind: "select" as const, name: "branch", label: "Branch", options: choices.orgs.map((o) => ({ value: o.id, label: o.name })) }] : []),
           ...(choices.people.length > 1 ? [{ kind: "select" as const, name: "who", label: "Counsellor", options: choices.people.map((p) => ({ value: p.id, label: p.name })) }] : []),
+          ...(tab === "ausbildung"
+            ? [{ kind: "select" as const, name: "dept", label: "Desk", options: AUSBILDUNG_DEPARTMENTS.map((d) => ({ value: d.key, label: d.label })) }]
+            : []),
           {
             kind: "select" as const,
             name: "show",
@@ -116,7 +123,7 @@ export default async function AusbildungTrackerPage({ searchParams }: { searchPa
         </EmptyState>
       ) : (
         <Card>
-          <Table tableClassName="min-w-[1080px]">
+          <Table tableClassName={tab === "ausbildung" ? "min-w-[1280px]" : "min-w-[1080px]"}>
             <thead>
               <tr>
                 <Th>Student</Th>
@@ -124,6 +131,7 @@ export default async function AusbildungTrackerPage({ searchParams }: { searchPa
                 <Th>Branch and counsellor</Th>
                 {tab === "ausbildung" ? <Th>Preferences</Th> : tab === "nclex" ? <Th>Board state</Th> : <Th>Destination</Th>}
                 {tab === "nclex" ? <Th>Where they are</Th> : <Th>German</Th>}
+                {tab === "ausbildung" && <Th>Desk and step</Th>}
                 {tab === "ausbildung" && <Th>Application, interview, contract</Th>}
                 {tab === "nclex" && <Th>Result</Th>}
                 {money && <Th>Service charge</Th>}
@@ -135,6 +143,35 @@ export default async function AusbildungTrackerPage({ searchParams }: { searchPa
               ))}
             </tbody>
           </Table>
+        </Card>
+      )}
+
+      {contacts && (
+        <Card className="mt-4 p-4" data-handovers>
+          <h2 className="font-semibold text-brand-700">Hand-overs in the written process</h2>
+          <p className="mb-3 text-xs text-muted">
+            Where each desk passes a file on, and the address it goes to. The portal does not send these; the desk does.{" "}
+            {contacts.fromList ? (
+              <>
+                Kept on the <Link href="/contacts" className="font-medium text-brand-600 hover:underline">Contacts</Link> list{staff ? ", editable under Admin" : ""}.
+              </>
+            ) : (
+              <>From the written process, until the Contacts list carries them.</>
+            )}
+          </p>
+          <ul className="grid gap-2 text-sm sm:grid-cols-2 xl:grid-cols-4">
+            {contacts.rows.map((c) => (
+              <li key={c.id} className="rounded-lg border border-line px-3 py-2">
+                <p className="font-medium text-ink">{c.name}</p>
+                {c.title && <p className="text-xs text-muted">{c.title}</p>}
+                {c.email && (
+                  <a href={`mailto:${c.email}`} className="break-all text-xs font-medium text-brand-600 hover:underline">
+                    {c.email}
+                  </a>
+                )}
+              </li>
+            ))}
+          </ul>
         </Card>
       )}
     </>
@@ -234,6 +271,7 @@ function Row({ r, tab, money }: { r: TrackerRow; tab: TrackerTab; money: boolean
           )}
         </Td>
       )}
+      {tab === "ausbildung" && <StepCell r={r} />}
       {tab === "ausbildung" && (
         <Td className="text-sm">
           {/* The three dates the whole thing turns on, in the order they
@@ -284,8 +322,60 @@ function Row({ r, tab, money }: { r: TrackerRow; tab: TrackerTab; money: boolean
             })
           )}
           {r.charge.unpriced > 0 && <p className="text-2xs text-muted">Amount not recorded</p>}
+          {tab === "ausbildung" && <MilestoneLine r={r} />}
         </Td>
       )}
     </tr>
+  );
+}
+
+/**
+ * Which desk the file is with and how long it has sat there, against the
+ * turnaround the written process gives that step. Read off the open Ausbildung
+ * application's status; a student with no application yet is said so.
+ */
+function StepCell({ r }: { r: TrackerRow }) {
+  if (!r.statusCode) {
+    return (
+      <Td className="text-sm">
+        <span className="text-muted">No Ausbildung application yet</span>
+      </Td>
+    );
+  }
+  const tat = tatStanding(r.statusCode, r.statusSince);
+  return (
+    <Td className="text-sm" data-step={tat.step?.step ?? ""}>
+      {r.department && <p className="text-2xs font-semibold uppercase tracking-wide text-muted">{DEPARTMENT_LABEL[r.department]}</p>}
+      <p className="font-medium">{r.statusLabel}</p>
+      {tat.step ? (
+        <p className={cn("text-xs", tat.over ? "font-medium text-warn-700" : "text-muted")}>
+          Step {tat.step.step}
+          {tat.days != null && `, ${tat.days} ${tat.days === 1 ? "day" : "days"} here`}
+          {`; guide: ${tat.step.tatDays ? tatText(tat.step) : tatText(tat.step).toLowerCase()}`}
+        </p>
+      ) : (
+        <p className="text-xs text-muted">Not a step of the written process</p>
+      )}
+    </Td>
+  );
+}
+
+/**
+ * What the written process says should have been paid by the step the file is
+ * at, beside what has actually come in. A guide, read from the same constant as
+ * the student's tab; it moves nothing and blocks nothing.
+ */
+function MilestoneLine({ r }: { r: TrackerRow }) {
+  const due = milestoneDueAt(r.statusCode);
+  const inr = r.charge.byCurrency.find((b) => b.currency === "INR") ?? r.charge.byCurrency[0];
+  const paid = inr ? percentPaid(inr.owed, inr.received) : null;
+  if (!due && paid == null) return null;
+  const short = due && paid != null && paid < (due.percent ?? 0);
+  return (
+    <p className={cn("mt-1 text-2xs", short ? "font-medium text-warn-700" : "text-muted")} data-milestone={due?.percent ?? ""}>
+      {paid != null && `${paid}% paid`}
+      {paid != null && due && ", "}
+      {due && `guide: ${due.percent}% by step ${due.step}`}
+    </p>
   );
 }

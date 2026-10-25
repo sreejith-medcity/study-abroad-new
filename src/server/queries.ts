@@ -51,7 +51,7 @@ export const KPI_WHERE: Record<string, SQL> = {
   offers: sql`${sd.group} = 'OFFER'`,
   payments: sql`${a.feeStatus} = 'PAID'`,
   fees_due: sql`${a.feeStatus} = 'DUE'`,
-  visa_received: sql`${sd.code} in ('VISA_RECEIVED','ENROLLED','JOINED','DEPLOYED')`,
+  visa_received: sql`${sd.code} in ('VISA_RECEIVED','PRE_DEPARTURE','ENROLLED','JOINED','HAPPY_CALL','DEPLOYED')`,
   visa_rejected: sql`${sd.code} = 'VISA_REJECTED'`,
   non_enrolment: sql`${sd.code} = 'WITHDRAWN'`,
   deferrals: sql`${sd.code} = 'DEFERRED'`,

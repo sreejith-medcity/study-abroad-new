@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { fmtDate, istDateTime } from "@/lib/format";
 import { APP_ROLES, isAdmin } from "@/lib/permissions";
-import { chargeMoney, toIstInput, MODULE_STATE_LABEL } from "@/lib/ausbildung";
+import { AUSBILDUNG_DEPARTMENTS, chargeMoney, departmentOfStatus, milestoneDueAt, paymentMilestones, tatStanding, tatText, toIstInput, MODULE_STATE_LABEL } from "@/lib/ausbildung";
 import { getStudentForUser } from "@/server/queries";
 import { chargingCountries, studentAusbildung } from "@/server/ausbildung";
 import { commissionVisible } from "@/server/commission-visibility";
@@ -40,9 +40,60 @@ export default async function StudentAusbildungPage({ params }: { params: Promis
 
   const p = a.profile;
   const upcoming = p?.interviewOn && p.interviewOn.getTime() > Date.now() - 86400000 && !p.contractReceivedOn;
+  // Where the file sits on the written process, read off the open Ausbildung
+  // application's status. The guide's turnaround is shown beside it; it is a
+  // guide, and nothing here stops a move.
+  const tat = tatStanding(a.status?.code, a.status?.since);
+  const department = departmentOfStatus(a.status?.code);
 
   return (
     <div className="space-y-5">
+      {a.isAusbildung && (
+        <Card data-process>
+          <CardHeader
+            title="The written process"
+            subtitle={
+              a.status
+                ? tat.step
+                  ? `Step ${tat.step.step} of 19: ${tat.step.title}.`
+                  : `The application is ${a.status.label}, which the written process does not place on a desk.`
+                : "No open Ausbildung application yet. The steps begin when one is created."
+            }
+            action={
+              a.status && tat.days != null ? (
+                <Chip tone={tat.over ? "warn" : "neutral"}>
+                  {tat.days} {tat.days === 1 ? "day" : "days"} at this step{tat.step && tat.step.tatDays != null ? `, guide: ${tat.step.tatDays ? tatText(tat.step) : tatText(tat.step).toLowerCase()}` : ""}
+                </Chip>
+              ) : undefined
+            }
+          />
+          <ol className="flex flex-wrap gap-1.5 px-4 pb-4" aria-label="Desks in the written process">
+            {AUSBILDUNG_DEPARTMENTS.map((d, i) => (
+              <li
+                key={d.key}
+                data-department={d.key}
+                aria-current={department === d.key ? "step" : undefined}
+                className={cn(
+                  "rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset",
+                  department === d.key ? "bg-brand-600 text-white ring-brand-600" : "text-muted ring-line-strong",
+                )}
+                title={d.who}
+              >
+                {i + 1}. {d.label}
+              </li>
+            ))}
+          </ol>
+          {a.status && (
+            <p className="border-t border-line px-4 py-3 text-xs text-muted">
+              Status: <span className="font-medium text-ink">{a.status.label}</span>
+              {a.status.since && <> since {fmtDate(a.status.since)}</>}
+              {tat.step?.tatDays == null && tat.step?.tatNote && <>. Turnaround: {tat.step.tatNote.toLowerCase()}</>}
+              {tat.step?.handover && <>. Handed over to {tat.step.handover} at the end of this step</>}.
+            </p>
+          )}
+        </Card>
+      )}
+
       {a.isNursing && (
         <Card data-nclex>
           <CardHeader
@@ -230,6 +281,7 @@ export default async function StudentAusbildungPage({ params }: { params: Promis
                 })}
               </ul>
             )}
+            {a.isAusbildung && <PaymentMilestones charge={a.charge} statusCode={a.status?.code ?? null} />}
             {canMoney && !a.charge.any && (
               <div className="border-t border-line p-4">
                 <RaiseServiceCharge studentId={id} usual={usual} />
@@ -240,6 +292,48 @@ export default async function StudentAusbildungPage({ params }: { params: Promis
         ) : (
           <Card className="p-4 text-sm text-muted">The service charge is kept off this screen for your role.</Card>
         ))}
+    </div>
+  );
+}
+
+/**
+ * When the written process says the service charge falls due: the registration
+ * fee, half before interview readiness, 80 percent at the training contract,
+ * all of it before the visa file. Measured against the charge raised on this
+ * student, in the currency it was raised in; with nothing raised the steps are
+ * listed and no amount is shown, because there is nothing to measure against.
+ */
+function PaymentMilestones({ charge, statusCode }: { charge: { byCurrency: { currency: string; owed: number; received: number }[] }; statusCode: string | null }) {
+  const line = charge.byCurrency.find((b) => b.currency === "INR") ?? charge.byCurrency[0];
+  const rows = paymentMilestones(line?.owed ?? 0, line?.received ?? 0);
+  const due = milestoneDueAt(statusCode);
+  return (
+    <div className="border-t border-line px-4 py-3" data-payment-milestones>
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted">When the written process says it falls due</p>
+      <ol className="mt-2 grid gap-2 text-sm sm:grid-cols-2 xl:grid-cols-4">
+        {rows.map((m) => {
+          const expected = due != null && m.percent != null && m.percent <= (due.percent ?? 0);
+          return (
+            <li key={m.step} className={cn("rounded-lg border px-3 py-2", m.met ? "border-good-500/40 bg-good-50/40" : expected ? "border-warn-500/40 bg-warn-50/50" : "border-line")}>
+              <div className="flex flex-wrap items-center justify-between gap-1">
+                <span className="font-medium">{m.label}</span>
+                {m.percent == null ? (
+                  <Chip tone="neutral">One-time</Chip>
+                ) : m.met ? (
+                  <Chip tone="ok">Met</Chip>
+                ) : expected ? (
+                  <Chip tone="warn">Due now</Chip>
+                ) : (
+                  <Chip tone="neutral">Later</Chip>
+                )}
+              </div>
+              <p className="text-xs text-muted">Step {m.step}: {m.when}</p>
+              {m.amount != null && line && <p className="text-xs tabular">{chargeMoney(m.amount, line.currency)}</p>}
+              {m.percent != null && !line && <p className="text-xs text-muted">Amount follows the charge once it is raised</p>}
+            </li>
+          );
+        })}
+      </ol>
     </div>
   );
 }

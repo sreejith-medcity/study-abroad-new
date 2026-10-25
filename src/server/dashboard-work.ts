@@ -241,7 +241,7 @@ export async function teamBoard(lens: Lens, limit = 8) {
     eq(us.active, true),
     inArray(us.role, ["PARTNER", ...COUNSELLING_ROLES.filter((r) => r !== "DESK_COUNSELLOR")]),
   );
-  const offerOrLater = sql`exists (select 1 from ${sh} h join ${sd} d on d.id = h.to_status_id where h.application_id = ${a.id} and (d."group" = 'OFFER' or d.code in ('VISA_RECEIVED','ENROLLED','JOINED','DEPLOYED')))`;
+  const offerOrLater = sql`exists (select 1 from ${sh} h join ${sd} d on d.id = h.to_status_id where h.application_id = ${a.id} and (d."group" = 'OFFER' or d.code in ('VISA_RECEIVED','PRE_DEPARTURE','ENROLLED','JOINED','HAPPY_CALL','DEPLOYED')))`;
   const rows = await db
     .select({
       id: us.id,

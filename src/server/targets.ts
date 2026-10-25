@@ -43,7 +43,7 @@ function bounds(month: string) {
   return { from: new Date(`${month}-01T00:00:00+05:30`), to: new Date(`${shiftMonth(month, 1)}-01T00:00:00+05:30`) };
 }
 
-const VISA = ["VISA_RECEIVED", "ENROLLED", "JOINED", "DEPLOYED"];
+const VISA = ["VISA_RECEIVED", "PRE_DEPARTURE", "ENROLLED", "JOINED", "HAPPY_CALL", "DEPLOYED"];
 
 /** What actually happened in the month, per branch. */
 export async function branchActuals(orgIds: string[], month: string) {

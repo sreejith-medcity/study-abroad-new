@@ -7,7 +7,10 @@
 // Ausbildung, three preferences in order, when the application went in, when
 // the interview is and when the contract came; and a document checklist for
 // study abroad, Ausbildung and NCLEX-RN. Which countries collect a service
-// charge is a setting. Wants the plain seed.
+// charge is a setting. Then the written Ausbildung process: every step as a
+// status in the picker, the desk and step on the tracker, the payment
+// milestones on the file, and the guide's documents on the documentation tab.
+// Wants the plain seed.
 import { chromium } from "playwright";
 import { knownWarning, hydrated } from "./_errors.mjs";
 import { execFileSync } from "node:child_process";
@@ -210,6 +213,113 @@ const owner = await signIn("kottayam@medcity.test");
   check(sop === "absent" || sop === "NOT_NEEDED", `an Ausbildung student is not asked for a statement of purpose (${sop})`);
   check(motiv !== "absent", `and is asked for a motivation letter (${motiv})`);
   check(/Journey: Ausbildung/.test(text), "and the tab says which journey it is following");
+}
+
+/* ---------------- The written process: statuses ---------------- */
+// The guide's nineteen steps, as statuses the desk can pick, in the guide's
+// order. Akshara's open application is at the employer interview (placement).
+const ausbApp = sql(`select a.id from applications a join programs p on p.id = a.program_id join status_definitions sd on sd.id = a.status_id where a.student_id = '${akshara}' and p.pathway = 'AUSBILDUNG' and sd."group" <> 'CLOSED' order by a.status_changed_at desc limit 1`);
+const ausbStatusBefore = sql(`select status_id from applications where id = '${ausbApp}'`);
+{
+  const page = admin.page;
+  await go(page, `/students/${akshara}/applications?app=${ausbApp}`);
+  const picker = page.locator(`#status-${ausbApp}`);
+  check((await picker.count()) === 1, "the admin sees the status picker on an Ausbildung application");
+  const options = await picker.locator("option").allInnerTexts();
+  const wanted = [
+    "Document collection by the counsellor",
+    "Mentor assigned",
+    "Document preparation and translation",
+    "Language assessment and interview preparation",
+    "Mock interview passed: ready for employers",
+    "Profile submitted to German employers",
+    "Employer shortlisted the candidate",
+    "Pre-visa documentation",
+    "Visa processing",
+    "Pre-departure process",
+    "Destination Germany: happy call",
+  ];
+  const missing = wanted.filter((w) => !options.includes(w));
+  check(missing.length === 0, `the picker offers every step of the written process ${missing.length ? `(missing: ${missing.join(", ")})` : ""}`);
+  const at = (label) => options.indexOf(label);
+  check(
+    at("Mentor assigned") < at("German CV and profile in progress") &&
+      at("Mock interview passed: ready for employers") < at("Employer matching") &&
+      at("Employer matching") < at("Profile submitted to German employers") &&
+      at("Profile submitted to German employers") < at("Employer interview scheduled") &&
+      at("Training contract signed") < at("Pre-visa documentation") &&
+      at("Pre-visa documentation") < at("Visa filed (VFS)") &&
+      at("Visa filed (VFS)") < at("Visa processing") &&
+      at("Visa processing") < at("Visa received") &&
+      at("Visa received") < at("Pre-departure process") &&
+      at("Pre-departure process") < at("Joined employer") &&
+      at("Joined employer") < at("Destination Germany: happy call") &&
+      at("Destination Germany: happy call") < at("Withdrawn"),
+    "in the guide's order, with the old statuses kept in their places",
+  );
+  check(at("German A2 / B1 pending") === 0, "and the German level is still the first status");
+
+  // Moving to a new status works like any other move, and the milestone note shows.
+  await picker.selectOption({ label: "Mentor assigned" });
+  check(await page.getByText("Milestone: the student gets a WhatsApp update.").waitFor({ timeout: 5000 }).then(() => true, () => false), "a mentor being assigned is a milestone the student hears about");
+  await page.getByRole("button", { name: "Update status" }).click();
+  const moved = await wait(`select sd.code from applications a join status_definitions sd on sd.id = a.status_id where a.id = '${ausbApp}'`, "MENTOR_ASSIGNED");
+  check(moved === "MENTOR_ASSIGNED", "the application moves to 'Mentor assigned'");
+
+  // The tracker reads the desk and the step off the status.
+  await go(page, "/ausbildung");
+  const line = (await page.locator(`[data-tracker-row="${akshara}"]`).innerText()).replace(/\s+/g, " ");
+  check(/Documentation/.test(line) && /Mentor assigned/.test(line) && /Step 4/.test(line), `the tracker puts the file with the documentation desk at step 4 (${line.slice(0, 160)})`);
+  check(/guide: same day/i.test(line), "with the guide's turnaround beside it");
+  let text = await go(page, "/ausbildung?dept=DOCUMENTATION");
+  check(text.includes("Akshara"), "'Desk: Documentation' shows the file");
+  text = await go(page, "/ausbildung?dept=VISA");
+  check(!text.includes("Akshara"), "and 'Desk: Visa' does not");
+  check(/Hand-overs in the written process/.test(text) && /ausbildung@miak\.in/.test(text) && /placementassistant@miak\.in/.test(text), "the tracker lists the hand-over addresses");
+
+  // The file's own tab places it on the process too, with the payment milestones.
+  text = await go(page, `/students/${akshara}/ausbildung`);
+  const current = await page.locator('[data-process] [aria-current="step"]').getAttribute("data-department").catch(() => null);
+  check(current === "DOCUMENTATION", `the Ausbildung tab marks the documentation desk as current (${current})`);
+  check(/Step 4 of 19/.test(text), "and names the step");
+  const milestones = (await page.locator("[data-payment-milestones]").innerText().catch(() => "")).replace(/\s+/g, " ");
+  check(/Registration fee/.test(milestones) && /50% of the service charge/.test(milestones) && /80% of the service charge/.test(milestones) && /100% of the service charge/.test(milestones), "the service charge card lists the guide's payment milestones");
+  check(/₹25,000/.test(milestones) && /₹40,000/.test(milestones), "with the amounts worked out from the charge raised (₹50,000)");
+  check(/Later/.test(milestones) && !/Due now/.test(milestones), "nothing is due at step 4, which is before the first percentage milestone");
+
+  // Back to where the seed left it, by the same action, so the rest of the suite reads the same file.
+  await go(page, `/students/${akshara}/applications?app=${ausbApp}`);
+  await page.locator(`#status-${ausbApp}`).selectOption({ label: "Employer interview scheduled" });
+  await page.getByRole("button", { name: "Update status" }).click();
+  check((await wait(`select status_id from applications where id = '${ausbApp}'`, ausbStatusBefore)) === ausbStatusBefore, "and back to the employer interview");
+  text = await go(page, `/students/${akshara}/ausbildung`);
+  const due = (await page.locator("[data-payment-milestones]").innerText().catch(() => "")).replace(/\s+/g, " ");
+  check(/Due now/.test(due), "at the employer interview the guide's 50% is due, and ₹20,000 of ₹50,000 does not meet it");
+}
+
+/* ---------------- The written process: documents ---------------- */
+{
+  const page = admin.page;
+  // Opening the tab brings the list into line with the requirements, so the
+  // guide's paper appears on a file that existed before it was added.
+  let text = await go(page, `/students/${akshara}/documentation`);
+  for (const label of ["Consultancy agreement (declaration form)", "Aadhaar and PAN card", "CV in German format (Lebenslauf)", "Educational certificates, German translation", "Self-introduction video", "School contract (vocational school)", "EZB: declaration of employment relationship", "Biometric photo (35 x 40 mm)", "Legal representation form", "ZAV approval (Federal Employment Agency)"]) {
+    check(text.includes(label), `the Ausbildung file asks for: ${label}`);
+  }
+  const zav = page.locator("tr").filter({ hasText: "ZAV approval" }).first();
+  const zavLine = (await zav.innerText().catch(() => "")).replace(/\s+/g, " ");
+  check(/7\. Visa/.test(zavLine) && /Medcity/.test(zavLine), `the ZAV sits at the visa stage and is owed by Medcity, not the student (${zavLine.slice(0, 120)})`);
+  const stage = sql(`select stage || '|' || owed_by || '|' || required from checklist_items where student_id = '${akshara}' and type_code = 'EZB' order by created_at desc limit 1`);
+  check(stage === "OFFER|MEDCITY|true", `the EZB is on the list at the offer stage, owed by Medcity, required (${stage})`);
+  await go(page, `/students/${akshara}/documentation?stage=VISA`);
+  // The table alone: the gate alert above it names what the profile stage still wants.
+  const visaRows = (await page.locator("tbody").innerText().catch(() => "")).replace(/\s+/g, " ");
+  check(/Biometric photo/.test(visaRows) && /Legal representation form/.test(visaRows) && /Annex employment data/.test(visaRows), "the visa stage filter shows the pre-visa list");
+  check(!/Consultancy agreement/.test(visaRows), "and not the registration paper");
+  // A degree student is not asked for the employer's paper.
+  const degree = sql(`select id from students where first_name = 'Fathima'`);
+  text = await go(page, `/students/${degree}/documentation`);
+  check(!/EZB/.test(text) && !/ZAV approval/.test(text), "a study-abroad file is not asked for the EZB or the ZAV");
 }
 
 for (const a of all) check(a.errors.length === 0, `${a.email}: no page errors or 500s ${a.errors.slice(0, 2).join(" | ")}`);

@@ -54,6 +54,28 @@ export const DOCUMENTATION_TYPES = [
   { code: "BIRTH_CERTIFICATE", label: "Birth certificate", labelMl: "ജനന സർട്ടിഫിക്കറ്റ്", uploadedBy: "partner", sortOrder: 12 },
   { code: "NURSING_DEGREE", label: "Nursing degree or diploma certificate (BSc / GNM)", labelMl: "നഴ്സിങ് ബിരുദം / ഡിപ്ലോമ സർട്ടിഫിക്കറ്റ്", uploadedBy: "partner", sortOrder: 47 },
   { code: "NURSING_MARKSHEETS", label: "Nursing marksheets and transcript", labelMl: "നഴ്സിങ് മാർക്ക് ഷീറ്റുകളും ട്രാൻസ്ക്രിപ്റ്റും", uploadedBy: "partner", sortOrder: 48 },
+  // The rest of the paper Medcity's written Ausbildung process names, from the
+  // consultancy agreement at registration to the employer's forms the visa
+  // file waits for. No Malayalam yet, so the portal shows the English; the
+  // Documents screen says "Not translated" until somebody adds it.
+  { code: "AADHAAR_PAN", label: "Aadhaar and PAN card", labelMl: null, uploadedBy: "partner", sortOrder: 13 },
+  { code: "CONSULTANCY_AGREEMENT", label: "Consultancy agreement (declaration form)", labelMl: null, uploadedBy: "partner", sortOrder: 16 },
+  { code: "TRANSLATED_CERTIFICATES", label: "Educational certificates, German translation", labelMl: null, uploadedBy: "team", sortOrder: 67 },
+  { code: "NOTARISED_CERTIFICATES", label: "Notarised and attested certificates", labelMl: null, uploadedBy: "partner", sortOrder: 68 },
+  { code: "GERMAN_CV", label: "CV in German format (Lebenslauf)", labelMl: null, uploadedBy: "team", sortOrder: 94 },
+  { code: "SELF_INTRO_VIDEO", label: "Self-introduction video", labelMl: null, uploadedBy: "partner", sortOrder: 99 },
+  { code: "JOB_CONSENT", label: "Job-specific consent (declaration form)", labelMl: null, uploadedBy: "partner", sortOrder: 103 },
+  { code: "SCHOOL_CONTRACT", label: "School contract (vocational school)", labelMl: null, uploadedBy: "team", sortOrder: 197 },
+  { code: "EZB", label: "EZB: declaration of employment relationship", labelMl: null, uploadedBy: "team", sortOrder: 198 },
+  { code: "VACCINATION_CERTIFICATE", label: "Vaccination certificate", labelMl: null, uploadedBy: "partner", sortOrder: 199 },
+  { code: "BIOMETRIC_PHOTO", label: "Biometric photo (35 x 40 mm)", labelMl: null, uploadedBy: "partner", sortOrder: 223 },
+  { code: "LEGAL_REPRESENTATION_FORM", label: "Legal representation form", labelMl: null, uploadedBy: "partner", sortOrder: 224 },
+  { code: "COVER_LETTER", label: "Cover letter for the visa file", labelMl: null, uploadedBy: "team", sortOrder: 225 },
+  { code: "ANNEX_EMPLOYMENT_DATA", label: "Annex employment data", labelMl: null, uploadedBy: "team", sortOrder: 226 },
+  { code: "FAST_TRACK_FORM", label: "Fast-track form", labelMl: null, uploadedBy: "team", sortOrder: 227 },
+  { code: "ZAV", label: "ZAV approval (Federal Employment Agency)", labelMl: null, uploadedBy: "team", sortOrder: 228 },
+  { code: "LANGUAGE_CONFIRMATION", label: "Language confirmation letter from the employer", labelMl: null, uploadedBy: "team", sortOrder: 229 },
+  { code: "TESTIMONIAL", label: "Testimonial and felicitation record", labelMl: null, uploadedBy: "team", sortOrder: 236 },
 ];
 
 export type SeedRequirement = {
@@ -136,11 +158,40 @@ export const STAGE_REQUIREMENTS: SeedRequirement[] = [
   // is read in German. A starting list for the Overseas team to edit under
   // Settings, not a rule written into the code.
   { stage: "PROFILE", typeCode: "GERMAN_CERTIFICATE", pathway: "AUSBILDUNG", guidance: "Goethe, telc or ÖSD. Most places ask for B1; nursing and care usually B2." },
-  { stage: "PROFILE", typeCode: "CV", pathway: "AUSBILDUNG", guidance: "In German, in the tabular Lebenslauf form, with a photograph." },
+  { stage: "PROFILE", typeCode: "CV", pathway: "AUSBILDUNG", guidance: "The student's own resume, in English. The documentation mentor prepares the German Lebenslauf from it." },
   { stage: "PROFILE", typeCode: "MOTIVATION_LETTER", pathway: "AUSBILDUNG", guidance: "In German, addressed to the employer, one page." },
   { stage: "PROFILE", typeCode: "WORK_EXPERIENCE_LETTER", pathway: "AUSBILDUNG", required: false, guidance: "Any work or internship, on letterhead with dates and role." },
   { stage: "PROFILE", typeCode: "BIRTH_CERTIFICATE", pathway: "AUSBILDUNG", required: false, guidance: "Where the embassy or the employer asks for it." },
   { stage: "OFFER", typeCode: "TRAINING_CONTRACT", pathway: "AUSBILDUNG", guidance: "Signed by the employer and the student. The visa is applied for on this." },
+  // The rest of the written process, step by step. Registration and document
+  // collection (steps 2 and 3) land on Profile; what the documentation mentor
+  // prepares for employers (steps 6 and 9) on Application; what comes with the
+  // training contract (step 11) on Offer; the pre-visa list (step 12) on Visa.
+  // A document the employer sends is owed by Medcity, because the placement
+  // team is who the portal waits on for it, not the student.
+  { stage: "PROFILE", typeCode: "CONSULTANCY_AGREEMENT", pathway: "AUSBILDUNG", guidance: "Signed at registration with the registration fee. States the refund policy and the compensation if an employer's contract is not honoured." },
+  { stage: "PROFILE", typeCode: "AADHAAR_PAN", pathway: "AUSBILDUNG", guidance: "Both cards in one file. The embassy asks for them with the visa file, so collect them at registration." },
+  { stage: "PROFILE", typeCode: "DIPLOMA_CERTIFICATE", pathway: "AUSBILDUNG", required: false, guidance: "Where the student holds a diploma." },
+  { stage: "PROFILE", typeCode: "DEGREE_CERTIFICATE", pathway: "AUSBILDUNG", required: false, guidance: "Where the student holds a degree. A provisional certificate is enough until the original is issued." },
+  { stage: "APPLICATION", typeCode: "GERMAN_CV", pathway: "AUSBILDUNG", owedBy: "MEDCITY", guidance: "Prepared by the documentation mentor from the student's resume: tabular Lebenslauf form, in German, with a photograph." },
+  { stage: "APPLICATION", typeCode: "TRANSLATED_CERTIFICATES", pathway: "AUSBILDUNG", owedBy: "MEDCITY", guidance: "German translation of the 10th, 12th and any higher certificate. Sent to translation.germany@miak.in and checked by the language specialist before it goes anywhere." },
+  { stage: "APPLICATION", typeCode: "NOTARISED_CERTIFICATES", pathway: "AUSBILDUNG", required: false, guidance: "Where the employer or the embassy asks for notarisation and attestation." },
+  { stage: "APPLICATION", typeCode: "SELF_INTRO_VIDEO", pathway: "AUSBILDUNG", guidance: "A short introduction in German for employers. Upload a one-page PDF with the link to the video (Drive or YouTube); the video file itself is too large to upload here." },
+  { stage: "APPLICATION", typeCode: "JOB_CONSENT", pathway: "AUSBILDUNG", required: false, guidance: "Sent when an employer shortlists the student: consent to that job, with the compensation for dishonouring the contract stated plainly." },
+  { stage: "OFFER", typeCode: "SCHOOL_CONTRACT", pathway: "AUSBILDUNG", owedBy: "MEDCITY", guidance: "The vocational school's contract, from the employer. Signed and returned with the training contract." },
+  { stage: "OFFER", typeCode: "EZB", pathway: "AUSBILDUNG", owedBy: "MEDCITY", guidance: "The declaration of employment relationship (Erklärung zum Beschäftigungsverhältnis), filled by the employer. The visa file waits for it." },
+  { stage: "OFFER", typeCode: "LANGUAGE_CONFIRMATION", pathway: "AUSBILDUNG", owedBy: "MEDCITY", guidance: "From the employer, confirming the German level the place needs. The visa file waits for it." },
+  { stage: "OFFER", typeCode: "VACCINATION_CERTIFICATE", pathway: "AUSBILDUNG", required: false, guidance: "Where the employer asks for it; care and nursing places usually do." },
+  { stage: "OFFER", typeCode: "POLICE_CLEARANCE", pathway: "AUSBILDUNG", required: false, guidance: "Where the employer asks for it. Read the date of issue off the certificate." },
+  { stage: "VISA", typeCode: "ACCOMMODATION", pathway: "AUSBILDUNG", owedBy: "MEDCITY", guidance: "Proof from the employer of where the student will live. The visa file waits for it." },
+  { stage: "VISA", typeCode: "INSURANCE", pathway: "AUSBILDUNG", guidance: "Health insurance covering the stay from the day of arrival. The embassy asks for it with the visa file." },
+  { stage: "VISA", typeCode: "BIOMETRIC_PHOTO", pathway: "AUSBILDUNG", guidance: "35 by 40 mm with 80 percent face coverage, as the embassy specifies. Not the passport-size photograph." },
+  { stage: "VISA", typeCode: "LEGAL_REPRESENTATION_FORM", pathway: "AUSBILDUNG", guidance: "Signed by the student, so Medcity may deal with the embassy on their behalf." },
+  { stage: "VISA", typeCode: "COVER_LETTER", pathway: "AUSBILDUNG", owedBy: "MEDCITY", guidance: "Prepared by the visa team, listing what is in the file." },
+  { stage: "VISA", typeCode: "ANNEX_EMPLOYMENT_DATA", pathway: "AUSBILDUNG", owedBy: "MEDCITY", guidance: "Filled by the employer." },
+  { stage: "VISA", typeCode: "ZAV", pathway: "AUSBILDUNG", owedBy: "MEDCITY", guidance: "The Federal Employment Agency's approval of the employment, obtained by the employer." },
+  { stage: "VISA", typeCode: "FAST_TRACK_FORM", pathway: "AUSBILDUNG", required: false, owedBy: "MEDCITY", guidance: "Where the employer uses the accelerated skilled worker procedure." },
+  { stage: "DEPARTURE", typeCode: "TESTIMONIAL", pathway: "AUSBILDUNG", required: false, owedBy: "MEDCITY", guidance: "Felicitation and the testimonial, collected before departure; a second one and a reference after arrival." },
 
   // Nursing registration abroad: NCLEX-RN, the NMC and the like. The board
   // reads the nursing education and the licence at home before anything else.

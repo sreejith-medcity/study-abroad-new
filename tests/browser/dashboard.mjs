@@ -91,8 +91,8 @@ const desk = await open("admin@medcityoverseas.test");
     "total-applications": n("select count(*) from applications"),
     // A visa cannot be had without an offer, so a file that went straight to
     // a visa status still received one.
-    "offers-received": n(`select count(distinct h.application_id) from status_history h join status_definitions d on d.id = h.to_status_id where d."group" = 'OFFER' or d.code in ('VISA_RECEIVED','ENROLLED','JOINED','DEPLOYED')`),
-    "visas-received": n(`select count(distinct h.application_id) from status_history h join status_definitions d on d.id = h.to_status_id where d.code in ('VISA_RECEIVED','ENROLLED','JOINED','DEPLOYED')`),
+    "offers-received": n(`select count(distinct h.application_id) from status_history h join status_definitions d on d.id = h.to_status_id where d."group" = 'OFFER' or d.code in ('VISA_RECEIVED','PRE_DEPARTURE','ENROLLED','JOINED','HAPPY_CALL','DEPLOYED')`),
+    "visas-received": n(`select count(distinct h.application_id) from status_history h join status_definitions d on d.id = h.to_status_id where d.code in ('VISA_RECEIVED','PRE_DEPARTURE','ENROLLED','JOINED','HAPPY_CALL','DEPLOYED')`),
     "visas-rejected": n(`select count(distinct h.application_id) from status_history h join status_definitions d on d.id = h.to_status_id where d.code = 'VISA_REJECTED'`),
     "pending-documents": n(`select count(*) from checklist_items c join students s on s.id = c.student_id where not s.archived and c.state in ('ASKED','UPLOADED','IN_REVIEW','REJECTED')`),
     deferrals: n(`select count(*) from applications a join status_definitions d on d.id = a.status_id where d.code = 'DEFERRED'`),

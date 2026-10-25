@@ -9,6 +9,13 @@ type StatusSeed = {
   group: StatusGroup;
   requiresReason?: boolean;
   isMilestone?: boolean;
+  /**
+   * Where it sits in the list. Left out, the seed numbers the list by position
+   * (10, 20, 30). Given, it is used as is: the Ausbildung chain carries its own
+   * numbers so that statuses added after the first release slot in between the
+   * rows a live database already has, without renumbering those rows.
+   */
+  sortOrder?: number;
 };
 
 /** Statuses available at any stage of every pathway. */
@@ -34,16 +41,43 @@ const DEGREE: StatusSeed[] = [
   { code: "ENROLLED", label: "Enrolled", studentLabel: "Enrolled", studentLabelMl: "പ്രവേശനം ലഭിച്ചു", group: "SUCCESS", isMilestone: true },
 ];
 
+/*
+ * The Ausbildung chain follows Medcity's written process: counsellor,
+ * documentation, language and interview preparation, placement, visa, travel
+ * desk. The first nine codes were there from the start and applications point
+ * at them, so they keep their codes and labels; the rest were added so the desk
+ * can record every step the guide names. The numbers are explicit so the new
+ * rows slot between the old ones on a live database (see StatusSeed.sortOrder).
+ * The new rows have no Malayalam yet: the portal falls back to the English.
+ */
 const AUSBILDUNG: StatusSeed[] = [
-  { code: "LANGUAGE_PENDING", label: "German A2 / B1 pending", studentLabel: "Complete your German level", studentLabelMl: "ജർമൻ ഭാഷാ നിലവാരം പൂർത്തിയാക്കുക", group: "NEW" },
-  { code: "PROFILE_CV", label: "German CV and profile in progress", studentLabel: "Preparing your profile", studentLabelMl: "നിങ്ങളുടെ പ്രൊഫൈൽ തയ്യാറാക്കുന്നു", group: "IN_PROGRESS" },
-  { code: "EMPLOYER_MATCHING", label: "Employer matching", studentLabel: "Finding employers", studentLabelMl: "തൊഴിലുടമകളെ കണ്ടെത്തുന്നു", group: "IN_PROGRESS" },
-  { code: "EMPLOYER_INTERVIEW", label: "Employer interview scheduled", studentLabel: "Interview with employer", studentLabelMl: "തൊഴിലുടമയുമായി അഭിമുഖം", group: "IN_PROGRESS", isMilestone: true },
-  { code: "CONTRACT_SIGNED", label: "Training contract signed", studentLabel: "Contract signed", studentLabelMl: "കരാർ ഒപ്പിട്ടു", group: "OFFER", isMilestone: true },
-  { code: "RECOGNITION", label: "Recognition / approval in progress", studentLabel: "Approval in progress", studentLabelMl: "അംഗീകാര നടപടികൾ നടക്കുന്നു", group: "IN_PROGRESS" },
-  { code: "VISA_FILED", label: "Visa filed (VFS)", studentLabel: "Visa applied", studentLabelMl: "വിസയ്ക്ക് അപേക്ഷിച്ചു", group: "IN_PROGRESS", isMilestone: true },
-  { code: "VISA_RECEIVED", label: "Visa received", studentLabel: "Visa approved", studentLabelMl: "വിസ ലഭിച്ചു", group: "SUCCESS", isMilestone: true },
-  { code: "JOINED", label: "Joined employer", studentLabel: "Started training", studentLabelMl: "പരിശീലനം ആരംഭിച്ചു", group: "SUCCESS", isMilestone: true },
+  { code: "LANGUAGE_PENDING", label: "German A2 / B1 pending", studentLabel: "Complete your German level", studentLabelMl: "ജർമൻ ഭാഷാ നിലവാരം പൂർത്തിയാക്കുക", group: "NEW", sortOrder: 10 },
+  // Counsellor: step 3 of the guide.
+  { code: "DOCUMENT_COLLECTION", label: "Document collection by the counsellor", studentLabel: "Send us your documents", group: "NEW", sortOrder: 22 },
+  // Documentation department: steps 4 and 6.
+  { code: "MENTOR_ASSIGNED", label: "Mentor assigned", studentLabel: "Your mentor has been assigned", group: "IN_PROGRESS", isMilestone: true, sortOrder: 24 },
+  { code: "DOCUMENT_PREPARATION", label: "Document preparation and translation", studentLabel: "Preparing and translating your documents", group: "IN_PROGRESS", sortOrder: 26 },
+  { code: "PROFILE_CV", label: "German CV and profile in progress", studentLabel: "Preparing your profile", studentLabelMl: "നിങ്ങളുടെ പ്രൊഫൈൽ തയ്യാറാക്കുന്നു", group: "IN_PROGRESS", sortOrder: 30 },
+  // Student mentor (language specialist): steps 7 and 8.
+  { code: "LANGUAGE_ASSESSMENT", label: "Language assessment and interview preparation", studentLabel: "Language assessment and interview practice", group: "IN_PROGRESS", sortOrder: 33 },
+  { code: "MOCK_INTERVIEW_PASSED", label: "Mock interview passed: ready for employers", studentLabel: "Ready for employer interviews", group: "IN_PROGRESS", isMilestone: true, sortOrder: 36 },
+  // Profile submission to employers: step 9.
+  { code: "EMPLOYER_MATCHING", label: "Employer matching", studentLabel: "Finding employers", studentLabelMl: "തൊഴിലുടമകളെ കണ്ടെത്തുന്നു", group: "IN_PROGRESS", sortOrder: 40 },
+  { code: "PROFILE_SUBMITTED", label: "Profile submitted to German employers", studentLabel: "Your profile is with employers", group: "IN_PROGRESS", isMilestone: true, sortOrder: 43 },
+  { code: "EMPLOYER_SHORTLISTED", label: "Employer shortlisted the candidate", studentLabel: "An employer has shortlisted you", group: "IN_PROGRESS", isMilestone: true, sortOrder: 46 },
+  // Placement team: steps 10 and 11.
+  { code: "EMPLOYER_INTERVIEW", label: "Employer interview scheduled", studentLabel: "Interview with employer", studentLabelMl: "തൊഴിലുടമയുമായി അഭിമുഖം", group: "IN_PROGRESS", isMilestone: true, sortOrder: 50 },
+  { code: "CONTRACT_SIGNED", label: "Training contract signed", studentLabel: "Contract signed", studentLabelMl: "കരാർ ഒപ്പിട്ടു", group: "OFFER", isMilestone: true, sortOrder: 60 },
+  { code: "RECOGNITION", label: "Recognition / approval in progress", studentLabel: "Approval in progress", studentLabelMl: "അംഗീകാര നടപടികൾ നടക്കുന്നു", group: "IN_PROGRESS", sortOrder: 70 },
+  // Visa team: steps 12 to 15.
+  { code: "PRE_VISA_DOCUMENTS", label: "Pre-visa documentation", studentLabel: "Preparing your visa file", group: "IN_PROGRESS", sortOrder: 75 },
+  { code: "VISA_FILED", label: "Visa filed (VFS)", studentLabel: "Visa applied", studentLabelMl: "വിസയ്ക്ക് അപേക്ഷിച്ചു", group: "IN_PROGRESS", isMilestone: true, sortOrder: 80 },
+  { code: "VISA_PROCESSING", label: "Visa processing", studentLabel: "Your visa is being processed", group: "IN_PROGRESS", sortOrder: 85 },
+  { code: "VISA_RECEIVED", label: "Visa received", studentLabel: "Visa approved", studentLabelMl: "വിസ ലഭിച്ചു", group: "SUCCESS", isMilestone: true, sortOrder: 90 },
+  // Travel desk: steps 16 to 19.
+  { code: "PRE_DEPARTURE", label: "Pre-departure process", studentLabel: "Getting you ready to travel", group: "SUCCESS", isMilestone: true, sortOrder: 95 },
+  { code: "JOINED", label: "Joined employer", studentLabel: "Started training", studentLabelMl: "പരിശീലനം ആരംഭിച്ചു", group: "SUCCESS", isMilestone: true, sortOrder: 100 },
+  { code: "HAPPY_CALL", label: "Destination Germany: happy call", studentLabel: "Settled in Germany", group: "SUCCESS", sortOrder: 105 },
 ];
 
 const NURSING: StatusSeed[] = [

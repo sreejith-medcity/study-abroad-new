@@ -48,8 +48,8 @@ function joined() {
     .select({
       total: sql<number>`count(*)::int`,
       offers: sql<number>`(count(*) filter (where ${sd.group} in ('OFFER','SUCCESS')))::int`,
-      visas: sql<number>`(count(*) filter (where ${sd.code} in ('VISA_RECEIVED','ENROLLED','JOINED','DEPLOYED')))::int`,
-      enrolled: sql<number>`(count(*) filter (where ${sd.code} in ('ENROLLED','JOINED','DEPLOYED')))::int`,
+      visas: sql<number>`(count(*) filter (where ${sd.code} in ('VISA_RECEIVED','PRE_DEPARTURE','ENROLLED','JOINED','HAPPY_CALL','DEPLOYED')))::int`,
+      enrolled: sql<number>`(count(*) filter (where ${sd.code} in ('ENROLLED','JOINED','HAPPY_CALL','DEPLOYED')))::int`,
       closed: sql<number>`(count(*) filter (where ${sd.group} = 'CLOSED'))::int`,
       live: sql<number>`(count(*) filter (where ${sd.group} in ('NEW','PENDING_PARTNER','IN_PROGRESS','OFFER')))::int`,
     })
@@ -84,7 +84,7 @@ export async function breakdown(user: SessionUser, f: InsightFilters, dim: Dimen
       label: sql<string>`coalesce(${column}::text, 'Unassigned')`,
       total: sql<number>`count(*)::int`,
       offers: sql<number>`(count(*) filter (where ${sd.group} in ('OFFER','SUCCESS')))::int`,
-      visas: sql<number>`(count(*) filter (where ${sd.code} in ('VISA_RECEIVED','ENROLLED','JOINED','DEPLOYED')))::int`,
+      visas: sql<number>`(count(*) filter (where ${sd.code} in ('VISA_RECEIVED','PRE_DEPARTURE','ENROLLED','JOINED','HAPPY_CALL','DEPLOYED')))::int`,
       closed: sql<number>`(count(*) filter (where ${sd.group} = 'CLOSED'))::int`,
       live: sql<number>`(count(*) filter (where ${sd.group} in ('NEW','PENDING_PARTNER','IN_PROGRESS','OFFER')))::int`,
     })
