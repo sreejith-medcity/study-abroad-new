@@ -184,8 +184,6 @@ const ADMIN_NAV: NavGroup[] = [
       { href: "/targets", label: "Targets", icon: "insights" },
       { href: "/learning", label: "Learning resources", icon: "learning" },
       { href: "/support", label: "Help desk", icon: "support" },
-      // Whether the portal is well: release, database, documents, scheduled jobs.
-      { href: "/admin/system", label: "System", icon: "shield" },
     ],
   },
   {
@@ -193,6 +191,9 @@ const ADMIN_NAV: NavGroup[] = [
     title: "Set up",
     folded: true,
     items: [
+      // Whether the portal is well: release, database, documents, scheduled
+      // jobs. Read after a deploy, not daily, so it sits with the set-up screens.
+      { href: "/admin/system", label: "System", icon: "shield" },
       { href: "/admin/programs", label: "Programs", icon: "programs" },
       { href: "/admin/documents", label: "Documents and rules", icon: "applications" },
       { href: "/admin/statuses", label: "Status flows", icon: "flow" },

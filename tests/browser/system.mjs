@@ -43,8 +43,8 @@ const text = async (page) => { await settle(page); return page.locator("main").i
 {
   const { ctx, page, errors } = await signIn("sreejith@miak.in", "10.60.1.11");
 
-  // It is in the menu.
-  await page.goto(`${BASE}/dashboard`);
+  // It is in the menu, in the Set up group, which is shut unless you are in it.
+  await page.goto(`${BASE}/admin/programs`);
   await settle(page);
   (await page.locator("nav").getByText("System", { exact: true }).count()) > 0 ? ok("System is in the owner's menu") : bad("System is not in the menu");
 
