@@ -395,7 +395,7 @@ const ausbStatusBefore = sql(`select status_id from applications where id = '${a
     await go(page, tabHref);
     check((await page.locator("[data-hand-to-desk]").count()) === 1, "with the paper accepted, the branch head has the hand-over button");
     await page.locator("[data-hand-to-desk]").click();
-    await page.locator('textarea[name="note"]').fill("B1 done, B2 in progress. Wants nursing.");
+    await page.locator('textarea[id^="hand-note-"]').fill("B1 done, B2 in progress. Wants nursing.");
     await page.getByRole("button", { name: "Hand it over" }).click();
     check(await toast(page, /Handed to the documentation desk/), "the branch head is told it is handed over");
     const handed = await wait(`select coalesce(handed_over_by_id, '') || '|' || coalesce(handover_note, '') from applications where id = '${ausbApp}'`, `${headId}|B1 done, B2 in progress. Wants nursing.`);
