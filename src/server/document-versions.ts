@@ -235,7 +235,8 @@ export async function restoreVersion(user: SessionUser, doc: Doc): Promise<{ ok:
  *
  * Removing the file in use hands the document to the newest earlier version
  * still on record, and the documentation list follows it as a new upload to
- * check; with nothing earlier, the list shows the document as missing. Without
+ * check, as does any NCLEX-RN step that pointed at the removed file; with
+ * nothing earlier, the list shows the document as missing. Without
  * this the document vanished from the list with its whole history behind it.
  * The stored files themselves are never deleted here.
  */
@@ -255,7 +256,11 @@ export async function removeDocument(user: SessionUser, doc: Doc) {
     next = plan.next?.id ?? null;
     const relinked = next && doc.typeCode ? await relinkChecklist(tx, doc.studentId, doc.typeCode, (id) => id === doc.id, next, user.id) : false;
     if (!relinked) await tx.update(ci).set({ documentId: null, updatedAt: now }).where(eq(ci.documentId, doc.id));
-    await tx.update(ns).set({ documentId: null }).where(eq(ns.documentId, doc.id));
+    // An NCLEX-RN step pointing at the removed file follows the document to the
+    // version that takes over, as the documentation list does, so the step is
+    // not shown as having no file while the document still has one. With no
+    // version left, the step is unlinked.
+    await tx.update(ns).set({ documentId: next }).where(eq(ns.documentId, doc.id));
     return true;
   });
   if (removed) await audit(user.id, "document.remove", "document", doc.id, { fileName: doc.fileName, typeCode: doc.typeCode, nowCurrent: next });

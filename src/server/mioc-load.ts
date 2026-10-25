@@ -395,6 +395,7 @@ export type MiocContentResult = {
 
 const PROFILE_FIELDS = ["about", "website", "facts"] as const;
 type ProfileField = (typeof PROFILE_FIELDS)[number];
+type GuideField = (typeof GUIDE_FIELDS)[number];
 
 /** Profiles as the browser sent them, checked. The website is read again here rather than taken on the browser's word. */
 function cleanProfile(x: MiocProfile): Omit<MiocProfile, "universityMiocId"> | null {
@@ -511,16 +512,27 @@ export async function loadMiocContent(
     const fill = guideFill({ ...row, faqs: Array.isArray(row.faqs) ? row.faqs : [] }, guides.get(row.code)!, new Set(row.miocFilled));
     const fields = GUIDE_FIELDS.filter((f) => fill[f] !== undefined);
     if (!fields.length) continue;
+    // The blank test is made again in the update itself, so a guide an admin
+    // writes while the import runs is kept. The same test decides what goes
+    // into mioc_filled: every expression in a SET reads the row as it was, so
+    // a field the update kept is not written down as filled, and a later run
+    // may still fill it if it is blank by then.
+    const blank = (f: GuideField) => (f === "faqs" ? sql`jsonb_array_length(faqs) = 0` : sql`(${sql.raw(f)} is null or btrim(${sql.raw(f)}) = '')`);
     const sets = fields.map((f) =>
       f === "faqs"
-        ? sql`faqs = case when jsonb_array_length(faqs) = 0 then ${JSON.stringify(fill.faqs)}::jsonb else faqs end`
-        : sql`${sql.raw(f)} = case when ${sql.raw(f)} is null or btrim(${sql.raw(f)}) = '' then ${fill[f] as string} else ${sql.raw(f)} end`,
+        ? sql`faqs = case when ${blank(f)} then ${JSON.stringify(fill.faqs)}::jsonb else faqs end`
+        : sql`${sql.raw(f)} = case when ${blank(f)} then ${fill[f] as string} else ${sql.raw(f)} end`,
     );
-    await db.execute(sql`
+    const filledNow = fields.map((f) => sql`case when ${blank(f)} then ${f}::text end`);
+    const done = await db.execute<{ miocFilled: string[] }>(sql`
       update countries set ${sql.join(sets, sql`, `)},
-        mioc_filled = array(select distinct unnest(mioc_filled || string_to_array(${fields.join(",")}, ',')) order by 1)
-      where id = ${row.id}`);
-    result.countriesFilled++;
+        mioc_filled = array(select distinct unnest(mioc_filled || array_remove(array[${sql.join(filledNow, sql`, `)}], null)) order by 1)
+      where id = ${row.id}
+      returning mioc_filled as "miocFilled"`);
+    // Counted only when the update filled something, by what the row remembers
+    // now against what it remembered before.
+    const was = new Set(row.miocFilled);
+    if ((done[0]?.miocFilled ?? []).some((f) => !was.has(f))) result.countriesFilled++;
   }
   return result;
 }

@@ -2,8 +2,9 @@ import "server-only";
 import { and, eq, exists, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
+import { roleCan } from "@/lib/capabilities";
 import { APP_ROLES, isDocumentationTeam, isStaff } from "@/lib/permissions";
-import { can } from "@/server/capabilities";
+import { can, overrides } from "@/server/capabilities";
 
 /** What the rules below read about a person: who they are, their role, their organisation. */
 type Viewer = Pick<SessionUser, "id" | "role" | "orgId">;
@@ -212,7 +213,74 @@ export async function whoMayOpenStudent(studentId: string, userIds: string[]): P
     .select({ id: schema.users.id, role: schema.users.role, orgId: schema.users.orgId })
     .from(schema.users)
     .where(inArray(schema.users.id, userIds));
-  const open: string[] = [];
-  for (const person of people) if (await mayOpenStudent(person, student)) open.push(person.id);
-  return open;
+  if (!people.length) return [];
+
+  // The same steps as mayOpenStudent, in the same order, asked of everybody at
+  // once. The handover of an enquiry tells the whole desk, and asking the
+  // five questions above once per officer was dozens of round trips for one
+  // notice. The role questions are answered from one read of the overrides;
+  // the per-person questions are four queries over all of them together.
+  const set = await overrides();
+  const seesEvery = new Map<string, boolean>();
+  for (const p of people) if (!seesEvery.has(p.role)) seesEvery.set(p.role, roleCan(p.role, "SEE_EVERY_STUDENT", set));
+
+  const open = new Set<string>();
+  const undecided: typeof people = [];
+  for (const p of people) {
+    if (!(APP_ROLES as readonly string[]).includes(p.role)) continue;
+    if (!isStaff(p) && student.orgId !== p.orgId) continue;
+    if (seesEvery.get(p.role) || student.createdById === p.id || student.assignedToId === p.id) {
+      open.add(p.id);
+      continue;
+    }
+    undecided.push(p);
+  }
+  if (!undecided.length) return people.filter((p) => open.has(p.id)).map((p) => p.id);
+
+  // Handed to the desk opens the file to every documentation officer, so it is
+  // asked once, and only when one of them is still undecided.
+  if (undecided.some(isDocumentationTeam)) {
+    const handed = await db.query.applications.findFirst({
+      where: and(eq(schema.applications.studentId, student.id), sql`${schema.applications.handedOverAt} is not null`),
+      columns: { id: true },
+    });
+    if (handed) for (const p of undecided) if (isDocumentationTeam(p)) open.add(p.id);
+  }
+  if (student.assignedToId === null) for (const p of undecided) if (!isStaff(p)) open.add(p.id);
+
+  const left = () => undecided.filter((p) => !open.has(p.id)).map((p) => p.id);
+  let ids = left();
+  if (ids.length) {
+    const officers = await db
+      .selectDistinct({ id: schema.applications.officerId })
+      .from(schema.applications)
+      .where(and(eq(schema.applications.studentId, student.id), inArray(schema.applications.officerId, ids)));
+    for (const o of officers) if (o.id) open.add(o.id);
+    ids = left();
+  }
+  if (ids.length) {
+    const checked = await db
+      .select({ claimedById: schema.checklistItems.claimedById, decidedById: schema.checklistItems.decidedById })
+      .from(schema.checklistItems)
+      .where(
+        and(
+          eq(schema.checklistItems.studentId, student.id),
+          or(inArray(schema.checklistItems.claimedById, ids), inArray(schema.checklistItems.decidedById, ids)),
+        ),
+      );
+    const wanted = new Set(ids);
+    for (const c of checked) {
+      if (c.claimedById && wanted.has(c.claimedById)) open.add(c.claimedById);
+      if (c.decidedById && wanted.has(c.decidedById)) open.add(c.decidedById);
+    }
+    ids = left();
+  }
+  if (ids.length) {
+    const onFile = await db
+      .selectDistinct({ id: schema.studentPeople.userId })
+      .from(schema.studentPeople)
+      .where(and(eq(schema.studentPeople.studentId, student.id), inArray(schema.studentPeople.userId, ids)));
+    for (const o of onFile) open.add(o.id);
+  }
+  return people.filter((p) => open.has(p.id)).map((p) => p.id);
 }

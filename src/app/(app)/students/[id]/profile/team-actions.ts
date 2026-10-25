@@ -6,7 +6,6 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { PARTNER_ROLES, STAFF_ROLES, STUDENT_WORK_ROLES, canAssignStudents, isStaff } from "@/lib/permissions";
-import { orgUsers } from "@/server/queries";
 import { getStudentForUser } from "@/server/queries";
 import type { FormState } from "@/lib/form-state";
 
@@ -47,11 +46,18 @@ export async function addPersonToFileAction(_: FormState, fd: FormData): Promise
   if (!person?.active || !(STUDENT_WORK_ROLES as readonly string[]).includes(person.role)) {
     return { error: "That person cannot be put on a student's file." };
   }
-  // A branch may put its own people on its own students and nobody else. The
-  // head office reaches wider, which is the rule the assignment control on
-  // the list has always followed.
+  // A branch may put its own people on its own students and nobody else.
   if (!isStaff(user) && person.orgId !== student.orgId) {
     return { error: "You can only put your own branch's people on a file." };
+  }
+  // The head office reaches wider, but only as far as a file opens: the
+  // student's own branch and the head office itself. Somebody from another
+  // branch cannot open the student (the scope rules check the organisation
+  // first), so putting them on the file names a person who would then be left
+  // out of every notice about it and see "page not found" from the one link
+  // they were sent.
+  if (!isStaff(person) && person.orgId !== student.orgId) {
+    return { error: "Only people from the student's own branch or the head office can be put on this file." };
   }
   const already = await db.query.studentPeople.findFirst({
     where: and(

@@ -263,12 +263,16 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                       </RowAssign>
                       {/* A file belongs to one counsellor; this is everybody
                           else working on it. Item six of the branches' list:
-                          "options to assign to more than 2". */}
+                          "options to assign to more than 2". The head office
+                          is offered this student's own branch and its own
+                          people, the same as the assignment above: somebody
+                          from another branch cannot open the file, so they
+                          are not offered for it. */}
                       <RowPeople
                         studentId={r.id}
                         ownerId={r.assignedToId ?? ""}
                         people={sharedWith.get(r.id) ?? []}
-                        canAdd={staff ? assignable : (branchPeople.get(r.orgId) ?? assignable)}
+                        canAdd={staff ? [...(branchPeople.get(r.orgId) ?? []), ...headOfficePeople] : (branchPeople.get(r.orgId) ?? assignable)}
                         label={`Share ${fullName(r)} with somebody else`}
                       />
                     </Td>
