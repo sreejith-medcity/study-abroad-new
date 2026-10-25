@@ -26,7 +26,7 @@ function flagTitle(flag: ReviewFlag, r: DraftRow, currency: string): string | un
   }
   if (flag === "DUPLICATE" && r.duplicateOf) {
     const d = r.duplicateOf;
-    return `${d.name} (${LEVEL_LABEL[d.level] ?? d.level}, ${durationText(d.durationMonths).toLowerCase()}) is ${d.status === "LIVE" ? "live" : d.status === "DRAFT" ? "a draft" : "archived"} at this university.`;
+    return `${d.name} (${LEVEL_LABEL[d.level] ?? d.level}, ${durationText(d.durationMonths).toLowerCase()}) is ${d.status === "LIVE" ? "live" : "a draft"} at this university.`;
   }
   if (flag === "FEE_IN_WORDS") return "The MIOC app's fee could not be read as a yearly figure, so it was kept in words in the entry notes.";
   if (flag === "ODD_DURATION") return r.durationMonths == null ? "The MIOC app's duration could not be read as months, so it was kept in words in the entry notes." : `${r.durationMonths} months is an unusual length for this level.`;

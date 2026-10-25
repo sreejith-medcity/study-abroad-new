@@ -4,7 +4,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { fmtDate, fullName, istTime } from "@/lib/format";
 import { STUDENT_WORK_ROLES, isStaff } from "@/lib/permissions";
-import { guideHref } from "@/lib/staff-guides";
+import { AUSBILDUNG_GUIDE, guideHref, mayReadGuide } from "@/lib/staff-guides";
 import { NCLEX_STATES } from "@/lib/nclex";
 import { ausbildungContacts, chargingCountries, overTurnaroundCount, trackerChoices, trackerRows, type TrackerRow, type TrackerShow, type TrackerTab } from "@/server/ausbildung";
 import { commissionVisible } from "@/server/commission-visibility";
@@ -61,8 +61,9 @@ export default async function AusbildungTrackerPage({ searchParams }: { searchPa
         title="Placement tracker"
         subtitle="Ausbildung, NCLEX-RN (USA) and every student bound for a service-charge country, with where each one stands."
         actions={
-          tab === "ausbildung" ? (
-            // The staff guide on the written process, in the learning library.
+          tab === "ausbildung" && mayReadGuide(AUSBILDUNG_GUIDE, user.role, isStaff(user)) ? (
+            // The staff guide on the written process, in the learning library,
+            // offered only to the roles the guide is written for.
             <Link href={guideHref("ausbildung-process")} data-how-this-works className="text-sm font-medium text-brand-600 hover:underline">
               How this works
             </Link>

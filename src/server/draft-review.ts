@@ -113,6 +113,9 @@ function flaggedDrafts(unis: SQL, source?: ReviewSource): SQL {
       from here a
       join here b on b.university_id = a.university_id and b.key = a.key and b.id <> a.id
         and (b.level <> a.level or b.duration_months is distinct from a.duration_months)
+        -- An archived course is out of the way: archiving the twin is how the
+        -- desk clears this flag, so it must not keep counting.
+        and b.status <> 'ARCHIVED'
       where a.status = 'DRAFT'
       order by a.id, (b.status = 'LIVE') desc, b.name, b.id
     )

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { fmtDate, istDateTime } from "@/lib/format";
-import { APP_ROLES, isAdmin } from "@/lib/permissions";
+import { APP_ROLES, isAdmin, isStaff } from "@/lib/permissions";
 import {
   AUSBILDUNG_DEPARTMENTS,
   AUSBILDUNG_HANDOVER_ROLES,
@@ -16,7 +16,7 @@ import {
   toIstInput,
   MODULE_STATE_LABEL,
 } from "@/lib/ausbildung";
-import { guideHref } from "@/lib/staff-guides";
+import { AUSBILDUNG_GUIDE, guideHref, mayReadGuide } from "@/lib/staff-guides";
 import { getStudentForUser } from "@/server/queries";
 import { chargingCountries, studentAusbildung } from "@/server/ausbildung";
 import { commissionVisible } from "@/server/commission-visibility";
@@ -92,10 +92,12 @@ export default async function StudentAusbildungPage({ params }: { params: Promis
                     {tat.days} {tat.days === 1 ? "day" : "days"} at this step{tat.step && tat.step.tatDays != null ? `, guide: ${tat.step.tatDays ? tatText(tat.step) : tatText(tat.step).toLowerCase()}` : ""}
                   </Chip>
                 )}
-                {/* The staff guide on the process, in the learning library. */}
-                <Link href={guideHref("ausbildung-process")} data-how-this-works className="text-sm font-medium text-brand-600 hover:underline">
-                  How this works
-                </Link>
+                {/* The staff guide on the process, in the learning library, for the roles it is written for. */}
+                {mayReadGuide(AUSBILDUNG_GUIDE, user.role, isStaff(user)) && (
+                  <Link href={guideHref("ausbildung-process")} data-how-this-works className="text-sm font-medium text-brand-600 hover:underline">
+                    How this works
+                  </Link>
+                )}
               </span>
             }
           />
