@@ -1,6 +1,7 @@
 import "server-only";
 import { and, asc, count, desc, eq, gte, inArray, isNull, lte, lt, notInArray, or, sql, type SQL } from "drizzle-orm";
 import { db, schema } from "@/db";
+import { istDay } from "@/lib/journal";
 import { COUNSELLING_ROLES } from "@/lib/permissions";
 import { getSlaDays } from "./dashboard";
 import { lensApps, lensOrg, lensStudents, type Lens } from "./dashboard-lens";
@@ -158,23 +159,30 @@ export async function officerLoad(lens: Lens) {
   return rows.map((r) => ({ id: r.id, name: r.name ?? "Nobody yet", open: Number(r.open), late: Number(r.late), oldest: Number(r.oldest) }));
 }
 
-/** Monday of this week, as a date with no time. */
-function mondayOf(d = new Date()) {
-  const day = (d.getDay() + 6) % 7;
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate() - day);
+/**
+ * Monday of this week in India, as a date with no time. Read off India's
+ * calendar rather than the server's: on a Sunday night the server abroad is
+ * still in last week while Kottayam is in this one, and the two must agree
+ * with the database, which asks the same question in India time.
+ */
+function mondayOf(today = istDay()) {
+  const d = new Date(`${today}T12:00:00Z`);
+  const day = (d.getUTCDay() + 6) % 7;
+  d.setUTCDate(d.getUTCDate() - day);
+  return d;
 }
-const isoDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 
 /**
  * The milestones falling due this week on open applications, a day at a
  * time, and how many are already past and not done.
  */
 export async function deadlinesThisWeek(lens: Lens, limit = 6) {
-  const monday = mondayOf();
-  const days = Array.from({ length: 7 }, (_, i) => new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i));
+  const today = istDay();
+  const monday = mondayOf(today);
+  const days = Array.from({ length: 7 }, (_, i) => new Date(Date.UTC(monday.getUTCFullYear(), monday.getUTCMonth(), monday.getUTCDate() + i, 12)));
   const from = isoDay(days[0]);
   const to = isoDay(days[6]);
-  const today = isoDay(new Date());
   const open = and(lensApps(lens), isNull(dl.doneAt));
   const [items, [late]] = await Promise.all([
     db
@@ -268,7 +276,7 @@ export async function teamBoard(lens: Lens, limit = 8) {
  * follow-ups of everybody the lens covers.
  */
 export async function followUps(lens: Lens, limit = 6) {
-  const today = isoDay(new Date());
+  const today = istDay();
   const whose = lens.person ? eq(tk.assignedToId, lens.person.id) : lensOrg(lens, tk.orgId);
   const open = and(whose, isNull(tk.doneAt));
   const [[c], rows] = await Promise.all([

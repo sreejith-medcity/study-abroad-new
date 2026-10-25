@@ -163,7 +163,7 @@ const desk = await open("admin@medcityoverseas.test");
   check(funnel[0] === n("select count(*) from students where not archived"), "and starts from everybody registered");
 
   // The deadlines are this week's open ones.
-  const weekDue = n(`select count(*) from application_deadlines where done_at is null and due_on between date_trunc('week', current_date)::date and (date_trunc('week', current_date) + interval '6 days')::date`);
+  const weekDue = n(`select count(*) from application_deadlines where done_at is null and due_on between date_trunc('week', (now() at time zone 'Asia/Kolkata')::date)::date and (date_trunc('week', (now() at time zone 'Asia/Kolkata')::date) + interval '6 days')::date`);
   const weekShown = await page.locator("[data-week] > ul > li a").count();
   check(weekShown === Math.min(6, weekDue), `the week's deadlines are the open ones due this week (${weekShown} of ${weekDue})`);
 

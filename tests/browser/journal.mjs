@@ -297,7 +297,7 @@ sql(`update daily_journals set decided_at = now() - interval '8 minutes' where u
        select 'jr_' || u.id, u.id, '${today}', 'VERIFIED', now(), '[]'::jsonb
        from users u join organizations o on o.id = u.org_id
        where u.active and o.type in ('HQ','BRANCH') and u.role not in ('SUPER_ADMIN','MANAGEMENT','STUDENT','PARENT') and u.id <> '${senior}'
-       on conflict (user_id, day) do nothing`);
+       on conflict (user_id, day) do update set state = 'VERIFIED', decided_at = now() where daily_journals.state is null`);
   check(sql(`select coalesce(report_sent_at::text, '') from journal_days where day = '${today}'`) === "", "the report waits while somebody has not answered");
   const s = await open("senior@medcity.test");
   await go(s.page, "/journal");
