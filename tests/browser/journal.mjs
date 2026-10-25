@@ -1,6 +1,8 @@
 // The day end report: what each of Medcity's own people did that day, issued
 // at the end of the day to view and verify, with the five figures a counsellor
-// types (leads, calls, connected calls, follow-ups, registrations), and a
+// types (leads, calls, connected calls, follow-ups, registrations), each box
+// opening with the portal's own count for the day and saying where it came
+// from, the typed value always winning, and a
 // consolidated report to the Overseas admin that shows who verified, who
 // flagged a problem, who missed it, who signed in after hours, and the figures
 // per counsellor with totals per branch and overall.
@@ -118,11 +120,15 @@ sql(`insert into students (id, org_id, created_by_id, assigned_to_id, portal_tok
 sql(`insert into tasks (id, org_id, student_id, title, due_on, assigned_to_id, created_by_id, done_at, done_by_id)
      values ('jr_k1', '${org}', 'jr_s1', 'Call about the visa', '${today}', '${uk}', '${uk}', ${earlier("1 hour")}, '${uk}')`);
 // Two calls and a WhatsApp logged by the counsellor: the calls box counts
-// calls only, so it should open at 2, not 3.
+// calls only, so it should open at 2, not 3; and only the reached call is a
+// connected call, so that box should open at 1.
 sql(`insert into contact_log (id, org_id, student_id, channel, outcome, by_id, created_at)
      values ('jr_c1', '${org}', 'jr_s1', 'CALL', 'REACHED', '${uk}', ${earlier("90 minutes")}),
             ('jr_c2', '${org}', 'jr_s1', 'CALL', 'NO_ANSWER', '${uk}', ${earlier("80 minutes")}),
             ('jr_c3', '${org}', 'jr_s1', 'WHATSAPP', 'WILL_SEND', '${uk}', ${earlier("70 minutes")})`);
+// One enquiry given to the counsellor today, so leads received opens at 1.
+sql(`insert into enquiries (id, org_id, created_by_id, assigned_to_id, name, phone, created_at)
+     values ('jr_e1', '${org}', '${uk}', '${uk}', 'Journal Enquiry', '9100000779', ${earlier("3 hours")})`);
 const figureValue = (page, scope, key) => page.locator(`${scope} [data-figure="${key}"]`).inputValue();
 const fillFigures = async (page, scope, values) => {
   for (const [key, v] of Object.entries(values)) await page.locator(`${scope} [data-figure="${key}"]`).fill(String(v));
@@ -134,8 +140,11 @@ const storedFigures = (id) =>
 // server does. The seed stamps its rows with the time it ran, so a run on the
 // day of the seed finds more than the rows this suite adds.
 const inToday = (col) => `${col} >= '${today} 00:00:00+05:30'::timestamptz and ${col} < '${today} 00:00:00+05:30'::timestamptz + interval '1 day'`;
+const CONNECTED = "('REACHED','WILL_SEND','WANTS_TIME','NEEDS_COUNSELLING','NOT_INTERESTED')";
 const counted = (id) => ({
+  leads: n(`select count(*) from enquiries where assigned_to_id = '${id}' and ${inToday("created_at")}`),
   calls: n(`select count(*) from contact_log where by_id = '${id}' and channel = 'CALL' and ${inToday("created_at")}`),
+  connected: n(`select count(*) from contact_log where by_id = '${id}' and channel = 'CALL' and outcome in ${CONNECTED} and ${inToday("created_at")}`),
   followUps: n(`select count(*) from tasks where done_by_id = '${id}' and ${inToday("done_at")}`),
   registrations: n(`select count(*) from students where created_by_id = '${id}' and ${inToday("created_at")}`),
 });
@@ -147,7 +156,8 @@ const counted = (id) => ({
   check((await g.page.locator("[data-journal-popup] [data-day-end-figures] [data-figure]").count()) === 5, "a counsellor has the five figure boxes in the popup");
   const gc = counted(germany);
   check((await figureValue(g.page, "[data-journal-popup]", "callsMade")) === String(gc.calls), `with the calls the portal counted for them (${gc.calls})`);
-  check((await figureValue(g.page, "[data-journal-popup]", "leadsReceived")) === "", "and leads received left for them to type");
+  check((await figureValue(g.page, "[data-journal-popup]", "leadsReceived")) === String(gc.leads) && (await figureValue(g.page, "[data-journal-popup]", "connectedCalls")) === String(gc.connected), `and leads received and connected calls counted too (${gc.leads}, ${gc.connected})`);
+  check((await g.page.locator('[data-journal-popup] [data-figure-source="leadsReceived"]').innerText()).trim() === "from the enquiries given to you today", "the popup says where leads received came from");
   const text = await go(g.page, "/journal");
   check(/Read every line below/.test(text), "the report page is open to verify");
   check((await g.page.locator("[data-journal-popup]").count()) === 0, "and does not pop up over itself");
@@ -166,12 +176,13 @@ const counted = (id) => ({
   check((await g.page.locator("[data-journal-tab]").count()) === 1, "Escape minimises it too");
   await g.page.locator("[data-journal-tab]").click();
 
-  // Answered straight from the popup, figures and all.
+  // Answered straight from the popup, figures and all; the two counted boxes
+  // are typed over, and what was typed is what is kept.
   await fillFigures(g.page, "[data-journal-popup]", { leadsReceived: 0, connectedCalls: 0 });
   await g.page.locator("[data-journal-popup] [data-verify]").click();
   await g.page.waitForFunction(() => !document.querySelector("[data-journal-popup]"), null, { timeout: 15000 }).catch(() => {});
   check(sql(`select state from daily_journals where user_id = '${germany}' and day = '${today}'`) === "VERIFIED", "verifying from the popup records it");
-  check(storedFigures(germany) === `0|${gc.calls}|0|${gc.followUps}|${gc.registrations}`, `and keeps the figures given in the popup (${storedFigures(germany)})`);
+  check(storedFigures(germany) === `0|${gc.calls}|0|${gc.followUps}|${gc.registrations}`, `and keeps the figures given in the popup, the typed 0s over the counted leads and connected calls (${storedFigures(germany)})`);
   await go(g.page, "/dashboard");
   check((await g.page.locator("[data-journal-popup], [data-journal-tab]").count()) === 0, "and once answered it is gone for the day");
   check(g.errors.length === 0, `no errors for the counsellor who verified ${g.errors.slice(0, 2).join(" | ")}`);
@@ -198,25 +209,32 @@ sql(`update daily_journals set decided_at = now() - interval '8 minutes' where u
   check((await figureValue(c.page, "main", "callsMade")) === String(uc.calls), `calls made is pre-filled from the calls they logged, not the WhatsApp (${await figureValue(c.page, "main", "callsMade")})`);
   check((await figureValue(c.page, "main", "followUpsDone")) === String(uc.followUps), "follow-ups done from the tasks they completed");
   check((await figureValue(c.page, "main", "registrationsDone")) === String(uc.registrations), "registrations done from the students they registered");
-  check((await figureValue(c.page, "main", "leadsReceived")) === "" && (await figureValue(c.page, "main", "connectedCalls")) === "", "leads received and connected calls start empty");
+  check(uc.connected >= 1 && uc.leads >= 1 && uc.connected < uc.calls, `the reached call and the enquiry are there to count, and the no-answer call is not a connected call (${uc.connected} connected of ${uc.calls}, ${uc.leads} leads)`);
+  check((await figureValue(c.page, "main", "connectedCalls")) === String(uc.connected), `connected calls is pre-filled from the calls logged as reached, not the no-answer call (${await figureValue(c.page, "main", "connectedCalls")}; 1 on a seed older than today)`);
+  check((await figureValue(c.page, "main", "leadsReceived")) === String(uc.leads), `leads received from the enquiries given to them today (${await figureValue(c.page, "main", "leadsReceived")}; 1 on a seed older than today)`);
+  check((await c.page.locator('main [data-figure-source="connectedCalls"]').innerText()).trim() === "from the calls you logged as reached", "and the box says where connected calls came from");
+  check((await c.page.locator('main [data-figure-source="leadsReceived"]').innerText()).trim() === "from the enquiries given to you today", "and where leads received came from");
+  check((await c.page.locator("main [data-day-end-figures] [data-figure-source]").count()) === 5, "every box says where its number came from");
   // Flagging needs a reason.
   await c.page.locator("summary", { hasText: "Something here is wrong" }).click();
   await c.page.locator("[data-flag]").click();
   await c.page.getByText("Say what is wrong").first().waitFor({ timeout: 10000 }).catch(() => {});
   check(sql(`select coalesce(state::text, '') from daily_journals where user_id = '${uk}' and day = '${today}'`) === "", "a flag with no reason is refused");
-  // Verifying needs every figure.
+  // Verifying needs every figure: a pre-filled box cleared by hand is blank.
+  await c.page.locator('main [data-figure="leadsReceived"]').fill("");
   await c.page.locator("[data-verify]").click();
   await c.page.locator('[data-figure-box="leadsReceived"]', { hasText: "whole number" }).waitFor({ timeout: 10000 }).catch(() => {});
-  check((await c.page.locator('[data-figure-box="leadsReceived"]').innerText()).includes("Give a whole number"), "verifying with leads received blank is refused, with the message under that box");
+  check((await c.page.locator('[data-figure-box="leadsReceived"]').innerText()).includes("Give a whole number"), "verifying with leads received cleared is refused, with the message under that box");
   check((await c.page.locator('[data-figure-box="callsMade"]').innerText()).includes("whole number") === false, "and the filled boxes are not complained about");
   check(sql(`select coalesce(state::text, '') from daily_journals where user_id = '${uk}' and day = '${today}'`) === "", "so nothing is recorded yet");
   check((await figureValue(c.page, "main", "callsMade")) === String(uc.calls), "and what was in the boxes is still there");
-  // Calls happen outside the portal too, so the counted figure is changed by hand.
+  // Calls happen outside the portal too, so the counted figures are changed by
+  // hand: the typed value wins over the count in every box.
   await fillFigures(c.page, "main", { leadsReceived: 4, callsMade: uc.calls + 3, connectedCalls: 2 });
   await c.page.locator("[data-verify]").click();
   await c.page.waitForFunction(() => !document.querySelector("[data-verify]"), null, { timeout: 15000 }).catch(() => {});
   check(sql(`select state from daily_journals where user_id = '${uk}' and day = '${today}'`) === "VERIFIED", "verifying after hours is still verifying");
-  check(storedFigures(uk) === `4|${uc.calls + 3}|2|${uc.followUps}|${uc.registrations}`, `the figures are stored with the answer, the edited calls figure included (${storedFigures(uk)})`);
+  check(storedFigures(uk) === `4|${uc.calls + 3}|2|${uc.followUps}|${uc.registrations}`, `the figures are stored with the answer, the typed leads, calls and connected calls winning over the counted ${uc.leads}, ${uc.calls} and ${uc.connected} (${storedFigures(uk)})`);
   // What was verified is kept as it was.
   sql(`insert into students (id, org_id, created_by_id, portal_token, first_name, last_name, phone) values ('jr_s2', '${org}', '${uk}', 'jr_t2', 'Later', 'Student', '9100000778')`);
   await go(c.page, "/journal");
@@ -232,9 +250,10 @@ sql(`update daily_journals set decided_at = now() - interval '8 minutes' where u
   await t.page.locator("summary", { hasText: "Something here is wrong" }).click();
   await t.page.locator("#journal-note").fill("The call at noon was Rohit's, not mine.");
   // A flag needs the figures as much as a verify does.
+  await t.page.locator('main [data-figure="connectedCalls"]').fill("");
   await t.page.locator("[data-flag]").click();
   await t.page.locator('[data-figure-box="connectedCalls"]', { hasText: "whole number" }).waitFor({ timeout: 10000 }).catch(() => {});
-  check(sql(`select coalesce(state::text, '') from daily_journals where user_id = '${trainee}' and day = '${today}'`) === "", "a flag with a reason but blank figures is refused");
+  check(sql(`select coalesce(state::text, '') from daily_journals where user_id = '${trainee}' and day = '${today}'`) === "", "a flag with a reason but a blank figure is refused");
   await fillFigures(t.page, "main", { leadsReceived: 2, connectedCalls: 1 });
   await t.page.locator("[data-flag]").click();
   await t.page.waitForFunction(() => !document.querySelector("[data-flag]"), null, { timeout: 15000 }).catch(() => {});

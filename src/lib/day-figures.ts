@@ -1,4 +1,4 @@
-import { FIGURE_KEYS, prefillFigures, type CountedFigures, type DayEndFigures, type FigureKey } from "./journal";
+import { COUNTED_FIGURES, FIGURE_KEYS, type CountedFigures, type DayEndFigures, type FigureKey } from "./journal";
 
 /*
  * The day's figures as a dashboard reads them: today's five, and the month so
@@ -7,7 +7,8 @@ import { FIGURE_KEYS, prefillFigures, type CountedFigures, type DayEndFigures, t
  *
  * The one rule throughout is that a figure nobody gave is never shown as 0.
  * A count the portal made is a figure, 0 included, because nothing logged is
- * itself an answer; a box only the person can fill stays null until they do.
+ * itself an answer; a figure the count did not deliver stays null until the
+ * person answers.
  */
 
 /** The five figures, each a number or null where nobody has given it. */
@@ -30,12 +31,18 @@ export const nullFigures = (): FigureSet => ({ leadsReceived: null, callsMade: n
 /**
  * One person's figures for today. The answered report wins whenever there is
  * one, because it is what they signed off, edits included. Until then the
- * portal's counts stand in for calls, follow-ups and registrations, and the
- * two figures only they know stay null.
+ * portal's counts stand in, every figure the count delivered, 0 included; a
+ * figure the count did not deliver (null or missing) stays null and reads as
+ * not given yet, rather than being written down as 0.
  */
 export function mergeToday(answered: DayEndFigures | null | undefined, live: CountedFigures | null | undefined): TodayFigures {
   if (answered) return { source: "answered", figures: { ...nullFigures(), ...answered } };
-  return { source: "live", figures: prefillFigures(live ?? {}) };
+  const figures = nullFigures();
+  for (const k of COUNTED_FIGURES) {
+    const v = live?.[k];
+    if (typeof v === "number") figures[k] = v;
+  }
+  return { source: "live", figures };
 }
 
 /**
@@ -79,7 +86,7 @@ export function addMonths(list: MonthFigures[]): MonthFigures {
   return { reports: list.reduce((n, m) => n + m.reports, 0), figures: sumSets(list.map((m) => m.figures)) };
 }
 
-/** The two figures that only arrive with the report, said that way while the report is still to come. */
+/** A figure the portal has not counted, said that way while the report is still to come. */
 export const NOT_GIVEN_YET = "Not given yet";
 /** A figure on an answered report that was never filled, which only an older report can have. */
 export const NOT_GIVEN = "Not given";

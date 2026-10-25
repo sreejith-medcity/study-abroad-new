@@ -164,13 +164,26 @@ export const FIGURE_LABEL: Record<FigureKey, string> = {
 };
 
 /**
- * The figures the portal can count for somebody before they type anything:
- * calls they logged, follow-ups they marked done and students they registered
- * that day. Leads received and connected calls are not in the portal, so
- * those two boxes start empty.
+ * The figures the portal can count for somebody before they type anything,
+ * which is all five: the enquiries given to them, the calls they logged, the
+ * calls they logged as reached, the follow-ups they marked done and the
+ * students they registered, that day. A key the count did not deliver is
+ * null, which the dashboard reads as not given yet; a counted 0 is a figure.
  */
-export const COUNTED_FIGURES = ["callsMade", "followUpsDone", "registrationsDone"] as const satisfies readonly FigureKey[];
-export type CountedFigures = Partial<Pick<DayEndFigures, (typeof COUNTED_FIGURES)[number]>>;
+export const COUNTED_FIGURES = FIGURE_KEYS;
+export type CountedFigures = Partial<DayEndFigures>;
+
+/**
+ * Where each pre-filled figure came from, said under its box so the person
+ * knows what they are correcting. The typed value always wins over the count.
+ */
+export const FIGURE_SOURCE: Record<FigureKey, string> = {
+  leadsReceived: "from the enquiries given to you today",
+  callsMade: "from the calls you logged",
+  connectedCalls: "from the calls you logged as reached",
+  followUpsDone: "from the follow-ups you marked done",
+  registrationsDone: "from the students you registered",
+};
 
 /**
  * Who gives the figures: everybody who counsels, and the branch head, who
@@ -182,10 +195,11 @@ export const givesFigures = (role: string) => (FIGURES_ROLES as readonly string[
 export const emptyFigures = (): DayEndFigures => ({ leadsReceived: null, callsMade: null, connectedCalls: null, followUpsDone: null, registrationsDone: null });
 
 /**
- * What the boxes hold when the report opens: the portal's counts where it has
- * them (a count of nothing is 0, not blank, because nothing logged is itself
- * an answer), and blank where only the person knows. Every box stays
- * editable, because calls happen outside the portal too.
+ * What the boxes hold when the report opens: the portal's counts, with a count
+ * of nothing as 0, not blank, because nothing logged is itself an answer. A
+ * key the count left out opens at 0 for the same reason. Every box stays
+ * editable, because calls happen outside the portal too, and a lead can
+ * arrive by a phone call that was never entered as an enquiry.
  */
 export function prefillFigures(counted: CountedFigures): DayEndFigures {
   const out = emptyFigures();

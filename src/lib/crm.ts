@@ -39,6 +39,15 @@ export const OUTCOME_LABEL: Record<ContactOutcome, string> = {
 };
 
 /**
+ * The outcomes that mean the call was answered and a conversation took place,
+ * whatever came of it: "not interested" is still somebody reached. No answer
+ * and a wrong number reached nobody, and "something else" says too little to
+ * count, so a connected calls figure never counts a call it cannot vouch for.
+ */
+export const CONNECTED_OUTCOMES = ["REACHED", "WILL_SEND", "WANTS_TIME", "NEEDS_COUNSELLING", "NOT_INTERESTED"] as const satisfies readonly ContactOutcome[];
+export const isConnected = (outcome: ContactOutcome) => (CONNECTED_OUTCOMES as readonly string[]).includes(outcome);
+
+/**
  * How many days later the portal suggests looking again, by what came of the
  * call. A suggestion only: the counsellor sets the date, and they know whether
  * this family needs two days or two weeks.

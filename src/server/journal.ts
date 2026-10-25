@@ -32,6 +32,7 @@ import {
   type MonthPerson,
 } from "@/lib/journal";
 import { monthDays } from "@/lib/month";
+import { CONNECTED_OUTCOMES } from "@/lib/crm";
 
 /*
  * The day end report, called the journal throughout the code: what each
@@ -318,23 +319,43 @@ export function kindCounts(entries: JournalEntry[]) {
 }
 
 /**
- * What the portal can count towards somebody's day end figures: calls they
- * logged (the call channel only; a WhatsApp or a visit is not a call),
- * follow-ups they marked done and students they registered, on the day. One
- * query per figure for everybody asked for together.
+ * What the portal can count towards somebody's day end figures, on the day, in
+ * India time: the enquiries given to them, the calls they logged (the call
+ * channel only; a WhatsApp or a visit is not a call), the calls they logged
+ * with an outcome that means the person was reached, the follow-ups they
+ * marked done and the students they registered. Everybody asked for gets all
+ * five, 0 where nothing was found, so a quiet day is counted rather than left
+ * open. Calls made and connected calls are counted from the same rows, so the
+ * second can never be the larger.
+ *
+ * Leads received: enquiries has no record of when an enquiry was given to
+ * somebody, only who holds it now, so the count is the enquiries they hold
+ * that were entered that day. An older enquiry handed to them today is not
+ * counted, and one entered today and handed on is counted for whoever holds
+ * it now; the box stays editable for both.
  */
 export async function countedFigures(day: string, userIds: string[]): Promise<Map<string, CountedFigures>> {
-  const out = new Map<string, CountedFigures>(userIds.map((id) => [id, {}]));
+  const out = new Map<string, CountedFigures>(userIds.map((id) => [id, { leadsReceived: 0, callsMade: 0, connectedCalls: 0, followUpsDone: 0, registrationsDone: 0 }]));
   if (userIds.length === 0) return out;
   const from = istAt(day, "00:00");
   const to = istAt(nextDay(day), "00:00");
   const within = (col: Parameters<typeof gte>[0]) => and(gte(col, from), lt(col, to));
   const count = sql<number>`count(*)::int`;
-  const [calls, done, registered] = await Promise.all([
+  const [leads, calls, connected, done, registered] = await Promise.all([
+    db
+      .select({ who: en.assignedToId, n: count })
+      .from(en)
+      .where(and(inArray(en.assignedToId, userIds), within(en.createdAt)))
+      .groupBy(en.assignedToId),
     db
       .select({ who: cl.byId, n: count })
       .from(cl)
       .where(and(inArray(cl.byId, userIds), eq(cl.channel, "CALL"), within(cl.createdAt)))
+      .groupBy(cl.byId),
+    db
+      .select({ who: cl.byId, n: count })
+      .from(cl)
+      .where(and(inArray(cl.byId, userIds), eq(cl.channel, "CALL"), inArray(cl.outcome, [...CONNECTED_OUTCOMES]), within(cl.createdAt)))
       .groupBy(cl.byId),
     db
       .select({ who: tk.doneById, n: count })
@@ -351,7 +372,9 @@ export async function countedFigures(day: string, userIds: string[]): Promise<Ma
     const f = who ? out.get(who) : undefined;
     if (f) f[key] = n;
   };
+  for (const r of leads) put(r.who, "leadsReceived", r.n);
   for (const r of calls) put(r.who, "callsMade", r.n);
+  for (const r of connected) put(r.who, "connectedCalls", r.n);
   for (const r of done) put(r.who, "followUpsDone", r.n);
   for (const r of registered) put(r.who, "registrationsDone", r.n);
   return out;

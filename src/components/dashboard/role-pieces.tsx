@@ -754,8 +754,9 @@ function figureText(v: number | null, blank: string) {
 /**
  * The five day end figures as tiles: today large, the month so far under it.
  * Today is what the person typed on their report, or until they answer, the
- * portal's own count, with the two figures only they know reading "Not given
- * yet". A month with no answered report reads "Not recorded", never 0.
+ * portal's own count of all five, with any figure the count could not deliver
+ * reading "Not given yet". A month with no answered report reads "Not
+ * recorded", never 0.
  */
 export function DayFigureTiles({ today, month }: { today: { source: TodayFigures["source"]; figures: FigureSet }; month: MonthFigures }) {
   return (

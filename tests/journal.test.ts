@@ -1,11 +1,13 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
 import {
+  COUNTED_FIGURES,
   FIGURE_BLANK,
   FIGURE_KEYS,
   FIGURE_LABEL,
   FIGURE_MAX,
   FIGURE_NOT_WHOLE,
+  FIGURE_SOURCE,
   FIGURE_TOO_BIG,
   FIGURES_ROLES,
   figuresByBranch,
@@ -21,6 +23,8 @@ import {
   type MonthPerson,
 } from "../src/lib/journal";
 import { APP_ROLES, COUNSELLING_ROLES } from "../src/lib/permissions";
+import { CONNECTED_OUTCOMES, isConnected } from "../src/lib/crm";
+import { contactOutcome } from "../src/db/schema";
 
 /* ---------------- Who gives the figures ---------------- */
 
@@ -49,27 +53,77 @@ test("the five keys are in box order and each has a label", () => {
 
 /* ---------------- Pre-fill ---------------- */
 
-test("pre-fill puts the portal's counts in their boxes and leaves the two typed ones blank", () => {
-  assert.deepEqual(prefillFigures({ callsMade: 7, followUpsDone: 2, registrationsDone: 1 }), {
-    leadsReceived: null,
+test("pre-fill puts the portal's counts in all five boxes", () => {
+  assert.deepEqual(prefillFigures({ leadsReceived: 3, callsMade: 7, connectedCalls: 4, followUpsDone: 2, registrationsDone: 1 }), {
+    leadsReceived: 3,
     callsMade: 7,
-    connectedCalls: null,
+    connectedCalls: 4,
     followUpsDone: 2,
     registrationsDone: 1,
   });
 });
 
-test("a day with nothing counted pre-fills 0, not blank, for the counted figures", () => {
-  // Nothing logged is itself an answer; a blank would make them type 0 three
-  // times on a quiet day.
-  assert.deepEqual(prefillFigures({}), { leadsReceived: null, callsMade: 0, connectedCalls: null, followUpsDone: 0, registrationsDone: 0 });
-  assert.deepEqual(prefillFigures({ callsMade: 3 }), { leadsReceived: null, callsMade: 3, connectedCalls: null, followUpsDone: 0, registrationsDone: 0 });
+test("every figure is counted, in box order", () => {
+  assert.deepEqual([...COUNTED_FIGURES], [...FIGURE_KEYS]);
 });
 
-test("pre-fill never fills leads received or connected calls", () => {
-  const f = prefillFigures({ callsMade: 4 });
-  assert.equal(f.leadsReceived, null);
-  assert.equal(f.connectedCalls, null);
+test("a day with nothing counted pre-fills 0, not blank, for every box", () => {
+  // Nothing logged is itself an answer; a blank would make them type 0 five
+  // times on a quiet day.
+  assert.deepEqual(prefillFigures({}), { leadsReceived: 0, callsMade: 0, connectedCalls: 0, followUpsDone: 0, registrationsDone: 0 });
+  assert.deepEqual(prefillFigures({ callsMade: 3 }), { leadsReceived: 0, callsMade: 3, connectedCalls: 0, followUpsDone: 0, registrationsDone: 0 });
+});
+
+test("a count the portal could not make opens at 0 too, never blank", () => {
+  const f = prefillFigures({ callsMade: 4, connectedCalls: null, leadsReceived: null });
+  assert.equal(f.leadsReceived, 0);
+  assert.equal(f.connectedCalls, 0);
+});
+
+test("each box says where its number came from", () => {
+  for (const k of FIGURE_KEYS) assert.match(FIGURE_SOURCE[k], /^from the /, k);
+  assert.equal(FIGURE_SOURCE.connectedCalls, "from the calls you logged as reached");
+  assert.equal(FIGURE_SOURCE.leadsReceived, "from the enquiries given to you today");
+});
+
+/* ---------------- Which calls count as connected ---------------- */
+
+test("a call is connected when somebody answered and spoke, whatever they said", () => {
+  for (const o of ["REACHED", "WILL_SEND", "WANTS_TIME", "NEEDS_COUNSELLING", "NOT_INTERESTED"] as const) assert.ok(isConnected(o), o);
+});
+
+test("no answer, a wrong number and an outcome that says nothing are not connected", () => {
+  for (const o of ["NO_ANSWER", "WRONG_NUMBER", "OTHER"] as const) assert.equal(isConnected(o), false, o);
+});
+
+test("every outcome is decided one way or the other, so a new outcome cannot slip through uncounted", () => {
+  const decided = new Set<string>([...CONNECTED_OUTCOMES, "NO_ANSWER", "WRONG_NUMBER", "OTHER"]);
+  for (const o of contactOutcome.enumValues) assert.ok(decided.has(o), o);
+  assert.equal(decided.size, contactOutcome.enumValues.length);
+});
+
+test("connected calls never exceed calls made when both are counted from the same calls", () => {
+  // The server counts both figures from the same contact_log rows, the second
+  // with the outcome filter on top. Counting a day's calls the same way here
+  // shows the second can only ever be a subset of the first.
+  const calls = [
+    { channel: "CALL", outcome: "REACHED" },
+    { channel: "CALL", outcome: "NO_ANSWER" },
+    { channel: "CALL", outcome: "NOT_INTERESTED" },
+    { channel: "WHATSAPP", outcome: "WILL_SEND" },
+    { channel: "CALL", outcome: "OTHER" },
+  ] as const;
+  const made = calls.filter((c) => c.channel === "CALL");
+  const connected = made.filter((c) => isConnected(c.outcome));
+  const f = prefillFigures({ callsMade: made.length, connectedCalls: connected.length });
+  assert.equal(f.callsMade, 4);
+  assert.equal(f.connectedCalls, 2);
+  assert.ok(f.connectedCalls! <= f.callsMade!);
+  // And for any set of outcomes at all, not just this one.
+  for (const o of contactOutcome.enumValues) {
+    const one = [{ channel: "CALL" as const, outcome: o }];
+    assert.ok(one.filter((c) => isConnected(c.outcome)).length <= one.length, o);
+  }
 });
 
 /* ---------------- Validation ---------------- */

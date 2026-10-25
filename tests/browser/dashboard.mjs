@@ -436,7 +436,7 @@ await coun.ctx.close();
 /* ---------------- The day's figures ---------------- */
 // Today's five figures and the month so far, from the day end reports: a
 // counsellor who answered today sees what they gave, one who has not sees the
-// portal's count with the two typed figures still to come, a branch head sees
+// portal's count of all five (connected calls and leads included), a branch head sees
 // the branch added up and each person's month, and leadership a strip per
 // branch with a report this month.
 {
@@ -456,6 +456,19 @@ await coun.ctx.close();
   const twoDays = yesterday.slice(0, 7) === month;
   if (twoDays) report("df_yesterday", germany, yesterday, { leadsReceived: 3, callsMade: 6, connectedCalls: 2, followUpsDone: 1, registrationsDone: 0 });
   sql(`delete from daily_journals where user_id = '${uk}' and day = '${today}'`);
+  // A reached call, a no-answer call and an enquiry given to the UK counsellor
+  // today, so the live tiles have something to count. "Two hours ago" is kept
+  // inside today in India for a run just after midnight.
+  const earlier = (interval) => `greatest(now() - interval '${interval}', '${today} 00:01:00+05:30'::timestamptz)`;
+  const ukOrg = sql(`select org_id from users where id = '${uk}'`);
+  sql(`insert into students (id, org_id, created_by_id, assigned_to_id, portal_token, first_name, last_name, phone, created_at)
+       values ('df_s1', '${ukOrg}', '${uk}', '${uk}', 'df_t1', 'Figures', 'Student', '9100000771', ${earlier("2 hours")}) on conflict (id) do nothing`);
+  sql(`insert into contact_log (id, org_id, student_id, channel, outcome, by_id, created_at)
+       values ('df_c1', '${ukOrg}', 'df_s1', 'CALL', 'REACHED', '${uk}', ${earlier("90 minutes")}),
+              ('df_c2', '${ukOrg}', 'df_s1', 'CALL', 'NO_ANSWER', '${uk}', ${earlier("80 minutes")}) on conflict (id) do nothing`);
+  sql(`insert into enquiries (id, org_id, created_by_id, assigned_to_id, name, phone, created_at)
+       values ('df_e1', '${ukOrg}', '${uk}', '${uk}', 'Figures Enquiry', '9100000772', ${earlier("3 hours")}) on conflict (id) do nothing`);
+  const CONNECTED = "('REACHED','WILL_SEND','WANTS_TIME','NEEDS_COUNSELLING','NOT_INTERESTED')";
   const monthCalls = twoDays ? "15" : "9";
   const monthLeads = twoDays ? "7" : "4";
   const days = twoDays ? "2" : "1";
@@ -475,16 +488,22 @@ await coun.ctx.close();
   check(g.errors.length === 0, `the figures draw without an error ${g.errors.slice(0, 2).join(" | ")}`);
   await g.ctx.close();
 
-  // A counsellor who has not answered sees the portal's count, and the two
-  // figures only they know are not given yet.
+  // A counsellor who has not answered sees the portal's count of all five,
+  // connected calls from the calls logged as reached and leads from the
+  // enquiries given to them today.
   const u = await open("uk.docs@medcity.test");
   const ukCalls = n(`select count(*) from contact_log where by_id = '${uk}' and channel = 'CALL' and ${inToday("created_at")}`);
+  const ukConnected = n(`select count(*) from contact_log where by_id = '${uk}' and channel = 'CALL' and outcome in ${CONNECTED} and ${inToday("created_at")}`);
+  const ukLeads = n(`select count(*) from enquiries where assigned_to_id = '${uk}' and ${inToday("created_at")}`);
   const ukFollowUps = n(`select count(*) from tasks where done_by_id = '${uk}' and ${inToday("done_at")}`);
   const ukRegs = n(`select count(*) from students where created_by_id = '${uk}' and ${inToday("created_at")}`);
   check((await u.page.locator("[data-day-figures]").getAttribute("data-today-source")) === "live", "without a report, today is counted live");
   check((await todayText(u.page, "callsMade")) === String(ukCalls), `calls made is the calls logged in the portal today (${ukCalls})`);
   check((await todayText(u.page, "followUpsDone")) === String(ukFollowUps) && (await todayText(u.page, "registrationsDone")) === String(ukRegs), `follow-ups done and registrations done likewise (${ukFollowUps}, ${ukRegs})`);
-  check((await todayText(u.page, "leadsReceived")) === "Not given yet" && (await todayText(u.page, "connectedCalls")) === "Not given yet", "leads received and connected calls are not given yet, not 0");
+  check(ukConnected >= 1 && ukConnected < ukCalls && ukLeads >= 1, `the reached call and the enquiry are there to count, and the no-answer call is not connected (${ukConnected} of ${ukCalls}, ${ukLeads} leads)`);
+  check((await todayText(u.page, "connectedCalls")) === String(ukConnected), `connected calls is a live count of the calls logged as reached (${ukConnected})`);
+  check((await todayText(u.page, "leadsReceived")) === String(ukLeads), `leads received is a live count of the enquiries given to them today (${ukLeads})`);
+  check(!(await u.page.locator("[data-day-figures]").innerText()).includes("Not given yet"), "so nothing on the live board is still to come");
   check((await monthText(u.page, "callsMade")) === "Not recorded", "and a month with no answered report is not recorded, not 0");
   check(u.errors.length === 0, `the live figures draw without an error ${u.errors.slice(0, 2).join(" | ")}`);
   await u.ctx.close();
@@ -497,7 +516,10 @@ await coun.ctx.close();
   check((await card.getAttribute("data-answered-today")) === "1" && (await card.getAttribute("data-of-today")) === String(givers), `one of the branch's ${givers} has answered today`);
   const othersCalls = n(`select count(*) from contact_log c join users u on u.id = c.by_id where u.org_id = '${kottayam}' and u.active and u.id <> '${germany}' and u.role in ('PARTNER','COUNSELLOR','SENIOR_COUNSELLOR','TRAINEE_COUNSELLOR','SUB_AGENT_COUNSELLOR','DESK_COUNSELLOR') and c.channel = 'CALL' and ${inToday("c.created_at")}`);
   check((await todayText(b.page, "callsMade")) === String(9 + othersCalls), `today's calls add the report given to the portal's count for the rest (9 + ${othersCalls})`);
-  check((await todayText(b.page, "leadsReceived")) === "4", "today's leads are the one report given so far");
+  const othersLeads = n(`select count(*) from enquiries e join users u on u.id = e.assigned_to_id where u.org_id = '${kottayam}' and u.active and u.id <> '${germany}' and u.role in ('PARTNER','COUNSELLOR','SENIOR_COUNSELLOR','TRAINEE_COUNSELLOR','SUB_AGENT_COUNSELLOR','DESK_COUNSELLOR') and ${inToday("e.created_at")}`);
+  const othersConnected = n(`select count(*) from contact_log c join users u on u.id = c.by_id where u.org_id = '${kottayam}' and u.active and u.id <> '${germany}' and u.role in ('PARTNER','COUNSELLOR','SENIOR_COUNSELLOR','TRAINEE_COUNSELLOR','SUB_AGENT_COUNSELLOR','DESK_COUNSELLOR') and c.channel = 'CALL' and c.outcome in ${CONNECTED} and ${inToday("c.created_at")}`);
+  check((await todayText(b.page, "leadsReceived")) === String(4 + othersLeads), `today's leads add the report given to the enquiries given to the rest (4 + ${othersLeads})`);
+  check((await todayText(b.page, "connectedCalls")) === String(3 + othersConnected), `and connected calls add the report given to the calls the rest logged as reached (3 + ${othersConnected})`);
   check((await card.locator("[data-day-figures-people]").count()) === 1, "with a table of each person's month");
   check((await card.locator("[data-day-figures-row]").count()) === givers, `one row per person who gives figures (${givers})`);
   const gRow = card.locator(`[data-day-figures-row="${germany}"]`);

@@ -24,7 +24,7 @@ export async function DayFiguresCard({ lens, className }: { lens: Lens; classNam
     const answered = f.person.today.source === "answered";
     const subtitle = answered
       ? `Today, ${whenToday}, as given on ${own ? "your" : `${f.person.name}'s`} day end report. The month so far adds up the reports answered.`
-      : `Today, ${whenToday}, counted from the portal so far; leads received and connected calls come with the day end report. The month so far adds up the reports answered.`;
+      : `Today, ${whenToday}, counted from the portal so far (enquiries given, calls logged, calls reached, follow-ups done, students registered) until the day end report is answered. The month so far adds up the reports answered.`;
     return (
       <Card className={className} data-day-figures="person" data-today-source={f.person.today.source}>
         <CardHeader
