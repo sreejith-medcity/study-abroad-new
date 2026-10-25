@@ -13,6 +13,7 @@ import { CountryBars } from "@/components/charts/dashboard-pictures";
 import { FigureStrip, Leaderboard, PipelineColumns, Placements, ProgressList, TaskList, ageText } from "@/components/dashboard/role-pieces";
 import { IconPlus } from "@/components/icons";
 import { TargetsCard } from "./targets-card";
+import { DayFiguresCard } from "./day-figures-card";
 import { Controls, ViewingAsNote, firstName, partOfDay } from "./controls";
 
 /**
@@ -114,6 +115,8 @@ export default async function Pipeline({ lens }: { lens: Lens }) {
         </p>
       )}
       <FigureStrip figures={figures} />
+
+      <DayFiguresCard lens={lens} className="mt-5" />
 
       <TargetsCard lens={lens} className="mt-5" />
 

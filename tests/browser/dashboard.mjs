@@ -433,6 +433,96 @@ const coun = await open(cEmail);
 check(coun.errors.length === 0, `a counsellor's board draws without an error ${coun.errors.slice(0, 2).join(" | ")}`);
 await coun.ctx.close();
 
+/* ---------------- The day's figures ---------------- */
+// Today's five figures and the month so far, from the day end reports: a
+// counsellor who answered today sees what they gave, one who has not sees the
+// portal's count with the two typed figures still to come, a branch head sees
+// the branch added up and each person's month, and leadership a strip per
+// branch with a report this month.
+{
+  const today = sql("select (now() at time zone 'Asia/Kolkata')::date::text");
+  const yesterday = sql(`select ('${today}'::date - 1)::text`);
+  const month = today.slice(0, 7);
+  const germany = sql("select id from users where email = 'germany@medcity.test'");
+  const uk = sql("select id from users where email = 'uk.docs@medcity.test'");
+  const kottayam = sql("select org_id from users where email = 'kottayam@medcity.test'");
+  const report = (id, who, day, figures) =>
+    sql(`insert into daily_journals (id, user_id, day, state, decided_at, entries, figures)
+         values ('${id}', '${who}', '${day}', 'VERIFIED', now(), '[]'::jsonb, '${JSON.stringify(figures)}'::jsonb)
+         on conflict (user_id, day) do update set state = 'VERIFIED', decided_at = now(), figures = excluded.figures`);
+  // The Germany counsellor answered today, and yesterday too when yesterday is
+  // in the same month; the UK counsellor has not answered at all.
+  report("df_today", germany, today, { leadsReceived: 4, callsMade: 9, connectedCalls: 3, followUpsDone: 2, registrationsDone: 1 });
+  const twoDays = yesterday.slice(0, 7) === month;
+  if (twoDays) report("df_yesterday", germany, yesterday, { leadsReceived: 3, callsMade: 6, connectedCalls: 2, followUpsDone: 1, registrationsDone: 0 });
+  sql(`delete from daily_journals where user_id = '${uk}' and day = '${today}'`);
+  const monthCalls = twoDays ? "15" : "9";
+  const monthLeads = twoDays ? "7" : "4";
+  const days = twoDays ? "2" : "1";
+  const inToday = (col) => `${col} >= '${today} 00:00:00+05:30'::timestamptz and ${col} < '${today} 00:00:00+05:30'::timestamptz + interval '1 day'`;
+  const todayText = async (page, key) => (await page.locator(`[data-day-figures] [data-figure-tile="${key}"] [data-today]`).innerText()).trim();
+  const monthText = async (page, key) => (await page.locator(`[data-day-figures] [data-figure-tile="${key}"] [data-month]`).innerText()).trim();
+
+  // A counsellor with an answered report sees what they gave.
+  const g = await open("germany@medcity.test");
+  check((await g.page.locator("[data-day-figures]").count()) === 1, "a counsellor's board has the day's figures");
+  check((await g.page.locator("[data-day-figures] [data-figure-tile]").count()) === 5, "five of them");
+  check((await g.page.locator("[data-day-figures]").getAttribute("data-today-source")) === "answered", "read from today's answered report");
+  check((await todayText(g.page, "leadsReceived")) === "4" && (await todayText(g.page, "callsMade")) === "9", "with the leads and calls given on it, not the portal's count");
+  check((await todayText(g.page, "connectedCalls")) === "3" && (await todayText(g.page, "followUpsDone")) === "2" && (await todayText(g.page, "registrationsDone")) === "1", "and the other three as given");
+  check((await monthText(g.page, "callsMade")) === monthCalls && (await monthText(g.page, "leadsReceived")) === monthLeads, `with the month so far under each (${monthCalls} calls over ${days} ${days === "1" ? "day" : "days"})`);
+  check(!(await g.page.locator("[data-day-figures]").innerText()).includes("Not given yet"), "and nothing still to come");
+  check(g.errors.length === 0, `the figures draw without an error ${g.errors.slice(0, 2).join(" | ")}`);
+  await g.ctx.close();
+
+  // A counsellor who has not answered sees the portal's count, and the two
+  // figures only they know are not given yet.
+  const u = await open("uk.docs@medcity.test");
+  const ukCalls = n(`select count(*) from contact_log where by_id = '${uk}' and channel = 'CALL' and ${inToday("created_at")}`);
+  const ukFollowUps = n(`select count(*) from tasks where done_by_id = '${uk}' and ${inToday("done_at")}`);
+  const ukRegs = n(`select count(*) from students where created_by_id = '${uk}' and ${inToday("created_at")}`);
+  check((await u.page.locator("[data-day-figures]").getAttribute("data-today-source")) === "live", "without a report, today is counted live");
+  check((await todayText(u.page, "callsMade")) === String(ukCalls), `calls made is the calls logged in the portal today (${ukCalls})`);
+  check((await todayText(u.page, "followUpsDone")) === String(ukFollowUps) && (await todayText(u.page, "registrationsDone")) === String(ukRegs), `follow-ups done and registrations done likewise (${ukFollowUps}, ${ukRegs})`);
+  check((await todayText(u.page, "leadsReceived")) === "Not given yet" && (await todayText(u.page, "connectedCalls")) === "Not given yet", "leads received and connected calls are not given yet, not 0");
+  check((await monthText(u.page, "callsMade")) === "Not recorded", "and a month with no answered report is not recorded, not 0");
+  check(u.errors.length === 0, `the live figures draw without an error ${u.errors.slice(0, 2).join(" | ")}`);
+  await u.ctx.close();
+
+  // The branch head sees the branch added up, and each person's month.
+  const b = await open("kottayam@medcity.test");
+  const card = b.page.locator('[data-day-figures="branch"]');
+  check((await card.count()) === 1, "a branch head's board has the branch's figures");
+  const givers = n(`select count(*) from users u join organizations o on o.id = u.org_id where u.org_id = '${kottayam}' and u.active and o.type = 'BRANCH' and u.role in ('PARTNER','COUNSELLOR','SENIOR_COUNSELLOR','TRAINEE_COUNSELLOR','SUB_AGENT_COUNSELLOR','DESK_COUNSELLOR')`);
+  check((await card.getAttribute("data-answered-today")) === "1" && (await card.getAttribute("data-of-today")) === String(givers), `one of the branch's ${givers} has answered today`);
+  const othersCalls = n(`select count(*) from contact_log c join users u on u.id = c.by_id where u.org_id = '${kottayam}' and u.active and u.id <> '${germany}' and u.role in ('PARTNER','COUNSELLOR','SENIOR_COUNSELLOR','TRAINEE_COUNSELLOR','SUB_AGENT_COUNSELLOR','DESK_COUNSELLOR') and c.channel = 'CALL' and ${inToday("c.created_at")}`);
+  check((await todayText(b.page, "callsMade")) === String(9 + othersCalls), `today's calls add the report given to the portal's count for the rest (9 + ${othersCalls})`);
+  check((await todayText(b.page, "leadsReceived")) === "4", "today's leads are the one report given so far");
+  check((await card.locator("[data-day-figures-people]").count()) === 1, "with a table of each person's month");
+  check((await card.locator("[data-day-figures-row]").count()) === givers, `one row per person who gives figures (${givers})`);
+  const gRow = card.locator(`[data-day-figures-row="${germany}"]`);
+  check((await gRow.locator('[data-col="callsMade"]').innerText()).trim() === monthCalls && (await gRow.locator('[data-col="leadsReceived"]').innerText()).trim() === monthLeads, `holding the month's sums for the counsellor who answered (${monthCalls} calls, ${monthLeads} leads)`);
+  check((await gRow.locator('[data-col="days"]').innerText()).trim() === days, `and the days answered (${days})`);
+  const uRow = card.locator(`[data-day-figures-row="${uk}"]`);
+  check((await uRow.locator('[data-col="none"]').innerText()).includes("Not recorded") && (await uRow.locator('[data-col="days"]').innerText()).trim() === "0", "a counsellor with no answered report reads Not recorded across, with 0 days");
+  check((await card.locator(`a[href="/journal/report?month=${month}"]`).count()) >= 1, "and the card opens the month's reports");
+  check(b.errors.length === 0, `the branch's figures draw without an error ${b.errors.slice(0, 2).join(" | ")}`);
+  await b.ctx.close();
+
+  // Leadership reads a strip per branch, only where a report has been answered this month.
+  const l = await open("sreejith@miak.in");
+  const strip = l.page.locator('[data-day-figures="branches"]');
+  check((await strip.count()) === 1, "leadership's summary has the branches' figures for the month");
+  const row = strip.locator(`[data-day-figures-branch="${kottayam}"]`);
+  check((await row.count()) === 1, "with the branch that answered");
+  check((await row.locator('[data-col="callsMade"]').innerText()).trim() === monthCalls && (await row.locator('[data-col="registrationsDone"]').innerText()).trim() === "1", `holding the month's sums (${monthCalls} calls, 1 registration)`);
+  const withReports = n(`select count(distinct u.org_id) from daily_journals d join users u on u.id = d.user_id where d.day >= '${month}-01' and d.figures is not null and u.active`);
+  check((await strip.locator("[data-day-figures-branch]").count()) === withReports, `and only the branches with a report this month (${withReports})`);
+  check((await strip.locator(`a[href="/journal/report?month=${month}"]`).count()) >= 1, "each opening the reports");
+  check(l.errors.length === 0, `the strip draws without an error ${l.errors.slice(0, 2).join(" | ")}`);
+  await l.ctx.close();
+}
+
 await browser.close();
 console.log(fails.length === 0 ? "\nall passed" : `\n${fails.length} failed`);
 process.exit(fails.length === 0 ? 0 : 1);

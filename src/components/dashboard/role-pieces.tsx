@@ -1,6 +1,9 @@
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { cn, Avatar } from "../ui";
+import { groupInr } from "@/lib/format";
+import { FIGURE_KEYS, FIGURE_LABEL } from "@/lib/journal";
+import { NOT_RECORDED, todayBlank, type FigureSet, type MonthFigures, type TodayFigures } from "@/lib/day-figures";
 
 /*
  * The pieces the role dashboards are built from.
@@ -735,6 +738,126 @@ export function TargetRows({ rows, elapsed }: { rows: { id: string; name: string
         <li key={r.id} data-target-row={r.id} className="px-4 py-3">
           <p className="mb-2 text-sm font-semibold text-ink">{r.name}</p>
           <TargetBars progress={r.progress} elapsed={elapsed} compact />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/* ---------------- The day's figures ---------------- */
+
+/** A figure, or what its absence reads as. Written with the shared grouping so the server and the browser agree. */
+function figureText(v: number | null, blank: string) {
+  return v == null ? blank : groupInr(v);
+}
+
+/**
+ * The five day end figures as tiles: today large, the month so far under it.
+ * Today is what the person typed on their report, or until they answer, the
+ * portal's own count, with the two figures only they know reading "Not given
+ * yet". A month with no answered report reads "Not recorded", never 0.
+ */
+export function DayFigureTiles({ today, month }: { today: { source: TodayFigures["source"]; figures: FigureSet }; month: MonthFigures }) {
+  return (
+    <div data-day-figure-tiles className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+      {FIGURE_KEYS.map((k) => {
+        const now = today.figures[k];
+        const sum = month.reports > 0 ? month.figures[k] : null;
+        return (
+          <div key={k} data-figure-tile={k} data-source={today.source} className="min-w-0 rounded-lg border border-line bg-surface-2/60 px-3 py-2.5">
+            <span className="block text-xs font-medium leading-tight text-ink-soft">{FIGURE_LABEL[k]}</span>
+            <span data-today className={cn("mt-1.5 block font-display leading-none tabular", now == null ? "text-sm font-medium text-muted" : cn("text-2xl font-semibold", now === 0 ? "text-muted" : "text-ink"))}>
+              {figureText(now, todayBlank(today.source))}
+            </span>
+            <span className="mt-1.5 block text-2xs text-muted">
+              Month so far: <span data-month className={cn("tabular", sum == null ? "" : "font-semibold text-ink-soft")}>{figureText(sum, NOT_RECORDED)}</span>
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * The branch's people, one row each, with their five figures for the month
+ * and how many days they answered. A row with no answered report reads "Not
+ * recorded" across, rather than a line of noughts.
+ */
+export function DayFigureTable({ rows, empty }: { rows: { id: string; name: string; sub?: string; month: MonthFigures }[]; empty: string }) {
+  if (rows.length === 0) return <p className="px-4 py-8 text-center text-sm text-muted">{empty}</p>;
+  return (
+    <div className="thin-scroll overflow-x-auto">
+      <table className="w-full min-w-[720px] text-sm" data-day-figures-people>
+        <thead>
+          <tr className="border-b border-line text-left text-3xs font-semibold uppercase tracking-wider text-muted">
+            <th className="px-4 py-2.5">Name</th>
+            {FIGURE_KEYS.map((k) => (
+              <th key={k} className="px-2 py-2.5 text-right">
+                {FIGURE_LABEL[k]}
+              </th>
+            ))}
+            <th className="px-2 py-2.5 pr-4 text-right">Days answered</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.id} data-day-figures-row={r.id} className="border-b border-line/70 last:border-0 hover:bg-surface-2">
+              <td className="px-4 py-2.5">
+                <span className="block truncate font-medium text-ink">{r.name}</span>
+                {r.sub && <span className="block truncate text-2xs text-muted">{r.sub}</span>}
+              </td>
+              {r.month.reports === 0 ? (
+                <td colSpan={5} data-col="none" className="px-2 py-2.5 text-right text-muted">
+                  {NOT_RECORDED}
+                </td>
+              ) : (
+                FIGURE_KEYS.map((k) => (
+                  <td key={k} data-col={k} className={cn("px-2 py-2.5 text-right tabular", r.month.figures[k] == null ? "text-muted" : "text-ink")}>
+                    {figureText(r.month.figures[k], NOT_RECORDED)}
+                  </td>
+                ))
+              )}
+              <td data-col="days" className="px-2 py-2.5 pr-4 text-right tabular text-ink-soft">
+                {groupInr(r.month.reports)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/**
+ * Each branch's month so far in one line: the five figures added up over its
+ * counsellors' answered reports, and how many reports that is. Only branches
+ * with a report this month are listed, so the strip never says 0 for a branch
+ * that has simply not started.
+ */
+export function DayFigureBranches({ rows, href }: { rows: { orgId: string; name: string; people: number; month: MonthFigures }[]; href: string }) {
+  return (
+    <ul className="divide-y divide-line">
+      {rows.map((b) => (
+        <li key={b.orgId} data-day-figures-branch={b.orgId} className="px-4 py-3">
+          <Link href={href} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 rounded-md hover:bg-surface-2">
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-semibold text-ink">{b.name}</span>
+              <span className="block text-2xs text-muted">
+                {groupInr(b.month.reports)} {b.month.reports === 1 ? "report" : "reports"} from {groupInr(b.people)} {b.people === 1 ? "person" : "people"}
+              </span>
+            </span>
+            <span className="grid grid-cols-5 gap-x-4 text-right">
+              {FIGURE_KEYS.map((k) => (
+                <span key={k} className="min-w-0">
+                  <span data-col={k} className={cn("block font-display text-lg font-semibold leading-none tabular", b.month.figures[k] == null ? "text-sm text-muted" : "text-ink")}>
+                    {figureText(b.month.figures[k], NOT_RECORDED)}
+                  </span>
+                  <span className="mt-0.5 block text-3xs leading-tight text-muted">{FIGURE_LABEL[k]}</span>
+                </span>
+              ))}
+            </span>
+          </Link>
         </li>
       ))}
     </ul>
