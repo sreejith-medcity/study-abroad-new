@@ -5,8 +5,16 @@
 # database is not published at all.
 #
 # Settings come from deploy/.env beside this file. Make it from env.example.
+# Every variable the app reads is listed under the app service, so a name that
+# is not here is not reaching the portal.
 
 name: portal
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "5"
 
 services:
   db:
@@ -25,11 +33,17 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+    logging: *logging
 
   app:
     build:
       context: ..
       dockerfile: Dockerfile
+      args:
+        # Stamped into the build so What's new and /api/version can say which
+        # commit is running. Set it on the way in:
+        #   APP_COMMIT=$(git rev-parse --short HEAD) docker compose up -d --build
+        APP_COMMIT: ${APP_COMMIT:-}
     restart: unless-stopped
     depends_on:
       db:
@@ -37,14 +51,23 @@ services:
     environment:
       DATABASE_URL: postgres://portal:${POSTGRES_PASSWORD}@db:5432/portal
       AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in deploy/.env}
-      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:?set PUBLIC_BASE_URL in deploy/.env}
       TZ: Asia/Kolkata
+      # Documents live on the uploads volume. The image sets this too; it is
+      # repeated here so the one place to read the settings is this file.
+      UPLOAD_DIR: /data/uploads
+      # Deliberately empty on the VPS: with no Supabase, uploads go to the
+      # volume and are served from it. Set them and the portal would write new
+      # documents back into Supabase Storage.
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+      SUPABASE_STORAGE_BUCKET: ${SUPABASE_STORAGE_BUCKET:-student-documents}
       # Everything the portal talks to. Left empty, each feature simply stays
       # off rather than breaking the app.
       RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
       RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
       RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
-      WHATSAPP_PROVIDER: ${WHATSAPP_PROVIDER:-}
+      WHATSAPP_PROVIDER: ${WHATSAPP_PROVIDER:-console}
       WHATSAPP_TOKEN: ${WHATSAPP_TOKEN:-}
       WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
       WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-}
@@ -52,20 +75,34 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL:-}
       COMMISSION_FX: ${COMMISSION_FX:-}
-      DOC_CODES: ${DOC_CODES:-}
       CRON_SECRET: ${CRON_SECRET:-}
       HEALTH_TOKEN: ${HEALTH_TOKEN:-}
     volumes:
       - uploads:/data/uploads
     ports:
       - "127.0.0.1:${APP_PORT:-3200}:3000"
+    # The same check Caddy and an uptime monitor use. node:22-slim has no curl,
+    # so node asks. /api/health runs one query, so a failing database shows
+    # here as an unhealthy app and compose restarts nothing on its own.
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging: *logging
 
-  # Schema changes, run by hand on a release: docker compose run --rm migrate
+  # Schema changes, run by hand on a release:
+  #   docker compose --profile tools run --rm migrate
+  # It applies only what the database has not recorded in
+  # drizzle.__drizzle_migrations, so running it with nothing to do is harmless.
   migrate:
     build:
       context: ..
       dockerfile: Dockerfile
       target: build
+      args:
+        APP_COMMIT: ${APP_COMMIT:-}
     profiles: ["tools"]
     depends_on:
       db:
@@ -74,8 +111,12 @@ services:
       DATABASE_URL: postgres://portal:${POSTGRES_PASSWORD}@db:5432/portal
     command: ["npx", "drizzle-kit", "migrate"]
 
-  # A dump a night, kept a fortnight. Plain SQL, so it can be read and
-  # restored anywhere without this stack.
+  # A database dump a night at 02:15, kept a fortnight, and a tarball of the
+  # documents every Sunday at 02:45, kept five weeks. Plain SQL and plain tar,
+  # so both can be read and restored anywhere without this stack. The work is
+  # in backup.sh; the loop here only watches the clock.
+  #   docker compose exec backup /backup.sh now        a dump this minute
+  #   docker compose exec backup /backup.sh documents  a documents tarball now
   backup:
     image: postgres:16
     restart: unless-stopped
@@ -87,23 +128,10 @@ services:
       TZ: Asia/Kolkata
     volumes:
       - ./backups:/backups
-    entrypoint:
-      - /bin/sh
-      - -c
-      - |
-        while true; do
-          now=$$(date +%H%M)
-          if [ "$$now" = "0215" ]; then
-            out=/backups/portal-$$(date +%Y-%m-%d).sql.gz
-            pg_dump -h db -U portal -d portal --no-owner --no-acl | gzip > "$$out.part" \
-              && mv "$$out.part" "$$out" \
-              && echo "$$(date -Iseconds) wrote $$out" \
-              || echo "$$(date -Iseconds) the dump failed"
-            find /backups -name 'portal-*.sql.gz' -mtime +14 -delete
-            sleep 90
-          fi
-          sleep 50
-        done
+      - ./backup.sh:/backup.sh:ro
+      - uploads:/uploads:ro
+    entrypoint: ["/bin/bash", "/backup.sh", "loop"]
+    logging: *logging
 
 volumes:
   pgdata:

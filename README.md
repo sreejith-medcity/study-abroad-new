@@ -286,8 +286,11 @@ the panel offers before relying on ten minutes:
 curl -fsS -X POST https://doc.medcityoverseas.com/api/cron/crm -H "Authorization: Bearer YOUR_CRON_SECRET"
 ```
 
-**From the VPS,** once the portal moves there. Either a scheduled task on the
-application in Coolify, or plain `crontab -e`:
+**From the VPS,** once the portal moves there, nothing needs setting up: the
+GitHub workflow calls `https://doc.medcityoverseas.com`, so it follows the DNS,
+and `CRON_SECRET` in `deploy/.env` only has to equal the repository secret
+(`deploy/README.md` has the move). If GitHub is ever not wanted, plain
+`crontab -e` on the box does the same:
 
 ```
 */10 * * * * curl -fsS -X POST https://doc.medcityoverseas.com/api/cron/crm -H "Authorization: Bearer YOUR_CRON_SECRET" >/dev/null
@@ -321,7 +324,7 @@ problems leaves nobody sure the rest was looked at.
 ## Before going live
 
 - Run `npm run db:demo-off` so the seeded `.test` accounts (which all share one password) can no longer sign in.
-- Set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` with a private `student-documents` bucket, so uploads survive a deploy (`src/server/storage.ts` falls back to local disk). Confirm it with `/api/health?probe=storage` signed in as an admin: it writes a file and deletes it again, and reports `probe.write: "ok"`. Either key style works, the legacy `service_role` JWT or a newer `sb_secret_...` secret key.
+- Keep uploads off the app's own disk, so they survive a deploy (`src/server/storage.ts` falls back to local disk). On the VPS that is `UPLOAD_DIR=/data/uploads` on the compose volume, which Go live recognises. On a host that rebuilds the app, set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` with a private `student-documents` bucket. Confirm it with `/api/health?probe=storage` signed in as an admin: it writes a file and deletes it again, and reports `probe.write: "ok"`. Either key style works, the legacy `service_role` JWT or a newer `sb_secret_...` secret key.
 - Set `WHATSAPP_PROVIDER=meta` with approved message templates (free text only works inside the 24-hour window).
 - Email the one-time password to the user instead of showing it to the person doing the reset.
 - Move the sign-in rate limiter from process memory to Redis or the database once more than one instance runs.
@@ -519,10 +522,16 @@ git push origin main --follow-tags
 
 ## Deploying a schema change
 
-The Hostinger build does not touch the database, so a migration is applied on purpose:
+Neither build touches the database, so a migration is applied on purpose. On
+the VPS, from the checkout in `/opt/portal`:
 
 ```bash
-# from your Mac, with DATABASE_URL pointing at Supabase
+docker compose -f deploy/docker-compose.yml --profile tools run --rm migrate
+```
+
+On Hostinger, from your Mac with `DATABASE_URL` pointing at Supabase:
+
+```bash
 npm run db:migrate
 ```
 

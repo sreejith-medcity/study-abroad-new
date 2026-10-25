@@ -3,7 +3,11 @@ node_modules
 .git
 .env
 .env.*
+**/.env
 uploads
 catalogue
 tests
 *.patch
+deploy/backups
+deploy/documents
+deploy/uploads

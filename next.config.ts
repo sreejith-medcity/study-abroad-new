@@ -9,11 +9,15 @@ import { readFileSync } from "node:fs";
  */
 const release = (() => {
   const version = (JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")) as { version: string }).version;
-  let commit = "";
-  try {
-    commit = execSync("git rev-parse --short HEAD", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
-  } catch {
-    // No git where the build runs: the number and the time still say enough.
+  // The Docker build has no git and no .git directory, so the compose file
+  // hands the commit in as a build argument instead. Anywhere else, ask git.
+  let commit = (process.env.APP_COMMIT ?? "").trim();
+  if (!commit) {
+    try {
+      commit = execSync("git rev-parse --short HEAD", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+    } catch {
+      // No git where the build runs: the number and the time still say enough.
+    }
   }
   return { APP_VERSION: version, APP_BUILT_AT: new Date().toISOString(), APP_COMMIT: commit };
 })();

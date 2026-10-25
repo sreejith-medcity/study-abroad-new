@@ -5,6 +5,7 @@ import {
   SEVERITY_LABEL,
   readinessChecks,
   readinessHeadline,
+  storageFacts,
   summarise,
   type Check,
   type ReadinessFacts,
@@ -55,6 +56,7 @@ const ready = (over: Partial<ReadinessFacts> = {}): ReadinessFacts => ({
   demoAccounts: 0,
   whatsappLive: true,
   storageOffDisk: true,
+  storageWhere: "Supabase Storage",
   supportContactSet: true,
   ...over,
 });
@@ -160,4 +162,20 @@ test("the count of what is done adds up to the whole list", () => {
   const s = summarise(checks);
   assert.equal(s.total, checks.length);
   assert.equal(s.needed + s.decide + s.later + s.ready, s.total);
+});
+
+test("storage counts as off the app's disk on Supabase or on a volume outside the app, and not otherwise", () => {
+  assert.deepEqual(storageFacts({ SUPABASE_URL: "https://x.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "k" }, "/app"), {
+    storageOffDisk: true,
+    storageWhere: "Supabase Storage",
+  });
+  assert.deepEqual(storageFacts({ UPLOAD_DIR: "/data/uploads" }, "/app"), { storageOffDisk: true, storageWhere: "A volume at /data/uploads" });
+  assert.equal(storageFacts({ UPLOAD_DIR: "/app/uploads" }, "/app").storageOffDisk, false);
+  assert.equal(storageFacts({ UPLOAD_DIR: "./uploads" }, "/app").storageOffDisk, false);
+  assert.equal(storageFacts({}, "/app").storageOffDisk, false);
+  assert.equal(storageFacts({ SUPABASE_URL: "https://x.supabase.co" }, "/app").storageOffDisk, false);
+  const check = readinessChecks(ready({ storageOffDisk: false, storageWhere: "The app's own disk" })).find((c) => c.key === "storage");
+  assert.equal(check?.ready, false);
+  assert.equal(check?.found, "The app's own disk");
+  assert.match(check?.fix ?? "", /UPLOAD_DIR/);
 });

@@ -4,21 +4,32 @@
 # tested on with real data before any DNS is touched. Both point at the same
 # app; nothing else changes between the test and the move.
 #
-# Add this to /etc/caddy/Caddyfile, then: caddy validate --config
-# /etc/caddy/Caddyfile && systemctl reload caddy
+# Add this to /etc/caddy/Caddyfile, then:
+#   caddy validate --config /etc/caddy/Caddyfile
+#   systemctl reload caddy
 
 doc.medcityoverseas.com, portal-vps.medcityoverseas.com {
 	encode zstd gzip
 
-	# A passport scan is a few megabytes and Caddy's default is generous, but
-	# say it out loud: this is the limit that used to live with somebody else,
-	# refusing uploads with a 500 nobody could read.
+	# The largest things that arrive: a 10 MB document scan, a 15 MB program
+	# import, a 50 MB learning resource. This is the limit that used to live
+	# with somebody else, refusing uploads with a 500 nobody could read. Caddy
+	# answers 413 instead, which the upload form knows how to explain.
 	request_body {
 		max_size 64MB
 	}
 
 	reverse_proxy 127.0.0.1:3200 {
-		# A big upload on a phone line can take a while to arrive.
+		# Caddy asks the app every 30 seconds whether it and its database are
+		# up. While the answer is no, a request gets a quick 503 from Caddy
+		# rather than hanging on a server that is restarting.
+		health_uri /api/health
+		health_interval 30s
+		health_timeout 10s
+		health_status 200
+
+		# A big upload on a phone line can take a while to arrive, and the
+		# monthly CRICOS refresh can take a few minutes to answer.
 		transport http {
 			read_timeout 300s
 			write_timeout 300s

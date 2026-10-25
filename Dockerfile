@@ -14,6 +14,12 @@ FROM node:22-slim AS build
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV BUILD_STANDALONE=1
+# There is no git in this image and .git is not in the build context, so the
+# commit the build is stamped with comes in from outside:
+#   docker build --build-arg APP_COMMIT=$(git rev-parse --short HEAD) .
+# Left empty, next.config.ts falls back to the version number and the time.
+ARG APP_COMMIT=""
+ENV APP_COMMIT=$APP_COMMIT
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build

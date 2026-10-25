@@ -47,3 +47,8 @@ next-env.d.ts
 # committed and the live site answered 500 for every upload.
 /uploads/
 !.env.example
+
+# The VPS kit: dumps, the Supabase copy of the documents, and the build cache
+/deploy/backups/
+/deploy/documents/
+/deploy/__pycache__/

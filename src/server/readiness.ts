@@ -1,7 +1,7 @@
 import "server-only";
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
-import { readinessChecks, summarise, type Check, type ReadinessFacts } from "@/lib/readiness";
+import { readinessChecks, storageFacts, summarise, type Check, type ReadinessFacts } from "@/lib/readiness";
 import { cronStandings } from "@/server/cron-runs";
 import { getSettings } from "@/server/settings";
 
@@ -119,7 +119,7 @@ export async function readinessFacts(): Promise<ReadinessFacts> {
     draftPrograms: n("draft_programs"),
     demoAccounts: n("demo_accounts"),
     whatsappLive: process.env.WHATSAPP_PROVIDER === "meta" && !!process.env.WHATSAPP_TOKEN,
-    storageOffDisk: !!process.env.SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    ...storageFacts(process.env, process.cwd()),
     supportContactSet: !!settings.supportEmail || !!settings.supportPhone,
   };
 }

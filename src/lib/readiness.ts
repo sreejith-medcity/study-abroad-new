@@ -84,8 +84,26 @@ export type ReadinessFacts = {
   demoAccounts: number;
   whatsappLive: boolean;
   storageOffDisk: boolean;
+  /** Where the files are: Supabase Storage, a volume on the server, or the app's own disk. */
+  storageWhere: string;
   supportContactSet: boolean;
 };
+
+/**
+ * Where uploads land. Supabase Storage when its two values are set; otherwise a
+ * volume when UPLOAD_DIR is an absolute path outside the app's own directory,
+ * which is how the VPS runs it; otherwise the app's own disk, which a host that
+ * rebuilds the app on each deploy wipes.
+ */
+export function storageFacts(env: Record<string, string | undefined>, cwd: string): Pick<ReadinessFacts, "storageOffDisk" | "storageWhere"> {
+  if (env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) return { storageOffDisk: true, storageWhere: "Supabase Storage" };
+  const dir = (env.UPLOAD_DIR ?? "").trim().replace(/\/+$/, "");
+  const app = cwd.replace(/\/+$/, "");
+  if (dir.startsWith("/") && dir !== app && !dir.startsWith(app + "/")) {
+    return { storageOffDisk: true, storageWhere: `A volume at ${dir}` };
+  }
+  return { storageOffDisk: false, storageWhere: "The app's own disk" };
+}
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
@@ -387,8 +405,8 @@ export function readinessChecks(f: ReadinessFacts): Check[] {
     severity: "NEEDED",
     what: "Documents are stored off the app's disk",
     ready: f.storageOffDisk,
-    found: f.storageOffDisk ? "Supabase Storage" : "The local disk",
-    fix: f.storageOffDisk ? "" : "The host wipes the disk on each deploy, so every uploaded document would be lost. Set SUPABASE_URL and the service role key.",
+    found: f.storageWhere,
+    fix: f.storageOffDisk ? "" : "A host that rebuilds the app on each deploy wipes this disk, and every uploaded document with it. Point UPLOAD_DIR at a volume outside the app, or set SUPABASE_URL and the service role key.",
   });
   add({
     key: "whatsapp",
