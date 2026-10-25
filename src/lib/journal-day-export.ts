@@ -1,5 +1,5 @@
 import { ROLE_LABEL } from "./permissions";
-import { FIGURE_KEYS, FIGURE_LABEL, STANDING_LABEL, dayText, figuresByBranch, istClock, type DayEndFigures, type FiguresPerson, type JournalPhase, type JournalStanding } from "./journal";
+import { FIGURE_KEYS, FIGURE_LABEL, STANDING_LABEL, dayText, figuresByBranch, istClock, istDay, type DayEndFigures, type FiguresPerson, type JournalPhase, type JournalStanding } from "./journal";
 
 /*
  * The consolidated day end report laid out as rows for a workbook: a cover,
@@ -59,11 +59,13 @@ export function coverRows(r: DayReport, organisation: string, downloadedBy: stri
     ["Organisation", organisation],
     ["Day", r.day],
     ["Where it stands", dayStateText(r)],
-    ["Report sent at", r.sentAt ? new Date(r.sentAt) : null],
+    // Written as India time in words: a bare date cell would show in the
+    // spreadsheet's own format and calendar, which is neither.
+    ["Report sent at", r.sentAt ? `${dayText(istDay(new Date(r.sentAt)))}, ${istClock(r.sentAt)}` : null],
     ["Report sent because", r.reason ? (REASON_TEXT[r.reason] ?? r.reason) : null],
     ["People issued a report", r.people.length],
     ["Downloaded by", downloadedBy],
-    ["Downloaded at", now],
+    ["Downloaded at", `${dayText(istDay(now))}, ${istClock(now)}`],
   ];
 }
 
@@ -99,11 +101,12 @@ export function figuresRows(figures: ReturnType<typeof figuresByBranch>): { rows
   const totalRows: number[] = [];
   for (const b of figures.branches) {
     for (const p of b.people) rows.push([b.name, p.name, ROLE_LABEL[p.role] ?? p.role, ...FIGURE_KEYS.map((k) => figureCell(p.figures, k))]);
-    rows.push([b.name, `${b.name} total`, `${b.given} of ${b.people.length} gave figures`, ...FIGURE_KEYS.map((k) => b.totals[k])]);
+    // A total of nothing given is not a nought: the cells stay empty.
+    rows.push([b.name, `${b.name} total`, `${b.given} of ${b.people.length} gave figures`, ...FIGURE_KEYS.map((k) => (b.given === 0 ? null : b.totals[k]))]);
     totalRows.push(rows.length - 1);
   }
   if (figures.branches.length) {
-    rows.push(["All branches", "Total", `${figures.given} of ${figures.people} gave figures`, ...FIGURE_KEYS.map((k) => figures.totals[k])]);
+    rows.push(["All branches", "Total", `${figures.given} of ${figures.people} gave figures`, ...FIGURE_KEYS.map((k) => (figures.given === 0 ? null : figures.totals[k]))]);
     totalRows.push(rows.length - 1);
   }
   return { rows, totalRows };

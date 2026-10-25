@@ -74,11 +74,11 @@ test("the cover says which day, where it stands, when and why the report went, a
   assert.equal(by.Organisation, "Medcity International Overseas Corporation");
   assert.equal(by.Day, "2026-10-23");
   assert.equal(by["Where it stands"], "Closed. Sent at 7:30 PM");
-  assert.deepEqual(by["Report sent at"], new Date("2026-10-23T14:00:00Z"));
+  assert.equal(by["Report sent at"], "23 Oct 2026, 7:30 PM", "written in India time, in words, so the spreadsheet cannot reformat it");
   assert.equal(by["Report sent because"], REASON_TEXT.CUTOFF);
   assert.equal(by["People issued a report"], 5);
   assert.equal(by["Downloaded by"], "Anita Menon");
-  assert.equal(by["Downloaded at"], now);
+  assert.equal(by["Downloaded at"], "24 Oct 2026, 8:30 AM");
 });
 
 test("a report that went when the last person answered says so; one not sent has no reason", () => {
@@ -130,7 +130,7 @@ test("the figures sheet has a row per counsellor under their branch, a branch to
   const ktm = rows.find((r) => r[1] === "Medcity Kottayam total")!;
   assert.deepEqual(ktm.slice(2), ["2 of 3 gave figures", 6, 18, 3, 2, 1]);
   const kochi = rows.find((r) => r[1] === "Medcity Kochi total")!;
-  assert.deepEqual(kochi.slice(2), ["0 of 1 gave figures", 0, 0, 0, 0, 0], "a branch total is a sum, so a branch with nothing given adds up to 0");
+  assert.deepEqual(kochi.slice(2), ["0 of 1 gave figures", null, null, null, null, null], "a branch where nobody gave figures has no total, not noughts");
   const all = rows[rows.length - 1];
   assert.deepEqual(all, ["All branches", "Total", "2 of 4 gave figures", 6, 18, 3, 2, 1]);
   assert.deepEqual(totalRows, [3, 5, 6], "the total rows are pointed out so the sheet can set them bold");

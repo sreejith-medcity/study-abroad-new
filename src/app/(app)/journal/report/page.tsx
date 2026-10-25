@@ -60,7 +60,7 @@ export default async function JournalReportPage({ searchParams }: { searchParams
   await catchUp();
   if (sp.view === "month" || !readsJournalReport(me.role)) return <MonthFigures user={me} sp={sp} />;
   const today = istDay();
-  const day = sp.day && /^\d{4}-\d{2}-\d{2}$/.test(sp.day) && sp.day <= today ? sp.day : today;
+  const day = sp.day && /^\d{4}-\d{2}-\d{2}$/.test(sp.day) && !Number.isNaN(Date.parse(sp.day)) && sp.day <= today ? sp.day : today;
   const [r, settings] = await Promise.all([consolidated(day), getSettings()]);
   const t = r.totals;
   const dayEnd = clockText(r.clock.dayEnd);

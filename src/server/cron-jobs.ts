@@ -64,7 +64,8 @@ const JOBS: Record<CronJob, JobSpec> = {
   },
 };
 
-export const isCronJob = (value: string): value is CronJob => value in CRON_JOBS;
+// Own keys only: "constructor" is in every object and is not a job.
+export const isCronJob = (value: string): value is CronJob => Object.hasOwn(CRON_JOBS, value);
 
 /** Runs one job and records how it went, whoever asked for it. Never throws. */
 export async function runCronJob(job: CronJob, by: CronRunBy): Promise<CronRunOutcome> {

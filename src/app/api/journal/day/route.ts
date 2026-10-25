@@ -20,7 +20,8 @@ export async function GET(req: Request) {
   if (!readsJournalReport(user.role)) return new Response("Not found", { status: 404 });
   const today = istDay();
   const asked = new URL(req.url).searchParams.get("day");
-  const day = asked && /^\d{4}-\d{2}-\d{2}$/.test(asked) && asked <= today ? asked : today;
+  // A real date, not merely the shape of one: "2025-13-45" would reach the database.
+  const day = asked && /^\d{4}-\d{2}-\d{2}$/.test(asked) && !Number.isNaN(Date.parse(asked)) && asked <= today ? asked : today;
   // The page closes a day past its cutoff on the way in, so the file says the same as the screen.
   await catchUp();
   const [report, settings] = await Promise.all([consolidated(day), getSettings()]);

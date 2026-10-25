@@ -67,7 +67,11 @@ async function databasePart(): Promise<SystemSnapshot["database"]> {
     };
   } catch (e) {
     const err = e as { message?: string; cause?: { message?: string } };
-    return { reachable: false, error: err.cause?.message ?? err.message ?? "unknown error", host, serverVersion: null, sizeBytes: null, counts: null, migrations: null };
+    // The driver's own words can carry the user name or the address; the
+    // page promises neither, so only the kind of failure is said.
+    const raw = err.cause?.message ?? err.message ?? "";
+    const error = /password|authentication/i.test(raw) ? "the database refused the sign-in" : /ECONNREFUSED|ENOTFOUND|timeout|ETIMEDOUT/i.test(raw) ? "the database could not be reached" : "the database answered with an error";
+    return { reachable: false, error, host, serverVersion: null, sizeBytes: null, counts: null, migrations: null };
   }
 }
 
