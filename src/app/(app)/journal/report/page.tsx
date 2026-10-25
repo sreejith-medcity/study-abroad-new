@@ -1,12 +1,29 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Fragment } from "react";
 import { requireUser } from "@/lib/auth";
 import { ROLE_LABEL } from "@/lib/permissions";
-import { FIGURE_KEYS, FIGURE_LABEL, REPORT_ROLES, STANDING_LABEL, clockText, dayText, istClock, istDay, previousDay, nextDay, type JournalStanding } from "@/lib/journal";
+import {
+  FIGURE_KEYS,
+  FIGURE_LABEL,
+  REPORT_ROLES,
+  STANDING_LABEL,
+  clockText,
+  dayText,
+  istClock,
+  istDay,
+  previousDay,
+  nextDay,
+  readsJournalReport,
+  readsMonthFigures,
+  type JournalStanding,
+} from "@/lib/journal";
+import { thisMonth } from "@/lib/month";
 import { catchUp, consolidated } from "@/server/journal";
 import { Card, CardHeader, Chip, LinkButton, PageHeader, cn } from "@/components/ui";
 import { FigureStrip } from "@/components/dashboard/role-pieces";
 import { PrintButton } from "@/components/print-button";
+import { MonthFigures, type MonthParams } from "./month";
 
 export const metadata = { title: "Day end reports" };
 export const dynamic = "force-dynamic";
@@ -30,11 +47,17 @@ const TONE: Record<JournalStanding, "ok" | "warn" | "bad" | "info"> = {
  * answered, then verified after hours, then verified. Anybody who signed in
  * after hours is shown whatever else they did. Under that, the counsellors'
  * figures for the day, by branch, with totals.
+ *
+ * With view=month the same address shows the month of figures instead, which
+ * is also the only view a branch head gets: the day report is the Overseas
+ * admin's, the month of their own branch's figures is theirs.
  */
-export default async function JournalReportPage({ searchParams }: { searchParams: Promise<{ day?: string }> }) {
-  await requireUser([...REPORT_ROLES]);
+export default async function JournalReportPage({ searchParams }: { searchParams: Promise<{ day?: string; view?: string } & MonthParams> }) {
+  const me = await requireUser([...REPORT_ROLES, "PARTNER"]);
+  if (!readsMonthFigures(me.role, me.orgType)) redirect("/forbidden");
   const sp = await searchParams;
   await catchUp();
+  if (sp.view === "month" || !readsJournalReport(me.role)) return <MonthFigures user={me} sp={sp} />;
   const today = istDay();
   const day = sp.day && /^\d{4}-\d{2}-\d{2}$/.test(sp.day) && sp.day <= today ? sp.day : today;
   const r = await consolidated(day);
@@ -58,6 +81,9 @@ export default async function JournalReportPage({ searchParams }: { searchParams
                 Day after
               </LinkButton>
             )}
+            <LinkButton variant="secondary" size="sm" href={`/journal/report?view=month&month=${day.slice(0, 7) <= thisMonth() ? day.slice(0, 7) : thisMonth()}`} data-month-view>
+              Month
+            </LinkButton>
             <PrintButton />
           </div>
         }

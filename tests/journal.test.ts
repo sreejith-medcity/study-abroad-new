@@ -11,10 +11,14 @@ import {
   figuresByBranch,
   givesFigures,
   journalIssued,
+  monthFiguresByBranch,
+  monthScopeFor,
   parseFigures,
   prefillFigures,
+  readsMonthFigures,
   sumFigures,
   type DayEndFigures,
+  type MonthPerson,
 } from "../src/lib/journal";
 import { APP_ROLES, COUNSELLING_ROLES } from "../src/lib/permissions";
 
@@ -166,4 +170,61 @@ test("a branch whose counsellors all gave nothing still has a row of zeros, not 
   assert.equal(r.branches.length, 1);
   assert.deepEqual(r.branches[0].totals, { leadsReceived: 0, callsMade: 0, connectedCalls: 0, followUpsDone: 0, registrationsDone: 0 });
   assert.equal(r.branches[0].given, 0);
+});
+
+/* ---------------- A month of figures ---------------- */
+
+const month = (id: string, orgId: string, branch: string, answered: number, missed: number, n: number): MonthPerson => ({
+  id,
+  name: id,
+  role: "COUNSELLOR",
+  orgId,
+  branch,
+  answered,
+  missed,
+  figures: { leadsReceived: n, callsMade: n * 10, connectedCalls: n * 2, followUpsDone: n, registrationsDone: 1 },
+});
+
+test("a month groups the counsellors by branch and stacks the sums, the days answered and the days missed", () => {
+  const r = monthFiguresByBranch([
+    month("sneha", "hq", "Medcity International", 20, 2, 5),
+    month("uk", "kot", "Medcity Kottayam", 22, 0, 40),
+    month("germany", "kot", "Medcity Kottayam", 18, 4, 10),
+    month("head", "kot", "Medcity Kottayam", 0, 0, 0),
+  ]);
+  assert.deepEqual(r.branches.map((b) => b.orgId), ["hq", "kot"], "branches in the order the database sends people");
+  assert.deepEqual(r.branches[1].people.map((p) => p.id), ["uk", "germany", "head"], "people kept in the order they arrive, already sorted by name in the query");
+  assert.deepEqual(r.branches[1].totals, { leadsReceived: 50, callsMade: 500, connectedCalls: 100, followUpsDone: 50, registrationsDone: 3 });
+  assert.equal(r.branches[1].answered, 40);
+  assert.equal(r.branches[1].missed, 4);
+  assert.deepEqual(r.totals, { leadsReceived: 55, callsMade: 550, connectedCalls: 110, followUpsDone: 55, registrationsDone: 4 });
+  assert.equal(r.answered, 60);
+  assert.equal(r.missed, 6);
+  assert.equal(r.people, 4);
+});
+
+test("a month with nobody in it has no branches and totals of zero", () => {
+  const r = monthFiguresByBranch([]);
+  assert.deepEqual(r.branches, []);
+  assert.deepEqual(r.totals, { leadsReceived: 0, callsMade: 0, connectedCalls: 0, followUpsDone: 0, registrationsDone: 0 });
+  assert.equal(r.answered, 0);
+  assert.equal(r.missed, 0);
+});
+
+test("the report's readers and a Medcity branch head read the month of figures; a sub-agent's owner and a counsellor do not", () => {
+  assert.ok(readsMonthFigures("ADMIN", "HQ"));
+  assert.ok(readsMonthFigures("MANAGEMENT", "HQ"));
+  assert.ok(readsMonthFigures("PARTNER", "BRANCH"));
+  assert.equal(readsMonthFigures("PARTNER", "SUB_AGENT"), false);
+  assert.equal(readsMonthFigures("COUNSELLOR", "BRANCH"), false);
+  assert.equal(readsMonthFigures("DOCUMENTATION", "HQ"), false);
+});
+
+test("the month's scope: every branch or the one picked for the report's readers, their own and only their own for a branch head", () => {
+  assert.deepEqual(monthScopeFor({ role: "ADMIN", orgId: "hq", orgType: "HQ" }), { every: true, orgIds: null, org: null });
+  assert.deepEqual(monthScopeFor({ role: "ADMIN", orgId: "hq", orgType: "HQ" }, "kot"), { every: true, orgIds: ["kot"], org: "kot" });
+  // The address asks for another branch; the branch head still gets theirs.
+  assert.deepEqual(monthScopeFor({ role: "PARTNER", orgId: "kot", orgType: "BRANCH" }, "koc"), { every: false, orgIds: ["kot"], org: "kot" });
+  assert.equal(monthScopeFor({ role: "COUNSELLOR", orgId: "kot", orgType: "BRANCH" }), null);
+  assert.equal(monthScopeFor({ role: "PARTNER", orgId: "hor", orgType: "SUB_AGENT" }), null);
 });

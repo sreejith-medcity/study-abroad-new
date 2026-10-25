@@ -122,6 +122,28 @@ export function journalIssued(role: string, orgType: string) {
 export const REPORT_ROLES = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "MANAGEMENT"] as const;
 export const readsJournalReport = (role: string) => (REPORT_ROLES as readonly string[]).includes(role);
 
+/**
+ * Who reads the month of figures: the report's readers for every branch, and
+ * a branch head for their own branch. A sub-agent's owner has the role but no
+ * day end reports to read, so they are not let in.
+ */
+export const readsMonthFigures = (role: string, orgType: string) => readsJournalReport(role) || (role === "PARTNER" && journalIssued(role, orgType));
+/** Whether this reader sees every branch, or only their own. */
+export const readsEveryBranch = (role: string) => readsJournalReport(role);
+
+/**
+ * Which branches a reader's month of figures covers: every branch, or the one
+ * they picked, for the report's readers; their own and nothing else for a
+ * branch head, whatever the address asks for. Null when the role may not read
+ * it at all. orgIds null means no filter.
+ */
+export type MonthScope = { every: boolean; orgIds: string[] | null; org: string | null };
+export function monthScopeFor(user: { role: string; orgId: string; orgType: string }, requestedOrg?: string | null): MonthScope | null {
+  if (!readsMonthFigures(user.role, user.orgType)) return null;
+  if (readsEveryBranch(user.role)) return { every: true, orgIds: requestedOrg ? [requestedOrg] : null, org: requestedOrg ?? null };
+  return { every: false, orgIds: [user.orgId], org: user.orgId };
+}
+
 /* ---------------- The day end figures ---------------- */
 
 /**
@@ -244,4 +266,40 @@ export function figuresByBranch(people: FiguresPerson[]) {
   }
   const all = branches.flatMap((b) => b.people);
   return { branches, totals: sumFigures(all.map((p) => p.figures)), people: all.length, given: all.filter((p) => p.figures).length };
+}
+
+/* ---------------- A month of figures ---------------- */
+
+/** One counsellor's month: the five figures added up over the days they answered, and how many days they answered or missed. */
+export type MonthPerson = { id: string; name: string; role: string; orgId: string; branch: string; answered: number; missed: number; figures: Record<FigureKey, number> };
+
+/** The states a report is answered in. Only these carry figures; a missed day has none. */
+export const ANSWERED_STATES = ["VERIFIED", "FLAGGED"] as const;
+
+/**
+ * The month's counsellors grouped by branch in the order they arrive, each
+ * branch with its figures, days answered and days missed added up, and all
+ * of them with one more. The sums per person come from the database already
+ * added up over the month; this only stacks them.
+ */
+export function monthFiguresByBranch(people: MonthPerson[]) {
+  const branches: { orgId: string; name: string; people: MonthPerson[]; totals: Record<FigureKey, number>; answered: number; missed: number }[] = [];
+  for (const p of people) {
+    let b = branches.find((x) => x.orgId === p.orgId);
+    if (!b) {
+      b = { orgId: p.orgId, name: p.branch, people: [], totals: sumFigures([]), answered: 0, missed: 0 };
+      branches.push(b);
+    }
+    b.people.push(p);
+    for (const k of FIGURE_KEYS) b.totals[k] += p.figures[k];
+    b.answered += p.answered;
+    b.missed += p.missed;
+  }
+  return {
+    branches,
+    totals: sumFigures(people.map((p) => p.figures)),
+    answered: people.reduce((n, p) => n + p.answered, 0),
+    missed: people.reduce((n, p) => n + p.missed, 0),
+    people: people.length,
+  };
 }

@@ -1,11 +1,14 @@
 import "server-only";
 import { cache } from "react";
-import { and, asc, eq, gte, inArray, isNotNull, isNull, lt, notInArray, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNotNull, isNull, lt, notInArray, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { getSettings } from "./settings";
 import { notifyUsers } from "./notify";
 import {
+  ANSWERED_STATES,
+  FIGURE_KEYS,
+  FIGURES_ROLES,
   KIND_LABEL,
   NOT_ISSUED,
   dayText,
@@ -26,7 +29,9 @@ import {
   type JournalClock,
   type JournalPhase,
   type JournalStanding,
+  type MonthPerson,
 } from "@/lib/journal";
+import { monthDays } from "@/lib/month";
 
 /*
  * The day end report, called the journal throughout the code: what each
@@ -171,6 +176,8 @@ const SAYS: Record<string, string> = {
   "nclex.step": "Recorded an NCLEX-RN step",
   "nclex.result": "Recorded an NCLEX-RN result",
   "user.password_change": "Changed their password",
+  "dashboard.export": "Downloaded a dashboard as Excel",
+  "journal.export": "Downloaded a month of day end figures as Excel",
 };
 const say = (action: string) => SAYS[action] ?? action.replace(/[._]/g, " ").replace(/^\w/, (c) => c.toUpperCase());
 
@@ -509,6 +516,113 @@ export async function consolidated(day: string, now: Date = new Date()) {
       outOfHours: people.filter((p) => p.lateSignIns.length > 0).length,
     },
   };
+}
+
+/* ---------------- A month of figures ---------------- */
+
+/** The branches whose people are issued day end reports: the head office and the Medcity branches. */
+export async function journalBranches() {
+  return db
+    .select({ id: og.id, name: og.name, type: og.type })
+    .from(og)
+    .where(and(inArray(og.type, ["HQ", "BRANCH"]), eq(og.active, true)))
+    .orderBy(asc(og.type), asc(og.name));
+}
+
+/**
+ * Every counsellor's month in one row each: the five figures added up over the
+ * reports they answered (verified or flagged; a missed day carries none), the
+ * days answered and the days missed. The adding up is done in the database,
+ * grouped by person, so a month of reports is one query, not a row per day.
+ *
+ * Who is listed: the roles that give figures, at the head office and the
+ * branches, in the branches asked for (every branch when none is named).
+ * Somebody who has since left the branch stays on the list for a month they
+ * answered in, because their figures are in the branch's total.
+ *
+ * A day is missed when the cutoff wrote it as missed, which is how a day
+ * closes. A day with no row at all (before somebody joined, a Sunday, a day
+ * still open) is neither answered nor missed.
+ */
+export async function monthFigures(month: string, orgIds: string[] | null): Promise<MonthPerson[]> {
+  if (orgIds && orgIds.length === 0) return [];
+  const { first, next } = monthDays(month);
+  const answered = sql`${dj.state} in (${sql.join(ANSWERED_STATES.map((st) => sql`${st}`), sql`, `)})`;
+  // The key is one of the five constants, written into the SQL as a literal so
+  // Postgres reads it as the text form of ->> without being asked to guess.
+  const summed = (key: FigureKey) => sql<number>`coalesce(sum((${dj.figures}->>${sql.raw(`'${key}'`)})::int) filter (where ${answered}), 0)::int`;
+  const agg = db
+    .select({
+      userId: dj.userId,
+      answered: sql<number>`(count(*) filter (where ${answered}))::int`.as("answered"),
+      missed: sql<number>`(count(*) filter (where ${dj.state} = 'MISSED'))::int`.as("missed"),
+      leadsReceived: summed("leadsReceived").as("leads_received"),
+      callsMade: summed("callsMade").as("calls_made"),
+      connectedCalls: summed("connectedCalls").as("connected_calls"),
+      followUpsDone: summed("followUpsDone").as("follow_ups_done"),
+      registrationsDone: summed("registrationsDone").as("registrations_done"),
+    })
+    .from(dj)
+    .where(and(gte(dj.day, first), lt(dj.day, next)))
+    .groupBy(dj.userId)
+    .as("agg");
+  const rows = await db
+    .select({
+      id: us.id,
+      name: us.name,
+      role: us.role,
+      orgId: og.id,
+      branch: og.name,
+      answered: sql<number>`coalesce(${agg.answered}, 0)::int`,
+      missed: sql<number>`coalesce(${agg.missed}, 0)::int`,
+      leadsReceived: sql<number>`coalesce(${agg.leadsReceived}, 0)::int`,
+      callsMade: sql<number>`coalesce(${agg.callsMade}, 0)::int`,
+      connectedCalls: sql<number>`coalesce(${agg.connectedCalls}, 0)::int`,
+      followUpsDone: sql<number>`coalesce(${agg.followUpsDone}, 0)::int`,
+      registrationsDone: sql<number>`coalesce(${agg.registrationsDone}, 0)::int`,
+    })
+    .from(us)
+    .innerJoin(og, eq(us.orgId, og.id))
+    .leftJoin(agg, eq(agg.userId, us.id))
+    .where(
+      and(
+        inArray(us.role, [...FIGURES_ROLES]),
+        inArray(og.type, ["HQ", "BRANCH"]),
+        orgIds ? inArray(og.id, orgIds) : undefined,
+        or(eq(us.active, true), isNotNull(agg.userId)),
+      ),
+    )
+    .orderBy(asc(og.type), asc(og.name), asc(us.name));
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    role: r.role,
+    orgId: r.orgId,
+    branch: r.branch,
+    answered: Number(r.answered),
+    missed: Number(r.missed),
+    figures: Object.fromEntries(FIGURE_KEYS.map((k) => [k, Number(r[k])])) as Record<(typeof FIGURE_KEYS)[number], number>,
+  }));
+}
+
+/** One person's month, day by day: what they gave and how the day stands. Only the days that have a report row. */
+export async function monthDayList(userId: string, month: string) {
+  const clock = await journalClock();
+  const now = new Date();
+  const { first, next } = monthDays(month);
+  const rows = await db
+    .select({ day: dj.day, state: dj.state, decidedAt: dj.decidedAt, note: dj.note, figures: dj.figures })
+    .from(dj)
+    .where(and(eq(dj.userId, userId), gte(dj.day, first), lt(dj.day, next)))
+    .orderBy(asc(dj.day));
+  return rows.map((r) => ({
+    day: r.day,
+    standing: standing(r, journalPhase(r.day, clock, now), istAt(r.day, clock.outOfHours)),
+    decidedAt: r.decidedAt,
+    note: r.note,
+    // The figures count only once the day was answered; a day written as missed has none to show.
+    figures: r.state && (ANSWERED_STATES as readonly string[]).includes(r.state) ? (r.figures ?? null) : null,
+  }));
 }
 
 /** Make sure the day has its row, so the two "once only" stamps have somewhere to go. */

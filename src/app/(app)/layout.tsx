@@ -393,8 +393,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       items: [
         // The day end report, for everybody who is issued one.
         ...(journalIssued(user.role, user.orgType) ? [{ href: "/journal", label: "Day end report", icon: "deadlines" as const }] : []),
-        // A branch head sets their people's monthly targets.
+        // A branch head sets their people's monthly targets, and reads the
+        // month of their own branch's day end figures.
         ...(user.role === "PARTNER" ? [{ href: "/targets", label: "Targets", icon: "insights" as const }] : []),
+        ...(user.role === "PARTNER" && journalIssued(user.role, user.orgType) ? [{ href: "/journal/report", label: "Day end figures", icon: "deadlines" as const }] : []),
         { href: "/settings", label: "Settings", icon: "settings" },
       ],
     },

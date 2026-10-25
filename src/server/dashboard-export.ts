@@ -11,6 +11,7 @@ import { deadlinesThisWeek, documentBoard, documentFigures, documentsToCome, fol
 import { moneyFigures } from "./dashboard-money";
 import { deskStanding } from "./documentation";
 import { PERIODS, type Lens } from "./dashboard-lens";
+import { RUPEES, sheet, type Row } from "./workbook";
 
 /*
  * A dashboard as a workbook, for a meeting or a report.
@@ -23,28 +24,8 @@ import { PERIODS, type Lens } from "./dashboard-lens";
  *
  * Money is written as numbers in rupees with a rupee format, so a column can
  * be summed; nothing is converted that was not already converted on screen.
+ * The sheet styling itself is in workbook.ts, shared with the other exports.
  */
-
-const RUPEES = '"₹"#,##0';
-const BRAND = "FFC01F53";
-
-type Row = (string | number | Date | null | undefined)[];
-
-function sheet(wb: ExcelJS.Workbook, name: string, head: string[], rows: Row[], widths?: number[], money: number[] = []) {
-  const ws = wb.addWorksheet(name.slice(0, 31), { views: [{ state: "frozen", ySplit: 1 }] });
-  ws.addRow(head);
-  const top = ws.getRow(1);
-  top.font = { bold: true, color: { argb: "FFFFFFFF" } };
-  top.fill = { type: "pattern", pattern: "solid", fgColor: { argb: BRAND } };
-  for (const r of rows) ws.addRow(r.map((v) => (v === undefined ? null : v)));
-  head.forEach((h, i) => {
-    const col = ws.getColumn(i + 1);
-    col.width = widths?.[i] ?? Math.min(48, Math.max(12, h.length + 4));
-    if (money.includes(i)) col.numFmt = RUPEES;
-  });
-  if (rows.length === 0) ws.addRow(["Nothing to list"]);
-  return ws;
-}
 
 export async function dashboardWorkbook(lens: Lens) {
   const wb = new ExcelJS.Workbook();

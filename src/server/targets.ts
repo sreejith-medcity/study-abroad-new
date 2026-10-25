@@ -3,7 +3,7 @@ import { and, asc, count, eq, gte, inArray, lt, min, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { ADMIN_ROLES, COUNSELLING_ROLES } from "@/lib/permissions";
-import { istDay } from "@/lib/journal";
+import { monthBounds, shiftMonth, thisMonth } from "@/lib/month";
 import type { Lens } from "./dashboard-lens";
 
 const { targets: tg, students: s, applications: a, statusHistory: sh, statusDefinitions: sd, users: us, organizations: og } = schema;
@@ -27,21 +27,14 @@ export type Metric = (typeof METRICS)[number]["key"];
 export type Numbers = Record<Metric, number>;
 const zero = (): Numbers => ({ REGISTRATIONS: 0, APPLICATIONS: 0, VISAS: 0 });
 
-/** This month as YYYY-MM in India time. */
-export const thisMonth = (now = new Date()) => istDay(now).slice(0, 7);
-export const isMonth = (v: string | undefined): v is string => !!v && /^\d{4}-(0[1-9]|1[0-2])$/.test(v);
-export function shiftMonth(month: string, by: number) {
-  const [y, m] = month.split("-").map(Number);
-  const d = new Date(Date.UTC(y, m - 1 + by, 1));
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
-}
-export function monthText(month: string) {
-  return new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${month}-01T12:00:00Z`));
-}
+/*
+ * The month helpers live in src/lib/month.ts so the day end figures and the
+ * suites can share them; they are re-exported here for the screens that
+ * already import them from the targets.
+ */
+export { isMonth, monthText, shiftMonth, thisMonth } from "@/lib/month";
 /** The month's first and last instants, in India time. */
-function bounds(month: string) {
-  return { from: new Date(`${month}-01T00:00:00+05:30`), to: new Date(`${shiftMonth(month, 1)}-01T00:00:00+05:30`) };
-}
+const bounds = monthBounds;
 
 const VISA = ["VISA_RECEIVED", "PRE_DEPARTURE", "ENROLLED", "JOINED", "HAPPY_CALL", "DEPLOYED"];
 
