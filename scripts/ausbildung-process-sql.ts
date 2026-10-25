@@ -78,7 +78,10 @@ STAGE_REQUIREMENTS.forEach((r, i) => {
     q(r.guidance ?? null),
     (i + 1) * 10,
   ].join(", ");
-  const guard = `NOT EXISTS (SELECT 1 FROM document_requirements d WHERE d.type_code = ${q(r.typeCode)} AND d.source = ${q(source)} AND d.pathway = 'AUSBILDUNG'${r.country ? " AND d.country_id = c.id" : ""})`;
+  // Also guarded on the type existing: a database missing one base type would
+  // otherwise fail the foreign key and, in the Supabase editor, roll back the
+  // whole file.
+  const guard = `NOT EXISTS (SELECT 1 FROM document_requirements d WHERE d.type_code = ${q(r.typeCode)} AND d.source = ${q(source)} AND d.pathway = 'AUSBILDUNG'${r.country ? " AND d.country_id = c.id" : ""}) AND EXISTS (SELECT 1 FROM document_types t WHERE t.code = ${q(r.typeCode)})`;
   const from = r.country ? ` FROM countries c WHERE c.code = ${q(r.country)} AND ${guard}` : ` WHERE ${guard}`;
   out.push(`INSERT INTO document_requirements (${cols}) SELECT ${values}${from};`);
 });

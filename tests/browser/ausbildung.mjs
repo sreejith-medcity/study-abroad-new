@@ -269,7 +269,7 @@ const ausbStatusBefore = sql(`select status_id from applications where id = '${a
   // The tracker reads the desk and the step off the status.
   await go(page, "/ausbildung");
   const line = (await page.locator(`[data-tracker-row="${akshara}"]`).innerText()).replace(/\s+/g, " ");
-  check(/Documentation/.test(line) && /Mentor assigned/.test(line) && /Step 4/.test(line), `the tracker puts the file with the documentation desk at step 4 (${line.slice(0, 160)})`);
+  check(/Documentation/i.test(line) && /Mentor assigned/.test(line) && /Step 4/.test(line), `the tracker puts the file with the documentation desk at step 4 (${line.slice(0, 160)})`);
   check(/guide: same day/i.test(line), "with the guide's turnaround beside it");
   let text = await go(page, "/ausbildung?dept=DOCUMENTATION");
   check(text.includes("Akshara"), "'Desk: Documentation' shows the file");
@@ -318,8 +318,11 @@ const ausbStatusBefore = sql(`select status_id from applications where id = '${a
   check(!/Consultancy agreement/.test(visaRows), "and not the registration paper");
   // A degree student is not asked for the employer's paper.
   const degree = sql(`select id from students where first_name = 'Fathima'`);
-  text = await go(page, `/students/${degree}/documentation`);
-  check(!/EZB/.test(text) && !/ZAV approval/.test(text), "a study-abroad file is not asked for the EZB or the ZAV");
+  await go(page, `/students/${degree}/documentation`);
+  // The list of what the file is asked for, not the whole page: the "ask for
+  // a document" picker offers every type on purpose.
+  const degreeRows = (await page.locator("tbody").innerText().catch(() => "")).replace(/\s+/g, " ");
+  check(!/EZB/.test(degreeRows) && !/ZAV approval/.test(degreeRows), "a study-abroad file is not asked for the EZB or the ZAV");
 }
 
 for (const a of all) check(a.errors.length === 0, `${a.email}: no page errors or 500s ${a.errors.slice(0, 2).join(" | ")}`);

@@ -173,10 +173,13 @@ export const STAGE_REQUIREMENTS: SeedRequirement[] = [
   { stage: "PROFILE", typeCode: "AADHAAR_PAN", pathway: "AUSBILDUNG", guidance: "Both cards in one file. The embassy asks for them with the visa file, so collect them at registration." },
   { stage: "PROFILE", typeCode: "DIPLOMA_CERTIFICATE", pathway: "AUSBILDUNG", required: false, guidance: "Where the student holds a diploma." },
   { stage: "PROFILE", typeCode: "DEGREE_CERTIFICATE", pathway: "AUSBILDUNG", required: false, guidance: "Where the student holds a degree. A provisional certificate is enough until the original is issued." },
-  { stage: "APPLICATION", typeCode: "GERMAN_CV", pathway: "AUSBILDUNG", owedBy: "MEDCITY", guidance: "Prepared by the documentation mentor from the student's resume: tabular Lebenslauf form, in German, with a photograph." },
-  { stage: "APPLICATION", typeCode: "TRANSLATED_CERTIFICATES", pathway: "AUSBILDUNG", owedBy: "MEDCITY", guidance: "German translation of the 10th, 12th and any higher certificate. Sent to translation.germany@miak.in and checked by the language specialist before it goes anywhere." },
+  // The three the documentation mentor makes after the hand-over (steps 4 to
+  // 6 of the written process) are not required, or the branch could never
+  // hand the file to the desk that makes them.
+  { stage: "APPLICATION", typeCode: "GERMAN_CV", pathway: "AUSBILDUNG", owedBy: "MEDCITY", required: false, guidance: "Prepared by the documentation mentor from the student's resume: tabular Lebenslauf form, in German, with a photograph." },
+  { stage: "APPLICATION", typeCode: "TRANSLATED_CERTIFICATES", pathway: "AUSBILDUNG", owedBy: "MEDCITY", required: false, guidance: "German translation of the 10th, 12th and any higher certificate. Sent to translation.germany@miak.in and checked by the language specialist before it goes anywhere." },
   { stage: "APPLICATION", typeCode: "NOTARISED_CERTIFICATES", pathway: "AUSBILDUNG", required: false, guidance: "Where the employer or the embassy asks for notarisation and attestation." },
-  { stage: "APPLICATION", typeCode: "SELF_INTRO_VIDEO", pathway: "AUSBILDUNG", guidance: "A short introduction in German for employers. Upload a one-page PDF with the link to the video (Drive or YouTube); the video file itself is too large to upload here." },
+  { stage: "APPLICATION", typeCode: "SELF_INTRO_VIDEO", pathway: "AUSBILDUNG", required: false, guidance: "A short introduction in German for employers. Upload a one-page PDF with the link to the video (Drive or YouTube); the video file itself is too large to upload here." },
   { stage: "APPLICATION", typeCode: "JOB_CONSENT", pathway: "AUSBILDUNG", required: false, guidance: "Sent when an employer shortlists the student: consent to that job, with the compensation for dishonouring the contract stated plainly." },
   { stage: "OFFER", typeCode: "SCHOOL_CONTRACT", pathway: "AUSBILDUNG", owedBy: "MEDCITY", guidance: "The vocational school's contract, from the employer. Signed and returned with the training contract." },
   { stage: "OFFER", typeCode: "EZB", pathway: "AUSBILDUNG", owedBy: "MEDCITY", guidance: "The declaration of employment relationship (Erklärung zum Beschäftigungsverhältnis), filled by the employer. The visa file waits for it." },
