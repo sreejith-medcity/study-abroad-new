@@ -23,13 +23,21 @@ export const CRON_JOBS = {
 
 export type CronJob = keyof typeof CRON_JOBS;
 
-/** Noted on every successful run. Failures already write their own entry. */
-export const noteCronRun = (job: CronJob, result: Record<string, unknown>) => audit(null, "cron.ran", "cron", job, result);
+/**
+ * Noted on every successful run. Failures already write their own entry. A run
+ * somebody started by hand from the System screen is written with that person
+ * as the actor and "manual" in the record, so it never passes for the
+ * scheduler having run.
+ */
+export const noteCronRun = (job: CronJob, result: Record<string, unknown>, by: { via: "scheduled" } | { via: "manual"; actorId: string } = { via: "scheduled" }) =>
+  audit(by.via === "manual" ? by.actorId : null, "cron.ran", "cron", job, { ...result, via: by.via });
 
 export type CronStanding = {
   job: CronJob;
   label: string;
   path: string;
+  everyMinutes: number;
+  /** The scheduler's last run. A run started by hand is kept apart, below. */
   lastRanAt: Date | null;
   /** Null where it has never run. */
   minutesAgo: number | null;
@@ -40,6 +48,9 @@ export type CronStanding = {
    */
   healthy: boolean;
   lastResult: Record<string, unknown> | null;
+  /** The last time somebody pressed Run now, and what came of it. */
+  lastManualAt: Date | null;
+  lastManualResult: Record<string, unknown> | null;
 };
 
 export async function cronStandings(now: Date = new Date()): Promise<CronStanding[]> {
@@ -52,19 +63,28 @@ export async function cronStandings(now: Date = new Date()): Promise<CronStandin
     .limit(200);
 
   const newest = new Map<string, { createdAt: Date; meta: unknown }>();
-  for (const r of rows) if (!newest.has(r.entityId)) newest.set(r.entityId, { createdAt: r.createdAt, meta: r.meta });
+  const newestManual = new Map<string, { createdAt: Date; meta: unknown }>();
+  for (const r of rows) {
+    const manual = (r.meta as { via?: unknown } | null)?.via === "manual";
+    const into = manual ? newestManual : newest;
+    if (!into.has(r.entityId)) into.set(r.entityId, { createdAt: r.createdAt, meta: r.meta });
+  }
 
   return jobs.map((job) => {
     const last = newest.get(job);
+    const manual = newestManual.get(job);
     const minutesAgo = last ? Math.floor((now.getTime() - last.createdAt.getTime()) / 60_000) : null;
     return {
       job,
       label: CRON_JOBS[job].label,
       path: CRON_JOBS[job].path,
+      everyMinutes: CRON_JOBS[job].everyMinutes,
       lastRanAt: last?.createdAt ?? null,
       minutesAgo,
       healthy: minutesAgo != null && minutesAgo <= CRON_JOBS[job].everyMinutes * 3,
       lastResult: (last?.meta as Record<string, unknown>) ?? null,
+      lastManualAt: manual?.createdAt ?? null,
+      lastManualResult: (manual?.meta as Record<string, unknown>) ?? null,
     };
   });
 }

@@ -56,7 +56,12 @@ export async function ReadinessPanel() {
     <>
       <Alert tone={summary.needed > 0 ? "warn" : "ok"} title={readinessHeadline(summary)}>
         Counted from what is actually in the portal, every time this page is opened. Nothing here changes anything: it is a list of
-        what is still unset, with the way to each one.
+        what is still unset, with the way to each one. For how the portal itself is running, the release, the database, the documents
+        and the scheduled jobs, open{" "}
+        <Link href="/admin/system" className="font-medium underline">
+          System
+        </Link>
+        .
       </Alert>
 
       <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">

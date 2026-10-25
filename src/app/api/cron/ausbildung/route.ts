@@ -1,7 +1,4 @@
-import { timingSafeEqual } from "node:crypto";
-import { audit } from "@/lib/audit";
-import { runAusbildungTurnaround } from "@/server/ausbildung-turnaround";
-import { noteCronRun } from "@/server/cron-runs";
+import { cronAuthorised, runCronJob } from "@/server/cron-jobs";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -17,18 +14,7 @@ export const maxDuration = 120;
  * twice.
  */
 export async function POST(request: Request) {
-  const secret = process.env.CRON_SECRET ?? "";
-  const given = (request.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
-  // No secret configured means the endpoint is off, not open.
-  if (secret.length < 24 || given.length !== secret.length || !timingSafeEqual(Buffer.from(given), Buffer.from(secret))) {
-    return Response.json({ ok: false }, { status: 401 });
-  }
-  try {
-    const result = await runAusbildungTurnaround();
-    await noteCronRun("ausbildung", result);
-    return Response.json({ ok: true, ...result });
-  } catch (e) {
-    await audit(null, "ausbildung.turnaround_failed", "cron", "ausbildung", { error: (e as Error).message });
-    return Response.json({ ok: false, error: (e as Error).message }, { status: 500 });
-  }
+  if (!cronAuthorised(request)) return Response.json({ ok: false }, { status: 401 });
+  const run = await runCronJob("ausbildung", { via: "scheduled" });
+  return run.ok ? Response.json({ ok: true, ...run.result }) : Response.json({ ok: false, error: run.error }, { status: 500 });
 }

@@ -184,6 +184,8 @@ const ADMIN_NAV: NavGroup[] = [
       { href: "/targets", label: "Targets", icon: "insights" },
       { href: "/learning", label: "Learning resources", icon: "learning" },
       { href: "/support", label: "Help desk", icon: "support" },
+      // Whether the portal is well: release, database, documents, scheduled jobs.
+      { href: "/admin/system", label: "System", icon: "shield" },
     ],
   },
   {

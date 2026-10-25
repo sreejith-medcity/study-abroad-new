@@ -1,5 +1,5 @@
 import "server-only";
-import { mkdir, readFile, unlink, writeFile } from "fs/promises";
+import { access, mkdir, readFile, unlink, writeFile } from "fs/promises";
 import path from "path";
 import { createId } from "@/lib/id";
 import { MAX_RESOURCE_BYTES, MAX_RESOURCE_MB, MAX_UPLOAD_BYTES, MAX_UPLOAD_MB, RESOURCE_MIME, UPLOAD_MIME } from "@/lib/uploads";
@@ -22,6 +22,16 @@ function supabaseConfig() {
 
 function localRoot() {
   return path.resolve(process.env.UPLOAD_DIR ?? "./uploads");
+}
+
+/** The folder documents are kept in when they are on disk, as an absolute path. */
+export const uploadRoot = () => localRoot();
+
+/** Whether the file a storage key points at is actually on the disk. Supabase keys are not checked here. */
+export async function uploadExists(storageKey: string): Promise<boolean> {
+  const full = path.join(localRoot(), storageKey);
+  if (!full.startsWith(localRoot())) return false;
+  return access(full).then(() => true, () => false);
 }
 
 function validate(file: File) {

@@ -1,33 +1,19 @@
-import { timingSafeEqual } from "node:crypto";
-import { audit } from "@/lib/audit";
-import { noteCronRun } from "@/server/cron-runs";
-import { fetchCricosFiles, syncCricos } from "@/server/cricos-sync";
+import { cronAuthorised, runCronJob } from "@/server/cron-jobs";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 /**
  * Refreshes the Australian catalogue from the CRICOS register without anyone
- * clicking. Meant for a monthly scheduler (Hostinger cron, cron-job.org or
+ * clicking. Meant for a monthly scheduler (GitHub Actions, cron-job.org or
  * similar) calling POST /api/cron/cricos with the header
  * "Authorization: Bearer <CRON_SECRET>". New courses land as drafts, so nothing
  * reaches partners until someone publishes it; courses that left the register
  * are archived.
  */
 export async function POST(request: Request) {
-  const secret = process.env.CRON_SECRET ?? "";
-  const given = (request.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
-  // No secret configured means the endpoint is off, not open.
-  if (secret.length < 24 || given.length !== secret.length || !timingSafeEqual(Buffer.from(given), Buffer.from(secret))) {
-    return Response.json({ ok: false }, { status: 401 });
-  }
-  try {
-    const result = await syncCricos(await fetchCricosFiles(), { publish: false });
-    await audit(null, "programs.cricos_sync", "program", "*", { ...result, publish: false, via: "scheduled" });
-    await noteCronRun("cricos", { created: result.created, updated: result.updated, archived: result.archived });
-    return Response.json({ ok: true, ...result });
-  } catch (e) {
-    await audit(null, "programs.cricos_sync_failed", "program", "*", { error: (e as Error).message });
-    return Response.json({ ok: false, error: (e as Error).message }, { status: 502 });
-  }
+  if (!cronAuthorised(request)) return Response.json({ ok: false }, { status: 401 });
+  const run = await runCronJob("cricos", { via: "scheduled" });
+  // 502 rather than 500: when this fails it is nearly always data.gov.au not answering.
+  return run.ok ? Response.json({ ok: true, ...run.result }) : Response.json({ ok: false, error: run.error }, { status: 502 });
 }

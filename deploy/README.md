@@ -221,6 +221,16 @@ it. With `HEALTH_TOKEN` set, `/api/health?token=<value>` adds the user count,
 the storage backend and the time taken, and `&probe=storage` writes and deletes
 a file on the volume to prove uploads work.
 
+Signed in, the same facts and more are on one screen at `/admin/system`
+(Reports, System, for the super admin, the ops manager and the Overseas
+admin): the release that is running, the database with its counts and whether
+its migration history matches the build, the upload folder with its free space
+and a write test, the five scheduled jobs with their last run, and the health
+answer. Copy report puts the whole screen on the clipboard as text, with hosts
+and folders but never a password, which is what to paste when asking for help.
+The super admin can run any of the five jobs from there by hand; the run is
+recorded as a manual one, so it never passes for the scheduler having run.
+
 ### Supabase
 
 Once the week is up, Supabase can be left for storage only, or closed. Nothing

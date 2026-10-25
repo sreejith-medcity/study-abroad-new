@@ -52,6 +52,7 @@ on 3200, and run the same suites against both.
 | `app-deadlines.mjs` | Typed application deadlines: adding, telling the partner, dashboard windows, the list filter, ticking off, and the offer's accept-by date |
 | `artwork.mjs` | The logo and favicon uploader, what it serves, and who may change it |
 | `golive.mjs` | The sample-data cleanup: what it lists, what it refuses, what survives |
+| `system.mjs` | The System screen: release, database counts and migrations, documents on disk, the scheduled jobs with Run now recording a manual run, the text report, an admin without Run now, a counsellor kept out |
 | `catalogue.mjs` | The catalogue at full size: paging, the count, a bulk publish across every match that leaves the drafts not ready to go live, and post-study work rights |
 | `cricos.mjs` | The full CRICOS register through the admin upload, a bulk publish that keeps every draft with no intake a draft, a bulk publish of 25,889 drafts once intakes are recorded, a second sync, and the partner screens at 27,000 programs (needs `CRICOS_DIR`) |
 | `scholarships.mjs` | Adding a scholarship and its rules, where it shows, the search filter, and pausing it |
