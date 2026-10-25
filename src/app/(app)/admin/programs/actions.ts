@@ -242,7 +242,10 @@ export async function bulkStatusAction(_: BulkStatusState, formData: FormData): 
       { by: user.id, source: "bulk", batchId },
     );
     total += changed;
-    if (changed < BATCH) {
+    // A batch that changed nothing means nothing is left to change: a batch
+    // short of the limit can also mean a row slipped out between the select
+    // and the update, so only an empty one ends the run.
+    if (changed === 0) {
       finished = true;
       break;
     }

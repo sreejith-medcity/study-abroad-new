@@ -206,7 +206,7 @@ const a = await open("admin@medcityoverseas.test");
   await held.waitFor({ timeout: 15000 }).catch(() => {});
   const preview = (await a.page.locator("main").innerText()).replace(/\s+/g, " ");
   check((await held.getAttribute("data-import-held-back").catch(() => "")) === "1", "the preview counts one row that will come in as a draft");
-  check(/Line 2: Rules Import No Evidence MSc is marked LIVE but comes in as a draft \(work rights with no evidence\)/.test(preview), "and names it with the reason");
+  check(/Line 2: Rules Import No Evidence MSc is marked LIVE but is imported as a draft, an existing live course going back to draft \(work rights with no evidence\)/.test(preview), "and names it with the reason");
   check(/1 will come in as a draft/.test(preview), "with a chip beside the ready count");
   check(/Line 4: at least one intake month is required/.test(preview), "a LIVE row with no intake is still refused, as before");
 

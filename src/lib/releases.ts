@@ -12,6 +12,17 @@ export type Release = { version: string; date: string; changes: string[] };
 
 export const RELEASES: Release[] = [
   {
+    version: "1.1.0",
+    date: "2026-10-25",
+    changes: [
+      "The daily journal is now the day end report. Counsellors and branch heads give the day's figures with it: leads received, calls made, connected calls, follow-ups done and registrations done. Calls, follow-ups and registrations are pre-filled from the portal; every box is required before the report is verified. The consolidated report lists the figures per counsellor with totals per branch.",
+      "The Ausbildung desk can record every step of Medcity's written process: eleven new statuses (mentor assigned, document preparation, language assessment, mock interview passed, profile submitted, employer shortlisted, pre-visa documents, visa processing, pre-departure, happy call), the guide's documents as stage requirements, the service-charge milestones on the file and the tracker, the desk and turnaround for each step, and the hand-over addresses on Contacts.",
+      "A person put on a student's file can always open it: the head office is refused somebody from another branch.",
+      "The move to the VPS: the deploy kit carries the migration history, checks row counts on both sides, backs up nightly, and the portal reports its health.",
+      "Publishing everything that matches stops only when nothing is left, and the CSV import says plainly that a live course with no work-rights evidence goes back to draft.",
+    ],
+  },
+  {
     version: "1.0.1",
     date: "2026-10-24",
     changes: [

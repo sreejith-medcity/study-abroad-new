@@ -1,0 +1,1 @@
+ALTER TABLE "daily_journals" ADD COLUMN "figures" jsonb;

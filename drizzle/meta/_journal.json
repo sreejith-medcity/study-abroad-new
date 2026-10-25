@@ -533,6 +533,13 @@
       "when": 1792785936476,
       "tag": "0075_search_trigram_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1792950305185,
+      "tag": "0076_day_end_figures",
+      "breakpoints": true
     }
   ]
 }

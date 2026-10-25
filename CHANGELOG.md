@@ -5,6 +5,14 @@ version in package.json and adds an entry here and in src/lib/releases.ts (the
 What's new page reads that one). After applying a release, tag it with the
 version so it can be found and rolled back to.
 
+## 1.1.0 (25 October 2026)
+
+- The daily journal is now the day end report. Counsellors and branch heads give the day's figures with it: leads received, calls made, connected calls, follow-ups done and registrations done. Calls, follow-ups and registrations are pre-filled from the portal; every box is required before the report is verified. The consolidated report lists the figures per counsellor with totals per branch.
+- The Ausbildung desk can record every step of Medcity's written process: eleven new statuses, the guide's documents as stage requirements, the service-charge milestones on the file and the tracker, the desk and turnaround for each step, and the hand-over addresses on Contacts.
+- A person put on a student's file can always open it: the head office is refused somebody from another branch.
+- The move to the VPS: the deploy kit carries the migration history, checks row counts on both sides, backs up nightly, and the portal reports its health.
+- Publishing everything that matches stops only when nothing is left, and the CSV import says plainly that a live course with no work-rights evidence goes back to draft.
+
 ## 1.0.1 (24 October 2026)
 
 - A course goes live only when it is ready, whichever way it is published: it needs an intake, and a work-rights answer needs its evidence. Publishing everything that matches the filters now says how many went live and how many stayed drafts, and why; publishing one course says why it cannot.
