@@ -3,9 +3,11 @@ import { fmtDate, intakeLabel } from "@/lib/format";
 import { translator } from "@/lib/i18n";
 import { inrApprox, tuitionText } from "@/lib/catalogue";
 import { fxRates, getSettings } from "@/server/settings";
-import { requireStudent, studentApplications, studentChecklist, studentDocuments, studentShortlist, studentTimeline } from "@/server/portal";
+import { requireStudent, studentApplications, studentAusbildungJourney, studentChecklist, studentDocuments, studentShortlist, studentTimeline } from "@/server/portal";
 import { datesAhead } from "@/lib/family";
+import { pickAusbildungApplication } from "@/lib/ausbildung-journey";
 import { DatesAhead, JourneyRail } from "@/components/journey-rail";
+import { AusbildungJourney } from "@/components/ausbildung-journey";
 import { Card, CardHeader, Chip, EmptyState, StatusBadge } from "@/components/ui";
 import { IconApplications, IconCheck, IconClock, IconDoc } from "@/components/icons";
 
@@ -14,11 +16,16 @@ export default async function PortalHome() {
   const t = translator(locale);
 
   const apps = await studentApplications(student.id, locale);
-  const [timeline, docs, shortlist, checklist] = await Promise.all([
+  // The Ausbildung round the journey card follows, chosen by the staff tab's
+  // rule so the student and the counsellor read the same file. Its German
+  // levels, mentor and payments are only fetched when there is one.
+  const ausbildung = pickAusbildungApplication(apps);
+  const [timeline, docs, shortlist, checklist, journey] = await Promise.all([
     studentTimeline(apps.map((a) => a.id), locale),
     studentDocuments(student.id, [...new Set(apps.flatMap((a) => a.requiredDocs ?? []))], locale),
     studentShortlist(student.id),
     studentChecklist(student.id, locale),
+    ausbildung ? studentAusbildungJourney(student.id) : Promise.resolve(null),
   ]);
   // Once a student has a documentation list, that is the list: the older
   // per-program required documents are only shown while there is no list yet.
@@ -60,6 +67,17 @@ export default async function PortalHome() {
       </div>
 
       <JourneyRail current={student.journeyStage} locale={locale} />
+
+      {ausbildung && journey && (
+        <AusbildungJourney
+          locale={locale}
+          application={{ statusCode: ausbildung.statusCode, statusLabel: ausbildung.statusLabel }}
+          counsellor={student.assignedTo ? { name: student.assignedTo.name, phone: student.assignedTo.phone } : null}
+          mentorName={journey.mentorName}
+          german={journey.german}
+          charge={journey.charge}
+        />
+      )}
 
       {checklist.outstanding.length > 0 && (
         <Card className="border-warn-500/30 bg-warn-50/60">

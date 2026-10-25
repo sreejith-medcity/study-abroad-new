@@ -4,9 +4,11 @@ import { redirect } from "next/navigation";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { outstandingForStudent } from "./documentation";
+import { serviceCharges } from "./ausbildung";
 import { getSession } from "@/lib/auth";
 import { isLocale, type Locale } from "@/lib/i18n";
 import { documentFamilies } from "@/lib/document-versions";
+import { MENTOR_PART, moduleStanding } from "@/lib/ausbildung";
 
 const LOCALE_COOKIE = "portal_locale";
 
@@ -63,6 +65,7 @@ export async function studentApplications(studentId: string, locale: Locale = "e
       statusCode: sd.code,
       changedAt: a.statusChangedAt,
       program: p.name,
+      pathway: p.pathway,
       university: u.name,
       country: c.name,
       requiredDocs: p.requiredDocs,
@@ -80,6 +83,40 @@ export async function studentApplications(studentId: string, locale: Locale = "e
     .innerJoin(c, eq(u.countryId, c.id))
     .where(eq(a.studentId, studentId))
     .orderBy(desc(a.createdAt));
+}
+
+/**
+ * What the Ausbildung journey card needs on top of the applications: the
+ * German levels, the service charge paid so far, and the mentor's name.
+ *
+ * The charge comes from the same service fee income lines the staff tab sums,
+ * so the student and the counsellor read one figure. The mentor is the person
+ * on the file under the mentor's part, the latest if two were ever named, and
+ * only their name crosses over: no email, no desk label.
+ */
+export async function studentAusbildungJourney(studentId: string) {
+  const { germanModules: gm, studentPeople: sp, users: us } = schema;
+  const [modules, charges, [mentor]] = await Promise.all([
+    db.select({ level: gm.level, state: gm.state, completedOn: gm.completedOn }).from(gm).where(eq(gm.studentId, studentId)),
+    serviceCharges([studentId]),
+    db
+      .select({ name: us.name })
+      .from(sp)
+      .innerJoin(us, eq(us.id, sp.userId))
+      .where(and(eq(sp.studentId, studentId), eq(sp.part, MENTOR_PART), eq(us.active, true)))
+      .orderBy(desc(sp.createdAt))
+      .limit(1),
+  ]);
+  const charge = charges.get(studentId) ?? null;
+  // Rupees where the charge was raised in rupees, else whatever currency it was raised in.
+  const line = charge?.byCurrency.find((b) => b.currency === "INR") ?? charge?.byCurrency[0] ?? null;
+  return {
+    modules,
+    german: moduleStanding(modules),
+    /** The charge raised and received in one currency; null while nothing is raised, which reads "Not recorded". */
+    charge: line,
+    mentorName: mentor?.name ?? null,
+  };
 }
 
 /** Milestones only: the student sees the story, not every internal step. */

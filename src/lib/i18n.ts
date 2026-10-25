@@ -140,6 +140,63 @@ const en = {
   notGiven: "Not given",
   askCorrection: "Ask for a correction",
   correctionSent: "Sent. Your counsellor will look at it.",
+
+  // The Ausbildung journey card on the portal home.
+  ausbildungJourney: "Your Ausbildung journey",
+  ausbildungJourneyNote: "Training in Germany, step by step. Your counsellor and your mentor move this along with you.",
+  whatHappensNext: "What happens next",
+  lastStep: "This is the last step. You have made it.",
+  whoToContact: "Who to contact",
+  yourMentor: "Your documentation mentor",
+  deskCounselling: "Counselling",
+  deskDocumentation: "Documentation",
+  deskLanguage: "Language and interview preparation",
+  deskPlacement: "Placement",
+  deskVisa: "Visa",
+  deskTravel: "Travel",
+  germanLevels: "Your German levels",
+  germanLevelsNote: "Each level you finish is ticked. The next one is marked.",
+  levelCompleted: "Completed",
+  levelInProgress: "In progress",
+  levelNext: "Next",
+  levelNotStarted: "Not started",
+  allLevelsDone: "Every level is finished.",
+  paymentsTitle: "Your payments",
+  paymentsNote: "The service charge is paid in parts as your journey moves on. This is where you stand.",
+  paidSoFar: "Paid so far",
+  ofTotal: "of",
+  nextPayment: "Next payment",
+  allPaid: "Everything on the plan is paid.",
+  notRecorded: "Not recorded",
+  milestonePaid: "Paid",
+  milestoneNext: "Next",
+  milestoneLater: "Later",
+  milestoneRegistration: "Registration fee",
+  milestoneRegistrationWhen: "When you register with us",
+  milestoneHalf: "Half of the service charge",
+  milestoneHalfWhen: "Before interview preparation begins",
+  milestoneEighty: "80% of the service charge",
+  milestoneEightyWhen: "When your training contract is issued",
+  milestoneFull: "The full service charge",
+  milestoneFullWhen: "Before your visa file is submitted",
+  ausbildungStep1: "Your first counselling conversation with us",
+  ausbildungStep2: "Registering with us and signing the agreement",
+  ausbildungStep3: "Collecting your documents",
+  ausbildungStep4: "Your documentation mentor is being assigned",
+  ausbildungStep5: "Learning German to the level your training needs",
+  ausbildungStep6: "Your documents are being prepared and translated into German",
+  ausbildungStep7: "Checking that you are ready for employer interviews",
+  ausbildungStep8: "Practising for your employer interviews",
+  ausbildungStep9: "Your profile is going out to employers in Germany",
+  ausbildungStep10: "Interviews with employers are being arranged for you",
+  ausbildungStep11: "Your training contract (Ausbildungsvertrag) is being arranged",
+  ausbildungStep12: "Your visa papers are being put together",
+  ausbildungStep13: "Your visa appointment is being booked",
+  ausbildungStep14: "The embassy is processing your visa",
+  ausbildungStep15: "Your visa has been approved",
+  ausbildungStep16: "Getting you ready to travel",
+  ausbildungStep18: "Flying to Germany and starting your training",
+  ausbildungStep19: "Settling in: we call to check you are doing well",
 } as const;
 
 /**
@@ -147,7 +204,51 @@ const en = {
  * English until somebody who reads Malayalam adds them below, and naming them
  * here keeps every other phrase checked for a translation.
  */
-type Untranslated = "replaceFile" | "replaceWith" | "earlierVersions" | "version" | "acceptedAskCounsellor";
+type Untranslated =
+  | "replaceFile"
+  | "replaceWith"
+  | "earlierVersions"
+  | "version"
+  | "acceptedAskCounsellor"
+  // The Ausbildung journey card, shown in English until translated.
+  | "ausbildungJourney"
+  | "ausbildungJourneyNote"
+  | "whatHappensNext"
+  | "lastStep"
+  | "whoToContact"
+  | "yourMentor"
+  | "deskCounselling"
+  | "deskDocumentation"
+  | "deskLanguage"
+  | "deskPlacement"
+  | "deskVisa"
+  | "deskTravel"
+  | "germanLevels"
+  | "germanLevelsNote"
+  | "levelCompleted"
+  | "levelInProgress"
+  | "levelNext"
+  | "levelNotStarted"
+  | "allLevelsDone"
+  | "paymentsTitle"
+  | "paymentsNote"
+  | "paidSoFar"
+  | "ofTotal"
+  | "nextPayment"
+  | "allPaid"
+  | "notRecorded"
+  | "milestonePaid"
+  | "milestoneNext"
+  | "milestoneLater"
+  | "milestoneRegistration"
+  | "milestoneRegistrationWhen"
+  | "milestoneHalf"
+  | "milestoneHalfWhen"
+  | "milestoneEighty"
+  | "milestoneEightyWhen"
+  | "milestoneFull"
+  | "milestoneFullWhen"
+  | `ausbildungStep${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 18 | 19}`;
 
 const ml: Record<Exclude<keyof typeof en, Untranslated>, string> = {
   portal: "വിദ്യാർഥി പോർട്ടൽ",
