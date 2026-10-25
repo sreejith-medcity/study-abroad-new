@@ -3,12 +3,12 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { APP_ROLES, ROLE_LABEL } from "@/lib/permissions";
-import { KIND_LABEL, STANDING_LABEL, clockText, dayText, istClock, istDay, journalIssued, readsJournalReport, type JournalStanding } from "@/lib/journal";
+import { FIGURE_KEYS, FIGURE_LABEL, KIND_LABEL, STANDING_LABEL, clockText, dayText, istClock, istDay, journalIssued, readsJournalReport, type JournalStanding } from "@/lib/journal";
 import { catchUp, journalFor, journalHistory, kindCounts, markViewed } from "@/server/journal";
 import { Card, CardHeader, Chip, EmptyState, LinkButton, PageHeader, cn } from "@/components/ui";
 import { AnswerJournal } from "./forms";
 
-export const metadata = { title: "Daily journal" };
+export const metadata = { title: "Day end report" };
 export const dynamic = "force-dynamic";
 
 const TONE: Record<JournalStanding, "ok" | "warn" | "bad" | "neutral" | "info"> = {
@@ -20,11 +20,12 @@ const TONE: Record<JournalStanding, "ok" | "warn" | "bad" | "neutral" | "info"> 
 };
 
 /**
- * The daily journal: everything one person did in the portal on one working
+ * The day end report: everything one person did in the portal on one working
  * day, from the records themselves, to view and verify at the end of the day
- * the way a bank teller signs the batch journal at close.
+ * the way a bank teller signs the batch journal at close. A counsellor adds
+ * the day's figures when answering.
  *
- * Somebody's own journal by default. The Overseas admin, operations, the
+ * Somebody's own report by default. The Overseas admin, operations, the
  * super admin and management can open anybody's from the consolidated report,
  * to read, never to answer for them.
  */
@@ -49,13 +50,13 @@ export default async function JournalPage({ searchParams }: { searchParams: Prom
   if (!subject || !journalIssued(subject.role, subject.orgType)) {
     return (
       <>
-        <PageHeader title="Daily journal" />
+        <PageHeader title="Day end report" />
         <Card>
           <EmptyState
-            title={subject && otherId ? `${subject.name} is not issued a journal` : "Journals are for Medcity's own staff"}
-            action={readsJournalReport(me.role) ? <LinkButton href="/journal/report">Open the journal report</LinkButton> : undefined}
+            title={subject && otherId ? `${subject.name} is not issued a day end report` : "Day end reports are for Medcity's own staff"}
+            action={readsJournalReport(me.role) ? <LinkButton href="/journal/report">Open the day end reports</LinkButton> : undefined}
           >
-            A journal is issued every working day to the Overseas desk and the Medcity branches. A sub-agent firm&apos;s staff, the super admin and management are not issued one.
+            A day end report is issued every working day to the Overseas desk and the Medcity branches. A sub-agent firm&apos;s staff, the super admin and management are not issued one.
           </EmptyState>
         </Card>
       </>
@@ -63,7 +64,7 @@ export default async function JournalPage({ searchParams }: { searchParams: Prom
   }
 
   const own = subject.id === me.id;
-  const j = await journalFor(subject.id, day);
+  const j = await journalFor(subject.id, subject.role, day);
   if (own && day === today && j.phase === "OPEN" && !j.row?.state) await markViewed(me.id, day);
   const history = own ? await journalHistory(me.id) : [];
   const counts = [...kindCounts(j.entries)].filter(([k]) => k !== "signin");
@@ -74,17 +75,19 @@ export default async function JournalPage({ searchParams }: { searchParams: Prom
   const dayEnd = clockText(j.clock.dayEnd);
   const afterHours = clockText(j.clock.outOfHours);
   const cutoff = clockText(j.clock.cutoff);
+  // What a counsellor gave when answering, shown once the day is answered.
+  const given = j.figures;
 
   return (
     <>
       <PageHeader
-        title={own ? "My daily journal" : `${subject.name}'s journal`}
+        title={own ? "My day end report" : `${subject.name}'s day end report`}
         subtitle={`${dayText(day, true)}${own ? "" : ` · ${ROLE_LABEL[subject.role] ?? subject.role}, ${subject.branch}`}`}
         actions={
           <>
             {readsJournalReport(me.role) && (
               <LinkButton variant="secondary" href={`/journal/report?day=${day}`}>
-                The day&apos;s report
+                Everybody&apos;s reports
               </LinkButton>
             )}
           </>
@@ -92,7 +95,7 @@ export default async function JournalPage({ searchParams }: { searchParams: Prom
       />
 
       <div className="mb-5 flex flex-wrap items-center gap-2">
-        {j.phase === "NONE" ? <Chip>No journal on Sundays</Chip> : <Chip tone={TONE[j.standing]}>{j.phase === "BEFORE" && !j.row?.state ? "The day is not over yet" : STANDING_LABEL[j.standing]}</Chip>}
+        {j.phase === "NONE" ? <Chip>No report on Sundays</Chip> : <Chip tone={TONE[j.standing]}>{j.phase === "BEFORE" && !j.row?.state ? "The day is not over yet" : STANDING_LABEL[j.standing]}</Chip>}
         {j.row?.decidedAt && <span className="text-sm text-muted">at {istClock(j.row.decidedAt)}</span>}
         {lateSignIns.length > 0 && (
           <Chip tone="bad">
@@ -105,7 +108,7 @@ export default async function JournalPage({ searchParams }: { searchParams: Prom
       <Card className="mb-5 p-4" data-journal-phase={j.phase}>
         {j.phase === "BEFORE" && (
           <p className="text-sm text-ink-soft">
-            The working day ends at <strong>{dayEnd}</strong>. Your journal is issued then, to view and verify before you leave. This is the day so far.
+            The working day ends at <strong>{dayEnd}</strong>. Your day end report is issued then, to view and verify before you leave. This is the day so far.
           </p>
         )}
         {j.phase === "OPEN" && canAnswer && (
@@ -114,7 +117,7 @@ export default async function JournalPage({ searchParams }: { searchParams: Prom
               Read every line below. If it is your day as it happened, verify it. If anything is wrong, flag it and say what. It closes at <strong>{cutoff}</strong>, and signing in after{" "}
               <strong>{afterHours}</strong> is recorded as out of hours.
             </p>
-            <AnswerJournal count={work} />
+            <AnswerJournal count={work} figures={j.prefill} />
           </div>
         )}
         {j.row?.state === "VERIFIED" && <p className="text-sm text-good-700">Verified at {istClock(j.row.decidedAt!)}. What you verified is kept as it was, below.</p>}
@@ -125,8 +128,8 @@ export default async function JournalPage({ searchParams }: { searchParams: Prom
           </div>
         )}
         {j.phase === "OPEN" && !own && !j.row?.state && <p className="text-sm text-ink-soft">Not answered yet. It closes at {cutoff}.</p>}
-        {j.standing === "MISSED" && <p className="text-sm text-stop-700">Not verified before {cutoff}, so it is recorded as missed. This is the journal that was issued.</p>}
-        {j.phase === "NONE" && <p className="text-sm text-ink-soft">Sundays are not working days, so no journal is issued. Anything done today is still in the audit log.</p>}
+        {j.standing === "MISSED" && <p className="text-sm text-stop-700">Not verified before {cutoff}, so it is recorded as missed. This is the report that was issued.</p>}
+        {j.phase === "NONE" && <p className="text-sm text-ink-soft">Sundays are not working days, so no day end report is issued. Anything done today is still in the audit log.</p>}
       </Card>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
@@ -159,6 +162,21 @@ export default async function JournalPage({ searchParams }: { searchParams: Prom
         </Card>
 
         <div className="space-y-5">
+          {given && (
+            <Card data-day-end-figures-given>
+              <CardHeader title="The day's figures" subtitle={own ? "What you gave when you answered" : `What ${subject.name} gave when answering`} />
+              <dl className="divide-y divide-line">
+                {FIGURE_KEYS.map((k) => (
+                  <div key={k} className="flex items-center justify-between px-4 py-2 text-sm">
+                    <dt className="text-ink-soft">{FIGURE_LABEL[k]}</dt>
+                    <dd data-figure-given={k} className="font-semibold tabular text-ink">
+                      {given[k] ?? <span className="font-normal text-muted">Not given</span>}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </Card>
+          )}
           <Card>
             <CardHeader title="The day in totals" />
             {counts.length === 0 ? (
@@ -192,7 +210,7 @@ export default async function JournalPage({ searchParams }: { searchParams: Prom
         </div>
       </div>
       <p className="mt-4 text-xs text-muted">
-        Times are India time. The day ends at {dayEnd}; a sign-in from {afterHours} is out of hours; an unanswered journal is missed at {cutoff}.
+        Times are India time. The day ends at {dayEnd}; a sign-in from {afterHours} is out of hours; an unanswered report is missed at {cutoff}.
       </p>
     </>
   );

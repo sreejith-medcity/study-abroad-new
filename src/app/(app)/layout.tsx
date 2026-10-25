@@ -180,7 +180,7 @@ const ADMIN_NAV: NavGroup[] = [
     title: "Reports",
     items: [
       { href: "/admin/insights", label: "Insights", icon: "insights" },
-      { href: "/journal/report", label: "Journal report", icon: "deadlines" },
+      { href: "/journal/report", label: "Day end reports", icon: "deadlines" },
       { href: "/targets", label: "Targets", icon: "insights" },
       { href: "/learning", label: "Learning resources", icon: "learning" },
       { href: "/support", label: "Help desk", icon: "support" },
@@ -322,7 +322,7 @@ const MANAGEMENT_NAV: NavGroup[] = [
       { href: "/ausbildung", label: "Placement tracker", icon: "services" },
       { href: "/admin/commission", label: "Commission", icon: "commission" },
       { href: "/admin/insights", label: "Insights", icon: "insights" },
-      { href: "/journal/report", label: "Journal report", icon: "deadlines" },
+      { href: "/journal/report", label: "Day end reports", icon: "deadlines" },
       { href: "/learning", label: "Learning resources", icon: "learning" },
     ],
   },
@@ -391,8 +391,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     {
       title: "Account",
       items: [
-        // The day's journal, for everybody who is issued one.
-        ...(journalIssued(user.role, user.orgType) ? [{ href: "/journal", label: "Daily journal", icon: "deadlines" as const }] : []),
+        // The day end report, for everybody who is issued one.
+        ...(journalIssued(user.role, user.orgType) ? [{ href: "/journal", label: "Day end report", icon: "deadlines" as const }] : []),
         // A branch head sets their people's monthly targets.
         ...(user.role === "PARTNER" ? [{ href: "/targets", label: "Targets", icon: "insights" as const }] : []),
         { href: "/settings", label: "Settings", icon: "settings" },
@@ -402,7 +402,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   // Four things the shell needs, asked for together rather than one after
   // another: on a page that renders quickly the waiting was most of the wait.
-  // The journals move with the clock even where no scheduler was set up:
+  // The day end reports move with the clock even where no scheduler was set up:
   // whoever opens a page after the day ends announces it, and after the cutoff
   // closes it. At most once every few minutes per server.
   await journalTick();
@@ -565,8 +565,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             {children}
           </div>
         </main>
-        {/* From the end of the working day until it is answered: the day's
-            journal, over whatever page this is, and minimisable. */}
+        {/* From the end of the working day until it is answered: the day end
+            report, over whatever page this is, and minimisable. */}
         {journalDue && <JournalPopup due={journalDue} />}
       </div>
     </div>

@@ -17,7 +17,7 @@ export const CRON_JOBS = {
   crm: { label: "The CRM queue", path: "/api/cron/crm", everyMinutes: 10 },
   documents: { label: "Documentation chasing", path: "/api/cron/documents", everyMinutes: 60 * 24 },
   cricos: { label: "The CRICOS register", path: "/api/cron/cricos", everyMinutes: 60 * 24 * 31 },
-  journal: { label: "The daily journal", path: "/api/cron/journal", everyMinutes: 15 },
+  journal: { label: "The day end report", path: "/api/cron/journal", everyMinutes: 15 },
 } as const;
 
 export type CronJob = keyof typeof CRON_JOBS;

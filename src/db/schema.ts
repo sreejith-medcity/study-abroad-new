@@ -1861,6 +1861,14 @@ export const dailyJournals = pgTable(
     note: text("note"),
     /** What the journal held when they answered, line by line. */
     entries: jsonb("entries").$type<{ at: string; kind: string; text: string; href?: string | null; outOfHours?: boolean }[]>(),
+    /**
+     * The day end figures a counsellor typed when answering: leads received,
+     * calls made, connected calls, follow-ups done, registrations done, each
+     * a whole number. One JSON object rather than five columns, so the next
+     * figure asked for is a key added here and no migration. Null for the
+     * roles that are not asked, and for a report never answered.
+     */
+    figures: jsonb("figures").$type<{ leadsReceived: number | null; callsMade: number | null; connectedCalls: number | null; followUpsDone: number | null; registrationsDone: number | null }>(),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("daily_journals_user_day_uq").on(t.userId, t.day), index("daily_journals_day_idx").on(t.day)],

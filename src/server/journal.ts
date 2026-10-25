@@ -5,12 +5,35 @@ import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { getSettings } from "./settings";
 import { notifyUsers } from "./notify";
-import { KIND_LABEL, NOT_ISSUED, dayText, istAt, istClock, istDay, journalIssued, journalPhase, nextDay, previousDay, type JournalClock, type JournalPhase, type JournalStanding } from "@/lib/journal";
+import {
+  KIND_LABEL,
+  NOT_ISSUED,
+  dayText,
+  figuresByBranch,
+  givesFigures,
+  istAt,
+  istClock,
+  istDay,
+  journalIssued,
+  journalPhase,
+  nextDay,
+  parseFigures,
+  prefillFigures,
+  previousDay,
+  type CountedFigures,
+  type DayEndFigures,
+  type FigureKey,
+  type JournalClock,
+  type JournalPhase,
+  type JournalStanding,
+} from "@/lib/journal";
 
 /*
- * The daily journal: what each person did in the portal on one working day,
- * read from the records themselves, issued at the end of the day for them to
- * view and verify, the way a bank teller signs the batch journal at close.
+ * The day end report, called the journal throughout the code: what each
+ * person did in the portal on one working day, read from the records
+ * themselves, issued at the end of the day for them to view and verify, the
+ * way a bank teller signs the batch journal at close. A counsellor also types
+ * the day's figures (leads, calls, follow-ups, registrations) when answering.
  *
  * Medcity's own people only: the Overseas desk and the Medcity branches. A
  * sub-agent firm's staff are not Medcity's to supervise, the super admin owns
@@ -62,7 +85,7 @@ export const journalClock = cache(async (): Promise<JournalClock> => {
 /** Everybody issued a journal. */
 export async function journalStaff() {
   return db
-    .select({ id: us.id, name: us.name, role: us.role, deskLabel: us.deskLabel, branch: og.name, orgType: og.type })
+    .select({ id: us.id, name: us.name, role: us.role, deskLabel: us.deskLabel, orgId: og.id, branch: og.name, orgType: og.type })
     .from(us)
     .innerJoin(og, eq(us.orgId, og.id))
     .where(and(eq(us.active, true), inArray(og.type, ["HQ", "BRANCH"]), notInArray(us.role, [...NOT_ISSUED])))
@@ -287,6 +310,52 @@ export function kindCounts(entries: JournalEntry[]) {
   return by;
 }
 
+/**
+ * What the portal can count towards somebody's day end figures: calls they
+ * logged (the call channel only; a WhatsApp or a visit is not a call),
+ * follow-ups they marked done and students they registered, on the day. One
+ * query per figure for everybody asked for together.
+ */
+export async function countedFigures(day: string, userIds: string[]): Promise<Map<string, CountedFigures>> {
+  const out = new Map<string, CountedFigures>(userIds.map((id) => [id, {}]));
+  if (userIds.length === 0) return out;
+  const from = istAt(day, "00:00");
+  const to = istAt(nextDay(day), "00:00");
+  const within = (col: Parameters<typeof gte>[0]) => and(gte(col, from), lt(col, to));
+  const count = sql<number>`count(*)::int`;
+  const [calls, done, registered] = await Promise.all([
+    db
+      .select({ who: cl.byId, n: count })
+      .from(cl)
+      .where(and(inArray(cl.byId, userIds), eq(cl.channel, "CALL"), within(cl.createdAt)))
+      .groupBy(cl.byId),
+    db
+      .select({ who: tk.doneById, n: count })
+      .from(tk)
+      .where(and(inArray(tk.doneById, userIds), within(tk.doneAt)))
+      .groupBy(tk.doneById),
+    db
+      .select({ who: s.createdById, n: count })
+      .from(s)
+      .where(and(inArray(s.createdById, userIds), within(s.createdAt)))
+      .groupBy(s.createdById),
+  ]);
+  const put = (who: string | null, key: keyof CountedFigures, n: number) => {
+    const f = who ? out.get(who) : undefined;
+    if (f) f[key] = n;
+  };
+  for (const r of calls) put(r.who, "callsMade", r.n);
+  for (const r of done) put(r.who, "followUpsDone", r.n);
+  for (const r of registered) put(r.who, "registrationsDone", r.n);
+  return out;
+}
+
+/** The boxes as they open for one person on one day, or null for a role not asked. */
+async function prefillFor(userId: string, role: string, day: string): Promise<DayEndFigures | null> {
+  if (!givesFigures(role)) return null;
+  return prefillFigures((await countedFigures(day, [userId])).get(userId) ?? {});
+}
+
 /** How one answered journal reads, given the clock. */
 function standing(row: { state: string | null; decidedAt: Date | null } | undefined, phase: JournalPhase, late: Date): JournalStanding {
   if (row?.state === "FLAGGED") return "FLAGGED";
@@ -295,14 +364,32 @@ function standing(row: { state: string | null; decidedAt: Date | null } | undefi
   return phase === "CLOSED" ? "MISSED" : "PENDING";
 }
 
-/** One person's journal for one day, with where the day stands. */
-export async function journalFor(userId: string, day: string, now: Date = new Date()) {
+/**
+ * One person's journal for one day, with where the day stands. The figures
+ * are what they typed once answered; until then, for a counselling role, the
+ * boxes as they would open, with the portal's own counts filled in.
+ */
+export async function journalFor(userId: string, role: string, day: string, now: Date = new Date()) {
   const clock = await journalClock();
   const phase = journalPhase(day, clock, now);
   const row = await db.query.dailyJournals.findFirst({ where: and(eq(dj.userId, userId), eq(dj.day, day)) });
   // Once answered, the journal is what they saw when they answered.
-  const entries = row?.state && row.entries ? row.entries : ((await dayEntries(day, [userId])).get(userId) ?? []);
-  return { day, phase, clock, row: row ?? null, entries, standing: standing(row, phase, istAt(day, clock.outOfHours)) };
+  const answered = !!row?.state;
+  const [entries, prefill] = await Promise.all([
+    answered && row?.entries ? Promise.resolve(row.entries) : dayEntries(day, [userId]).then((m) => m.get(userId) ?? []),
+    // The boxes are only ever shown while the day is open to answer.
+    answered || phase !== "OPEN" ? Promise.resolve(null) : prefillFor(userId, role, day),
+  ]);
+  return {
+    day,
+    phase,
+    clock,
+    row: row ?? null,
+    entries,
+    standing: standing(row, phase, istAt(day, clock.outOfHours)),
+    figures: answered ? (row?.figures ?? null) : null,
+    prefill,
+  };
 }
 
 /** Noted the first time somebody opens their journal once it is issued. */
@@ -318,27 +405,38 @@ export async function markViewed(userId: string, day: string) {
  * Only their own, only today's, only while it is open, and only once. When
  * the last person answers, the consolidated report goes at once rather than
  * waiting for the cutoff.
+ *
+ * A counselling role also hands in the five day end figures, as typed; every
+ * one has to be a whole number before either answer is accepted, and they are
+ * kept with the answer whether it verified or flagged. Other roles are not
+ * asked, and whatever they send is ignored.
  */
-export async function answerJournal(user: SessionUser, verdict: "VERIFIED" | "FLAGGED", note: string | null, now: Date = new Date()) {
+export async function answerJournal(user: SessionUser, verdict: "VERIFIED" | "FLAGGED", note: string | null, typed: Partial<Record<FigureKey, string | null>> | null = null, now: Date = new Date()) {
   const day = istDay(now);
   const clock = await journalClock();
   const phase = journalPhase(day, clock, now);
-  if (!(await issuedTo(user))) return { ok: false as const, error: "There is no journal for your role." };
-  if (phase === "BEFORE") return { ok: false as const, error: `Your journal opens at the end of the day.` };
-  if (phase !== "OPEN") return { ok: false as const, error: "Today's journal has closed." };
+  if (!(await issuedTo(user))) return { ok: false as const, error: "There is no day end report for your role." };
+  if (phase === "BEFORE") return { ok: false as const, error: `Your day end report opens at the end of the day.` };
+  if (phase !== "OPEN") return { ok: false as const, error: "Today's day end report has closed." };
   if (verdict === "FLAGGED" && !note?.trim()) return { ok: false as const, error: "Say what is wrong, so it can be looked into." };
+  let figures: DayEndFigures | null = null;
+  if (givesFigures(user.role)) {
+    const parsed = parseFigures(typed ?? {});
+    if (!parsed.ok) return { ok: false as const, error: "Fill in the day's figures: a whole number in every box, 0 if none.", fieldErrors: parsed.fieldErrors as Record<string, string[]> };
+    figures = parsed.figures;
+  }
   const entries = (await dayEntries(day, [user.id])).get(user.id) ?? [];
   const [saved] = await db
     .insert(dj)
-    .values({ userId: user.id, day, viewedAt: now, state: verdict, decidedAt: now, note: verdict === "FLAGGED" ? note!.trim() : null, entries })
+    .values({ userId: user.id, day, viewedAt: now, state: verdict, decidedAt: now, note: verdict === "FLAGGED" ? note!.trim() : null, entries, figures })
     .onConflictDoUpdate({
       target: [dj.userId, dj.day],
-      set: { state: verdict, decidedAt: now, note: verdict === "FLAGGED" ? note!.trim() : null, entries, viewedAt: sql`coalesce(${dj.viewedAt}, now())` },
+      set: { state: verdict, decidedAt: now, note: verdict === "FLAGGED" ? note!.trim() : null, entries, figures, viewedAt: sql`coalesce(${dj.viewedAt}, now())` },
       // Answered once. A second press, or a second tab, changes nothing.
       setWhere: isNull(dj.state),
     })
     .returning({ id: dj.id });
-  if (!saved) return { ok: false as const, error: "You have already answered today's journal." };
+  if (!saved) return { ok: false as const, error: "You have already answered today's day end report." };
   const waiting = await stillWaiting(day);
   if (waiting === 0) await sendReport(day, "ALL_DONE");
   return { ok: true as const };
@@ -378,12 +476,18 @@ export async function consolidated(day: string, now: Date = new Date()) {
       viewedAt: row?.viewedAt ?? null,
       decidedAt: row?.decidedAt ?? null,
       note: row?.note ?? null,
+      // The figures are only ever typed by the person answering, so a report
+      // written as missed has none, and an older answer from before the
+      // figures were asked for has none either.
+      figures: row?.state === "VERIFIED" || row?.state === "FLAGGED" ? (row.figures ?? null) : null,
       actions: list.filter((e) => e.kind !== "signin").length,
       // Sign-ins after hours are read live, so one after the answer still shows.
       lateSignIns: live.filter((e) => e.kind === "signin" && e.outOfHours).map((e) => e.at),
       lateActions: live.filter((e) => e.kind !== "signin" && e.outOfHours).length,
     };
   });
+  // Grouped by branch before the sort below reorders people by standing.
+  const figures = figuresByBranch(people);
   const order: Record<JournalStanding, number> = { MISSED: 0, FLAGGED: 1, PENDING: 2, VERIFIED_LATE: 3, VERIFIED: 4 };
   people.sort((x, y) => order[x.standing] - order[y.standing] || y.lateSignIns.length - x.lateSignIns.length || x.name.localeCompare(y.name));
   const count = (st: JournalStanding) => people.filter((p) => p.standing === st).length;
@@ -392,6 +496,7 @@ export async function consolidated(day: string, now: Date = new Date()) {
     phase,
     clock,
     people,
+    figures,
     sentAt: dayRow?.reportSentAt ?? null,
     reason: dayRow?.reportReason ?? null,
     totals: {
@@ -411,7 +516,7 @@ async function dayRow(day: string) {
   await db.insert(jd).values({ day }).onConflictDoNothing();
 }
 
-/** Tell everybody issued a journal that today's is ready. Once a day. */
+/** Tell everybody issued a day end report that today's is ready. Once a day. */
 export async function issueDay(day: string) {
   await dayRow(day);
   const [won] = await db.update(jd).set({ issuedAt: new Date() }).where(and(eq(jd.day, day), isNull(jd.issuedAt))).returning({ day: jd.day });
@@ -420,7 +525,7 @@ export async function issueDay(day: string) {
   const staff = await journalStaff();
   await notifyUsers(
     staff.map((x) => x.id),
-    "Your journal for today is ready",
+    "Your day end report for today is ready",
     `View and verify what you did today before you leave. It closes at ${istClock(istAt(day, clock.cutoff))}.`,
     "/journal",
   );
@@ -470,7 +575,7 @@ export async function sendReport(day: string, reason: "ALL_DONE" | "CUTOFF") {
     .where(and(eq(us.active, true), inArray(us.role, [...REPORT_TO])));
   await notifyUsers(
     recipients.map((r) => r.id),
-    reason === "ALL_DONE" ? `Every journal for today is verified` : `Daily journals: ${bits.join(", ")}`,
+    reason === "ALL_DONE" ? `Every day end report for today is verified` : `Day end reports: ${bits.join(", ")}`,
     reason === "ALL_DONE" ? `All ${t.staff} people answered before the cutoff. ${bits.join(", ")}.` : `The cutoff has passed. ${bits.join(", ")}.`,
     `/journal/report?day=${day}`,
   );
@@ -507,8 +612,8 @@ export async function catchUp(now: Date = new Date()) {
 }
 
 /**
- * Whether to put the journal in front of somebody right now: their own,
- * today's, open, and not yet answered. Cheap enough to ask on every page.
+ * Whether to put the day end report in front of somebody right now: their
+ * own, today's, open, and not yet answered. Cheap enough to ask on every page.
  */
 export const journalWaiting = cache(async (user: SessionUser) => {
   const clock = await journalClock();
@@ -519,8 +624,9 @@ export const journalWaiting = cache(async (user: SessionUser) => {
   const row = await db.query.dailyJournals.findFirst({ where: and(eq(dj.userId, user.id), eq(dj.day, day)), columns: { state: true } });
   if (row?.state) return null;
   // Enough of the day to answer it from the popup: the totals, the latest
-  // few lines, and whether a sign-in has already gone past hours.
-  const entries = (await dayEntries(day, [user.id])).get(user.id) ?? [];
+  // few lines, whether a sign-in has already gone past hours, and the figure
+  // boxes as they open for a counsellor.
+  const [entries, figures] = await Promise.all([dayEntries(day, [user.id]).then((m) => m.get(user.id) ?? []), prefillFor(user.id, user.role, day)]);
   const work = entries.filter((e) => e.kind !== "signin");
   const totals = [...kindCounts(work)].map(([kind, n]) => ({ label: KIND_LABEL[kind] ?? kind, n }));
   return {
@@ -533,10 +639,11 @@ export const journalWaiting = cache(async (user: SessionUser) => {
       .reverse()
       .map((e) => ({ at: istClock(e.at), text: e.text, href: e.href ?? null, outOfHours: !!e.outOfHours })),
     lateSignIn: entries.some((e) => e.kind === "signin" && e.outOfHours),
+    figures,
   };
 });
 
-/** Somebody's last two weeks of journals, for the history under today's. */
+/** Somebody's last two weeks of day end reports, for the history under today's. */
 export async function journalHistory(userId: string, days = 14) {
   const clock = await journalClock();
   const now = new Date();

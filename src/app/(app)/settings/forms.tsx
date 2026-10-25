@@ -179,13 +179,13 @@ export function PlatformForm({ settings }: { settings: PlatformValues }) {
         </p>
       </Section>
 
-      <Section title="Daily journal" hint="Times in India time. Each person's journal of the day is issued when the day ends, to view and verify before they leave.">
+      <Section title="Day end report" hint="Times in India time. Each person's report of the day is issued when the day ends, to view and verify before they leave.">
         <div className="grid gap-3 sm:grid-cols-3">
           <TextField label="Day ends" name="journalDayEnd" type="time" defaultValue={settings.journalDayEnd} required />
           <TextField label="Sign-ins after hours from" name="journalOutOfHours" type="time" defaultValue={settings.journalOutOfHours} required />
-          <TextField label="Unanswered journals missed at" name="journalCutoff" type="time" defaultValue={settings.journalCutoff} required />
+          <TextField label="Unanswered reports missed at" name="journalCutoff" type="time" defaultValue={settings.journalCutoff} required />
         </div>
-        <Checkbox name="journalOnSundays" defaultChecked={settings.journalOnSundays} label="Issue journals on Sundays too" />
+        <Checkbox name="journalOnSundays" defaultChecked={settings.journalOnSundays} label="Issue day end reports on Sundays too" />
         <p className="mt-1 text-xs text-muted">
           At the last time, anybody who has not verified is marked as missed and the Overseas admin is sent the consolidated report. It goes earlier if everybody has answered.
         </p>
