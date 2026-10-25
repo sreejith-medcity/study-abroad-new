@@ -2,6 +2,7 @@
  * Plain helpers for Ausbildung and the service charge, shared by the server
  * and the screens.
  */
+import { ADMIN_ROLES, DOCUMENTATION_ROLES } from "./permissions";
 
 /** The German levels a student works through, in order. */
 export const GERMAN_LEVELS = ["A1", "A2", "B1", "B2"] as const;
@@ -153,14 +154,75 @@ export function tatStanding(code: string | null | undefined, since: Date | null 
   const step = stepOfStatus(code);
   const days = since ? daysBetween(since, now) : null;
   const tatDays = step?.tatDays ?? null;
+  const over = tatDays != null && days != null && days > tatDays;
   return {
     step,
     days,
     tatDays,
     tatNote: step?.tatNote ?? null,
-    over: tatDays != null && days != null && days > tatDays,
+    over,
+    /** How many days past the turnaround the file is; zero while it is within it. */
+    daysOver: over && days != null && tatDays != null ? days - tatDays : 0,
   };
 }
+
+/**
+ * Whether a file is over its step's turnaround, and by how many days, for the
+ * daily follow-through and the filters. The same arithmetic as the tracker's
+ * cell, read from tatStanding, so a file the cell marks in warning colour is
+ * the file the desk is told about, never one or the other.
+ */
+export function tatOverdue(code: string | null | undefined, since: Date | null | undefined, now = new Date()) {
+  const standing = tatStanding(code, since, now);
+  return { over: standing.over, daysOver: standing.daysOver, days: standing.days, step: standing.step };
+}
+
+/**
+ * The status codes the guide gives a number of days to, with the days each
+ * allows. A step whose turnaround depends on something else is left out: it
+ * can never be over, so a query for over files has nothing to ask about it.
+ */
+export function timedStatusCodes(): { code: string; step: number; tatDays: number }[] {
+  return AUSBILDUNG_STEPS.filter((s): s is AusbildungStep & { tatDays: number } => s.tatDays != null).flatMap((s) => s.statusCodes.map((code) => ({ code, step: s.step, tatDays: s.tatDays })));
+}
+
+/*
+ * Who is told when a step runs over, by desk. The documentation mentors own the
+ * documentation and language steps between them; the placement, visa and
+ * travel steps are the Overseas desk's, run by the application team leader
+ * with the admins; the counselling steps are the branch's, so the branch head
+ * and the student's own counsellor hear about those. Travel is not named in
+ * the brief, and is put with the Overseas desk because the pre-departure and
+ * departure work is done from there.
+ */
+export type TatOwners = {
+  /** The staff roles told, every active account in them. Empty for a branch's own step. */
+  roles: string[];
+  /** Whether the student's branch head and counsellor are the ones told. */
+  branch: boolean;
+};
+
+export function tatOwners(department: AusbildungDepartment | null | undefined): TatOwners {
+  switch (department) {
+    case "DOCUMENTATION":
+    case "LANGUAGE":
+      return { roles: [...DOCUMENTATION_ROLES], branch: false };
+    case "PLACEMENT":
+    case "VISA":
+    case "TRAVEL":
+      return { roles: ["APPLICATION_TEAM_LEADER", ...ADMIN_ROLES], branch: false };
+    case "COUNSELLING":
+      return { roles: [], branch: true };
+    default:
+      return { roles: [], branch: false };
+  }
+}
+
+/** The key a turnaround follow-up task is raised under: one per application, per stay in a step. */
+export const tatTaskKey = (applicationId: string, step: number, since: Date) => `ausbildung-tat:${applicationId}:${step}:${since.toISOString()}`;
+
+/** Every turnaround task key starts with this, which is how a stay is checked for one. */
+export const TAT_TASK_KEY_PREFIX = "ausbildung-tat:";
 
 /** The turnaround in words: "T+7", "same day", or the guide's note. */
 export function tatText(step: AusbildungStep | null) {

@@ -119,6 +119,28 @@ when over. A "Desk" filter narrows the list to one desk's files. A panel under
 the table lists the hand-over addresses. The student's Ausbildung tab has a
 card placing the file on the six desks, with the same turnaround line.
 
+**Turnaround follow-through.** Once a morning (`POST /api/cron/ausbildung`,
+9:01 AM IST from `.github/workflows/schedules.yml`) the portal looks for every
+open Ausbildung application whose current step has run past the guide's
+turnaround, by the same arithmetic as the tracker's cell (`tatOverdue` in
+`src/lib/ausbildung.ts`, read off `applications.status_changed_at`). For each
+it raises one follow-up task on the desk that owns the step and tells that
+desk, naming the student, the step and the days over, with a link to the
+application. Who owns a step is `tatOwners`: the documentation desk roles for
+the documentation and language steps; the application team leader and the
+admins for the placement, visa and travel steps; the student's counsellor and
+the branch head for the counselling steps. The task goes to the officer
+carrying the file where they are on that desk, else the first of the desk, or
+the counsellor at a branch. Once per stay in a step: the task carries a key
+(`ausbildung-tat:<application>:<step>:<status entered at>`), and a file with a
+turnaround task raised since it entered its current status is skipped, ticked
+off or not, so nobody is nagged daily. A move to another status starts a new
+stay. A run looks at 200 files at most, oldest first; the rest wait a day.
+Steps whose turnaround depends on something else are never late. The tracker
+has an "Over turnaround" filter and a tile with the count, and the
+documentation desk's dashboard shows the count while it is above zero. No
+schema change: the follow-ups are rows in `tasks` and `notifications`.
+
 **Hand-over addresses.** The four addresses the guide names are seeded as
 Contacts under the area "Ausbildung (Germany)" (ausbildung@miak.in,
 translation.germany@miak.in, placementassistant@miak.in and, one level up,

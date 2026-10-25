@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { overTurnaroundCount } from "@/server/ausbildung";
 import { deskPool, deskStanding } from "@/server/documentation";
 import { documentBoard, documentFigures, documentsToCome } from "@/server/dashboard-work";
 import type { Lens } from "@/server/dashboard-lens";
@@ -21,7 +22,7 @@ import { Controls, ViewingAsNote, firstName, partOfDay } from "./controls";
  */
 export default async function Documents({ lens }: { lens: Lens }) {
   const { user } = lens;
-  const [f, board, owed, standing, pool] = await Promise.all([documentFigures(lens), documentBoard(lens), documentsToCome(lens), deskStanding(), deskPool()]);
+  const [f, board, owed, standing, pool, overTat] = await Promise.all([documentFigures(lens), documentBoard(lens), documentsToCome(lens), deskStanding(), deskPool(), overTurnaroundCount(user)]);
 
   return (
     <>
@@ -50,6 +51,9 @@ export default async function Documents({ lens }: { lens: Lens }) {
           { slug: "past-due", label: "Past due", value: f.overdue, tone: "stop", href: "/documentation" },
           { slug: "accepted-this-week", label: "Accepted this week", value: f.acceptedWeek, tone: "good", href: "/documentation?view=branch" },
           { slug: "expiring-soon", label: "Expiring in 60 days", value: f.expiring, tone: "gold", href: "/documentation" },
+          // The Ausbildung files sitting past their step's turnaround, only
+          // while there are any: a desk with none late has nothing to open.
+          ...(overTat > 0 ? [{ slug: "over-turnaround", label: "Ausbildung over turnaround", value: overTat, note: "against the written process", tone: "warn" as const, href: "/ausbildung?show=over" }] : []),
         ]}
       />
 

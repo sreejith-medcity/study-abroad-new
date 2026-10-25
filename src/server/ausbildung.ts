@@ -1,9 +1,10 @@
 import "server-only";
 import { and, asc, desc, eq, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
+import type { PgColumn } from "drizzle-orm/pg-core";
 import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { orgScope } from "@/lib/permissions";
-import { AUSBILDUNG_CONTACT_AREA, AUSBILDUNG_STEPS, AUSBILDUNG_TEAM, departmentOfStatus, moduleStanding, type AusbildungDepartment, type ModuleState } from "@/lib/ausbildung";
+import { AUSBILDUNG_CONTACT_AREA, AUSBILDUNG_STEPS, AUSBILDUNG_TEAM, departmentOfStatus, moduleStanding, timedStatusCodes, type AusbildungDepartment, type ModuleState } from "@/lib/ausbildung";
 import { nclexStanding, type NclexResult } from "@/lib/nclex";
 
 const { nclexCases: nc, nclexSteps: ns } = schema;
@@ -83,8 +84,37 @@ const currentAusbildungStatus = <T>(column: "code" | "label" | "status_changed_a
   limit 1
 )`;
 
+/**
+ * Whether a status entered at a moment is over the guide's turnaround, as SQL,
+ * so a list, a count and the daily follow-through can all ask the database
+ * the one question. The tracker's cell says "over" once the whole days in the
+ * status exceed the days allowed, which is the same as the status having been
+ * entered at least tatDays + 1 days ago; written that way here so the cell and
+ * the filter never disagree about a file. The day counts are constants from
+ * the code, so they are written into the SQL rather than bound.
+ */
+export const overTurnaroundSql = (code: SQL | PgColumn, since: SQL | PgColumn) => {
+  const timed = timedStatusCodes();
+  if (!timed.length) return sql`false`;
+  return sql`(${sql.join(
+    timed.map((t) => sql`(${code} = ${t.code} and ${since} <= now() - make_interval(days => ${sql.raw(String(t.tatDays + 1))}))`),
+    sql` or `,
+  )})`;
+};
+
+/** Whether the student's current Ausbildung application is over its step's turnaround. */
+const currentAusbildungOver = sql<boolean>`coalesce((
+  select ${overTurnaroundSql(sql`xs.code`, sql`xa.status_changed_at`)}
+  from applications xa
+  join programs xp on xp.id = xa.program_id
+  join status_definitions xs on xs.id = xa.status_id
+  where xa.student_id = "students"."id" and xp.pathway = 'AUSBILDUNG' and xs."group" <> 'CLOSED'
+  order by xa.status_changed_at desc
+  limit 1
+), false)`;
+
 export type TrackerTab = "ausbildung" | "nclex" | "service";
-export type TrackerShow = "all" | "interview" | "contract" | "german" | "unpaid";
+export type TrackerShow = "all" | "interview" | "contract" | "german" | "unpaid" | "over";
 export type TrackerFilters = { tab: TrackerTab; org?: string; counsellor?: string; q?: string; show?: TrackerShow; department?: AusbildungDepartment };
 
 export type ServiceCharge = {
@@ -148,6 +178,9 @@ export async function trackerRows(user: SessionUser, f: TrackerFilters, limit = 
   if (f.show === "interview") conds.push(sql`${ap.interviewOn} >= now() - interval '1 day' and ${ap.contractReceivedOn} is null`);
   if (f.show === "contract") conds.push(sql`${ap.contractReceivedOn} is not null`);
   if (f.show === "german") conds.push(sql`(select count(*) from german_modules xg where xg.student_id = "students"."id" and xg.state = 'COMPLETED') < 4`);
+  // Over turnaround is asked in SQL, with the same arithmetic as the cell, so
+  // the limit below never cuts off a late file in favour of one that is fine.
+  if (f.show === "over") conds.push(currentAusbildungOver);
   // A desk's files are the ones whose current status the guide puts with that
   // desk. The map lives in code, so the codes are listed here rather than
   // joined.
@@ -219,6 +252,20 @@ export async function trackerRows(user: SessionUser, f: TrackerFilters, limit = 
 }
 
 export type TrackerRow = Awaited<ReturnType<typeof trackerRows>>[number];
+
+/**
+ * How many of the Ausbildung files this person can see are past their step's
+ * turnaround: the tile on the tracker and the line on the documentation desk's
+ * dashboard. Counted with the same SQL the "Over turnaround" filter uses, so
+ * the tile and the list it opens always agree.
+ */
+export async function overTurnaroundCount(user: SessionUser) {
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(s)
+    .where(and(orgScope(user, s.orgId), eq(s.archived, false), isAusbildungSql, currentAusbildungOver));
+  return Number(row?.n ?? 0);
+}
 
 /** Everything the student's own Ausbildung tab shows. */
 export async function studentAusbildung(studentId: string) {

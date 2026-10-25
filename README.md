@@ -169,6 +169,7 @@ All seeded users share the password `Password@123`. Every person, university and
 | `POST /api/cron/documents` | Daily documentation chasing, same header. Reminders at three days of silence, the counsellor's desk at seven, expiry flags and gate notices |
 | `POST /api/cron/crm` | Drains the queue of events waiting for Medcity's own CRM, same header. Every few minutes. Without it the queue only moves when somebody presses the button on The CRM link |
 | `POST /api/cron/journal` | The day end report, same header. Just after the day ends it tells everybody their report is ready; just after the cutoff it marks unanswered reports missed and sends the Overseas admin the consolidated report. Safe to call as often as you like |
+| `POST /api/cron/ausbildung` | The Ausbildung turnaround follow-through, same header, once a morning. Every open Ausbildung file past its step's turnaround gets one follow-up task on the desk that owns the step, and the desk is told once per stay in the step. Safe to call twice |
 | `POST /api/crm/students` | Medcity's CRM registers or updates a student. Keyed and optionally signed; see **For the vendor** on The CRM link |
 | `GET /api/crm/students` | The same CRM looks a student up by its own id, the Medcity ID, an email or a number |
 | `POST /api/crm/enquiries` | A lead from that CRM, before anybody has decided it is a student |
@@ -258,9 +259,9 @@ tests/                          node:test unit tests
 - AI features (assistant, practice interviews, reading documents) use Anthropic's Messages API with `ANTHROPIC_API_KEY`, or a key sealed in Settings, Platform. They are off without a key and the owner's switch, count against a monthly allowance per branch tier, and never save anything a person has not checked. The assistant sees only the catalogue; interviews send the course, university, country and intake, never the student's name.
 - A portal student opens only their own documents: what they uploaded and what the branch shared with them.
 
-## The four scheduled jobs
+## The five scheduled jobs
 
-Four endpoints need calling on a schedule, all with `Authorization: Bearer $CRON_SECRET`:
+Five endpoints need calling on a schedule, all with `Authorization: Bearer $CRON_SECRET`:
 
 | Endpoint | How often | What happens without it |
 | --- | --- | --- |
@@ -268,10 +269,11 @@ Four endpoints need calling on a schedule, all with `Authorization: Bearer $CRON
 | `POST /api/cron/documents` | Daily, early morning IST | Nobody is chased for a document, no expiry is flagged and no gate notice goes out |
 | `POST /api/cron/cricos` | Monthly | Australia's course register goes stale |
 | `POST /api/cron/journal` | Just after 5 PM and just after midnight IST (or every fifteen minutes) | The day end reports still work, but "your day end report is ready" and the admin's consolidated report only go out when somebody next opens a page |
+| `POST /api/cron/ausbildung` | Daily, 9:01 AM IST | The placement tracker still marks an Ausbildung file that is over its step's turnaround, but nobody is told and no follow-up task lands on the desk that owns the step |
 
 Pick one of these three places to call them from. The portal does not care which.
 
-**From GitHub.** `.github/workflows/schedules.yml` in this repository does all four.
+**From GitHub.** `.github/workflows/schedules.yml` in this repository does all five.
 Add two repository secrets under Settings, then Secrets and variables, then Actions:
 `PORTAL_URL` (`https://doc.medcityoverseas.com`) and `CRON_SECRET` (the same value as
 in the portal's own environment). Nothing to install, and it survives a hosting move.
@@ -299,6 +301,7 @@ and `CRON_SECRET` in `deploy/.env` only has to equal the repository secret
 30 3 * * * curl -fsS -X POST https://doc.medcityoverseas.com/api/cron/documents -H "Authorization: Bearer YOUR_CRON_SECRET" >/dev/null
 0 4 1 * * curl -fsS -X POST https://doc.medcityoverseas.com/api/cron/cricos -H "Authorization: Bearer YOUR_CRON_SECRET" >/dev/null
 */15 * * * * curl -fsS -X POST https://doc.medcityoverseas.com/api/cron/journal -H "Authorization: Bearer YOUR_CRON_SECRET" >/dev/null
+31 3 * * * curl -fsS -X POST https://doc.medcityoverseas.com/api/cron/ausbildung -H "Authorization: Bearer YOUR_CRON_SECRET" >/dev/null
 ```
 
 Whichever is chosen, `CRON_SECRET` must be at least 24 characters. Shorter than that,

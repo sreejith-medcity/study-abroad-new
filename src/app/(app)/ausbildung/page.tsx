@@ -1,10 +1,11 @@
 import { AUSBILDUNG_DEPARTMENTS, DEPARTMENT_LABEL, chargeMoney, milestoneDueAt, percentPaid, tatStanding, tatText, type AusbildungDepartment } from "@/lib/ausbildung";
+import { IconClock } from "@/components/icons";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { fmtDate, fullName, istTime } from "@/lib/format";
 import { STUDENT_WORK_ROLES, isStaff } from "@/lib/permissions";
 import { NCLEX_STATES } from "@/lib/nclex";
-import { ausbildungContacts, chargingCountries, trackerChoices, trackerRows, type TrackerRow, type TrackerShow, type TrackerTab } from "@/server/ausbildung";
+import { ausbildungContacts, chargingCountries, overTurnaroundCount, trackerChoices, trackerRows, type TrackerRow, type TrackerShow, type TrackerTab } from "@/server/ausbildung";
 import { commissionVisible } from "@/server/commission-visibility";
 import { FilterBar } from "@/components/filter-bar";
 import { Card, EmptyState, PageHeader, Table, Td, Th, cn } from "@/components/ui";
@@ -17,6 +18,7 @@ const SHOW: { value: TrackerShow; label: string }[] = [
   { value: "contract", label: "Contract received" },
   { value: "german", label: "German not finished" },
   { value: "unpaid", label: "Service charge pending" },
+  { value: "over", label: "Over turnaround" },
 ];
 
 /**
@@ -34,16 +36,19 @@ export default async function AusbildungTrackerPage({ searchParams }: { searchPa
   const user = await requireUser([...STUDENT_WORK_ROLES, "MANAGEMENT"]);
   const sp = await searchParams;
   const tab: TrackerTab = sp.tab === "service" ? "service" : sp.tab === "nclex" ? "nclex" : "ausbildung";
-  const show = SHOW.some((s) => s.value === sp.show) ? (sp.show as TrackerShow) : undefined;
+  // "Over turnaround" reads the written process's steps, which only the Ausbildung tab has.
+  const show = SHOW.some((s) => s.value === sp.show) && !(sp.show === "over" && tab !== "ausbildung") ? (sp.show as TrackerShow) : undefined;
   // The desk filter belongs to the Ausbildung tab alone: the written process
   // is Ausbildung's, and the other tabs have no statuses it places.
   const department = tab === "ausbildung" && AUSBILDUNG_DEPARTMENTS.some((d) => d.key === sp.dept) ? (sp.dept as AusbildungDepartment) : undefined;
-  const [rows, choices, money, charging, contacts] = await Promise.all([
+  const [rows, choices, money, charging, contacts, over] = await Promise.all([
     trackerRows(user, { tab, org: sp.branch, counsellor: sp.who, q: sp.q, show, department }),
     trackerChoices(user),
     commissionVisible(user),
     chargingCountries(),
     tab === "ausbildung" ? ausbildungContacts() : Promise.resolve(null),
+    // The written process is Ausbildung's, so the turnaround tile is too.
+    tab === "ausbildung" ? overTurnaroundCount(user) : Promise.resolve(null),
   ]);
   const staff = isStaff(user);
 
@@ -91,6 +96,8 @@ export default async function AusbildungTrackerPage({ searchParams }: { searchPa
         )}
       </div>
 
+      {over != null && <OverTurnaroundTile count={over} active={show === "over"} />}
+
       <FilterBar
         primary={5}
         fields={[
@@ -104,6 +111,7 @@ export default async function AusbildungTrackerPage({ searchParams }: { searchPa
             kind: "select" as const,
             name: "show",
             label: "Show",
+            // Over turnaround belongs to the Ausbildung tab alone: it reads the written process's steps.
             options: SHOW.filter((s) => (tab === "ausbildung" ? true : tab === "nclex" ? s.value === "unpaid" : s.value === "german" || s.value === "unpaid"))
               .filter((s) => money || s.value !== "unpaid")
               .map((s) => ({ value: s.value, label: s.label })),
@@ -175,6 +183,34 @@ export default async function AusbildungTrackerPage({ searchParams }: { searchPa
         </Card>
       )}
     </>
+  );
+}
+
+/**
+ * How many Ausbildung files have sat at their step longer than the written
+ * process allows, as one tile above the filters, which opens the list narrowed
+ * to them. Counted by the same rule that colours the step cell, so the figure
+ * and the rows it opens agree. A zero is said in words rather than hidden,
+ * because "nothing is late" is worth knowing too.
+ */
+function OverTurnaroundTile({ count, active }: { count: number; active: boolean }) {
+  const label = count === 0 ? "No files over their turnaround" : `${count} ${count === 1 ? "file" : "files"} over ${count === 1 ? "its" : "their"} turnaround`;
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-2">
+      <Link
+        href={active ? "/ausbildung" : "/ausbildung?show=over"}
+        data-over-turnaround={count}
+        aria-pressed={active}
+        className={cn(
+          "inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-medium shadow-card",
+          count > 0 ? (active ? "border-warn-500 bg-warn-50 text-warn-700" : "border-line bg-surface text-warn-700 hover:bg-warn-50") : "border-line bg-surface text-muted",
+        )}
+      >
+        <IconClock className="size-4" aria-hidden="true" />
+        {label}
+      </Link>
+      <span className="text-xs text-muted">{active ? "Showing only those. Click again for every file." : count > 0 ? "Click to show only those." : "Against the written process's turnaround per step."}</span>
+    </div>
   );
 }
 

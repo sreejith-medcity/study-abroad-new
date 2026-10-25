@@ -1,4 +1,4 @@
-# The portal's four scheduled jobs, run from GitHub rather than from the host,
+# The portal's five scheduled jobs, run from GitHub rather than from the host,
 # so they keep working through a hosting move.
 #
 # Before this does anything, add two repository secrets under
@@ -11,7 +11,7 @@
 # looks like the portal is broken.
 #
 # Two things to know about GitHub's scheduler. A scheduled run can be a few
-# minutes late when the runners are busy, which is fine for all three of these
+# minutes late when the runners are busy, which is fine for all five of these
 # and would not be fine for anything a person is waiting on. And GitHub disables
 # scheduled workflows in a repository with no pushes for sixty days, so if the
 # portal ever goes a couple of months without a deploy, check this is still on.
@@ -38,6 +38,9 @@ on:
     - cron: "31 11 * * *"
     - cron: "1 15 * * *"
     - cron: "31 18 * * *"
+    # The Ausbildung turnaround: once a morning at 9:01 in Kerala, so the desk
+    # finds the day's follow-ups waiting when it sits down. Safe to run twice.
+    - cron: "31 3 * * *"
   workflow_dispatch:
     inputs:
       which:
@@ -45,7 +48,7 @@ on:
         required: true
         default: crm
         type: choice
-        options: [crm, documents, cricos, journal]
+        options: [crm, documents, cricos, journal, ausbildung]
 
 concurrency:
   # One at a time per job. A slow run must not have a second one started on top
@@ -65,11 +68,13 @@ jobs:
             "0 22 * * *") echo "path=/api/cron/documents" >> "$GITHUB_OUTPUT" ;;
             "30 22 1 * *") echo "path=/api/cron/cricos" >> "$GITHUB_OUTPUT" ;;
             "31 11 * * *" | "1 15 * * *" | "31 18 * * *") echo "path=/api/cron/journal" >> "$GITHUB_OUTPUT" ;;
+            "31 3 * * *") echo "path=/api/cron/ausbildung" >> "$GITHUB_OUTPUT" ;;
             *)
               case "${{ github.event.inputs.which }}" in
                 documents) echo "path=/api/cron/documents" >> "$GITHUB_OUTPUT" ;;
                 cricos) echo "path=/api/cron/cricos" >> "$GITHUB_OUTPUT" ;;
                 journal) echo "path=/api/cron/journal" >> "$GITHUB_OUTPUT" ;;
+                ausbildung) echo "path=/api/cron/ausbildung" >> "$GITHUB_OUTPUT" ;;
                 *) echo "path=/api/cron/crm" >> "$GITHUB_OUTPUT" ;;
               esac
               ;;
