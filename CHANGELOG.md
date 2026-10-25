@@ -5,6 +5,12 @@ version in package.json and adds an entry here and in src/lib/releases.ts (the
 What's new page reads that one). After applying a release, tag it with the
 version so it can be found and rolled back to.
 
+## 1.4.0 (26 October 2026)
+
+- A System screen under Reports tells the owner the portal is well: the release running, the database and its counts, where documents are kept and whether the folder is writable, every scheduled job's last run with a Run now for the owner, and the health check, with a Copy report button. No password is ever on it.
+- The consolidated day end report downloads as an Excel workbook (cover, people, figures) and prints cleanly.
+- An Ausbildung student sees their own journey on the portal home: the six desks, the step they are at and what comes next in plain words, their counsellor and mentor, their German levels, and which payment milestone is next.
+
 ## 1.3.0 (26 October 2026)
 
 - An Ausbildung file reaches the documentation desk the way the written process says: the branch hands it over from the Ausbildung tab once the registration papers are in, or it is handed over by itself when its status reaches step 4, and the desk can open it from that moment. The desk names a documentation mentor on the file; the counsellor and branch head are told who it is, the status moves to Mentor assigned, and the tracker shows the mentor.

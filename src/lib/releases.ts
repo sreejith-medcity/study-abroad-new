@@ -12,6 +12,15 @@ export type Release = { version: string; date: string; changes: string[] };
 
 export const RELEASES: Release[] = [
   {
+    version: "1.4.0",
+    date: "2026-10-26",
+    changes: [
+      "A System screen under Reports tells the owner the portal is well: the release running, the database and its counts, where documents are kept and whether the folder is writable, every scheduled job's last run with a Run now for the owner, and the health check, with a Copy report button for asking for help. No password is ever on it.",
+      "The consolidated day end report downloads as an Excel workbook (cover, people, figures) and prints cleanly.",
+      "An Ausbildung student sees their own journey on the portal home: the six desks, the step they are at and what comes next in plain words, their counsellor and mentor, their German levels, and which payment milestone is next.",
+    ],
+  },
+  {
     version: "1.3.0",
     date: "2026-10-26",
     changes: [
