@@ -66,7 +66,7 @@ const SEASON_WORDS: [RegExp, keyof typeof SEASONS][] = [
 
 /** One-click filters the sentence can ask for. */
 const PREF_WORDS: [RegExp, string, string][] = [
-  [/\b(no|without|waive[ds]?) (an? )?(ielts|english test|english)\b/, "noEnglish", "no English test needed"],
+  [/\b(no|without|waive[ds]?) (an? )?(ielts|english test|english)\b/, "noEnglish", "no English test recorded"],
   [/\b(moi|medium of instruction)\b/, "moi", "MOI accepted"],
   [/\bscholarship/, "scholarship", "scholarship available"],
   [/\b(psw|post ?study work|work permit|work rights|stay back|stay-back)\b/, "workRights", "post-study work"],

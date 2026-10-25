@@ -77,18 +77,26 @@ export function runPreSubmissionCheck(
     if (s.background.visaRefused?.answer) out.push({ code: "profile.visa_refusal", severity: "warning", message: "An earlier visa refusal is recorded: declare it on the application with the details", section: "profile" });
   }
 
-  // Passport validity must cover the whole course
+  // Passport validity must cover the whole course. With no course length on
+  // record there is no end date to test, so the check can only say the
+  // passport is valid at intake and that somebody must confirm the rest; a
+  // guessed length would turn an unknown into a pass.
   if (s.passportExpiry) {
-    const courseEnd = new Date(intake.year, intake.month - 1 + (p.durationMonths ?? 12), 1);
-    if (s.passportExpiry < courseEnd) {
-      out.push({
-        code: "passport.expiry",
-        severity: "blocker",
-        message: `Passport expires ${s.passportExpiry.toLocaleDateString("en-GB")}, before the course ends`,
-        section: "profile",
-      });
+    const expires = s.passportExpiry.toLocaleDateString("en-GB");
+    if (p.durationMonths == null) {
+      const courseStart = new Date(intake.year, intake.month - 1, 1);
+      if (s.passportExpiry < courseStart) {
+        out.push({ code: "passport.expiry", severity: "blocker", message: `Passport expires ${expires}, before the course starts`, section: "profile" });
+      } else {
+        out.push({ code: "passport.expiry", severity: "warning", message: "Course length is not recorded: the passport is valid at intake, check that it covers the whole course", section: "profile" });
+      }
     } else {
-      out.push({ code: "passport.expiry", severity: "pass", message: "Passport valid for the full course" });
+      const courseEnd = new Date(intake.year, intake.month - 1 + p.durationMonths, 1);
+      if (s.passportExpiry < courseEnd) {
+        out.push({ code: "passport.expiry", severity: "blocker", message: `Passport expires ${expires}, before the course ends`, section: "profile" });
+      } else {
+        out.push({ code: "passport.expiry", severity: "pass", message: "Passport valid for the full course" });
+      }
     }
   }
 

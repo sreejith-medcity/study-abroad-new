@@ -24,6 +24,17 @@ test("passport expiring before course end is a blocker", () => {
   assert.ok(r.some((x) => x.code === "passport.expiry" && x.severity === "blocker"));
 });
 
+test("an unrecorded course length never passes the passport check on a guess", () => {
+  const unknown = { ...program, durationMonths: null };
+  const r = runPreSubmissionCheck(student, unknown, intake);
+  const passport = r.find((x) => x.code === "passport.expiry");
+  assert.equal(passport?.severity, "warning");
+  assert.match(passport?.message ?? "", /not recorded/);
+  // A passport that runs out before the intake is a blocker whatever the length.
+  const early = runPreSubmissionCheck({ ...student, passportExpiry: new Date("2027-01-01") }, unknown, intake);
+  assert.equal(early.find((x) => x.code === "passport.expiry")?.severity, "blocker");
+});
+
 test("mock scores never satisfy English requirement", () => {
   const r = runPreSubmissionCheck({ ...student, tests: [{ test: "IELTS", overall: "8", isMock: true }] }, program, intake);
   assert.equal(r.find((x) => x.code === "english")?.severity, "blocker");

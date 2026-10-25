@@ -49,7 +49,9 @@ export const QUICK: { key: string; label: string; cond: () => SQL }[] = [
   { key: "noAppFee", label: "No application fee", cond: () => eq(p.applicationFee, 0) },
   { key: "waiver", label: "Application fee waiver", cond: () => sql`${p.feeWaiver} is not null` },
   { key: "moi", label: "MOI accepted", cond: () => eq(p.moiAccepted, true) },
-  { key: "noEnglish", label: "No English test needed", cond: noEnglish },
+  // Null scores mean nobody has recorded a requirement, not that there is none,
+  // so the chip says what it filters on rather than promising there is no test.
+  { key: "noEnglish", label: "No English test recorded", cond: noEnglish },
   { key: "noGre", label: "No GRE", cond: () => sql`${p.minGre} is null` },
   { key: "noGmat", label: "No GMAT", cond: () => sql`${p.minGmat} is null` },
   { key: "lowDeposit", label: "Deposit under 1,500", cond: () => or(lte(p.initialDeposit, 1500), sql`${p.initialDeposit} is null`)! },
@@ -163,6 +165,21 @@ export function budgetWhere(budgetInr: number, rates: Record<string, number>): S
     when ${p.tuitionPerYear} is not null then ${p.tuitionPerYear} * ${rate} <= ${budgetInr}::numeric
     when ${p.tuitionTotal} is not null and ${p.durationMonths} > 0 then ${p.tuitionTotal} * ${rate} * 12 <= ${budgetInr}::numeric * ${p.durationMonths}
     else true end)`;
+}
+
+/**
+ * Programs known to sit inside the budget: a fee on record, a rate for its
+ * currency, and the figure at or under the budget. The opposite of budgetWhere's
+ * leniency, for counting and ranking: a program whose fee nobody has recorded
+ * stays in the list, but it is not one of the ones that fit.
+ */
+export function knownInsideBudgetWhere(budgetInr: number, rates: Record<string, number>): SQL {
+  const rate = rateOf(c.currency, rates);
+  return sql`(case
+    when ${rate} is null then false
+    when ${p.tuitionPerYear} is not null then ${p.tuitionPerYear} * ${rate} <= ${budgetInr}::numeric
+    when ${p.tuitionTotal} is not null and ${p.durationMonths} > 0 then ${p.tuitionTotal} * ${rate} * 12 <= ${budgetInr}::numeric * ${p.durationMonths}
+    else false end)`;
 }
 
 /**

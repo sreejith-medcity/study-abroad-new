@@ -64,7 +64,9 @@ test("a whole-course fee is only averaged to test a budget, never shown as a yea
   assert.equal(money.perYear, false);
   assert.equal(Math.round(money.inr), 930000);
   const m = scoreMatch(p, { fit: null, wants: wants({ budgetInr: 10e5 }), rates: RATES, deadline: null, today: TODAY });
-  assert.ok(m.reasons.some((r) => r.includes("whole course")));
+  assert.ok(m.reasons.some((r) => r.includes("whole course") && r.includes("averaged over the course")));
+  const perYear = scoreMatch(program(), { fit: null, wants: wants({ budgetInr: 15e5 }), rates: RATES, deadline: null, today: TODAY });
+  assert.ok(perYear.reasons.some((r) => r.endsWith(", inside the budget") && !r.includes("averaged")));
 });
 
 test("the intake and the deadline are read from what is recorded", () => {

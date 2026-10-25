@@ -3,7 +3,7 @@ import { and, asc, count, eq, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { EligibilityInput } from "@/lib/eligibility";
 import { SEASONS } from "@/lib/program-tags";
-import { budgetWhere, listOf, QUICK, searchConds } from "@/server/program-search";
+import { budgetWhere, knownInsideBudgetWhere, listOf, QUICK, searchConds } from "@/server/program-search";
 import { notBlockedWhere } from "@/server/eligibility-sql";
 import { hasOpenScholarship } from "@/server/scholarships";
 
@@ -78,6 +78,9 @@ export async function finderCandidates(
     : [
         opts.checker ? sql`(${notBlockedWhere(opts.checker)}) desc` : undefined,
         opts.months.length ? sql`(${p.intakeMonths} && array[${sql.join(opts.months.map((m) => sql`${m}`), sql`, `)}]::int[]) desc` : undefined,
+        // Known to fit first, then fees nobody has recorded, then the ones known
+        // to be over: an unrecorded fee is not a cheap one.
+        opts.budget ? sql`(${knownInsideBudgetWhere(opts.budget, opts.rates)}) desc` : undefined,
         opts.budget ? sql`(${budgetWhere(opts.budget, opts.rates)}) desc` : undefined,
         sql`${u.rankSort} asc nulls last`,
         asc(p.name),
@@ -147,7 +150,9 @@ export async function finderCounts(
       total: count(),
       unis: sql<number>`count(distinct ${u.id})`.mapWith(Number),
       meets: opts.checker ? sql<number>`count(*) filter (where ${notBlockedWhere(opts.checker)})`.mapWith(Number) : sql<number>`0`.mapWith(Number),
-      inBudget: opts.budget ? sql<number>`count(*) filter (where ${budgetWhere(opts.budget, opts.rates)})`.mapWith(Number) : sql<number>`0`.mapWith(Number),
+      // Only fees on record count as inside the budget; budgetWhere keeps the
+      // unrecorded ones in the list, which is not the same as them fitting.
+      inBudget: opts.budget ? sql<number>`count(*) filter (where ${knownInsideBudgetWhere(opts.budget, opts.rates)})`.mapWith(Number) : sql<number>`0`.mapWith(Number),
     })
     .from(p)
     .innerJoin(u, eq(p.universityId, u.id))

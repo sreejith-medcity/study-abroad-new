@@ -279,7 +279,7 @@ export async function FinderResults({
           </div>
           <p className="mt-1 text-sm text-ink-soft">
             {checker ? <><span className="font-semibold text-ink">{counts.meets.toLocaleString("en-IN")}</span> meet every requirement on record. </> : null}
-            {budget ? <><span className="font-semibold text-ink">{counts.inBudget.toLocaleString("en-IN")}</span> sit inside the budget, and anything up to a quarter over is shown and marked. </> : null}
+            {budget ? <><span className="font-semibold text-ink">{counts.inBudget.toLocaleString("en-IN")}</span> with a recorded fee sit inside the budget; courses with no fee on record stay in the list, and anything up to a quarter over is shown and marked. </> : null}
             {byFit && counts.total > CANDIDATES ? `Best fit is worked out over the strongest ${CANDIDATES.toLocaleString("en-IN")} of these; sort by fee or ranking to page through all of them.` : null}
           </p>
           {chips.length > 0 && (

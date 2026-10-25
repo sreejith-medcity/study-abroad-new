@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { daysUntil, deadlineText, durationText, feeText, intakesText } from "../src/lib/catalogue";
+import { daysUntil, deadlineText, durationText, feeText, intakesText, tuitionText } from "../src/lib/catalogue";
 import { fmtMoney } from "../src/lib/format";
 
 test("an unverified fee never reads as free", () => {
@@ -8,6 +8,18 @@ test("an unverified fee never reads as free", () => {
   assert.equal(feeText(undefined, "GBP", { zero: "No application fee", unknown: "Fee to confirm" }), "Fee to confirm");
   assert.equal(feeText(0, "GBP", { zero: "No application fee" }), "No application fee");
   assert.equal(feeText(75, "GBP", { zero: "No application fee" }), fmtMoney(75, "GBP"));
+});
+
+test("tuition keeps its three states in any language", () => {
+  assert.equal(tuitionText(null, null, "GBP"), "Not recorded");
+  assert.equal(tuitionText(0, null, "GBP"), "No tuition fee");
+  assert.equal(tuitionText(12000, null, "GBP"), `${fmtMoney(12000, "GBP")} / yr`);
+  // A whole-course figure is shown as such, never divided into a year.
+  assert.equal(tuitionText(null, 30000, "AUD"), `${fmtMoney(30000, "AUD")} whole course`);
+  const ml = { perYear: "പ്രതിവർഷം", wholeCourse: "മുഴുവൻ കോഴ്സിന്", zero: "ട്യൂഷൻ ഫീസ് ഇല്ല", unknown: "ഇതുവരെ സ്ഥിരീകരിച്ചിട്ടില്ല" };
+  assert.equal(tuitionText(null, null, "GBP", ml), ml.unknown);
+  assert.equal(tuitionText(0, null, "GBP", ml), ml.zero);
+  assert.equal(tuitionText(null, 30000, "AUD", ml), `${fmtMoney(30000, "AUD")} ${ml.wholeCourse}`);
 });
 
 test("intakes and duration say when nothing is recorded", () => {

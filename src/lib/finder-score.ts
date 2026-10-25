@@ -119,11 +119,17 @@ export function scoreMatch(
     if (!money) {
       score += 4;
       cautions.push(p.tuitionPerYear == null && p.tuitionTotal == null ? "Tuition is not recorded, so the budget could not be checked" : "No rate is set for this currency, so the budget could not be checked");
-    } else if (money.inr <= opts.wants.budgetInr) {
-      score += 20;
-      reasons.push(`Tuition ${tuitionText(p.tuitionPerYear, p.tuitionTotal, p.currency)}, inside the budget`);
     } else {
-      cautions.push(`Tuition ${tuitionText(p.tuitionPerYear, p.tuitionTotal, p.currency)}, over the budget`);
+      // A whole-course fee is only ever averaged over the course to test the
+      // budget, and the sentence says so; a per-year fee is compared as it is.
+      const text = `Tuition ${tuitionText(p.tuitionPerYear, p.tuitionTotal, p.currency)}`;
+      const how = money.perYear ? "," : ", averaged over the course,";
+      if (money.inr <= opts.wants.budgetInr) {
+        score += 20;
+        reasons.push(`${text}${how} inside the budget`);
+      } else {
+        cautions.push(`${text}${how} over the budget`);
+      }
     }
   } else if (money && p.tuitionPerYear != null) {
     // Without a budget, a cheaper program still deserves a nudge upwards.

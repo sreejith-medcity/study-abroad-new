@@ -43,14 +43,18 @@ export function durationText(months: number | null | undefined) {
 /** Long enough to compare honestly, short enough that it is still a shortlist. */
 export const SHORTLIST_LIMIT = 15;
 
+export type TuitionLabels = { perYear: string; wholeCourse: string; zero: string; unknown: string };
+const TUITION_LABELS: TuitionLabels = { perYear: "/ yr", wholeCourse: "whole course", zero: "No tuition fee", unknown: "Not recorded" };
+
 /**
  * Tuition as the source published it: per year where known, otherwise the
  * whole-course figure (CRICOS publishes only that), never one derived from the other.
+ * The labels can be swapped for another language; the three states stay the same.
  */
-export function tuitionText(perYear: number | null | undefined, total: number | null | undefined, currency: string) {
-  if (perYear != null) return perYear === 0 ? "No tuition fee" : `${fmtMoney(perYear, currency)} / yr`;
-  if (total != null) return total === 0 ? "No tuition fee" : `${fmtMoney(total, currency)} whole course`;
-  return "Not recorded";
+export function tuitionText(perYear: number | null | undefined, total: number | null | undefined, currency: string, labels: TuitionLabels = TUITION_LABELS) {
+  if (perYear != null) return perYear === 0 ? labels.zero : `${fmtMoney(perYear, currency)} ${labels.perYear}`;
+  if (total != null) return total === 0 ? labels.zero : `${fmtMoney(total, currency)} ${labels.wholeCourse}`;
+  return labels.unknown;
 }
 
 /**

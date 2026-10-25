@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { fmtDate, fmtMoney, intakeLabel } from "@/lib/format";
+import { fmtDate, intakeLabel } from "@/lib/format";
 import { translator } from "@/lib/i18n";
-import { inrApprox } from "@/lib/catalogue";
+import { inrApprox, tuitionText } from "@/lib/catalogue";
 import { fxRates, getSettings } from "@/server/settings";
 import { requireStudent, studentApplications, studentChecklist, studentDocuments, studentShortlist, studentTimeline } from "@/server/portal";
 import { datesAhead } from "@/lib/family";
@@ -35,10 +35,11 @@ export default async function PortalHome() {
     const v = inrApprox(x.tuitionPerYear ?? x.tuitionTotal, x.currency, rates);
     return v && locale === "ml" ? v.replace(" lakh", " ലക്ഷം").replace(" crore", " കോടി") : v;
   };
-  // Localised here rather than with the staff helpers, so a Malayalam reader
-  // never meets "whole course" or "Not recorded" in English.
+  // The staff helper with the portal's own words, so a Malayalam reader never
+  // meets "whole course" or "Not recorded" in English, and a fee the institution
+  // states as nil still reads as nil rather than as unconfirmed.
   const fee = (x: (typeof shortlist)[number]) =>
-    x.tuitionPerYear ? `${fmtMoney(x.tuitionPerYear, x.currency)} ${t("perYear")}` : x.tuitionTotal ? `${fmtMoney(x.tuitionTotal, x.currency)} ${t("wholeCourse")}` : t("notConfirmed");
+    tuitionText(x.tuitionPerYear, x.tuitionTotal, x.currency, { perYear: t("perYear"), wholeCourse: t("wholeCourse"), zero: t("noTuition"), unknown: t("notConfirmed") });
 
   return (
     <div className="space-y-5">
