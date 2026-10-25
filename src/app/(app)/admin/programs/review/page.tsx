@@ -47,7 +47,7 @@ export default async function DraftReviewPage({ searchParams }: { searchParams: 
           </Link>
         }
         title="Review drafts"
-        subtitle={`${groupInr(drafts)} draft${drafts === 1 ? "" : "s"}${from} at ${groupInr(universities)} universit${universities === 1 ? "y" : "ies"}. Open one to check its courses and publish the ones that are ready.`}
+        subtitle={`${groupInr(drafts)} draft${drafts === 1 ? "" : "s"}${from} at ${groupInr(universities)} universit${universities === 1 ? "y" : "ies"}. Open one to check its courses and publish the ones that are ready; "worth a look" counts the drafts with something odd about them.`}
       />
       <div className="space-y-4" data-review-list>
         <Card className="p-4">
@@ -81,12 +81,13 @@ export default async function DraftReviewPage({ searchParams }: { searchParams: 
               <EmptyState title="No drafts to review">Every course in the catalogue is live or archived.</EmptyState>
             )
           ) : (
-            <Table tableClassName="min-w-[900px]">
+            <Table tableClassName="min-w-[1000px]">
               <thead>
                 <tr>
                   <Th>University</Th>
                   <Th>Country</Th>
                   <Th className="text-right">Drafts</Th>
+                  <Th className="text-right">Worth a look</Th>
                   <Th>With yearly fee</Th>
                   <Th>With IELTS</Th>
                   <Th>With intakes</Th>
@@ -104,6 +105,12 @@ export default async function DraftReviewPage({ searchParams }: { searchParams: 
                     <Td>{r.country}</Td>
                     <Td className="text-right tabular font-medium">
                       <span data-col="drafts" data-count={r.drafts}>{groupInr(r.drafts)}</span>
+                    </Td>
+                    <Td className="text-right tabular">
+                      {/* Drafts with a worth-a-look flag (src/lib/review-flags.ts): the ones to open first. */}
+                      <span data-col="flagged" data-count={r.flagged} className={r.flagged === 0 ? "text-muted" : "font-medium text-info-700"}>
+                        {groupInr(r.flagged)}
+                      </span>
                     </Td>
                     <Recorded col="fee" n={r.withFee} of={r.drafts} />
                     <Recorded col="ielts" n={r.withIelts} of={r.drafts} />

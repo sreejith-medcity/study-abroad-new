@@ -77,6 +77,12 @@ export type ReviewOutcome = {
   noEvidence: number;
   /** Ticked courses that were no longer drafts by the time the press arrived. */
   gone: number;
+  /**
+   * Drafts "Publish all clean drafts" left alone because they carry a flag
+   * (see src/lib/review-flags.ts). They broke no rule; they are waiting for
+   * somebody to look at them.
+   */
+  flagged?: number;
 };
 
 /**
@@ -93,6 +99,7 @@ export function outcomeText(o: ReviewOutcome): string {
       parts.push(heldBackText(o, count(o.left, "left as a draft", "left as drafts")));
       parts.push(o.left === 1 ? "Open it to add what is missing." : "Open each one to add what is missing.");
     }
+    if (o.flagged) parts.push(`${count(o.flagged, "draft worth a look was", "drafts worth a look were")} left for you to check.`);
   }
   if (o.gone) parts.push(o.gone === 1 ? "1 was no longer a draft, so it was left as it was." : `${o.gone} were no longer drafts, so they were left as they were.`);
   return parts.join(" ");

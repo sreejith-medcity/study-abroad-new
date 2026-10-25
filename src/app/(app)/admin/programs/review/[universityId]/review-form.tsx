@@ -11,15 +11,17 @@ const tickedIn = (form: HTMLFormElement | null) => form?.querySelectorAll('input
 type Next = { href: string; name: string; drafts: number } | null;
 
 /**
- * The form around one university's drafts: the ticked courses or all of
- * them, published or archived, and the answer with the way on to the next
- * university. The rows themselves come from the server as children, so the
- * table refreshes with whatever is still a draft after each press.
+ * The form around one university's drafts: the ticked courses, all of them,
+ * or the clean ones (no worth-a-look flag), published or archived, and the
+ * answer with the way on to the next university. The rows themselves come
+ * from the server as children, so the table refreshes with whatever is still
+ * a draft after each press.
  */
 export function ReviewForm({
   universityId,
   source,
   total,
+  clean,
   allLabel,
   next,
   children,
@@ -28,6 +30,8 @@ export function ReviewForm({
   source: string;
   /** Drafts in view at this university, across every page. */
   total: number;
+  /** Of those, the drafts with no flag, which "Publish all clean drafts" is about. */
+  clean: number;
   allLabel: string;
   next: Next;
   children: ReactNode;
@@ -93,10 +97,13 @@ export function ReviewForm({
             {busy("archive", "Archiving…", ticked ? `Archive selected (${ticked})` : "Archive selected")}
           </Button>
           <span className="mx-1 h-5 w-px bg-line" aria-hidden />
+          <Button name="op" value="publishClean" size="sm" disabled={pending || clean === 0} data-publish-clean data-clean={clean}>
+            {busy("publishClean", `Publishing ${groupInr(clean)}…`, `Publish all clean drafts (${groupInr(clean)})`)}
+          </Button>
           <Button name="op" value="publishAll" size="sm" variant="secondary" disabled={pending} data-publish-all>
             {busy("publishAll", `Publishing ${groupInr(total)}…`, allLabel)}
           </Button>
-          <span className="text-sm text-muted">Courses that are not ready stay drafts, and the answer says why.</span>
+          <span className="text-sm text-muted">Clean drafts have nothing worth a look. Courses that are not ready stay drafts, and the answer says why.</span>
         </div>
       )}
       {children}
