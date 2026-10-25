@@ -40,7 +40,9 @@ export function figuresWorkbook(month: string, people: MonthPerson[], downloaded
 
   const names = uniqueSheetNames(grouped.branches.map((b) => b.name));
   grouped.branches.forEach((b, i) => {
-    const rows: Row[] = b.people.map((p) => [p.name, ROLE_LABEL[p.role] ?? p.role, p.answered, p.missed, ...FIGURE_KEYS.map((k) => p.figures[k])]);
+    // A person who answered nothing has no figures, and the sheet says so by
+    // leaving the cells empty rather than writing noughts the screen does not show.
+    const rows: Row[] = b.people.map((p) => [p.name, ROLE_LABEL[p.role] ?? p.role, p.answered, p.missed, ...FIGURE_KEYS.map((k) => (p.answered === 0 ? null : p.figures[k]))]);
     rows.push([`${b.name} total`, "", b.answered, b.missed, ...FIGURE_KEYS.map((k) => b.totals[k])]);
     const bs = sheet(wb, names[i], ["Counsellor", "Role", "Days answered", "Days missed", ...FIGURE_HEADS], rows, [28, 22, 14, 12, 14, 12, 16, 16, 18]);
     bs.getRow(bs.rowCount).font = { bold: true };

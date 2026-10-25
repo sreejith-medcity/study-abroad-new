@@ -184,6 +184,9 @@ sql(`insert into daily_journals (id, user_id, day, state, decided_at, note, entr
 /* ---------------- A branch head sees their own branch ---------------- */
 {
   const h = await open("kottayam@medcity.test");
+  // The menu folds its groups away from the page being read; the Account
+  // group is open on the day end report itself.
+  await go(h.page, "/journal");
   check((await h.page.locator('nav[aria-label="Main"]').getByText("Day end figures", { exact: true }).count()) === 1, "a branch head has the day end figures in the menu");
   await go(h.page, `/journal/report?month=${month}`);
   check(h.page.url().includes("/journal/report") && (await h.page.locator(`[data-month-figures][data-month="${month}"]`).count()) === 1, "the report address opens the month view for a branch head, who has no day report to read");

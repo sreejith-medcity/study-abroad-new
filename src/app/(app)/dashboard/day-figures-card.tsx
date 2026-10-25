@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ROLE_LABEL } from "@/lib/permissions";
-import { dayText } from "@/lib/journal";
+import { dayText, readsMonthFigures } from "@/lib/journal";
 import { monthText } from "@/server/targets";
 import { dayFigures } from "@/server/dashboard-figures";
 import type { Lens } from "@/server/dashboard-lens";
@@ -53,9 +53,13 @@ export async function DayFiguresCard({ lens, className }: { lens: Lens; classNam
         title="The day's figures"
         subtitle={`Today, ${whenToday}, added up over ${whose}: ${t.answered} of ${t.of} have answered the day end report, the rest counted from the portal so far. The month so far adds up the reports answered.`}
         action={
-          <Link href={reportHref} className="text-xs font-medium text-brand-700 hover:underline">
-            Reports for {monthText(f.month)}
-          </Link>
+          // The month view is the branch head's; a senior counsellor reads
+          // the same board and has no report page to go to.
+          readsMonthFigures(lens.user.role, lens.user.orgType) ? (
+            <Link href={reportHref} className="text-xs font-medium text-brand-700 hover:underline">
+              Reports for {monthText(f.month)}
+            </Link>
+          ) : undefined
         }
       />
       <div className="p-4">

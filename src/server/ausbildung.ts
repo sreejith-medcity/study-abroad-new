@@ -69,10 +69,11 @@ const destinationSql = sql<string | null>`coalesce(
 )`;
 
 /**
- * Where the student's Ausbildung application stands: the status of the open
- * one that moved most recently, so a file with a closed first round and a live
- * second reads from the live one. Null where there is no Ausbildung
- * application yet, which the tracker says in words.
+ * Where the student's Ausbildung application stands: the live one that moved
+ * most recently, so a file with a closed first round and a live second reads
+ * from the live one, and a finished placement (joined, deployed) gives way to
+ * a round still being worked. Null where there is no Ausbildung application
+ * yet, which the tracker says in words.
  */
 const currentAusbildungStatus = <T>(column: "code" | "label" | "status_changed_at") => sql<T>`(
   select ${sql.raw(column === "status_changed_at" ? "xa.status_changed_at" : `xs.${column}`)}
@@ -80,7 +81,7 @@ const currentAusbildungStatus = <T>(column: "code" | "label" | "status_changed_a
   join programs xp on xp.id = xa.program_id
   join status_definitions xs on xs.id = xa.status_id
   where xa.student_id = "students"."id" and xp.pathway = 'AUSBILDUNG' and xs."group" <> 'CLOSED'
-  order by xa.status_changed_at desc
+  order by (xs."group" = 'SUCCESS') asc, xa.status_changed_at desc
   limit 1
 )`;
 
@@ -109,7 +110,7 @@ const currentAusbildungOver = sql<boolean>`coalesce((
   join programs xp on xp.id = xa.program_id
   join status_definitions xs on xs.id = xa.status_id
   where xa.student_id = "students"."id" and xp.pathway = 'AUSBILDUNG' and xs."group" <> 'CLOSED'
-  order by xa.status_changed_at desc
+  order by (xs."group" = 'SUCCESS') asc, xa.status_changed_at desc
   limit 1
 ), false)`;
 

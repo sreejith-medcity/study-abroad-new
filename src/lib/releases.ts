@@ -12,6 +12,17 @@ export type Release = { version: string; date: string; changes: string[] };
 
 export const RELEASES: Release[] = [
   {
+    version: "1.2.0",
+    date: "2026-10-26",
+    changes: [
+      "The day end figures have a month view: each counsellor's leads, calls, connected calls, follow-ups and registrations added up over the month, with days answered and missed, branch and overall totals, a day-by-day list per counsellor, and a download as Excel. A branch head sees their own branch; the report roles see every branch.",
+      "The dashboards show the day's figures: a counsellor's own for today and the month so far, a branch head's per counsellor, and leadership's per branch.",
+      "An Ausbildung file that sits at a step longer than the written process allows is followed up every morning: a task for the desk that owns the step and a notice to the people who can open the file, once per stay at that step. The placement tracker filters to files over their turnaround, and the documentation desk's dashboard counts them.",
+      "A course with no fee, score or length on record is never counted, ranked, passed or labelled as if it had one: the course finder counts only recorded fees inside a budget, a missing course length is a warning rather than a pass on the passport check, and \"No English test\" now reads \"No English test recorded\".",
+      "The dashboard's week and today are India's wherever the server runs.",
+    ],
+  },
+  {
     version: "1.1.0",
     date: "2026-10-25",
     changes: [

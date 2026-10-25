@@ -130,7 +130,7 @@ const admin = await signIn("sreejith@miak.in");
   let text = await go(page, "/ausbildung?show=over");
   check(text.includes("Akshara"), "'Over turnaround' shows the late file");
   const row = (await page.locator(`[data-tracker-row="${akshara}"]`).innerText().catch(() => "")).replace(/\s+/g, " ");
-  check(/Step 10, 45 days here; guide: T\+30/.test(row), `with its days against the guide (${row.slice(0, 160)})`);
+  check(/Step 10, 45 days here; guide: T\+30/.test(row), `with its days against the guide (${row.slice(-220)})`);
   check(Number(await page.locator("[data-over-turnaround]").getAttribute("data-over-turnaround")) === (await page.locator("[data-tracker-row]").count()), "the tile's figure is the number of rows the filter shows");
   const nclex = await go(page, "/ausbildung?tab=nclex");
   check(!/Over turnaround/.test(await page.locator('select[name="show"]').innerText().catch(() => "")) && !nclex.includes("over their turnaround"), "the other tabs have neither the option nor the tile");

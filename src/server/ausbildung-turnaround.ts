@@ -6,6 +6,7 @@ import { DEPARTMENT_LABEL, TAT_TASK_KEY_PREFIX, tatOverdue, tatOwners, tatTaskKe
 import { istDay } from "@/lib/journal";
 import { overTurnaroundSql } from "@/server/ausbildung";
 import { notifyUsers } from "@/server/notify";
+import { whoMayOpenStudent } from "@/server/scope";
 import { raiseTask } from "@/server/tasks";
 
 const { applications: a, programs: p, statusDefinitions: sd, students: st, users: us } = schema;
@@ -17,7 +18,7 @@ export type TurnaroundRun = {
   tasksRaised: number;
   /** People told, across every file. */
   told: number;
-  /** Files with nobody to tell: no active account in the owning roles, and no counsellor or branch head. */
+  /** Files with nobody to tell: nobody in the owning roles, or at the branch, who can open the student. */
   nobodyToTell: number;
 };
 
@@ -108,13 +109,18 @@ export async function runAusbildungTurnaround(now = new Date(), limit = TAT_RUN_
     // The desk's people, in the order one of them is preferred as the assignee.
     const deskIds = owners.roles.slice().sort((x, y) => ASSIGNEE_ORDER.indexOf(x) - ASSIGNEE_ORDER.indexOf(y)).flatMap((r) => byRole.get(r) ?? []);
     const branchIds = owners.branch ? [f.counsellorId, ...(headsByOrg.get(f.orgId) ?? [])].filter((x): x is string => !!x) : [];
-    const recipients = [...new Set([...deskIds, ...branchIds])];
+    const wanted = [...new Set([...deskIds, ...branchIds])];
+    // Only people who can open the student are told, and the task goes to one
+    // of them: a notice about a file somebody cannot open is a dead end, and
+    // a desk officer is only let into an Ausbildung file once it is handed
+    // over, so the desk's team leader is often who this reaches.
+    const recipients = wanted.length ? await whoMayOpenStudent(f.studentId, wanted) : [];
     if (!recipients.length) {
       run.nobodyToTell += 1;
       continue;
     }
-    // The officer carrying the file gets the task when the step is their desk's; otherwise the first of the desk.
-    const assignee = f.officerId && deskIds.includes(f.officerId) ? f.officerId : recipients[0];
+    // The officer carrying the file gets the task when the step is their desk's; otherwise the first who can open it.
+    const assignee = f.officerId && deskIds.includes(f.officerId) && recipients.includes(f.officerId) ? f.officerId : recipients[0];
 
     const name = `${f.firstName} ${f.lastName}`.trim();
     const dayWord = (n: number) => `${n} ${n === 1 ? "day" : "days"}`;
@@ -139,8 +145,6 @@ export async function runAusbildungTurnaround(now = new Date(), limit = TAT_RUN_
     if (!raised) continue;
     run.tasksRaised += 1;
 
-    // notifyUsers drops anybody who cannot open the student, so this is the
-    // number asked for rather than the number of notices written.
     await notifyUsers(recipients, `${name}: step ${step.step} is ${dayWord(tat.daysOver)} over its turnaround`, detail, href);
     run.told += recipients.length;
   }

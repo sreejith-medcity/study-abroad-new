@@ -5,6 +5,14 @@ version in package.json and adds an entry here and in src/lib/releases.ts (the
 What's new page reads that one). After applying a release, tag it with the
 version so it can be found and rolled back to.
 
+## 1.2.0 (26 October 2026)
+
+- The day end figures have a month view: each counsellor's leads, calls, connected calls, follow-ups and registrations added up over the month, with days answered and missed, branch and overall totals, a day-by-day list per counsellor, and a download as Excel. A branch head sees their own branch; the report roles see every branch.
+- The dashboards show the day's figures: a counsellor's own for today and the month so far, a branch head's per counsellor, and leadership's per branch.
+- An Ausbildung file that sits at a step longer than the written process allows is followed up every morning: a task for the desk that owns the step and a notice to the people who can open the file, once per stay at that step. The placement tracker filters to files over their turnaround, and the documentation desk's dashboard counts them.
+- A course with no fee, score or length on record is never counted, ranked, passed or labelled as if it had one.
+- The dashboard's week and today are India's wherever the server runs.
+
 ## 1.1.0 (25 October 2026)
 
 - The daily journal is now the day end report. Counsellors and branch heads give the day's figures with it: leads received, calls made, connected calls, follow-ups done and registrations done. Calls, follow-ups and registrations are pre-filled from the portal; every box is required before the report is verified. The consolidated report lists the figures per counsellor with totals per branch.

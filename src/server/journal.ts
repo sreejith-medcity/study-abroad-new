@@ -547,7 +547,10 @@ export async function journalBranches() {
 export async function monthFigures(month: string, orgIds: string[] | null): Promise<MonthPerson[]> {
   if (orgIds && orgIds.length === 0) return [];
   const { first, next } = monthDays(month);
-  const answered = sql`${dj.state} in (${sql.join(ANSWERED_STATES.map((st) => sql`${st}`), sql`, `)})`;
+  // Answered, for the figures, means answered with figures: a report from
+  // before the figures were asked for, or from somebody not asked for them,
+  // adds no day and no nought.
+  const answered = sql`${dj.state} in (${sql.join(ANSWERED_STATES.map((st) => sql`${st}`), sql`, `)}) and ${dj.figures} is not null`;
   // The key is one of the five constants, written into the SQL as a literal so
   // Postgres reads it as the text form of ->> without being asked to guess.
   const summed = (key: FigureKey) => sql<number>`coalesce(sum((${dj.figures}->>${sql.raw(`'${key}'`)})::int) filter (where ${answered}), 0)::int`;
