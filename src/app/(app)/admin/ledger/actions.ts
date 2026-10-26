@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { APP_ROLES, isAdmin } from "@/lib/permissions";
 import { mayReadLedger } from "@/server/history-feed";
-import { stampLedger, verifyLedger } from "@/server/ledger";
+import { dailyStamping, stampLedger, verifyLedger } from "@/server/ledger";
 
 /** Recomputes the whole chain and says whether it is intact, or which entry is not. */
 export async function verifyLedgerAction() {
@@ -27,7 +27,7 @@ export async function stampLedgerAction() {
   await audit(user.id, "ledger.stamp", "ledger", "*", { status: r.status });
   if (r.status === "EMPTY") redirect(`/admin/ledger?note=${encodeURIComponent("The ledger has no entries yet, so there is nothing to stamp.")}`);
   if (r.status === "FAILED") {
-    redirect(`/admin/ledger?note=${encodeURIComponent(`Not stamped: no public calendar could be reached (${r.error ?? "no network"}). The ledger itself is unaffected, and the portal tries again an hour after the next change.`)}`);
+    redirect(`/admin/ledger?note=${encodeURIComponent(`Not stamped: no public calendar could be reached (${r.error ?? "no network"}). The ledger itself is unaffected${dailyStamping() ? ", and the portal tries again an hour after the next change" : ". Daily stamping is off, so try Stamp now again later"}.`)}`);
   }
   redirect(`/admin/ledger?note=${encodeURIComponent(`Stamped entries 1 to ${r.uptoSeq} on ${r.calendars.length} public calendar${r.calendars.length === 1 ? "" : "s"}. It is confirmed in a Bitcoin block within a few hours.`)}`);
 }

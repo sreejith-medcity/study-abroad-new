@@ -195,6 +195,16 @@ export function buildOts(digestHex: string, responses: readonly Buffer[]) {
 }
 
 /**
+ * Whether the daily background stamp is switched on, from the LEDGER_STAMP
+ * setting. Off unless it says on: the stamp sends the chain's head to public
+ * calendars outside the portal, which somebody should choose to do. Stamp now
+ * on the ledger screen works either way.
+ */
+export function dailyStampOn(setting: string | undefined | null): boolean {
+  return ["on", "true", "yes", "1"].includes((setting ?? "").trim().toLowerCase());
+}
+
+/**
  * Whether a stamp is due: once a day after one that reached a calendar, and
  * an hour after one that did not, and never while the chain has not moved
  * since the last good one.

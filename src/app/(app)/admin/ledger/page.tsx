@@ -7,7 +7,7 @@ import { APP_ROLES, isAdmin } from "@/lib/permissions";
 import { fmtDateTime } from "@/lib/format";
 import { FORMULA, LEDGER_KIND_LABEL } from "@/lib/ledger";
 import { feedViewer, mayReadLedger } from "@/server/history-feed";
-import { ledgerCounts, ledgerHeadRow, recentStamps } from "@/server/ledger";
+import { dailyStamping, ledgerCounts, ledgerHeadRow, recentStamps } from "@/server/ledger";
 import type { FeedViewer } from "@/server/record-history";
 import { Alert, Button, Card, CardHeader, Chip, EmptyState, Input, PageHeader, Stat, Table, Td, Th } from "@/components/ui";
 import { stampLedgerAction, verifyLedgerAction } from "./actions";
@@ -59,6 +59,7 @@ export default async function LedgerPage({ searchParams }: { searchParams: Promi
     ...enquiries.map((e) => [e.id, { text: e.name, href: `/enquiries/${e.id}/history` }] as const),
   ]);
   const lastGood = stamps.find((s) => s.status === "SENT");
+  const daily = dailyStamping();
   const hidden = counts.entries - visible;
 
   return (
@@ -107,6 +108,12 @@ export default async function LedgerPage({ searchParams }: { searchParams: Promi
         <Stat label="Owner and branch changes" value={counts.moves} />
         <Stat label="Last public stamp" value={lastGood ? fmtDateTime(lastGood.createdAt) : "Not stamped"} tone={lastGood ? "good" : "warn"} />
       </div>
+      {!daily && (
+        <p className="mb-4 text-sm text-muted" data-daily-stamp="off">
+          Daily stamping is off. The ledger and Verify chain work the same without it.{isAdmin(user) ? " Stamp now sends the head to the public calendars whenever you choose." : ""} It is switched on with
+          LEDGER_STAMP=on in the server&apos;s settings.
+        </p>
+      )}
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
         <Card>
@@ -181,7 +188,7 @@ export default async function LedgerPage({ searchParams }: { searchParams: Promi
           <Card>
             <CardHeader title="Public stamps" subtitle="OpenTimestamps, free and with no account" />
             {stamps.length === 0 ? (
-              <p className="px-4 py-4 text-sm text-muted">Not stamped yet. A stamp is made in the background once a day after the ledger moves.</p>
+              <p className="px-4 py-4 text-sm text-muted">{daily ? "Not stamped yet. A stamp is made in the background once a day after the ledger moves." : "Not stamped yet. Daily stamping is off, so a stamp is made only when an admin presses Stamp now."}</p>
             ) : (
               <ul className="divide-y divide-line">
                 {stamps.map((s) => (
@@ -222,7 +229,10 @@ export default async function LedgerPage({ searchParams }: { searchParams: Promi
                 Each hash is the sha256 of the JSON list [&quot;{FORMULA}&quot;, number, kind, record type, record id, branch id, branch, owner id, owner, previous branch id, previous branch,
                 previous owner id, previous owner, detail, by id, by, time in ISO 8601, previous hash], with anything missing as null.
               </li>
-              <li>Once a day the head hash is stamped on the public OpenTimestamps calendars, when they can be reached. Without a network the ledger reads &quot;Not stamped&quot; and works the same.</li>
+              <li>
+                {daily ? "Once a day" : "When daily stamping is on (it is off here), once a day"} the head hash is stamped on the public OpenTimestamps calendars, when they can be reached. Without a
+                network the ledger reads &quot;Not stamped&quot; and works the same.
+              </li>
               <li>Entries name staff and branches, never a student or an enquirer.</li>
             </ol>
           </Card>

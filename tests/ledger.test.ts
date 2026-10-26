@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildOts, GENESIS, hashOf, payloadOf, seal, sha256hex, stampDue, stampStatement, verifyChain, type LedgerEntry } from "../src/lib/ledger";
+import { buildOts, dailyStampOn, GENESIS, hashOf, payloadOf, seal, sha256hex, stampDue, stampStatement, verifyChain, type LedgerEntry } from "../src/lib/ledger";
 
 const at = new Date("2026-10-26T05:00:00.123Z");
 const base = {
@@ -131,4 +131,14 @@ test("the stamped statement names the head, and a proof starts with the OpenTime
   assert.equal(proof.subarray(0, 31).toString("hex"), "004f70656e54696d657374616d7073000050726f6f6600bf89e2e884e89294");
   assert.equal(proof[31], 0x01);
   assert.equal(proof[32], 0x08);
+});
+
+test("the daily stamp is off unless LEDGER_STAMP says on", () => {
+  assert.equal(dailyStampOn(undefined), false);
+  assert.equal(dailyStampOn(""), false);
+  assert.equal(dailyStampOn("off"), false);
+  assert.equal(dailyStampOn("no"), false);
+  assert.equal(dailyStampOn("on"), true);
+  assert.equal(dailyStampOn(" ON "), true);
+  assert.equal(dailyStampOn("true"), true);
 });

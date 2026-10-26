@@ -77,6 +77,8 @@ services:
       COMMISSION_FX: ${COMMISSION_FX:-}
       CRON_SECRET: ${CRON_SECRET:-}
       HEALTH_TOKEN: ${HEALTH_TOKEN:-}
+      # The ownership ledger's daily public stamp; off unless set to on.
+      LEDGER_STAMP: ${LEDGER_STAMP:-}
     volumes:
       - uploads:/data/uploads
     ports:

@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, gt, inArray, or, sql } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import { db, schema } from "@/db";
-import { buildOts, CALENDARS, ChainCheck, GENESIS, seal, stampDue, stampStatement, type LedgerEntry, type LedgerFields, type Verification } from "@/lib/ledger";
+import { buildOts, CALENDARS, ChainCheck, dailyStampOn, GENESIS, seal, stampDue, stampStatement, type LedgerEntry, type LedgerFields, type Verification } from "@/lib/ledger";
 
 /**
  * The ownership ledger: who owns each student and enquiry over time,
@@ -229,13 +229,17 @@ export async function stampIfDue(now = new Date()) {
 
 let pending: ReturnType<typeof setTimeout> | null = null;
 
+/** Whether the daily background stamp runs here: only with LEDGER_STAMP=on. */
+export const dailyStamping = () => dailyStampOn(process.env.LEDGER_STAMP);
+
 /**
  * The daily stamp needs no scheduler: a few seconds after the ledger moves,
  * in the background, a stamp is made if one is due. At most one is waiting
  * at a time, and it never holds up the person whose change wrote the entry.
+ * Nothing runs unless LEDGER_STAMP=on.
  */
 function stampSoon() {
-  if (pending) return;
+  if (pending || !dailyStamping()) return;
   pending = setTimeout(() => {
     pending = null;
     void stampIfDue();
