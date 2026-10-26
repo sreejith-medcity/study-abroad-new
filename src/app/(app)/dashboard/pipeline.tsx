@@ -7,7 +7,7 @@ import { commissionVisible } from "@/server/commission-visibility";
 import { dashboardTiles } from "@/server/dashboard-tiles";
 import { destinations } from "@/server/dashboard-charts";
 import { documentsToCome, followUps, pipeline, placements, teamBoard, unassigned } from "@/server/dashboard-work";
-import { PERIODS, type Lens } from "@/server/dashboard-lens";
+import { PERIODS, lensListHref, type Lens } from "@/server/dashboard-lens";
 import { Card, CardHeader, LinkButton } from "@/components/ui";
 import { CountryBars } from "@/components/charts/dashboard-pictures";
 import { FigureStrip, Leaderboard, PipelineColumns, Placements, ProgressList, TaskList, ageText } from "@/components/dashboard/role-pieces";
@@ -25,8 +25,10 @@ import { Controls, ViewingAsNote, firstName, partOfDay } from "./controls";
  * branch's team side by side for a branch head, or the follow-ups due for a
  * counsellor, and where the students want to go.
  *
- * A counsellor's board holds only the students assigned to them. A branch
- * head and a senior counsellor read the whole branch.
+ * A counsellor's board holds their own students, by the rule their students
+ * list applies: the ones assigned to them and the ones they registered that
+ * nobody has yet been given. A branch head and a senior counsellor read the
+ * whole branch.
  */
 export default async function Pipeline({ lens }: { lens: Lens }) {
   const { user, kind } = lens;
@@ -43,9 +45,10 @@ export default async function Pipeline({ lens }: { lens: Lens }) {
     counsellor ? Promise.resolve([]) : teamBoard(lens),
     counsellor ? followUps(lens) : Promise.resolve(null),
     destinations(lens, 5),
-    // A counsellor's list shows the branch's unassigned students beside their
-    // own, so the board says how many of those there are, or "10 my students"
-    // and a list of 14 would look like a mistake.
+    // For a branch head, the pile to hand out. For a counsellor, the students
+    // they registered that no counsellor has been named on yet, which are
+    // inside "My students" and worth a tile of their own because a file with
+    // nobody named on it is a file that waits for the branch head.
     unassigned(lens),
     commissionVisible(user),
     lens.viewingAs ? Promise.resolve(false) : can(user, "REGISTER_STUDENT"),
@@ -53,8 +56,11 @@ export default async function Pipeline({ lens }: { lens: Lens }) {
   ]);
   const wallet = walletOrg && money ? await walletBalance(walletOrg) : null;
 
-  const mine = lens.person ? `&assignedTo=${lens.person.id}` : "";
-  const studentsHref = lens.person ? `/students?assignedTo=${lens.person.id}` : "/students";
+  // Every figure opens a list that holds the same number: the plain list
+  // where the person's own list already is exactly their own, and the list
+  // of that one person's files where it would show more (see Lens.ofPerson).
+  const apps = (query = "") => lensListHref(lens, "/applications", query);
+  const studentsHref = lensListHref(lens, "/students");
   const when = PERIODS.find(([k]) => k === lens.period)?.[1].toLowerCase() ?? "all time";
   const waiting = t.fromBranches.n + t.fromSubAgents.n;
   // The documentation queue is the desk's. A branch chases its own students
@@ -69,18 +75,32 @@ export default async function Pipeline({ lens }: { lens: Lens }) {
           { slug: "follow-ups-late", label: "Follow-ups late", value: tasks.late, tone: "stop" as const, href: "/my-day" },
         ]
       : []),
-    { slug: "total-applications", label: "Applications", value: t.applications.value, tone: "info" as const, href: lens.person ? `/applications?assignedTo=${lens.person.id}` : "/applications" },
-    { slug: "offers-received", label: "Offers", value: t.offers.value, tone: "good" as const, href: `/applications?kpi=offers${mine}` },
-    { slug: "visas-received", label: "Visas", value: t.visaReceived.value, tone: "good" as const, href: `/applications?kpi=visa_received${mine}` },
-    { slug: "visas-rejected", label: "Rejected", value: t.visaRejected.value, tone: "stop" as const, href: `/applications?kpi=visa_rejected${mine}` },
+    { slug: "total-applications", label: "Applications", value: t.applications.value, tone: "info" as const, href: apps() },
+    { slug: "offers-received", label: "Offers", value: t.offers.value, tone: "good" as const, href: apps("kpi=offers") },
+    { slug: "visas-received", label: "Visas", value: t.visaReceived.value, tone: "good" as const, href: apps("kpi=visa_received") },
+    { slug: "visas-rejected", label: "Rejected", value: t.visaRejected.value, tone: "stop" as const, href: apps("kpi=visa_rejected") },
     { slug: "pending-documents", label: "Docs pending", value: t.documents.items, note: t.documents.students ? `${t.documents.students} students` : undefined, tone: "warn" as const, href: docsHref },
-    { slug: "deferrals", label: "Deferrals", value: t.deferrals, tone: "warn" as const, href: `/applications?kpi=deferrals${mine}` },
-    { slug: "payments-done", label: "Paid", value: t.feesPaid, tone: "good" as const, href: `/applications?kpi=payments${mine}` },
-    { slug: "payments-pending", label: "Fee pending", value: t.feesDue, tone: "stop" as const, href: `/applications?kpi=fees_due${mine}` },
-    { slug: "waiting-on-you", label: "Waiting on you", value: waiting, tone: "warn" as const, href: `/applications?group=PENDING_PARTNER${mine}` },
-    // "At the branch" only where the figure is one branch's: a desk counsellor
-    // or a view-as with no branch picked reads the whole portal's.
-    { slug: "not-given-to-anyone", label: counsellor && (lens.org || !staff) ? "Not given to anyone at the branch" : "Not given to anyone", value: loose, tone: "info" as const, href: "/students?assignedTo=none" },
+    { slug: "deferrals", label: "Deferrals", value: t.deferrals, tone: "warn" as const, href: apps("kpi=deferrals") },
+    { slug: "payments-done", label: "Paid", value: t.feesPaid, tone: "good" as const, href: apps("kpi=payments") },
+    { slug: "payments-pending", label: "Fee pending", value: t.feesDue, tone: "stop" as const, href: apps("kpi=fees_due") },
+    { slug: "waiting-on-you", label: "Waiting on you", value: waiting, tone: "warn" as const, href: apps("group=PENDING_PARTNER") },
+    // A branch head reads the branch's pile to hand out. A counsellor reads
+    // only their own: the students they registered that no counsellor has
+    // been named on yet. Somebody viewing as a counsellor without picking one
+    // reads every branch's, or the one picked.
+    {
+      slug: "not-given-to-anyone",
+      label: lens.person
+        ? lens.viewingAs
+          ? "Registered by them, not yet given to a counsellor"
+          : "Registered by you, not yet given to a counsellor"
+        : lens.org || !staff
+          ? "Not given to anyone at the branch"
+          : "Not given to anyone",
+      value: loose,
+      tone: "info" as const,
+      href: lensListHref(lens, "/students", "assignedTo=none"),
+    },
     ...(t.revenue ? [{ slug: "total-revenue-expected", label: "Revenue due", value: inrShort(t.revenue.expected), tone: "gold" as const, href: staff ? "/admin/commission?status=EXPECTED" : "/commission" }] : []),
     ...(wallet ? [{ slug: "wallet", label: "Wallet", value: inrShort(wallet.balance), tone: "gold" as const, href: "/wallet" }] : []),
   ];
@@ -116,7 +136,7 @@ export default async function Pipeline({ lens }: { lens: Lens }) {
 
       {counsellor && lens.person && !lens.viewingAs && t.registrations.value === 0 && lens.period === "all" && (
         <p data-first-day className="mb-4 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2.5 text-sm text-ink-soft">
-          No students are assigned to you yet. The ones your branch gives you, and the ones you register yourself, fill this board as they come.
+          No students are yours yet. The ones your branch gives you, and the ones you register yourself, fill this board as they come.
         </p>
       )}
       <FigureStrip figures={figures} />
@@ -206,7 +226,7 @@ export default async function Pipeline({ lens }: { lens: Lens }) {
           <Placements
             ausbildung={placed.ausbildung}
             nclex={placed.nclex}
-            query={[lens.viewingAs && lens.org ? `branch=${lens.org}` : "", lens.person ? `who=${lens.person.id}` : ""].filter(Boolean).join("&")}
+            query={[lens.viewingAs && lens.org ? `branch=${lens.org}` : "", lens.viewingAs && lens.person ? `who=${lens.person.id}` : ""].filter(Boolean).join("&")}
           />
         </Card>
       )}

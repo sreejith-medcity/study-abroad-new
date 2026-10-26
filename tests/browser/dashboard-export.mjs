@@ -14,6 +14,15 @@ const n = (q) => Number(sql(q));
 const fails = [];
 const check = (c, m) => (c ? console.log("  ok  " + m) : (console.log("FAIL  " + m), fails.push(m)));
 
+// One person's own students, as the portal's rule reads them: inside their
+// branch, and registered by them, assigned to them, or worked by them in a
+// recorded way. The counsellor's dashboard counts these, and so does its file.
+const own = (id) => n(`select count(*) from students s where s.org_id = (select org_id from users where id = '${id}') and not s.archived and (
+  s.created_by_id = '${id}' or s.assigned_to_id = '${id}'
+  or exists (select 1 from applications a where a.student_id = s.id and a.officer_id = '${id}')
+  or exists (select 1 from checklist_items c where c.student_id = s.id and (c.claimed_by_id = '${id}' or c.decided_by_id = '${id}'))
+  or exists (select 1 from student_people p where p.student_id = s.id and p.user_id = '${id}'))`);
+
 const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--no-first-run", "--disable-background-networking"] });
 let ip = 30;
 async function open(email) {
@@ -66,7 +75,7 @@ const sheets = (wb) => wb.worksheets.map((w) => w.name);
   const who = sql(`select u.id from users u where u.role = 'COUNSELLOR' and u.active order by (select count(*) from students s where s.assigned_to_id = u.id) desc limit 1`);
   const theirs = await workbook(page, `/dashboard?as=counsellor&who=${who}`);
   check(cover(theirs.wb, "Dashboard") === "Counsellor", "viewing as a counsellor downloads the counsellor's dashboard");
-  check(figure(theirs.wb, "Total registrations") === n(`select count(*) from students where assigned_to_id = '${who}' and not archived`), "counting only their own students");
+  check(figure(theirs.wb, "Total registrations") === own(who), "counting only their own students");
   check(sheets(theirs.wb).includes("Follow-ups"), "with their follow-ups");
 
   // A period narrows what happened.
@@ -104,7 +113,7 @@ const sheets = (wb) => wb.worksheets.map((w) => w.name);
   const me = sql("select id from users where email = 'uk.docs@medcity.test'");
   const { wb } = await workbook(page, "/dashboard?as=leadership");
   check(cover(wb, "Dashboard") === "Counsellor", "a counsellor cannot download leadership's by changing the address");
-  check(figure(wb, "Total registrations") === n(`select count(*) from students where assigned_to_id = '${me}' and not archived`), "and their own counts only their students");
+  check(figure(wb, "Total registrations") === own(me), "and their own counts only their students");
   const direct = await page.request.get(`${BASE}/api/dashboard/export?as=finance`);
   const wb2 = new ExcelJS.Workbook();
   await wb2.xlsx.load(await direct.body());

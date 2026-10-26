@@ -6,10 +6,12 @@
 // counsellor a pipeline board of their own work. This checks that each role
 // gets its own, that the figures on each agree with the database, that every
 // tile opens the list behind it, and that the scoping holds: the desk reads
-// the whole portal, a branch its own, and a counsellor only the students
-// assigned to them. The super admin and the ops manager can look at any of
-// the others, as that desk sees it; nobody else can.
-// Wants the plain seed.
+// the whole portal, a branch its own, and a counsellor only their own
+// students, which are the ones assigned to them and the ones they registered
+// that nobody has yet been given, exactly as their students list shows them.
+// The super admin and the ops manager can look at any of the others, as that
+// desk sees it; nobody else can.
+// Wants the plain seed; adds students of its own and takes them away again.
 import { chromium } from "playwright";
 import { knownWarning, hydrated } from "./_errors.mjs";
 import { execFileSync } from "node:child_process";
@@ -66,6 +68,28 @@ async function open(email) {
 }
 
 const figure = async (page, tile) => (await page.locator(`[data-tile="${tile}"] [data-figure]`).first().innerText()).trim();
+const tileHref = (page, tile) => page.locator(`a[data-tile="${tile}"]`).first().getAttribute("href");
+// The address a tile opens, and how many rows the list there says it holds.
+const listTotal = async (page, href) => {
+  await page.goto(`${BASE}${href}`);
+  await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
+  await hydrated(page);
+  const foot = page.locator("[data-list-foot]");
+  if ((await foot.count()) === 0) return await page.locator("main tbody tr").count();
+  return Number(((await foot.innerText()).replace(/\s+/g, " ").match(/of ([\d,]+)/) || [])[1]?.replace(/,/g, "") ?? NaN);
+};
+// One person's own students, written out exactly as the portal's rule reads:
+// inside their branch, and registered by them, assigned to them, or worked by
+// them in a recorded way (the officer on an application, a document claimed
+// or decided, or put on the file by name).
+// `who` is an SQL expression for the person: a quoted id, or a column.
+const ownOf = (who) => `s.org_id = (select org_id from users where id = ${who}) and not s.archived and (
+  s.created_by_id = ${who} or s.assigned_to_id = ${who}
+  or exists (select 1 from applications a where a.student_id = s.id and a.officer_id = ${who})
+  or exists (select 1 from checklist_items c where c.student_id = s.id and (c.claimed_by_id = ${who} or c.decided_by_id = ${who}))
+  or exists (select 1 from student_people p where p.student_id = s.id and p.user_id = ${who}))`;
+const ownWhere = (id) => ownOf(`'${id}'`);
+const own = (id) => n(`select count(*) from students s where ${ownWhere(id)}`);
 const drawnOrder = (page) => page.locator("main [data-stat-tiles] > *").evaluateAll((els) => els.map((e) => e.getAttribute("data-tile")));
 
 /* ---------------- The processing desk reads the whole portal ---------------- */
@@ -353,12 +377,16 @@ const lead = await open("sreejith@miak.in");
   const regs = Number((await figure(page, "total-registrations")).replace(/[^0-9]/g, ""));
   check(regs === n(`select count(*) from students where org_id = '${one}' and not archived`), `and reads that branch's students (${regs})`);
 
-  // Viewing as one counsellor reads only the students assigned to them.
+  // Viewing as one counsellor reads only that person's own students, and
+  // the list a figure opens is that person's, not the viewer's whole portal.
   const who = sql(`select u.id from users u where u.role = 'COUNSELLOR' and u.active order by (select count(*) from students s where s.assigned_to_id = u.id) desc limit 1`);
   await page.goto(`${BASE}/dashboard?as=counsellor&who=${who}`);
   await hydrated(page);
   const theirs = Number((await figure(page, "my-students")).replace(/[^0-9]/g, ""));
-  check(theirs === n(`select count(*) from students where assigned_to_id = '${who}' and not archived`), `viewing as a counsellor reads their own students only (${theirs})`);
+  check(theirs === own(who), `viewing as a counsellor reads their own students only (${theirs})`);
+  const whoseHref = await tileHref(page, "my-students");
+  check(whoseHref.includes(`of=${who}`), `and "My students" opens that person's list (${whoseHref})`);
+  check((await listTotal(page, whoseHref)) === theirs, "which holds the same number");
 
   await page.goto(`${BASE}/dashboard?as=finance`);
   await hydrated(page);
@@ -401,28 +429,61 @@ check(fin.errors.length === 0, `finance's dashboard draws without an error ${fin
 await fin.ctx.close();
 
 /* ---------------- A counsellor reads only their own students ---------------- */
+// Sreekutty's board said "My students 10" while her list held thirteen: the
+// ten given to her, two she had registered herself that nobody had been given
+// to, and one a colleague registered that nobody had been given to. The board
+// and the list now agree on twelve: her own are the ones given to her and the
+// ones she registered; the colleague's walk-in is the branch head's to hand out.
 
 const cEmail = sql(`select u.email from users u where u.role = 'COUNSELLOR' and u.active order by (select count(*) from students s where s.assigned_to_id = u.id) desc, u.email limit 1`);
 const cId = sql(`select id from users where email = '${cEmail}'`);
+const cOrg = sql(`select org_id from users where id = '${cId}'`);
+const colleague = sql(`select id from users where org_id = '${cOrg}' and role = 'COUNSELLOR' and active and id <> '${cId}' order by email limit 1`);
+sql("delete from students where id in ('dc_own', 'dc_theirs')");
+sql(`insert into students (id, org_id, created_by_id, assigned_to_id, portal_token, first_name, last_name, phone)
+     values ('dc_own', '${cOrg}', '${cId}', null, 'dc_t_own', 'Boardcheck', 'Walkin', '9100000811'),
+            ('dc_theirs', '${cOrg}', '${colleague}', null, 'dc_t_theirs', 'Boardcheck', 'Colleague', '9100000812')`);
 const coun = await open(cEmail);
 {
   const page = coun.page;
-  const own = Number((await figure(page, "my-students")).replace(/[^0-9]/g, ""));
+  const mine = Number((await figure(page, "my-students")).replace(/[^0-9]/g, ""));
   const assigned = n(`select count(*) from students where assigned_to_id = '${cId}' and not archived`);
-  const branchAll = n(`select count(*) from students where org_id = (select org_id from users where id = '${cId}') and not archived`);
-  check(own === assigned, `a counsellor's board counts the students assigned to them (${own} of ${assigned})`);
-  check(assigned < branchAll, "which is fewer than the branch has, so the scoping is doing something");
+  const branchAll = n(`select count(*) from students where org_id = '${cOrg}' and not archived`);
+  check(mine === own(cId), `a counsellor's board counts their own students: given to them, or registered by them (${mine})`);
+  check(mine === assigned + 1, `which is the ones given to them plus the one they registered that nobody has been given (${assigned} + 1)`);
+  check(mine < branchAll, "and fewer than the branch has, so a colleague's walk-in is not counted");
+  const myHref = await tileHref(page, "my-students");
+  check(myHref === "/students", `"My students" opens the plain students list, which is already exactly their own (${myHref})`);
+
+  const loose = Number((await figure(page, "not-given-to-anyone")).replace(/[^0-9]/g, ""));
+  const looseLabel = (await page.locator('[data-tile="not-given-to-anyone"]').innerText()).replace(/\s+/g, " ");
+  check(/Registered by you, not yet given to a counsellor/.test(looseLabel), `the unassigned tile is about their own, not the branch's (${looseLabel})`);
+  check(loose === n(`select count(*) from students s where ${ownWhere(cId)} and s.assigned_to_id is null`), `and counts the ones they registered that nobody has been given (${loose})`);
+  check(loose >= 1 && loose < n(`select count(*) from students where org_id = '${cOrg}' and not archived and assigned_to_id is null`), "which is fewer than the branch's unassigned, the colleague's walk-in left out");
+  const looseHref = await tileHref(page, "not-given-to-anyone");
+
   const counts = await page.locator("[data-column] [data-count]").evaluateAll((els) => els.map((e) => Number(e.textContent.trim())));
-  const live = n(`select count(*) from applications a join status_definitions d on d.id = a.status_id join students s on s.id = a.student_id where s.assigned_to_id = '${cId}' and d."group" in ('NEW','PENDING_PARTNER','IN_PROGRESS','OFFER','SUCCESS')`);
-  check(counts.reduce((x, y) => x + y, 0) === live, `and the board holds only their students' applications (${counts.join("+")} against ${live})`);
+  const live = n(`select count(*) from applications a join status_definitions d on d.id = a.status_id join students s on s.id = a.student_id where ${ownWhere(cId)} and d."group" in ('NEW','PENDING_PARTNER','IN_PROGRESS','OFFER','SUCCESS')`);
+  check(counts.reduce((x, y) => x + y, 0) === live, `and the board holds only their own students' applications (${counts.join("+")} against ${live})`);
+  const apps = Number((await figure(page, "total-applications")).replace(/[^0-9]/g, ""));
+  check(apps === n(`select count(*) from applications a join students s on s.id = a.student_id where ${ownWhere(cId)}`), `"Applications" counts the applications of their own students (${apps})`);
+  check((await tileHref(page, "total-applications")) === "/applications", "and opens the plain applications list, which is their own files");
   check((await page.locator("main").innerText()).includes("Follow-ups"), "with their follow-ups beside it");
+
+  // The lists the tiles open hold the same numbers as the tiles.
+  check((await listTotal(page, myHref)) === mine, `the students list opened from "My students" holds the same number (${mine})`);
+  const listed = (await page.locator("main tbody tr").allInnerTexts()).join(" | ");
+  check(listed.includes("Boardcheck Walkin") && !listed.includes("Boardcheck Colleague"), "with the student they registered and not the colleague's");
+  check((await listTotal(page, looseHref)) === loose, `and the list opened from the unassigned tile holds that tile's number (${loose})`);
+
   await page.goto(`${BASE}/dashboard?as=leadership`);
   await hydrated(page);
   check((await page.locator("main [data-exec-hero]").count()) === 0, "and asking for leadership's dashboard changes nothing");
 }
+sql("delete from students where id in ('dc_own', 'dc_theirs')");
 /* ---------------- A counsellor with nobody yet is told why the board is empty ---------------- */
 {
-  const empty = sql(`select u.email from users u where u.role in ('COUNSELLOR','SUB_AGENT_COUNSELLOR','TRAINEE_COUNSELLOR') and u.active and not exists (select 1 from students s where s.assigned_to_id = u.id) order by u.email limit 1`);
+  const empty = sql(`select u.email from users u where u.role in ('COUNSELLOR','SUB_AGENT_COUNSELLOR','TRAINEE_COUNSELLOR') and u.active and not exists (select 1 from students s where ${ownOf("u.id")}) order by u.email limit 1`);
   if (empty) {
     const nobody = await open(empty);
     check((await nobody.page.locator("[data-first-day]").count()) === 1, `a counsellor with no students is told how the board fills (${empty})`);

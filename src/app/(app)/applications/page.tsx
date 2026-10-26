@@ -9,11 +9,10 @@ import { ViewTabs } from "@/components/view-tabs";
 import { viewsWithPins } from "@/server/views";
 import { fmtDate, fullName, intakeLabel, MONTHS } from "@/lib/format";
 import { APP_ROLES, isStaff } from "@/lib/permissions";
-import { applicationsBase, applicationWhere, orgUsers, readFilters } from "@/server/queries";
+import { applicationScope, applicationsBase, applicationWhere, orgUsers, readFilters } from "@/server/queries";
 import { Card, EmptyState, LinkButton, PageHeader, StatusBadge, Table, Td, Th, cn } from "@/components/ui";
 import { FilterBar } from "@/components/filter-bar";
 import { IconApplications, IconExport } from "@/components/icons";
-import { ownApplicationsOnly } from "@/server/scope";
 
 export const metadata = { title: "Applications" };
 
@@ -31,7 +30,7 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
   // A filtered search that finds nothing needs a different answer from an empty list.
   const filtered = Object.values(f as Record<string, string>).some(Boolean);
   const page = Math.max(1, Number((f as Record<string, string>).page ?? 1));
-  const where = applicationWhere(user, f, await ownApplicationsOnly(user));
+  const where = applicationWhere(user, f, await applicationScope(user, f));
   const staff = isStaff(user);
 
   const rows = await applicationsBase().where(where).orderBy(...(f.sort === "priority" ? [asc(schema.applications.priority), desc(schema.applications.createdAt)] : [desc(schema.applications.createdAt)])).limit(PAGE + 1).offset((page - 1) * PAGE);

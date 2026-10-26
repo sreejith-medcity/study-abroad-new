@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, exists, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
+import { and, eq, exists, inArray, or, sql, type SQL } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { roleCan } from "@/lib/capabilities";
@@ -7,29 +7,35 @@ import { APP_ROLES, isDocumentationTeam, isStaff } from "@/lib/permissions";
 import { can, overrides } from "@/server/capabilities";
 
 /** What the rules below read about a person: who they are, their role, their organisation. */
-type Viewer = Pick<SessionUser, "id" | "role" | "orgId">;
+export type Viewer = Pick<SessionUser, "id" | "role" | "orgId">;
 
 /**
  * Which students this person may see.
  *
  * Two questions, in order. Whose organisation: the desk sees every branch, and
  * everybody else sees their own. Then whose students: somebody without
- * "See every student" sees only the ones assigned to them, which means the ones
- * they counsel and the applications they are the officer on.
+ * "See every student" sees only their own, which is the rule in `theirs`
+ * below: the ones they registered, the ones assigned to them, and the ones
+ * they are working in some recorded way.
  *
  * Both are applied in SQL rather than filtered afterwards, so a list, a count
  * and a page of results can never disagree about what somebody is allowed to
  * see.
  */
 export async function studentWhere(user: SessionUser): Promise<SQL | undefined> {
-  const org = isStaff(user) ? undefined : eq(schema.students.orgId, user.orgId);
-  if (await can(user, "SEE_EVERY_STUDENT")) return org;
-  return and(org, theirs(user, !isStaff(user)));
+  if (await can(user, "SEE_EVERY_STUDENT")) return orgOf(user);
+  return ownedBy(user);
 }
 
 /**
  * The extra condition an applications list needs, so a list never shows a row
  * that opening would refuse. Nothing where the role sees every student.
+ *
+ * An application is theirs when they are the officer on it, when the branch
+ * has handed it to the desk they sit on, or when its student is theirs by the
+ * same rule the students list applies. The last one is what keeps the
+ * applications list, the students list and the dashboard counting the same
+ * files.
  */
 export async function ownApplicationsOnly(user: SessionUser): Promise<SQL | undefined> {
   if (await can(user, "SEE_EVERY_STUDENT")) return undefined;
@@ -42,31 +48,7 @@ export async function ownApplicationsOnly(user: SessionUser): Promise<SQL | unde
       db
         .select({ one: sql`1` })
         .from(schema.students)
-        .where(
-          and(
-            eq(schema.students.id, schema.applications.studentId),
-            or(eq(schema.students.assignedToId, user.id), isStaff(user) ? undefined : isNull(schema.students.assignedToId)),
-          ),
-        ),
-    ),
-    // Put on the file by name, or working its documents: the student opens to
-    // them, so the student's applications are listed for them too.
-    exists(
-      db
-        .select({ one: sql`1` })
-        .from(schema.studentPeople)
-        .where(and(eq(schema.studentPeople.studentId, schema.applications.studentId), eq(schema.studentPeople.userId, user.id))),
-    ),
-    exists(
-      db
-        .select({ one: sql`1` })
-        .from(schema.checklistItems)
-        .where(
-          and(
-            eq(schema.checklistItems.studentId, schema.applications.studentId),
-            or(eq(schema.checklistItems.claimedById, user.id), eq(schema.checklistItems.decidedById, user.id)),
-          ),
-        ),
+        .where(and(eq(schema.students.id, schema.applications.studentId), theirs(user))),
     ),
   );
 }
@@ -94,6 +76,13 @@ const handedToTheDesk = () =>
  * they have been put on the file by name, or, for the documentation desk, if
  * the branch has handed the file to the desk.
  *
+ * A student nobody has been given to is not, by that alone, anybody's. The
+ * rule used to open every unassigned student of a branch to every counsellor
+ * there, and a counsellor's list then carried a colleague's walk-ins beside
+ * her own while her dashboard did not count them. Now an unassigned student
+ * is open to the person who registered them until the branch head, who sees
+ * every student of the branch, hands them to somebody.
+ *
  * Being put on the file is the people-on-file panel and the desk officer a
  * registration from an enquiry lands on. Both name somebody as carrying the
  * file, and the officer is told so in a notice; a file they then could not
@@ -108,14 +97,10 @@ const handedToTheDesk = () =>
  * themselves because the counsellor has to belong to that branch, and would
  * otherwise watch the student they just typed in turn into a 404.
  */
-function theirs(user: Viewer, includeUnassigned: boolean): SQL {
+function theirs(user: Viewer): SQL {
   return or(
     isDocumentationTeam(user) ? handedToTheDesk() : undefined,
     eq(schema.students.createdById, user.id),
-    // A student nobody has taken on is nobody else's either, and a student no
-    // counsellor can open is a student nobody picks up. Inside their own branch
-    // only: the desk roles are bounded by what is assigned to them, not by this.
-    includeUnassigned ? isNull(schema.students.assignedToId) : undefined,
     eq(schema.students.assignedToId, user.id),
     exists(
       db
@@ -143,6 +128,33 @@ function theirs(user: Viewer, includeUnassigned: boolean): SQL {
   )!;
 }
 
+/** The organisation a person's lists are bounded by: none for the desk, their own for everybody else. */
+const orgOf = (user: Viewer) => (isStaff(user) ? undefined : eq(schema.students.orgId, user.orgId));
+
+/**
+ * One person's own students, exactly as their students list shows them when
+ * they do not see every student: inside their organisation, and theirs by the
+ * rule above. The counsellor dashboard counts with this, so "My students" on
+ * the board and the total under the list are the same number.
+ */
+export function ownedBy(user: Viewer): SQL {
+  return and(orgOf(user), theirs(user))!;
+}
+
+/**
+ * The "of" filter a list accepts: one named person's own students, as their
+ * own list shows them. A dashboard's links carry it when the person whose
+ * board it is will not be the one opening the list (somebody viewing as a
+ * counsellor), or when that person's own list shows more than their own (a
+ * desk counsellor, who sees every student), so the list a figure opens holds
+ * exactly what the figure counted. It only ever narrows what the viewer may
+ * see, never widens it. An id that is nobody's is nobody's students.
+ */
+export async function ownedByPerson(id: string): Promise<SQL> {
+  const person = await db.query.users.findFirst({ where: eq(schema.users.id, id), columns: { id: true, role: true, orgId: true } });
+  return person ? ownedBy(person) : sql`false`;
+}
+
 /**
  * The extra condition a list needs, or nothing where the role sees everything.
  *
@@ -150,7 +162,7 @@ function theirs(user: Viewer, includeUnassigned: boolean): SQL {
  * organisation filter, and two of them would be one too many.
  */
 export async function ownStudentsOnly(user: SessionUser): Promise<SQL | undefined> {
-  return (await can(user, "SEE_EVERY_STUDENT")) ? undefined : theirs(user, !isStaff(user));
+  return (await can(user, "SEE_EVERY_STUDENT")) ? undefined : theirs(user);
 }
 
 /**
@@ -172,7 +184,6 @@ export async function mayOpenStudent(user: Viewer, student: { orgId: string; ass
     });
     if (handed) return true;
   }
-  if (student.assignedToId === null && !isStaff(user)) return true;
   const own = await db.query.applications.findFirst({
     where: and(eq(schema.applications.studentId, student.id), eq(schema.applications.officerId, user.id)),
     columns: { id: true },
@@ -246,7 +257,6 @@ export async function whoMayOpenStudent(studentId: string, userIds: string[]): P
     });
     if (handed) for (const p of undecided) if (isDocumentationTeam(p)) open.add(p.id);
   }
-  if (student.assignedToId === null) for (const p of undecided) if (!isStaff(p)) open.add(p.id);
 
   const left = () => undecided.filter((p) => !open.has(p.id)).map((p) => p.id);
   let ids = left();

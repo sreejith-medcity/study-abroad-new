@@ -2,7 +2,7 @@ import "server-only";
 import { DEADLINE_TYPES } from "@/lib/deadline-types";
 import { and, asc, eq, gte, ilike, inArray, isNull, lte, or, sql, type SQL } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { mayOpenStudent, ownStudentsOnly } from "@/server/scope";
+import { mayOpenStudent, ownApplicationsOnly, ownStudentsOnly, ownedByPerson } from "@/server/scope";
 import { idSearchKey, looksLikeStudentId } from "@/lib/medcity-id";
 import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
@@ -24,6 +24,8 @@ export type ApplicationFilters = {
   program?: string;
   student?: string;
   assignedTo?: string;
+  /** One person's own files, as their own list shows them: what a counsellor's dashboard links carry. */
+  of?: string;
   /** The officer carrying the file, or "none" for the files nobody has been given yet. */
   officer?: string;
   org?: string;
@@ -96,6 +98,19 @@ export function applicationWhere(user: SessionUser, f: ApplicationFilters, mine?
     conds.push(sql`exists (select 1 from application_deadlines ad where ad.application_id = ${a.id} and ad.done_at is null${typed}${from}${to})`);
   }
   return and(...conds);
+}
+
+/**
+ * The `mine` an applications list passes to applicationWhere: the files this
+ * person is on, and, when the list is asked for one named person's files, the
+ * applications of that person's own students. Resolved here, once, because
+ * applicationWhere itself has to stay synchronous for the exports.
+ */
+export async function applicationScope(user: SessionUser, f: ApplicationFilters): Promise<SQL | undefined> {
+  return and(
+    await ownApplicationsOnly(user),
+    f.of ? inArray(a.studentId, db.select({ id: s.id }).from(s).where(await ownedByPerson(f.of))) : undefined,
+  );
 }
 
 /** Base join used by lists, KPIs and exports. */
@@ -220,6 +235,9 @@ export async function studentWhere(user: SessionUser, f: Record<string, string |
   return and(
     isStaff(user) ? (f.org ? eq(st.orgId, f.org) : undefined) : eq(st.orgId, user.orgId),
     await ownStudentsOnly(user),
+    // One named person's own students, which is how a counsellor's dashboard
+    // opens the list behind a figure when the plain list would show more.
+    f.of ? await ownedByPerson(f.of) : undefined,
     eq(st.archived, f.view === "archived"),
     f.assignedTo === "none" ? isNull(st.assignedToId) : f.assignedTo ? eq(st.assignedToId, f.assignedTo) : undefined,
     f.team ? eq(st.teamId, f.team) : undefined,

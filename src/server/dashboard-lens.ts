@@ -5,6 +5,8 @@ import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { isStaff, orgScope } from "@/lib/permissions";
 import { dashboardFor, isDashboardKind, mayViewAs, type DashboardKind } from "@/lib/dashboard-kinds";
+import { can } from "@/server/capabilities";
+import { ownedBy, type Viewer } from "@/server/scope";
 
 /**
  * What the dashboard is looking at: a stretch of time, and for the desk,
@@ -34,9 +36,21 @@ export type Lens = {
   viewingAs: boolean;
   /**
    * One person's own students, for a counsellor's dashboard: the students
-   * assigned to them. Null reads every student the lens otherwise covers.
+   * their own list shows, by the rule in server/scope.ts (registered by them,
+   * assigned to them, or worked by them in some recorded way). The role and
+   * the organisation are what that rule reads. Null reads every student the
+   * lens otherwise covers.
    */
-  person: { id: string; name: string } | null;
+  person: ({ name: string } & Viewer) | null;
+  /**
+   * The person a list link must name, with the list's "of" filter, so that
+   * the list opened from a figure holds exactly what the figure counted. Null
+   * when the person's own list already shows exactly their own students,
+   * which is a counsellor on their own board. Set when somebody else is
+   * looking at their board, or when the person sees every student and their
+   * plain list would show the whole branch.
+   */
+  ofPerson: string | null;
   /** One branch, for the desk. Ignored for anybody who only sees their own. */
   org: string | null;
   orgName: string | null;
@@ -87,13 +101,15 @@ export async function readLens(user: SessionUser, sp: Record<string, string | st
   // picks whose, and until they do, reads every counsellor's together.
   let person: Lens["person"] = null;
   if (kind === "counsellor") {
-    if (!viewingAs) person = { id: user.id, name: user.name };
+    if (!viewingAs) person = { id: user.id, name: user.name, role: user.role, orgId: user.orgId };
     else {
       const who = one("who");
-      const found = who ? await db.query.users.findFirst({ where: eq(schema.users.id, who), columns: { id: true, name: true } }) : null;
+      const found = who ? await db.query.users.findFirst({ where: eq(schema.users.id, who), columns: { id: true, name: true, role: true, orgId: true } }) : null;
       if (found) person = found;
     }
   }
+
+  const ofPerson = person && (viewingAs || (await can(person, "SEE_EVERY_STUDENT"))) ? person.id : null;
 
   let org: string | null = null;
   let orgName: string | null = null;
@@ -110,6 +126,7 @@ export async function readLens(user: SessionUser, sp: Record<string, string | st
     kind,
     viewingAs,
     person,
+    ofPerson,
     org,
     orgName,
     period,
@@ -125,6 +142,16 @@ export async function readLens(user: SessionUser, sp: Record<string, string | st
   };
 }
 
+/**
+ * A list's address for what this lens counts: the path, the list's own
+ * query, and the "of" filter where the lens needs one. A figure on the board
+ * links through this so the list it opens holds the same number.
+ */
+export function lensListHref(lens: Lens, path: string, query = ""): string {
+  const parts = [query, lens.ofPerson ? `of=${lens.ofPerson}` : ""].filter(Boolean);
+  return parts.length ? `${path}?${parts.join("&")}` : path;
+}
+
 /** The organisation filter, for any table with an organisation column. */
 export function lensOrg(lens: Lens, col: PgColumn): SQL | undefined {
   return and(orgScope(lens.user, col), lens.org ? eq(col, lens.org) : undefined);
@@ -132,10 +159,11 @@ export function lensOrg(lens: Lens, col: PgColumn): SQL | undefined {
 
 /**
  * The students a dashboard counts: the organisation filter, and for a
- * counsellor, only the ones assigned to them.
+ * counsellor, their own, by exactly the rule their students list applies.
+ * The figure on the board and the total under the list are then one number.
  */
 export function lensStudents(lens: Lens): SQL | undefined {
-  return and(lensOrg(lens, schema.students.orgId), lens.person ? eq(schema.students.assignedToId, lens.person.id) : undefined);
+  return and(lensOrg(lens, schema.students.orgId), lens.person ? ownedBy(lens.person) : undefined);
 }
 
 /**
@@ -148,6 +176,6 @@ export function lensApps(lens: Lens): SQL | undefined {
   return and(
     lensOrg(lens, a.orgId),
     // Not correlated, so it reads the same whatever the outer query joins.
-    lens.person ? inArray(a.studentId, db.select({ id: s.id }).from(s).where(eq(s.assignedToId, lens.person.id))) : undefined,
+    lens.person ? inArray(a.studentId, db.select({ id: s.id }).from(s).where(ownedBy(lens.person))) : undefined,
   );
 }

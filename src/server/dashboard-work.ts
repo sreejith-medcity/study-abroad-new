@@ -4,7 +4,7 @@ import { db, schema } from "@/db";
 import { istDay } from "@/lib/journal";
 import { COUNSELLING_ROLES } from "@/lib/permissions";
 import { getSlaDays } from "./dashboard";
-import { lensApps, lensOrg, lensStudents, type Lens } from "./dashboard-lens";
+import { lensApps, lensListHref, lensOrg, lensStudents, type Lens } from "./dashboard-lens";
 import { trackerRows } from "./ausbildung";
 
 const {
@@ -97,7 +97,7 @@ export async function pipeline(lens: Lens, perColumn = 4) {
     key: p.key,
     label: p.label,
     total: p.groups.reduce((sum, g) => sum + (n.get(g) ?? 0), 0),
-    href: `/applications?group=${p.key}${lens.person ? `&assignedTo=${lens.person.id}` : ""}`,
+    href: lensListHref(lens, "/applications", `group=${p.key}`),
     cards: cards
       .filter((c) => (p.groups as readonly string[]).includes(c.group) && c.rank <= perColumn)
       .sort((x, y) => y.days - x.days)
@@ -400,12 +400,18 @@ export async function studentsCounted(lens: Lens) {
   return Number(row?.n ?? 0);
 }
 
-/** Students nobody has been given to, in a branch, for the branch head. */
+/**
+ * Students nobody has been given to. For the branch head, the branch's: the
+ * pile they hand out from. For a counsellor, only the ones among their own
+ * students, which are the ones they registered and nobody has yet been named
+ * on; a colleague's walk-ins are not theirs to count. The same lens as every
+ * other figure, so the tile and the list it opens agree.
+ */
 export async function unassigned(lens: Lens) {
   const [row] = await db
     .select({ n: count() })
     .from(s)
-    .where(and(lensOrg(lens, s.orgId), eq(s.archived, false), isNull(s.assignedToId)));
+    .where(and(lensStudents(lens), eq(s.archived, false), isNull(s.assignedToId)));
   return Number(row?.n ?? 0);
 }
 
@@ -417,7 +423,11 @@ export async function unassigned(lens: Lens) {
  * opens.
  */
 export async function placements(lens: Lens) {
-  const scope = { org: lens.org ?? undefined, counsellor: lens.person?.id };
+  // A counsellor's own board reads the tracker as they do, which already
+  // narrows to their own students; naming them as the counsellor on top would
+  // drop the students they registered and nobody has been given yet. Somebody
+  // viewing as a counsellor names them, which is the tracker's own picker.
+  const scope = { org: lens.org ?? undefined, counsellor: lens.viewingAs ? lens.person?.id : undefined };
   const [aus, nclex] = await Promise.all([trackerRows(lens.user, { tab: "ausbildung", ...scope }), trackerRows(lens.user, { tab: "nclex", ...scope })]);
   const dayAgo = Date.now() - 86_400_000;
   const unpaid = (r: (typeof aus)[number]) => !r.charge.any || r.charge.byCurrency.some((b) => b.received < b.owed) || r.charge.unpriced > 0;
