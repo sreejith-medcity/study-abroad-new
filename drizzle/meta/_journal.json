@@ -540,6 +540,13 @@
       "when": 1792950305185,
       "tag": "0076_day_end_figures",
       "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1793017302432,
+      "tag": "0077_user_department",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,2 @@
+ALTER TABLE "app_settings" ADD COLUMN "departments" text[] DEFAULT '{"Study abroad","Ausbildung","NCLEX-RN","Documentation","Placement","Visa","Travel desk","Finance","Management"}'::text[] NOT NULL;--> statement-breakpoint
+ALTER TABLE "users" ADD COLUMN "department" text;
