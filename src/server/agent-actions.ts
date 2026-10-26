@@ -17,7 +17,7 @@ import { AGENT_CONSENT, checkOwnerId, OWNER_ID_KINDS } from "@/lib/agents";
 import { GSTIN_RE, PAN_RE, gstinMatchesPan } from "@/lib/billing";
 import { activeMou, mouStanding } from "@/server/agents";
 import { openReferralEarning } from "@/server/referral-earnings";
-import { routeEnquiry, routeNewEnquiry } from "@/server/enquiry-routing";
+import { routeEnquiry, routedTo, routeNewEnquiry, routingLock } from "@/server/enquiry-routing";
 import { ledgerCreated, updateTracked } from "@/server/record-history";
 
 import type { FormState } from "@/lib/form-state";
@@ -535,18 +535,27 @@ export async function assignReferralAction(_: FormState, formData: FormData): Pr
 
   // A referral needs an owner inside the branch as well, or it lands in a list
   // nobody is accountable for: whoever the branch's routing rules pick, and
-  // the branch head where no rule takes it.
-  const routed = await routeEnquiry({ orgId: branch.id, source: "REFERRAL", pathway: enquiry.interestPathway });
-  const owner = routed
-    ? { id: routed.userId }
-    : await db.query.users.findFirst({
-        where: and(eq(schema.users.orgId, branch.id), eq(schema.users.role, "PARTNER"), eq(schema.users.active, true)),
-      });
-
-  await updateTracked("enquiry", enquiryId, { orgId: branch.id, assignedToId: owner?.id ?? null, updatedAt: new Date() }, {
-    by: user.id,
-    action: "referral.assign",
-    ledgerDetail: `A sub-agent's referral given to a branch${routed ? `, by the routing rule "${routed.ruleName}"` : ""}`,
+  // the branch head where no rule takes it. Picked and given under the
+  // branch's routing lock, as every routed enquiry is.
+  const { routed, owner } = await db.transaction(async (tx) => {
+    await routingLock(tx, branch.id);
+    const routed = await routeEnquiry({ orgId: branch.id, source: "REFERRAL", pathway: enquiry.interestPathway }, undefined, tx);
+    const [head] = routed
+      ? []
+      : await tx
+          .select({ id: schema.users.id })
+          .from(schema.users)
+          .where(and(eq(schema.users.orgId, branch.id), eq(schema.users.role, "PARTNER"), eq(schema.users.active, true)))
+          .limit(1);
+    const owner = routed ? { id: routed.userId } : (head ?? null);
+    const done = await updateTracked("enquiry", enquiryId, { orgId: branch.id, assignedToId: owner?.id ?? null, updatedAt: new Date() }, {
+      by: user.id,
+      action: "referral.assign",
+      ledgerDetail: `A sub-agent's referral given to a branch${routed ? `, by the routing rule "${routed.ruleName}"` : ""}`,
+      tx,
+    });
+    if (done && routed) await routedTo(tx, routed, branch.id);
+    return { routed, owner };
   });
   await db.insert(schema.enquiryNotes).values({
     enquiryId,

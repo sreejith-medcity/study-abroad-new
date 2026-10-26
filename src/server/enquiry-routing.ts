@@ -38,8 +38,11 @@ const phoneKeySql = sql`right(regexp_replace(${e.phone}, '[^0-9]', '', 'g'), 10)
 export type RouteMemo = { rules?: RoutingRule[]; pools: Map<string, Candidate[]>; dryRun?: boolean };
 export const newRouteMemo = (dryRun = false): RouteMemo => ({ pools: new Map(), dryRun });
 
-async function activeRules(orgId: string): Promise<RoutingRule[]> {
-  const rows = await db
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+type Reader = typeof db | Tx;
+
+async function activeRules(orgId: string, w: Reader = db): Promise<RoutingRule[]> {
+  const rows = await w
     .select()
     .from(schema.enquiryRoutingRules)
     .where(and(eq(schema.enquiryRoutingRules.active, true), or(isNull(schema.enquiryRoutingRules.orgId), eq(schema.enquiryRoutingRules.orgId, orgId))));
@@ -47,11 +50,11 @@ async function activeRules(orgId: string): Promise<RoutingRule[]> {
 }
 
 /** The branch's active counsellors, with the open enquiries each holds and when each was last given one. */
-async function counsellorPool(orgId: string): Promise<Candidate[]> {
+async function counsellorPool(orgId: string, w: Reader = db): Promise<Candidate[]> {
   // A join rather than a correlated subquery: drizzle writes a lone table's
   // columns unqualified, and "id" inside a subquery on enquiries is the
   // enquiry's own id.
-  const rows = await db
+  const rows = await w
     .select({
       id: u.id,
       name: u.name,
@@ -73,41 +76,62 @@ export type RouteResult = { userId: string; userName: string; ruleId: string; ru
  * round robin over a branch with no active counsellor, is passed over for the
  * next rule. Null when no rule takes it: the enquiry stays unassigned, as
  * enquiries always have, for the branch head to hand out.
+ *
+ * Only picks: nothing is written. Whoever gives the enquiry out calls
+ * routedTo once it really has, under routingLock, so two enquiries arriving
+ * together are not both given to the same person.
  */
-export async function routeEnquiry(ctx: RoutingContext, memo: RouteMemo = newRouteMemo()): Promise<RouteResult | null> {
-  memo.rules ??= await activeRules(ctx.orgId);
+export async function routeEnquiry(ctx: RoutingContext, memo: RouteMemo = newRouteMemo(), w: Reader = db): Promise<RouteResult | null> {
+  memo.rules ??= await activeRules(ctx.orgId, w);
   for (const rule of matchingRules(memo.rules, ctx)) {
     let pick: { id: string; name: string } | null = null;
     if (rule.method === "PERSON") {
       if (!rule.assignToId) continue;
-      const person = await db.query.users.findFirst({
-        where: and(eq(u.id, rule.assignToId), eq(u.active, true), eq(u.orgId, ctx.orgId), inArray(u.role, [...PARTNER_ROLES])),
-        columns: { id: true, name: true },
-      });
+      const [person] = await w
+        .select({ id: u.id, name: u.name })
+        .from(u)
+        .where(and(eq(u.id, rule.assignToId), eq(u.active, true), eq(u.orgId, ctx.orgId), inArray(u.role, [...PARTNER_ROLES])))
+        .limit(1);
       pick = person ?? null;
     } else {
       let pool = memo.pools.get(ctx.orgId);
       if (!pool) {
-        pool = await counsellorPool(ctx.orgId);
+        pool = await counsellorPool(ctx.orgId, w);
         memo.pools.set(ctx.orgId, pool);
       }
       pick = pickRoundRobin(pool);
     }
     if (!pick) continue;
-    const inPool = memo.pools.get(ctx.orgId)?.find((c) => c.id === pick!.id);
-    if (inPool) {
-      inPool.open += 1;
-      inPool.lastAssignedAt = new Date();
-    }
-    if (!memo.dryRun) {
-      await db
-        .update(schema.enquiryRoutingRules)
-        .set({ assignedCount: sql`${schema.enquiryRoutingRules.assignedCount} + 1` })
-        .where(eq(schema.enquiryRoutingRules.id, rule.id));
-    }
     return { userId: pick.id, userName: pick.name, ruleId: rule.id, ruleName: rule.name };
   }
   return null;
+}
+
+/**
+ * Holds the branch's routing until the transaction ends: a second enquiry
+ * for the same branch waits here, and then reads the counts with the first
+ * one's owner already in them.
+ */
+export async function routingLock(tx: Tx, orgId: string) {
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${orgId}))`);
+}
+
+/**
+ * An enquiry the rules picked somebody for has been given to them: the rule's
+ * count goes up by one, and an upload's round robin sees the enquiry it has
+ * just given out. Called only when the enquiry really changed hands.
+ */
+export async function routedTo(w: Reader, picked: RouteResult, orgId: string, memo?: RouteMemo) {
+  const inPool = memo?.pools.get(orgId)?.find((c) => c.id === picked.userId);
+  if (inPool) {
+    inPool.open += 1;
+    inPool.lastAssignedAt = new Date();
+  }
+  if (memo?.dryRun) return;
+  await w
+    .update(schema.enquiryRoutingRules)
+    .set({ assignedCount: sql`${schema.enquiryRoutingRules.assignedCount} + 1` })
+    .where(eq(schema.enquiryRoutingRules.id, picked.ruleId));
 }
 
 type NewEnquiry = { id: string; orgId: string; name: string; phone: string; source: RoutingSource; interestPathway: RoutingPathway | null };
@@ -116,20 +140,31 @@ type NewEnquiry = { id: string; orgId: string; name: string; phone: string; sour
  * Gives a just-saved enquiry that has no owner to whoever the rules pick, with
  * a line on its history saying which rule did it, the audit entry, and the
  * notice the person always gets for an enquiry given to them.
+ *
+ * The pick and the assignment happen under the branch's routing lock in one
+ * transaction, so two enquiries arriving at once are counted one after the
+ * other rather than both going to whoever held the fewest.
  */
 export async function routeNewEnquiry(row: NewEnquiry, actorId: string | null, opts: { memo?: RouteMemo; notify?: boolean } = {}): Promise<RouteResult | null> {
-  const picked = await routeEnquiry({ orgId: row.orgId, source: row.source, pathway: row.interestPathway }, opts.memo);
+  const picked = await db.transaction(async (tx) => {
+    await routingLock(tx, row.orgId);
+    const pick = await routeEnquiry({ orgId: row.orgId, source: row.source, pathway: row.interestPathway }, opts.memo, tx);
+    if (!pick) return null;
+    // Versioned, and on the ownership ledger as an assignment naming the rule.
+    // Somebody who took it in the meantime keeps it: the rule then changes
+    // nothing, and is not counted as having given it out.
+    const done = await updateTracked(
+      "enquiry",
+      row.id,
+      { assignedToId: pick.userId, updatedAt: new Date() },
+      { by: actorId, action: "enquiry.route", where: isNull(e.assignedToId), ledgerDetail: `By the routing rule "${pick.ruleName}"`, tx },
+    );
+    if (!done) return null;
+    await routedTo(tx, pick, row.orgId, opts.memo);
+    await tx.insert(schema.enquiryNotes).values({ enquiryId: row.id, body: `Given to ${pick.userName} by the routing rule "${pick.ruleName}".` });
+    return pick;
+  });
   if (!picked) return null;
-  // Versioned, and on the ownership ledger as an assignment naming the rule.
-  // Somebody who took it in the meantime keeps it: the rule then changes nothing.
-  const done = await updateTracked(
-    "enquiry",
-    row.id,
-    { assignedToId: picked.userId, updatedAt: new Date() },
-    { by: actorId, action: "enquiry.route", where: isNull(e.assignedToId), ledgerDetail: `By the routing rule "${picked.ruleName}"` },
-  );
-  if (!done) return null;
-  await db.insert(schema.enquiryNotes).values({ enquiryId: row.id, body: `Given to ${picked.userName} by the routing rule "${picked.ruleName}".` });
   await audit(actorId, "enquiry.route", "enquiry", row.id, { to: picked.userId, rule: picked.ruleId });
   if (opts.notify !== false && picked.userId !== actorId) {
     await notifyUsers([picked.userId], "New enquiry assigned to you", `${row.name} · ${row.phone}`, `/enquiries/${row.id}`);
