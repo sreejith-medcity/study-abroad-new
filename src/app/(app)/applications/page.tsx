@@ -57,7 +57,7 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
         actions={<LinkButton variant="secondary" href={`/api/applications/export?${exportQs}`} prefetch={false}><IconExport className="size-4" /> Export CSV</LinkButton>}
       />
 
-      <OwnFilesNote of={f.of} />
+      <OwnFilesNote of={f.of} viewer={user} />
 
       <ViewTabs scope="APPLICATIONS" views={savedViews} canShareWithEverybody={staff} />
       <FilterBar

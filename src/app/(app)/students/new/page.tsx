@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { APP_ROLES, isStaff } from "@/lib/permissions";
 import { can } from "@/server/capabilities";
 import { orgUsers } from "@/server/queries";
+import { keepsEnquiryOwner } from "@/lib/conversion";
 import { Alert, Card, PageHeader } from "@/components/ui";
 import { NewStudentForm } from "./form";
 
@@ -37,7 +38,7 @@ export default async function NewStudentPage({ searchParams }: { searchParams: P
   // The branch an enquiry already belongs to is the branch its student belongs
   // to, so the desk converting one does not have to remember whose lead it was.
   const enquiry = enquiryId
-    ? await db.query.enquiries.findFirst({ where: eq(schema.enquiries.id, enquiryId), columns: { id: true, orgId: true, assignedToId: true }, with: { org: { columns: { id: true, type: true } } } })
+    ? await db.query.enquiries.findFirst({ where: eq(schema.enquiries.id, enquiryId), columns: { id: true, orgId: true, assignedToId: true }, with: { org: { columns: { id: true, type: true } }, assignedTo: { columns: { id: true, role: true, orgId: true, active: true } } } })
     : null;
   const branches = staff
     ? await db
@@ -57,7 +58,10 @@ export default async function NewStudentPage({ searchParams }: { searchParams: P
   // unless whoever is registering picks somebody else. Offered as the default
   // only when they are in the list this person may choose from; the action
   // falls back to the same person when the box is left on "Me / unassigned".
-  const enquiryOwner = enquiry?.assignedToId && counsellors.some((c) => c.id === enquiry.assignedToId) ? enquiry.assignedToId : undefined;
+  // The same test the action applies (lib/conversion.ts), so a head who owned
+  // the enquiry is not offered as the default: the action would not pick them.
+  const owner = enquiry?.assignedTo ?? null;
+  const enquiryOwner = keepsEnquiryOwner(owner, user.orgId) && counsellors.some((c) => c.id === owner.id) ? owner.id : undefined;
 
   const prefill = {
     firstName: one("firstName"),

@@ -119,7 +119,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
         }
       />
 
-      <OwnFilesNote of={f.of} />
+      <OwnFilesNote of={f.of} viewer={user} />
 
       <ViewTabs scope="STUDENTS" views={savedViews} canShareWithEverybody={staff} />
 

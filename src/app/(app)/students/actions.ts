@@ -144,11 +144,19 @@ export async function createStudentAction(_: FormState, formData: FormData): Pro
   // file does not sit unassigned in a list nobody is watching.
   if (isStaff(user)) {
     await notifyUsers(
-      await partnerRecipients(orgId, assignedToId),
+      await partnerRecipients(orgId),
       "A student registered for you",
-      `${d.firstName} ${d.lastName} was registered by the Overseas team. Assign a counsellor when you can.`,
+      assignedToId
+        ? `${d.firstName} ${d.lastName} was registered by the Overseas team.`
+        : `${d.firstName} ${d.lastName} was registered by the Overseas team. Assign a counsellor when you can.`,
       `/students/${student.id}/profile`,
     );
+  }
+  // Whoever the student was given to, when that is not the person
+  // registering: the counsellor an enquiry was with learns the file is
+  // theirs, the same notice a reassignment sends.
+  if (assignedToId && assignedToId !== user.id) {
+    await notifyUsers([assignedToId], "Student assigned to you", `${d.firstName} ${d.lastName}`, `/students/${student.id}/profile`);
   }
 
   // Registered straight from an enquiry: close the enquiry against this student.

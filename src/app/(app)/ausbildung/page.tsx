@@ -73,7 +73,7 @@ export default async function AusbildungTrackerPage({ searchParams }: { searchPa
           ) : undefined
         }
       />
-      <OwnFilesNote of={sp.of} />
+      <OwnFilesNote of={sp.of} viewer={user} />
 
       <div className="mb-4 flex flex-wrap items-center gap-2" role="tablist" aria-label="Which students">
         {(

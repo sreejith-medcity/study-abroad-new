@@ -2,7 +2,7 @@ import "server-only";
 import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { CLAIM_MINUTES, gate, standing, STAGES, stageRank, URGENT_DAYS, validUntil, type Gate, type GateItem, visaFirstOrder, visaFirstRank } from "@/lib/journey";
-import { QUEUE_PAGE } from "@/lib/documentation-queue";
+import { QUEUE_PAGE, QUEUE_PAGE_MAX } from "@/lib/documentation-queue";
 import { courseStartFor, intakeStart, requirementsFor, studentContext, syncChecklist, type Requirement, type StudentContext } from "@/db/documentation-sync";
 import type { ChecklistState, JourneyStage, RequirementSource } from "@/db/schema";
 import { DOCUMENTATION_ROLES, PARTNER_ROLES } from "@/lib/permissions";
@@ -163,8 +163,14 @@ export async function documentationQueue(filters: QueueFilters, userId: string):
   const rank = visaFirst
     ? sql<number>`case ${sql.join(STAGES.map((s) => sql`when ${eq(ci.stage, s.value)} then ${sql.raw(String(visaFirstRank(s.value)))}`), sql` `)} else 0 end`
     : sql<number>`0`;
+  // Days left counted exactly as lib/journey.ts counts them: from this moment
+  // to midnight UTC on the due date, rounded down. "due_on - current_date"
+  // ran one day higher whenever the clock was past midnight, so a document
+  // due in fifteen days was urgent on the page and not urgent here, and a
+  // student could land on page two above students the page showed first.
+  const daysLeft = sql`floor(extract(epoch from (${ci.dueOn}::timestamp at time zone 'UTC') - now()) / 86400)::int`;
   const urgency = visaFirst
-    ? sql<number | null>`case when ${ci.dueOn} is not null and ${ci.dueOn} - current_date <= ${sql.raw(String(URGENT_DAYS))} then ${ci.dueOn} - current_date end`
+    ? sql<number | null>`case when ${ci.dueOn} is not null and ${daysLeft} <= ${sql.raw(String(URGENT_DAYS))} then ${daysLeft} end`
     : sql<number | null>`null::int`;
   const lead = db
     .select({
@@ -182,7 +188,7 @@ export async function documentationQueue(filters: QueueFilters, userId: string):
     .leftJoin(cf, and(eq(cf.itemId, ci.id), eq(cf.version, ci.version)))
     .where(and(...where))
     .as("lead");
-  const page = Math.max(1, Math.floor(filters.page ?? 1));
+  const page = Math.min(QUEUE_PAGE_MAX, Math.max(1, Math.floor(filters.page ?? 1)));
   const picked = await db
     .select({ studentId: lead.studentId })
     .from(lead)

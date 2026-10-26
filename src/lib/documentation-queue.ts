@@ -138,10 +138,17 @@ export function groupQueue<T extends QueueGroupRow>(rows: T[], sort: QueueSort, 
 /** Students per page of the queue. */
 export const QUEUE_PAGE = 60;
 
+/**
+ * The furthest page the address may ask for. Far past any real queue, and
+ * small enough that the offset stays an exact whole number Postgres reads as
+ * a bigint: ?page=1e20 used to reach the database as "offset 6e+21" and fail.
+ */
+export const QUEUE_PAGE_MAX = 100_000;
+
 /** The page asked for in the address, or the first; nonsense reads as the first. */
 export function queuePageNumber(raw: string | string[] | undefined): number {
   const n = Math.floor(Number(Array.isArray(raw) ? raw[0] : raw));
-  return Number.isFinite(n) && n >= 1 ? n : 1;
+  return Number.isFinite(n) && n >= 1 ? Math.min(n, QUEUE_PAGE_MAX) : 1;
 }
 
 /**

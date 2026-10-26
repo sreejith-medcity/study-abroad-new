@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { documentCount, groupQueue, holdersText, QUEUE_PAGE, queuePageNumber, queuePaging, type QueueGroupRow } from "../src/lib/documentation-queue";
+import { documentCount, groupQueue, holdersText, QUEUE_PAGE, QUEUE_PAGE_MAX, queuePageNumber, queuePaging, type QueueGroupRow } from "../src/lib/documentation-queue";
 import type { JourneyStage } from "../src/db/schema";
 
 const today = new Date("2026-10-26T10:00:00Z");
@@ -85,6 +85,10 @@ test("the page number read from the address: the first unless a whole number pas
   assert.equal(queuePageNumber("2"), 2);
   assert.equal(queuePageNumber("2.9"), 2);
   assert.equal(queuePageNumber(["4", "9"]), 4);
+  // Huge numbers are held to the cap, so the offset stays a bigint Postgres accepts.
+  assert.equal(queuePageNumber("1e20"), QUEUE_PAGE_MAX);
+  assert.equal(queuePageNumber("999999999999999999"), QUEUE_PAGE_MAX);
+  assert.equal(queuePageNumber("Infinity"), 1);
 });
 
 test("the links at the foot: a page after only when this one was full, a page before only past the first", () => {

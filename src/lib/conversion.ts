@@ -34,6 +34,16 @@ export function convertedStudentOwner(
   enquiryOwner: EnquiryOwner | null,
 ): string | null {
   if (posted) return posted;
-  if (enquiryOwner && enquiryOwner.active && enquiryOwner.orgId === orgId && isCounsellor(enquiryOwner.role)) return enquiryOwner.id;
+  if (keepsEnquiryOwner(enquiryOwner, orgId)) return enquiryOwner.id;
   return isCounsellor(registrar.role) ? registrar.id : null;
+}
+
+/**
+ * Whether the enquiry's owner is the one the student goes to: still active,
+ * at the student's branch, and a counsellor. The form's default reads this
+ * too, so it never starts on somebody the action would not have chosen, such
+ * as the branch head who owned the enquiry themselves.
+ */
+export function keepsEnquiryOwner(enquiryOwner: EnquiryOwner | null | undefined, orgId: string): enquiryOwner is EnquiryOwner {
+  return !!enquiryOwner && enquiryOwner.active && enquiryOwner.orgId === orgId && isCounsellor(enquiryOwner.role);
 }
