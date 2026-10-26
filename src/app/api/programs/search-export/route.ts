@@ -4,9 +4,10 @@ import { getSession } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { LEVEL_LABEL } from "@/lib/catalogue";
 import { MONTHS } from "@/lib/format";
-import { APP_ROLES, isStaff } from "@/lib/permissions";
+import { APP_ROLES } from "@/lib/permissions";
 import { PROGRAM_TAGS } from "@/lib/program-tags";
 import { fxRates, getSettings } from "@/server/settings";
+import { studentWhere } from "@/server/scope";
 import { adhocStudent, readSearch, searchConds } from "@/server/program-search";
 
 export const dynamic = "force-dynamic";
@@ -40,8 +41,10 @@ export async function GET(req: Request) {
   if (ids.length) {
     where = and(eq(p.status, "LIVE"), inArray(p.id, ids));
   } else {
+    // The student's scores narrow the matches, so only a student this person
+    // may open is read here, by the rule the search screen itself applies.
     const student = f.student
-      ? await db.query.students.findFirst({ where: and(eq(s.id, f.student), isStaff(user) ? undefined : eq(s.orgId, user.orgId)), with: { tests: true, academics: true } })
+      ? await db.query.students.findFirst({ where: and(eq(s.id, f.student), await studentWhere(user)), with: { tests: true, academics: true } })
       : null;
     const checker = student ?? adhocStudent(f);
     where = and(...searchConds(f, checker, fxRates(await getSettings())));

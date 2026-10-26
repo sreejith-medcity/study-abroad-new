@@ -2,7 +2,8 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { getSession } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { isFamilyRole, isStaff } from "@/lib/permissions";
+import { isFamilyRole } from "@/lib/permissions";
+import { mayOpenStudent } from "@/server/scope";
 import { buildPack, packContents } from "@/server/pack";
 
 export const dynamic = "force-dynamic";
@@ -24,10 +25,13 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const { id } = await params;
   const pack = await db.query.submissionPacks.findFirst({
     where: eq(schema.submissionPacks.id, id),
-    with: { student: { columns: { orgId: true } }, builtBy: { columns: { name: true, deskLabel: true } } },
+    with: { student: { columns: { id: true, orgId: true, assignedToId: true, createdById: true } }, builtBy: { columns: { name: true, deskLabel: true } } },
   });
   if (!pack) return new Response("Not found", { status: 404 });
-  if (!isStaff(user) && pack.student.orgId !== user.orgId) return new Response("Not found", { status: 404 });
+  // The same rule as opening the student, since the folder is the student's
+  // paperwork. The organisation alone let a counsellor fetch another
+  // counsellor's pack by its link.
+  if (!(await mayOpenStudent(user, pack.student))) return new Response("Not found", { status: 404 });
 
   // The rows that were ticked in when it was built go back in, so the same link
   // next week gives the folder that was sent rather than a tidier one.

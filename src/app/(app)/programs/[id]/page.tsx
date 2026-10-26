@@ -17,6 +17,7 @@ import { programDeadlines } from "@/server/deadlines";
 import { activeRules } from "@/server/commission-estimate";
 import { partnerEstimate, pickRule } from "@/lib/money";
 import { fxRates, getSettings } from "@/server/settings";
+import { studentWhere } from "@/server/scope";
 import { ScholarshipList } from "@/components/scholarship-list";
 import { ShortlistButton } from "@/components/shortlist-button";
 import { DestinationSnapshot } from "@/components/destination-guide";
@@ -50,7 +51,10 @@ export default async function ProgramPage({
   const cur = country.currency;
 
   const s = schema.students;
-  const scope = isStaff(user) ? undefined : eq(s.orgId, user.orgId);
+  // The "check a student" picker and the student named in the address both
+  // follow the students list's rule about whose, so a counsellor who sees only
+  // their own cannot shortlist for, or read the fit of, somebody else's.
+  const scope = await studentWhere(user);
   const [students, student, siblings, [{ siblingTotal }]] = await Promise.all([
     db.select({ id: s.id, firstName: s.firstName, lastName: s.lastName }).from(s).where(and(eq(s.archived, false), scope)).orderBy(asc(s.firstName)).limit(300),
     studentId ? db.query.students.findFirst({ where: and(eq(s.id, studentId), scope), with: { tests: true, academics: true } }) : Promise.resolve(undefined),

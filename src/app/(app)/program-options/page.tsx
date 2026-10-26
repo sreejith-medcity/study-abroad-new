@@ -8,6 +8,7 @@ import { fmtDateTime, fullName } from "@/lib/format";
 import { OPTIONS_STATUS_LABEL, OPTIONS_STATUS_TONE } from "@/lib/options";
 import { PARTNER_ROLES, PROCESSING_ROLES, isStaff } from "@/lib/permissions";
 import { optionRequestForUser } from "@/server/option-access";
+import { studentWhere } from "@/server/scope";
 import { addOptionAction, linkStudentAction, removeOptionAction, sendOptionsAction, setArchivedAction } from "@/server/option-requests";
 import { Button, Card, Chip, EmptyState, Input, LinkButton, PageHeader, Select, cn } from "@/components/ui";
 import { OptionMessageForm, ShortlistAllForm } from "@/components/option-forms";
@@ -52,8 +53,10 @@ export default async function ProgramOptionsPage({ searchParams }: { searchParam
       })
     : null;
   const countries = new Map((await db.select().from(schema.countries)).map((c) => [c.code, c.name]));
+  // Linking a request to a file offers the request's branch's students, and
+  // among them only the ones this person may open.
   const linkable = detail && !detail.studentId
-    ? await db.select({ id: schema.students.id, firstName: schema.students.firstName, lastName: schema.students.lastName }).from(schema.students).where(and(eq(schema.students.orgId, detail.orgId), eq(schema.students.archived, false))).orderBy(asc(schema.students.firstName)).limit(300)
+    ? await db.select({ id: schema.students.id, firstName: schema.students.firstName, lastName: schema.students.lastName }).from(schema.students).where(and(eq(schema.students.orgId, detail.orgId), eq(schema.students.archived, false), await studentWhere(user))).orderBy(asc(schema.students.firstName)).limit(300)
     : [];
   // The team's finder: live programs matching the words, in the request's destinations first.
   const finder = staff && detail && sp.pq

@@ -20,7 +20,7 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
   const sp = await searchParams;
   const mine = !sp.who || sp.who === user.id;
   const [rows, people] = await Promise.all([
-    taskList(isStaff(user) ? {} : { orgId: user.orgId }, { assignedTo: sp.who ?? user.id, done: sp.done, kind: sp.kind }),
+    taskList(isStaff(user) ? { viewer: user } : { orgId: user.orgId, viewer: user }, { assignedTo: sp.who ?? user.id, done: sp.done, kind: sp.kind }),
     assignableUsers(user),
   ]);
 

@@ -146,8 +146,11 @@ export function readCommissionFilters(sp: Record<string, string | string[] | und
   return out as CommissionFilters;
 }
 
-export function commissionWhere(user: SessionUser, f: CommissionFilters): SQL | undefined {
-  const conds: (SQL | undefined)[] = [orgScope(user, cm.orgId)];
+export function commissionWhere(user: SessionUser, f: CommissionFilters, mine?: SQL): SQL | undefined {
+  // `mine` narrows a branch's statement to the files one person is on, the
+  // same condition the applications list takes. Passed in so this stays
+  // synchronous for the screens that build on it.
+  const conds: (SQL | undefined)[] = [orgScope(user, cm.orgId), mine];
   if (f.status) conds.push(eq(cm.status, f.status as CommissionStatus));
   if (f.org) conds.push(eq(cm.orgId, f.org));
   if (f.year) conds.push(eq(a.intakeYear, Number(f.year)));
@@ -196,7 +199,7 @@ export function commissionBase() {
 }
 
 /** Totals per status, in rupees for the partner share. */
-export async function commissionTotals(user: SessionUser, f: CommissionFilters = {}) {
+export async function commissionTotals(user: SessionUser, f: CommissionFilters = {}, mine?: SQL) {
   const rows = await db
     .select({
       status: cm.status,
@@ -209,7 +212,7 @@ export async function commissionTotals(user: SessionUser, f: CommissionFilters =
     .innerJoin(pr, eq(a.programId, pr.id))
     .innerJoin(un, eq(pr.universityId, un.id))
     .innerJoin(co, eq(un.countryId, co.id))
-    .where(commissionWhere(user, f))
+    .where(commissionWhere(user, f, mine))
     .groupBy(cm.status);
   const out: Record<string, { n: number; partner: number }> = {};
   for (const s of schema.commissionStatus.enumValues) out[s] = { n: 0, partner: 0 };

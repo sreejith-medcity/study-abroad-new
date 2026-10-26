@@ -3,8 +3,11 @@
 // A counsellor at Medcity Kottayam opened Students by stage and saw all of
 // the branch's students, other counsellors' included, while her dashboard
 // said ten. The board, the search palette, the application deadlines and the
-// placement tracker now ask the same question the students list asks. A
-// branch head and the desk still see everybody.
+// placement tracker now ask the same question the students list asks, and so
+// do the pickers that offer a student by name: the student picker API, the
+// finder, the search screen, a program's "check a student", events, program
+// option requests, the practice interview, a colleague's day and the
+// applications export. A branch head and the desk still see everybody.
 // Wants the plain seed; adds its own students and takes them away again.
 import { chromium } from "playwright";
 import { knownWarning, hydrated } from "./_errors.mjs";
@@ -28,6 +31,10 @@ const status = sql(`select id from status_definitions where pathway = 'DEGREE' a
 // one given to nobody. The senior's student has an application with a
 // deadline next week, which is what the deadlines tab lists.
 const cleanup = () => {
+  sql("delete from event_registrations where event_id = 'sc_event'");
+  sql("delete from events where id = 'sc_event'");
+  sql("delete from interview_sessions where id = 'sc_session'");
+  sql("delete from tasks where id in ('sc_task_other', 'sc_task_mine')");
   sql("delete from application_deadlines where application_id in ('sc_app_other', 'sc_app_mine')");
   sql("delete from applications where id in ('sc_app_other', 'sc_app_mine')");
   sql("delete from students where id in ('sc_other', 'sc_mine', 'sc_free')");
@@ -43,6 +50,21 @@ sql(`insert into applications (id, ack_no, student_id, program_id, org_id, intak
 sql(`insert into application_deadlines (id, application_id, type, due_on, created_by_id)
      values ('sc_dl_other', 'sc_app_other', 'PAYMENT', current_date + 7, '${senior}'),
             ('sc_dl_mine', 'sc_app_mine', 'PAYMENT', current_date + 7, '${senior}')`);
+// A webinar open to students, with the senior's student and the counsellor's
+// own both registered by the senior; the events page lists registrations and
+// offers the rest of the students to register.
+sql(`insert into events (id, title, kind, starts_at, open_to_students, published, created_by_id)
+     values ('sc_event', 'Scopecheck webinar', 'WEBINAR', now() + interval '2 days', true, true, '${senior}')`);
+sql(`insert into event_registrations (id, event_id, user_id, student_id)
+     values ('sc_reg_other', 'sc_event', '${senior}', 'sc_other'),
+            ('sc_reg_mine', 'sc_event', '${senior}', 'sc_mine')`);
+// A past practice interview the senior ran for their own student.
+sql(`insert into interview_sessions (id, org_id, student_id, kind, context, transcript, feedback, created_by_id)
+     values ('sc_session', '${kottayam}', 'sc_other', 'visa', 'Scopecheck practice', '[]'::jsonb, 'Scopecheck feedback', '${senior}')`);
+// Two tasks on the senior's desk, one about each student, for the day view.
+sql(`insert into tasks (id, org_id, student_id, title, due_on, assigned_to_id, created_by_id)
+     values ('sc_task_other', '${kottayam}', 'sc_other', 'Scopecheck task elsewhere', current_date, '${senior}', '${senior}'),
+            ('sc_task_mine', '${kottayam}', 'sc_mine', 'Scopecheck task mine', current_date, '${senior}', '${senior}')`);
 
 const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--no-first-run", "--disable-background-networking"] });
 let ip = 60;
@@ -72,6 +94,13 @@ const deadlinesText = async (page) => {
   await go(page, "/deadlines?tab=applications&days=30");
   return (await page.locator("main").innerText()).replace(/\s+/g, " ");
 };
+const pageText = async (page, path) => {
+  await go(page, path);
+  return (await page.locator("main").innerText()).replace(/\s+/g, " ");
+};
+const pick = async (page, q) => (await (await page.request.get(`${BASE}/api/pick/students?q=${encodeURIComponent(q)}`)).json()).options.map((o) => o.label);
+const options = async (page, selector) => page.locator(`${selector} option`).evaluateAll((els) => els.map((el) => el.value));
+const exportText = async (page) => (await page.request.get(`${BASE}/api/applications/export?ack=SCOPE-`)).text();
 
 /* ---------------- A counsellor sees their own and the unassigned ---------------- */
 {
@@ -97,6 +126,54 @@ const deadlinesText = async (page) => {
   const text = await deadlinesText(c.page);
   check(text.includes("Scopecheck Mine"), "the application deadlines list their own student's deadline");
   check(!text.includes("Scopecheck Elsewhere"), "and not the other counsellor's student's");
+
+  // The student picker API, which the search screen's combobox reads from.
+  const picked = await pick(c.page, "Scopecheck");
+  check(picked.includes("Scopecheck Mine") && picked.includes("Scopecheck Nobody"), "the student picker offers their own student and the branch's unassigned one");
+  check(!picked.includes("Scopecheck Elsewhere"), "and not another counsellor's");
+
+  // The finder's "a student's file" select, and the file named in the address.
+  await go(c.page, "/finder");
+  const finderOptions = await options(c.page, "select#student");
+  check(finderOptions.includes("sc_mine") && !finderOptions.includes("sc_other"), "the finder offers their own student and not another counsellor's");
+  check(!(await pageText(c.page, "/finder?student=sc_other")).includes("Scopecheck Elsewhere"), "naming another counsellor's student in the finder's address reads nothing of them");
+
+  // The search screen, where the student arrives by the address.
+  check((await pageText(c.page, "/search?student=sc_mine")).includes("Scopecheck Mine"), "search checks against their own student when asked");
+  check(!(await pageText(c.page, "/search?student=sc_other")).includes("Scopecheck Elsewhere"), "and reads nothing of another counsellor's student named in the address");
+
+  // Events: who is listed as registered, and who can be registered.
+  const events = await pageText(c.page, "/events");
+  check(events.includes("Scopecheck Mine"), "the events page lists their own student's registration");
+  check(!events.includes("Scopecheck Elsewhere"), "and not another counsellor's student's");
+  const registerable = await options(c.page, 'select[name="studentId"]');
+  check(registerable.includes("sc_free") && !registerable.includes("sc_other"), "the register picker offers the unassigned student and not another counsellor's");
+
+  // Requesting program options for a student.
+  await go(c.page, "/program-options/new");
+  const requestable = await options(c.page, "select#or-student");
+  check(requestable.includes("sc_mine") && !requestable.includes("sc_other"), "the program options request offers their own student and not another counsellor's");
+
+  // A program's "check a student" picker, and the student named in its address.
+  await go(c.page, `/programs/${program}`);
+  const checkable = await options(c.page, 'select[name="student"]');
+  check(checkable.includes("sc_mine") && !checkable.includes("sc_other"), "the program page's student picker offers their own and not another counsellor's");
+  check(!(await pageText(c.page, `/programs/${program}?student=sc_other`)).includes("Scopecheck Elsewhere"), "naming another counsellor's student in the program's address reads nothing of them");
+
+  // The practice interview: the applications offered and the past sessions.
+  const interview = await pageText(c.page, "/interview");
+  check(!interview.includes("SCOPE-OTHER-1") && !interview.includes("Scopecheck Elsewhere"), "the practice interview offers nothing of another counsellor's student");
+  await go(c.page, "/interview?session=sc_session");
+  check((await c.page.locator("#session").count()) === 0, "and another counsellor's past practice does not open by its address");
+
+  // A colleague's day: only the tasks about students this person may open.
+  const day = await pageText(c.page, `/my-day?who=${senior}`);
+  check(day.includes("Scopecheck task mine"), "a colleague's day shows their task on the counsellor's own student");
+  check(!day.includes("Scopecheck task elsewhere"), "and not their task on a student the counsellor cannot open");
+
+  // The applications export, the same rows as the list.
+  const csv = await exportText(c.page);
+  check(csv.includes("SCOPE-MINE-1") && !csv.includes("SCOPE-OTHER-1"), "the applications export carries their own file and not the other counsellor's");
   check(c.errors.length === 0, `no errors for the counsellor ${c.errors.slice(0, 2).join(" | ")}`);
   await c.ctx.close();
 }
@@ -111,6 +188,17 @@ const deadlinesText = async (page) => {
   check(hits.some((h) => h.label === "Scopecheck Elsewhere"), "the branch head's palette finds every student of the branch");
   const text = await deadlinesText(b.page);
   check(text.includes("Scopecheck Elsewhere") && text.includes("Scopecheck Mine"), "and the deadlines tab lists both deadlines");
+  const picked = await pick(b.page, "Scopecheck");
+  check(picked.includes("Scopecheck Elsewhere"), "the branch head's student picker offers every student of the branch");
+  await go(b.page, "/finder");
+  check((await options(b.page, "select#student")).includes("sc_other"), "and so does the finder");
+  const events = await pageText(b.page, "/events");
+  check(events.includes("Scopecheck Elsewhere") && events.includes("Scopecheck Mine"), "and the events page lists both registrations");
+  check((await pageText(b.page, "/interview")).includes("Scopecheck Elsewhere"), "and the practice interview lists the senior's past session");
+  const day = await pageText(b.page, `/my-day?who=${senior}`);
+  check(day.includes("Scopecheck task elsewhere") && day.includes("Scopecheck task mine"), "and the senior's day shows both tasks");
+  const csv = await exportText(b.page);
+  check(csv.includes("SCOPE-MINE-1") && csv.includes("SCOPE-OTHER-1"), "and the applications export carries both files");
   check(b.errors.length === 0, `no errors for the branch head ${b.errors.slice(0, 2).join(" | ")}`);
   await b.ctx.close();
 }

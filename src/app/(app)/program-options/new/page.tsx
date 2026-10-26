@@ -3,7 +3,8 @@ import { and, asc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fullName } from "@/lib/format";
-import { PARTNER_ROLES, PROCESSING_ROLES, isStaff } from "@/lib/permissions";
+import { PARTNER_ROLES, PROCESSING_ROLES } from "@/lib/permissions";
+import { studentWhere } from "@/server/scope";
 import { Card, PageHeader } from "@/components/ui";
 import { OptionRequestForm } from "@/components/option-forms";
 
@@ -16,7 +17,8 @@ export default async function NewOptionRequestPage({ searchParams }: { searchPar
   const students = await db
     .select({ id: s.id, firstName: s.firstName, lastName: s.lastName })
     .from(s)
-    .where(and(eq(s.archived, false), isStaff(user) ? undefined : eq(s.orgId, user.orgId)))
+    // Only students this person may open are offered, by the students list's rule.
+    .where(and(eq(s.archived, false), await studentWhere(user)))
     .orderBy(asc(s.firstName))
     .limit(500);
   const countries = await db.select({ code: schema.countries.code, name: schema.countries.name }).from(schema.countries).orderBy(asc(schema.countries.name));

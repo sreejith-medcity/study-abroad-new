@@ -3,8 +3,9 @@ import { and, asc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fullName } from "@/lib/format";
-import { ADMIN_ROLES, APP_ROLES, PARTNER_ROLES, isStaff } from "@/lib/permissions";
+import { ADMIN_ROLES, APP_ROLES, PARTNER_ROLES } from "@/lib/permissions";
 import { commissionVisible } from "@/server/commission-visibility";
+import { studentWhere } from "@/server/scope";
 import { adhocStudent, LEVELS, listOf, QUICK, readSearch } from "@/server/program-search";
 import { destinationCounts, studyFields, FINDER_KEYS } from "@/server/finder";
 import { SEASON_LABEL } from "@/lib/program-tags";
@@ -52,15 +53,18 @@ export default async function FinderPage({ searchParams }: { searchParams: Promi
   const guided = step === "1" || step === "2" || step === "3";
   const { students: s } = schema;
 
+  // Whose files the finder offers, and whose it will read scores from: the
+  // students this person may open, by the rule the students list applies.
+  const scope = await studentWhere(user);
   const students = await db
     .select({ id: s.id, firstName: s.firstName, lastName: s.lastName })
     .from(s)
-    .where(and(eq(s.archived, false), isStaff(user) ? undefined : eq(s.orgId, user.orgId)))
+    .where(and(eq(s.archived, false), scope))
     .orderBy(asc(s.firstName))
     .limit(300);
 
   const student = f.student
-    ? await db.query.students.findFirst({ where: and(eq(s.id, f.student), isStaff(user) ? undefined : eq(s.orgId, user.orgId)), with: { tests: true, academics: true } })
+    ? await db.query.students.findFirst({ where: and(eq(s.id, f.student), scope), with: { tests: true, academics: true } })
     : null;
   const adhoc = student ? null : adhocStudent(f);
   const checker = student ? { backlogs: student.backlogs, gapYears: student.gapYears, tests: student.tests, academics: student.academics } : adhoc;

@@ -5,11 +5,12 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { checkEligibility, type Eligibility } from "@/lib/eligibility";
 import { fmtMoney, fullName, MONTHS } from "@/lib/format";
-import { ADMIN_ROLES, APP_ROLES, PARTNER_ROLES, isStaff } from "@/lib/permissions";
+import { ADMIN_ROLES, APP_ROLES, PARTNER_ROLES } from "@/lib/permissions";
 import { ShortlistButton } from "@/components/shortlist-button";
 import { CheckDropdown } from "@/components/check-dropdown";
 import { Combobox } from "@/components/combobox";
 import { fxRates, getSettings } from "@/server/settings";
+import { studentWhere } from "@/server/scope";
 import { nextDeadlines } from "@/server/deadlines";
 import { activeRules, partnerShareJoins } from "@/server/commission-estimate";
 import { AE_KEYS, LEVELS, QUICK, adhocStudent, listOf, readSearch, searchConds, tagCond } from "@/server/program-search";
@@ -48,8 +49,13 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
   const rates = fxRates(await getSettings());
   const budget = Number(f.budget) > 0;
+  // Whose student may be checked against: the ones this person may open, by
+  // the rule the students list applies. The id arrives in the address, so the
+  // organisation alone was not enough to keep one counsellor's student's
+  // scores from another.
+  const studentScope = await studentWhere(user);
   const student = f.student
-    ? await db.query.students.findFirst({ where: and(eq(s.id, f.student), isStaff(user) ? undefined : eq(s.orgId, user.orgId)), with: { tests: true, academics: true } })
+    ? await db.query.students.findFirst({ where: and(eq(s.id, f.student), studentScope), with: { tests: true, academics: true } })
     : null;
   // Scores typed into search stand in for a student when none is picked.
   const adhoc = student ? null : adhocStudent(f);
@@ -252,7 +258,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const students = await db
     .select({ id: s.id, firstName: s.firstName, lastName: s.lastName, medcityId: s.medcityId, phone: s.phone })
     .from(s)
-    .where(and(eq(s.archived, false), isStaff(user) ? undefined : eq(s.orgId, user.orgId)))
+    .where(and(eq(s.archived, false), studentScope))
     .orderBy(asc(s.firstName))
     .limit(25);
 

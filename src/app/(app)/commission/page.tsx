@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { commissionVisible } from "@/server/commission-visibility";
+import { ownApplicationsOnly } from "@/server/scope";
 import { asc, desc } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
@@ -49,10 +50,14 @@ export default async function CommissionPage({ searchParams }: { searchParams: P
     redirect("/dashboard");
   }
   const f = readCommissionFilters(await searchParams);
+  // A commission line names a student and their application, so the statement
+  // lists the files this person may open, by the applications list's rule. A
+  // branch owner's statement is the whole branch's, as before.
+  const mine = await ownApplicationsOnly(user);
 
   const [rows, totals, wallet, countries] = await Promise.all([
-    commissionBase().where(commissionWhere(user, f)).orderBy(desc(schema.commissions.createdAt)).limit(200),
-    commissionTotals(user),
+    commissionBase().where(commissionWhere(user, f, mine)).orderBy(desc(schema.commissions.createdAt)).limit(200),
+    commissionTotals(user, {}, mine),
     walletBalance(user.orgId),
     db.select().from(schema.countries).orderBy(asc(schema.countries.name)),
   ]);

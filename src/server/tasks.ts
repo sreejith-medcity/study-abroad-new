@@ -4,6 +4,7 @@ import { db, schema } from "@/db";
 import { whenDue, type When } from "@/lib/crm";
 import type { SessionUser } from "@/lib/auth";
 import { PARTNER_ROLES, isStaff } from "@/lib/permissions";
+import { ownStudentsOnly } from "@/server/scope";
 
 const { tasks: tk, students: st, users: us, organizations: og, applications: ap } = schema;
 
@@ -33,8 +34,14 @@ export type TaskFilters = { assignedTo?: string; branch?: string; kind?: string;
  * soonest first, because a list that opens on last month's finished work is a
  * list nobody reads twice.
  */
-export async function taskList(scope: { orgId?: string; userId?: string }, filters: TaskFilters = {}, today = new Date()): Promise<TaskRow[]> {
+export async function taskList(scope: { orgId?: string; userId?: string; viewer?: SessionUser }, filters: TaskFilters = {}, today = new Date()): Promise<TaskRow[]> {
   const assignee = schema.users;
+  // Somebody reading a colleague's desk sees that colleague's tasks on students
+  // the reader may open, plus whatever is on the reader's own desk. A task
+  // about nobody in particular is open to the branch. Nothing is held back
+  // from a role that sees every student.
+  const own = scope.viewer ? await ownStudentsOnly(scope.viewer) : undefined;
+  const reach = own && scope.viewer ? or(eq(tk.assignedToId, scope.viewer.id), isNull(tk.studentId), own) : undefined;
   const rows = await db
     .select({
       id: tk.id,
@@ -68,6 +75,7 @@ export async function taskList(scope: { orgId?: string; userId?: string }, filte
         filters.kind ? eq(tk.kind, filters.kind as "FOLLOW_UP") : undefined,
         filters.studentId ? eq(tk.studentId, filters.studentId) : undefined,
         filters.done === "1" ? undefined : isNull(tk.doneAt),
+        reach,
       ),
     )
     .orderBy(asc(tk.dueOn), asc(tk.createdAt))

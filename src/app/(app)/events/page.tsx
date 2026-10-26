@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, asc, desc, eq, gte, lt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { EVENT_KIND_LABEL } from "@/lib/events";
@@ -8,6 +8,7 @@ import { APP_ROLES, isStaff } from "@/lib/permissions";
 import { Button, Card, Chip, EmptyState, PageHeader } from "@/components/ui";
 import { AttendForm, RegisterStudentForm } from "@/components/event-forms";
 import { removeRegistrationAction } from "@/server/events";
+import { studentWhere } from "@/server/scope";
 
 export const metadata = { title: "Events" };
 
@@ -23,9 +24,20 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
     limit: 60,
   });
   const canRegister = user.role !== "MANAGEMENT";
+  // Whose students may be registered, and whose registrations are listed
+  // under an event: the ones this person may open, by the students list's
+  // rule. The organisation alone put every counsellor's registrations in
+  // front of a counsellor who sees only their own.
+  const scope = await studentWhere(user);
   const students = canRegister && !isStaff(user)
-    ? await db.select({ id: schema.students.id, firstName: schema.students.firstName, lastName: schema.students.lastName }).from(schema.students).where(and(eq(schema.students.orgId, user.orgId), eq(schema.students.archived, false))).orderBy(asc(schema.students.firstName)).limit(300)
+    ? await db.select({ id: schema.students.id, firstName: schema.students.firstName, lastName: schema.students.lastName }).from(schema.students).where(and(scope, eq(schema.students.archived, false))).orderBy(asc(schema.students.firstName)).limit(300)
     : [];
+  const registeredIds = [...new Set(rows.flatMap((ev) => ev.registrations.map((r) => r.studentId)).filter((x): x is string => !!x))];
+  const visible = new Set(
+    registeredIds.length
+      ? (await db.select({ id: schema.students.id }).from(schema.students).where(and(scope, inArray(schema.students.id, registeredIds)))).map((r) => r.id)
+      : [],
+  );
 
   return (
     <>
@@ -40,7 +52,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
         <div className="grid gap-4 lg:grid-cols-2">
           {rows.map((ev) => {
             const mine = ev.registrations.find((r) => r.user.id === user.id && !r.studentId);
-            const branch = ev.registrations.filter((r) => r.studentId && (isStaff(user) || r.user.orgId === user.orgId));
+            const branch = ev.registrations.filter((r) => r.studentId && visible.has(r.studentId));
             const left = ev.capacity != null ? ev.capacity - ev.registrations.length : null;
             const taken = new Set(branch.map((r) => r.studentId));
             return (

@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, or } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fmtDateTime, fullName } from "@/lib/format";
 import { INTERVIEW_KINDS } from "@/lib/interview";
 import { ADMIN_ROLES, PARTNER_ROLES, isStaff } from "@/lib/permissions";
 import { aiConfig } from "@/server/ai";
+import { ownApplicationsOnly, studentWhere } from "@/server/scope";
 import { RichText } from "@/components/rich-text";
 import { Card, CardHeader, EmptyState, PageHeader } from "@/components/ui";
 import { InterviewPractice } from "./practice";
@@ -17,7 +18,10 @@ export default async function InterviewPage({ searchParams }: { searchParams: Pr
   const sp = await searchParams;
   const cfg = await aiConfig();
   const on = !!cfg && cfg.enabled && cfg.features.interview;
-  const scope = isStaff(user) ? undefined : eq(schema.applications.orgId, user.orgId);
+  // The applications offered for practice are the ones this person may open,
+  // by the applications list's rule, so a counsellor who sees only their own
+  // students is not offered another counsellor's files by name.
+  const scope = and(isStaff(user) ? undefined : eq(schema.applications.orgId, user.orgId), await ownApplicationsOnly(user));
   const apps = on
     ? await db.query.applications.findMany({
         where: scope,
@@ -27,13 +31,23 @@ export default async function InterviewPage({ searchParams }: { searchParams: Pr
       })
     : [];
   const s = schema.interviewSessions;
+  // Past practice names the student it was for, so a session is shown only
+  // where that student opens to this person, or where it was their own or
+  // about nobody in particular.
+  const studentScope = await studentWhere(user);
+  const sessionScope = and(
+    isStaff(user) ? undefined : eq(s.orgId, user.orgId),
+    studentScope
+      ? or(isNull(s.studentId), eq(s.createdById, user.id), inArray(s.studentId, db.select({ id: schema.students.id }).from(schema.students).where(studentScope)))
+      : undefined,
+  );
   const sessions = await db.query.interviewSessions.findMany({
-    where: isStaff(user) ? undefined : eq(s.orgId, user.orgId),
+    where: sessionScope,
     with: { student: { columns: { firstName: true, lastName: true } } },
     orderBy: desc(s.createdAt),
     limit: 15,
   });
-  const open = sp.session ? await db.query.interviewSessions.findFirst({ where: and(eq(s.id, sp.session), isStaff(user) ? undefined : eq(s.orgId, user.orgId)) }) : null;
+  const open = sp.session ? await db.query.interviewSessions.findFirst({ where: and(eq(s.id, sp.session), sessionScope) }) : null;
 
   return (
     <>

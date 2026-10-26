@@ -5,7 +5,7 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { LEVEL_LABEL, intakesText, tuitionText } from "@/lib/catalogue";
-import { ADMIN_ROLES, APP_ROLES, HQ_ROLES, PARTNER_ROLES } from "@/lib/permissions";
+import { ADMIN_ROLES, APP_ROLES, PARTNER_ROLES } from "@/lib/permissions";
 import { readUpload } from "@/server/storage";
 import { mayOpenStudent } from "@/server/scope";
 import { isCurrent } from "@/lib/document-versions";
@@ -135,9 +135,11 @@ export async function interviewTurnAction(input: { kind: string; applicationId: 
   if (input.applicationId) {
     const app = await db.query.applications.findFirst({
       where: eq(schema.applications.id, input.applicationId),
-      with: { program: { with: { university: { with: { country: true } } } } },
+      with: { program: { with: { university: { with: { country: true } } } }, student: { columns: { id: true, orgId: true, assignedToId: true, createdById: true } } },
     });
-    if (!app || (!(HQ_ROLES as readonly string[]).includes(user.role) && app.orgId !== user.orgId)) return { ok: false, error: "That application is not yours." };
+    // The same rule as opening the student: the practice is about their file,
+    // and the organisation alone let a counsellor rehearse on a colleague's.
+    if (!app || !(await mayOpenStudent(user, app.student))) return { ok: false, error: "That application is not yours." };
     studentId = app.studentId;
     context = `${LEVEL_LABEL[app.program.level] ?? app.program.level}: ${app.program.name} at ${app.program.university.name}, ${app.program.university.country.name}, intake ${app.intakeMonth}/${app.intakeYear}.`;
   }

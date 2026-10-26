@@ -12,6 +12,7 @@ import { fromIstInput, istDateTime } from "@/lib/format";
 import { ADMIN_ROLES, PARTNER_ROLES } from "@/lib/permissions";
 import { notifyUsers } from "@/server/notify";
 import { getStudentForUser } from "@/server/queries";
+import { mayOpenStudent } from "@/server/scope";
 
 const eventInput = z
   .object({
@@ -107,10 +108,16 @@ export async function removeRegistrationAction(fd: FormData) {
   const user = await requireUser([...PARTNER_ROLES, ...ADMIN_ROLES]);
   const id = String(fd.get("id") ?? "");
   const r = schema.eventRegistrations;
-  const row = await db.query.eventRegistrations.findFirst({ where: eq(r.id, id), with: { user: { columns: { orgId: true } } } });
+  const row = await db.query.eventRegistrations.findFirst({
+    where: eq(r.id, id),
+    with: { user: { columns: { orgId: true } }, student: { columns: { id: true, orgId: true, assignedToId: true, createdById: true } } },
+  });
   if (!row) return;
   const isAdminUser = (ADMIN_ROLES as readonly string[]).includes(user.role);
   if (!isAdminUser && row.user.orgId !== user.orgId) return;
+  // A student's seat is taken away only by somebody who may open that student,
+  // the same people the events page lists it to.
+  if (row.student && !(await mayOpenStudent(user, row.student))) return;
   await db.delete(r).where(eq(r.id, id));
   revalidatePath("/events");
   revalidatePath("/admin/events");
