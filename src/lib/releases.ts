@@ -12,6 +12,18 @@ export type Release = { version: string; date: string; changes: string[] };
 
 export const RELEASES: Release[] = [
   {
+    version: "1.6.0",
+    date: "2026-10-26",
+    changes: [
+      "A counsellor's students are the ones given to them and the ones they registered themselves, and nobody else's. A student a colleague registered and nobody has been given to no longer appears in every counsellor's list; the branch head hands them out.",
+      "A counsellor's dashboard counts exactly what their students list shows: My students, applications, offers, visas, the board by stage, documents still to come and placements. Every figure opens a list holding the same number, and a tile now says how many students they registered that are not yet given to a counsellor.",
+      "The documentation queue shows one row per student, sixty to a page, with how long their oldest document has waited, how many are waiting and who holds them. A row opens to show the documents with the same Check, claim and Reassign controls. The wait counts from when the file was sent in, so claiming a document no longer resets it.",
+      "People can be edited and moved: the head office corrects a person's name, sign-in email, job title and department, a branch head does the same for their own counsellors, and a person moves to another branch with their students and open tasks handed to a colleague or the branch head. Departments (Ausbildung, NCLEX and the rest) are kept in Settings and filter the people lists.",
+      "Registering a student from an enquiry keeps them with the counsellor the enquiry was with.",
+      "Everywhere a student is picked by name (search, finder, events, program options, the practice interview, commission statements, pack downloads), a counsellor is offered only the students they may open.",
+    ],
+  },
+  {
     version: "1.5.1",
     date: "2026-10-26",
     changes: [
