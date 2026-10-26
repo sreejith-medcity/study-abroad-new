@@ -140,6 +140,9 @@ export async function createStudentAction(_: FormState, formData: FormData): Pro
   const convert = !!enquiry && (isStaff(user) || enquiry.orgId === user.orgId);
   const medcityId = await tryMintStudentId(orgId);
   let student: typeof schema.students.$inferSelect;
+  // The referrer as the enquiry stands when it is closed, not as it was read
+  // before the transaction: a merge that landed in between may have given it one.
+  let referrerId = null as string | null;
   try {
     student = await db.transaction(async (tx) => {
       const [made] = await tx
@@ -162,47 +165,55 @@ export async function createStudentAction(_: FormState, formData: FormData): Pro
           medcityId,
         })
         .returning();
-      await ledgerCreated(tx, "student", [made], user.id, enquiryId && enquiry ? "Registered from an enquiry" : null);
-      if (convert && enquiry) {
-        // Registered straight from an enquiry: close the enquiry against this
-        // student, unless it has been merged since it was read.
-        const closed = await updateTracked(
-          "enquiry",
-          enquiry.id,
-          { stage: "CONVERTED", studentId: made.id, nextFollowUpAt: null, updatedAt: new Date() },
-          { by: user.id, action: "enquiry.convert", where: ne(schema.enquiries.stage, "MERGED"), tx },
+      // The enquiry row is locked before the ledger head, the order every
+      // other change to an enquiry takes them in (a merge, a routing, a
+      // reassignment), so a merge landing now waits or is waited for rather
+      // than deadlocking, and the ledger is not held while this waits.
+      const closed =
+        convert && enquiry
+          ? await updateTracked(
+              "enquiry",
+              enquiry.id,
+              { stage: "CONVERTED", studentId: made.id, nextFollowUpAt: null, updatedAt: new Date() },
+              { by: user.id, action: "enquiry.convert", where: ne(schema.enquiries.stage, "MERGED"), tx },
+            )
+          : null;
+      if (convert && enquiry && !closed) {
+        // Merged into another enquiry since it was read.
+        const into = await tx.query.enquiries.findFirst({ where: eq(schema.enquiries.id, enquiry.id), with: { mergedInto: { columns: { name: true, phone: true } } } });
+        throw new RegistrationRefused(
+          into?.mergedInto
+            ? `This enquiry was merged into ${into.mergedInto.name}'s enquiry (${into.mergedInto.phone}) a moment ago, so the student was not registered. Open that enquiry and register the student from there.`
+            : "This enquiry was merged into another enquiry a moment ago, so the student was not registered. Register the student from that one.",
         );
-        if (!closed) {
-          const into = await tx.query.enquiries.findFirst({ where: eq(schema.enquiries.id, enquiry.id), with: { mergedInto: { columns: { name: true, phone: true } } } });
-          throw new RegistrationRefused(
-            into?.mergedInto
-              ? `This enquiry was merged into ${into.mergedInto.name}'s enquiry (${into.mergedInto.phone}) a moment ago, so the student was not registered. Open that enquiry and register the student from there.`
-              : "This enquiry was merged into another enquiry a moment ago, so the student was not registered. Register the student from that one.",
-          );
-        }
-        // The enquiry's line on the ledger ends here, pointing at the student
-        // file that carries it on.
+      }
+      await ledgerCreated(tx, "student", [made], user.id, enquiryId && enquiry ? "Registered from an enquiry" : null);
+      if (closed) {
+        // Registered straight from an enquiry. The enquiry's line on the
+        // ledger ends here, pointing at the student file that carries it on.
+        const now = closed.after;
         await appendLedger(tx, [
           {
             kind: "CONVERTED",
             entity: "enquiry",
-            entityId: enquiry.id,
-            orgId: enquiry.orgId,
-            ownerId: enquiry.assignedToId,
+            entityId: now.id,
+            orgId: now.orgId,
+            ownerId: now.assignedToId,
             detail: made.medcityId ? `Student ${made.medcityId}` : "Student registered without a Medcity ID",
             actorId: user.id,
           },
         ]);
         await tx.insert(schema.enquiryNotes).values({
-          enquiryId: enquiry.id,
+          enquiryId: now.id,
           authorId: user.id,
           body: `Registered as a student: ${d.firstName} ${d.lastName}.`,
           stageAfter: "CONVERTED",
         });
         // A lead a sub-agent referred keeps its referrer on the student file.
         // The branch owns the student; the sub-agent is who gets paid for them.
-        if (enquiry.submittedByOrgId) {
-          await updateTracked("student", made.id, { referredByOrgId: enquiry.submittedByOrgId }, { by: user.id, action: "student.referral", tx });
+        if (now.submittedByOrgId) {
+          referrerId = now.submittedByOrgId;
+          await updateTracked("student", made.id, { referredByOrgId: now.submittedByOrgId }, { by: user.id, action: "student.referral", tx });
         }
       }
       return made;
@@ -243,10 +254,10 @@ export async function createStudentAction(_: FormState, formData: FormData): Pro
 
     // The earning for a referred lead is opened the same day so the sub-agent
     // can see it coming.
-    if (enquiry.submittedByOrgId) {
-      await openEarningForStudent(student.id, enquiry.submittedByOrgId);
+    if (referrerId) {
+      await openEarningForStudent(student.id, referrerId);
       await notifyUsers(
-        await partnerRecipients(enquiry.submittedByOrgId),
+        await partnerRecipients(referrerId),
         "Your referral has been registered",
         `${d.firstName} ${d.lastName} is now a Medcity student.`,
         "/referrals",
