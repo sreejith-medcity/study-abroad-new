@@ -3,9 +3,11 @@ import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fmtDate } from "@/lib/format";
-import { APP_ROLES, PARTNER_ROLES, isStaff, orgScope } from "@/lib/permissions";
+import { APP_ROLES, PARTNER_ROLES, isStaff } from "@/lib/permissions";
 import { STAGES, stageLabel } from "@/lib/journey";
 import { lastContactFor, openTasksFor } from "@/server/tasks";
+import { studentWhere } from "@/server/queries";
+import { can } from "@/server/capabilities";
 import { Chip, EmptyState, PageHeader } from "@/components/ui";
 import { FilterBar } from "@/components/filter-bar";
 import { livingTeams } from "@/server/teams";
@@ -37,6 +39,13 @@ export default async function BoardPage({ searchParams }: { searchParams: Promis
   const sp = await searchParams;
   const st = schema.students;
 
+  // The board is the students list drawn as columns, so it asks the list's
+  // own question about who may see whom. It used to apply the branch filter
+  // alone, which put every student of Medcity Kottayam in front of a
+  // counsellor whose dashboard said she had ten.
+  const seesEvery = await can(user, "SEE_EVERY_STUDENT");
+  const where = await studentWhere(user, { org: sp.branch, assignedTo: sp.who, team: sp.team });
+
   const rows = await db
     .select({
       id: st.id,
@@ -54,15 +63,7 @@ export default async function BoardPage({ searchParams }: { searchParams: Promis
     .from(st)
     .innerJoin(schema.organizations, eq(schema.organizations.id, st.orgId))
     .leftJoin(schema.users, eq(schema.users.id, st.assignedToId))
-    .where(
-      and(
-        eq(st.archived, false),
-        orgScope(user, st.orgId),
-        sp.branch ? eq(st.orgId, sp.branch) : undefined,
-        sp.who ? eq(st.assignedToId, sp.who) : undefined,
-        sp.team ? eq(st.teamId, sp.team) : undefined,
-      ),
-    )
+    .where(where)
     .orderBy(asc(st.firstName))
     .limit(600);
 
@@ -73,10 +74,20 @@ export default async function BoardPage({ searchParams }: { searchParams: Promis
     isStaff(user)
       ? db.select({ id: schema.organizations.id, name: schema.organizations.name }).from(schema.organizations).orderBy(asc(schema.organizations.name))
       : Promise.resolve([]),
+    // The counsellor picker offers only people whose students the viewer can
+    // see. Somebody who sees only their own students is offered nobody but
+    // themselves, which is one name, so the picker does not appear at all.
     db
       .select({ id: schema.users.id, name: schema.users.name, deskLabel: schema.users.deskLabel })
       .from(schema.users)
-      .where(and(eq(schema.users.active, true), inArray(schema.users.role, [...PARTNER_ROLES]), isStaff(user) ? undefined : eq(schema.users.orgId, user.orgId)))
+      .where(
+        and(
+          eq(schema.users.active, true),
+          inArray(schema.users.role, [...PARTNER_ROLES]),
+          isStaff(user) ? undefined : eq(schema.users.orgId, user.orgId),
+          seesEvery ? undefined : eq(schema.users.id, user.id),
+        ),
+      )
       .orderBy(asc(schema.users.name))
       .limit(60),
     livingTeams(),
@@ -145,6 +156,8 @@ export default async function BoardPage({ searchParams }: { searchParams: Promis
                       <Link
                         key={c.id}
                         href={`/students/${c.id}/timeline`}
+                        data-board-card={c.id}
+                        data-assigned-to={c.assignedToId ?? ""}
                         className="block rounded-lg border border-line bg-surface p-2.5 hover:border-brand-300"
                       >
                         <p className="font-medium">{c.firstName} {c.lastName}</p>

@@ -8,6 +8,7 @@ import { DEADLINE_LABEL, DEADLINE_TYPES } from "@/lib/deadline-types";
 import { LEVEL_LABEL, dayText, daysUntil } from "@/lib/catalogue";
 import { MONTHS } from "@/lib/format";
 import { readFilters } from "@/server/queries";
+import { ownApplicationsOnly, studentWhere } from "@/server/scope";
 import { Button, Card, Chip, EmptyState, Input, LinkButton, PageHeader, Select, Table, Td, Th, Toolbar, cn } from "@/components/ui";
 import { IconClock } from "@/components/icons";
 import { InlineDate } from "@/components/inline-date";
@@ -30,8 +31,10 @@ export default async function DeadlinesPage({ searchParams }: { searchParams: Pr
   const days = (WINDOWS as readonly number[]).includes(Number(f.days)) ? Number(f.days) : 60;
   const { programDeadlines: d, programs: p, universities: u, countries: c, shortlists: sl, students: st } = schema;
 
-  // Whose shortlists count: the branch's own students, or everyone's for the Overseas team.
-  const scope = isStaff(user) ? sql`true` : sql`${st.orgId} = ${user.orgId}`;
+  // Whose shortlists count: the students this person may see, by the rule the
+  // students list applies. The names shown here are students, so a counsellor
+  // who sees only their own is not shown another counsellor's by this column.
+  const scope = (await studentWhere(user)) ?? sql`true`;
   const shortlistedBy = sql<string[]>`coalesce((
     select array_agg(${st.firstName} || ' ' || ${st.lastName} order by ${st.firstName})
     from ${sl} join ${st} on ${st.id} = ${sl.studentId}
@@ -185,7 +188,9 @@ async function ApplicationDeadlines({ user, f }: { user: SessionUser; f: Record<
   const d = schema.applicationDeadlines;
   const a = schema.applications;
   const days = (WINDOWS as readonly number[]).includes(Number(f.days)) ? Number(f.days) : 60;
-  const conds: (SQL | undefined)[] = [isNull(d.doneAt), sql`${d.dueOn} <= current_date + ${days}::int`, orgScope(user, a.orgId)];
+  // The same scope as the applications list, so this tab never lists a
+  // deadline on a file the person could not open.
+  const conds: (SQL | undefined)[] = [isNull(d.doneAt), sql`${d.dueOn} <= current_date + ${days}::int`, orgScope(user, a.orgId), await ownApplicationsOnly(user)];
   if ((DEADLINE_TYPES as readonly string[]).includes(f.type)) conds.push(sql`${d.type} = ${f.type}::deadline_type`);
   if (f.country) conds.push(eq(schema.countries.code, f.country));
   const rows = await db

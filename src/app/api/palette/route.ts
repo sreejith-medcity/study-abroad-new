@@ -3,6 +3,7 @@ import { and, asc, eq, ilike, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { getSession } from "@/lib/auth";
 import { isFamilyRole, isStaff, orgScope } from "@/lib/permissions";
+import { ownApplicationsOnly, studentWhere } from "@/server/scope";
 
 export const dynamic = "force-dynamic";
 
@@ -23,13 +24,18 @@ export async function GET(request: Request) {
   const like = `%${q}%`;
   const { students: s, applications: a, organizations: og, statusDefinitions: sd, universities: un, programs: pr, countries: co } = schema;
 
+  // Students and applications are searched under the same rule the students
+  // list and the applications list apply, so a counsellor who sees only their
+  // own students cannot find somebody else's by typing the name.
+  const [studentScope, applicationScope] = await Promise.all([studentWhere(user), ownApplicationsOnly(user)]);
+
   const [students, applications, partners, universities, programs] = await Promise.all([
     db
       .select({ id: s.id, firstName: s.firstName, lastName: s.lastName, phone: s.phone, city: s.city })
       .from(s)
       .where(
         and(
-          orgScope(user, s.orgId),
+          studentScope,
           or(ilike(sql`${s.firstName} || ' ' || ${s.lastName}`, like), ilike(s.phone, like), ilike(s.email, like)),
         ),
       )
@@ -39,7 +45,7 @@ export async function GET(request: Request) {
       .select({ id: a.id, ackNo: a.ackNo, studentId: a.studentId, label: sd.label })
       .from(a)
       .innerJoin(sd, eq(a.statusId, sd.id))
-      .where(and(orgScope(user, a.orgId), ilike(a.ackNo, like)))
+      .where(and(orgScope(user, a.orgId), applicationScope, ilike(a.ackNo, like)))
       .limit(5),
     isStaff(user)
       ? db.select({ id: og.id, name: og.name, city: og.city }).from(og).where(ilike(og.name, like)).limit(4)

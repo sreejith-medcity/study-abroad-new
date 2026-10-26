@@ -4,6 +4,7 @@ import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/permissions";
 import { applicationWhere, readFilters, studentWhere } from "@/server/queries";
+import { ownApplicationsOnly } from "@/server/scope";
 import type { ViewScope } from "@/db/schema";
 
 export const SCOPE_PATH: Record<ViewScope, string> = {
@@ -99,7 +100,10 @@ export async function countFor(user: SessionUser, scope: ViewScope, query: strin
         .select({ n: count() })
         .from(schema.applications)
         .innerJoin(schema.statusDefinitions, eq(schema.statusDefinitions.id, schema.applications.statusId))
-        .where(applicationWhere(user, f));
+        // The list passes the person's own-files condition in, so the count
+        // passes the same one, or a counsellor's tab would promise the
+        // branch's number over a list of their own.
+        .where(applicationWhere(user, f, await ownApplicationsOnly(user)));
       return Number(n);
     }
   } catch {

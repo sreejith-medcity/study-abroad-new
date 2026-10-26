@@ -407,6 +407,12 @@ student no counsellor can open is a student nobody picks up. And the
 documentation queue stays a pool: claiming a document from it is what makes that
 file yours, so the queue is never full of work nobody can reach.
 
+Every screen that lists students or applications asks the same question
+through `studentWhere` or `ownApplicationsOnly` in `src/server/scope.ts`: the
+students list, the board, the applications list and its export, the search
+palette, the application deadlines and the placement tracker. A new list
+reuses those rather than filtering by organisation alone.
+
 If it proves too tight, it is a tick on "Who may do what" rather than a deploy.
 
 ## The counsellor roles
