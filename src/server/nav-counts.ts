@@ -31,10 +31,12 @@ export async function navCounts(user: SessionUser): Promise<NavCounts> {
   const wanted: { href: string; tone?: "stop" | "warn"; sql: ReturnType<typeof sql> }[] = [];
 
   if (processing) {
+    // Students with a document waiting, not documents: one student's seven
+    // uploads are one file to pick up, and 139 items read as 139 people.
     wanted.push({
       href: "/documentation",
       tone: "warn",
-      sql: sql`(select count(*) from checklist_items where state in ('UPLOADED','IN_REVIEW'))`,
+      sql: sql`(select count(distinct student_id) from checklist_items where state in ('UPLOADED','IN_REVIEW'))`,
     });
     wanted.push({
       href: "/program-options",

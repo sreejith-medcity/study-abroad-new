@@ -43,7 +43,10 @@ export default async function Pipeline({ lens }: { lens: Lens }) {
     counsellor ? Promise.resolve([]) : teamBoard(lens),
     counsellor ? followUps(lens) : Promise.resolve(null),
     destinations(lens, 5),
-    counsellor ? Promise.resolve(0) : unassigned(lens),
+    // A counsellor's list shows the branch's unassigned students beside their
+    // own, so the board says how many of those there are, or "10 my students"
+    // and a list of 14 would look like a mistake.
+    unassigned(lens),
     commissionVisible(user),
     lens.viewingAs ? Promise.resolve(false) : can(user, "REGISTER_STUDENT"),
     placements(lens),
@@ -75,7 +78,7 @@ export default async function Pipeline({ lens }: { lens: Lens }) {
     { slug: "payments-done", label: "Paid", value: t.feesPaid, tone: "good" as const, href: `/applications?kpi=payments${mine}` },
     { slug: "payments-pending", label: "Fee pending", value: t.feesDue, tone: "stop" as const, href: `/applications?kpi=fees_due${mine}` },
     { slug: "waiting-on-you", label: "Waiting on you", value: waiting, tone: "warn" as const, href: `/applications?group=PENDING_PARTNER${mine}` },
-    ...(!counsellor ? [{ slug: "not-given-to-anyone", label: "Not given to anyone", value: loose, tone: "info" as const, href: "/students?assignedTo=none" }] : []),
+    { slug: "not-given-to-anyone", label: counsellor ? "Not given to anyone at the branch" : "Not given to anyone", value: loose, tone: "info" as const, href: "/students?assignedTo=none" },
     ...(t.revenue ? [{ slug: "total-revenue-expected", label: "Revenue due", value: inrShort(t.revenue.expected), tone: "gold" as const, href: staff ? "/admin/commission?status=EXPECTED" : "/commission" }] : []),
     ...(wallet ? [{ slug: "wallet", label: "Wallet", value: inrShort(wallet.balance), tone: "gold" as const, href: "/wallet" }] : []),
   ];
