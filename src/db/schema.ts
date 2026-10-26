@@ -3107,6 +3107,8 @@ export const enquiries = pgTable(
     index("enquiries_org_idx").on(t.orgId, t.stage),
     index("enquiries_follow_up_idx").on(t.nextFollowUpAt),
     index("enquiries_referrer_idx").on(t.submittedByOrgId),
+    // The duplicates folded into an enquiry, and a merge repointing them at the survivor.
+    index("enquiries_merged_into_idx").on(t.mergedIntoId),
     uniqueIndex("enquiries_crm_id_uq").on(t.crmId),
     // The last ten digits of the number, which is how a repeat and a duplicate are matched.
     index("enquiries_phone_key_idx").on(sql`right(regexp_replace(${t.phone}, '[^0-9]', '', 'g'), 10)`),
@@ -3260,7 +3262,11 @@ export const recordVersions = pgTable(
   },
   (t) => [
     index("record_versions_entity_idx").on(t.entity, t.entityId, t.createdAt),
-    index("record_versions_time_idx").on(t.createdAt.desc()),
+    // The change feed, paged by (created_at, id): read backwards for newest
+    // first, forwards for Previous. Ascending, so a backward scan gives the
+    // feed's own order (descending, nulls first) exactly.
+    index("record_versions_feed_idx").on(t.createdAt, t.id),
+    index("record_versions_entity_feed_idx").on(t.entity, t.createdAt, t.id),
     index("record_versions_org_idx").on(t.orgId, t.createdAt.desc()),
     index("record_versions_by_idx").on(t.changedById, t.createdAt.desc()),
     index("record_versions_student_idx").on(t.studentId),

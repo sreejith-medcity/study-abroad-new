@@ -568,6 +568,13 @@
       "when": 1793038252683,
       "tag": "0080_ledger_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1793040840632,
+      "tag": "0081_history_feed_index",
+      "breakpoints": true
     }
   ]
 }
