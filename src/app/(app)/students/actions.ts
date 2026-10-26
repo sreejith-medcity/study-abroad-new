@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { randomBytes } from "crypto";
 import { redirect } from "next/navigation";
-import { and, count, eq, sql } from "drizzle-orm";
+import { and, count, eq, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { hashPassword, requireUser } from "@/lib/auth";
@@ -45,6 +45,9 @@ const newStudent = z.object({
   assignedToId: optionalText,
   consent: z.literal("on", { message: "The student's consent is required before saving their data" }),
 });
+
+/** A registration the enquiry refuses once inside the transaction, raised so the student is rolled back. */
+class RegistrationRefused extends Error {}
 
 export async function createStudentAction(_: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser([...APP_ROLES]);
@@ -131,28 +134,84 @@ export async function createStudentAction(_: FormState, formData: FormData): Pro
       : null;
   const assignedToId = convertedStudentOwner(d.assignedToId, user, orgId, enquiryOwner ?? null);
 
-  const [student] = await db
-    .insert(schema.students)
-    .values({
-      orgId,
-      createdById: user.id,
-      assignedToId,
-      firstName: d.firstName,
-      lastName: d.lastName,
-      email: d.email,
-      phone: d.phone,
-      preferredCountry: d.preferredCountry,
-      // One question on the form, two columns here: the journey the file
-      // follows, and the level the courses are picked at.
-      preferredPathway: aim.pathway ?? d.preferredPathway,
-      preferredLevel: aim.level,
-      consentAt: new Date(),
-      consentText: CONSENT_TEXT,
-      medcityId: await tryMintStudentId(orgId),
-    })
-    .returning();
+  // The student, and the enquiry closed against it, in one transaction: an
+  // enquiry merged into another while this form was open is refused here and
+  // the student is not left created beside it.
+  const convert = !!enquiry && (isStaff(user) || enquiry.orgId === user.orgId);
+  const medcityId = await tryMintStudentId(orgId);
+  let student: typeof schema.students.$inferSelect;
+  try {
+    student = await db.transaction(async (tx) => {
+      const [made] = await tx
+        .insert(schema.students)
+        .values({
+          orgId,
+          createdById: user.id,
+          assignedToId,
+          firstName: d.firstName,
+          lastName: d.lastName,
+          email: d.email,
+          phone: d.phone,
+          preferredCountry: d.preferredCountry,
+          // One question on the form, two columns here: the journey the file
+          // follows, and the level the courses are picked at.
+          preferredPathway: aim.pathway ?? d.preferredPathway,
+          preferredLevel: aim.level,
+          consentAt: new Date(),
+          consentText: CONSENT_TEXT,
+          medcityId,
+        })
+        .returning();
+      await ledgerCreated(tx, "student", [made], user.id, enquiryId && enquiry ? "Registered from an enquiry" : null);
+      if (convert && enquiry) {
+        // Registered straight from an enquiry: close the enquiry against this
+        // student, unless it has been merged since it was read.
+        const closed = await updateTracked(
+          "enquiry",
+          enquiry.id,
+          { stage: "CONVERTED", studentId: made.id, nextFollowUpAt: null, updatedAt: new Date() },
+          { by: user.id, action: "enquiry.convert", where: ne(schema.enquiries.stage, "MERGED"), tx },
+        );
+        if (!closed) {
+          const into = await tx.query.enquiries.findFirst({ where: eq(schema.enquiries.id, enquiry.id), with: { mergedInto: { columns: { name: true, phone: true } } } });
+          throw new RegistrationRefused(
+            into?.mergedInto
+              ? `This enquiry was merged into ${into.mergedInto.name}'s enquiry (${into.mergedInto.phone}) a moment ago, so the student was not registered. Open that enquiry and register the student from there.`
+              : "This enquiry was merged into another enquiry a moment ago, so the student was not registered. Register the student from that one.",
+          );
+        }
+        // The enquiry's line on the ledger ends here, pointing at the student
+        // file that carries it on.
+        await appendLedger(tx, [
+          {
+            kind: "CONVERTED",
+            entity: "enquiry",
+            entityId: enquiry.id,
+            orgId: enquiry.orgId,
+            ownerId: enquiry.assignedToId,
+            detail: made.medcityId ? `Student ${made.medcityId}` : "Student registered without a Medcity ID",
+            actorId: user.id,
+          },
+        ]);
+        await tx.insert(schema.enquiryNotes).values({
+          enquiryId: enquiry.id,
+          authorId: user.id,
+          body: `Registered as a student: ${d.firstName} ${d.lastName}.`,
+          stageAfter: "CONVERTED",
+        });
+        // A lead a sub-agent referred keeps its referrer on the student file.
+        // The branch owns the student; the sub-agent is who gets paid for them.
+        if (enquiry.submittedByOrgId) {
+          await updateTracked("student", made.id, { referredByOrgId: enquiry.submittedByOrgId }, { by: user.id, action: "student.referral", tx });
+        }
+      }
+      return made;
+    });
+  } catch (err) {
+    if (err instanceof RegistrationRefused) return { error: err.message };
+    throw err;
+  }
   await audit(user.id, "student.create", "student", student.id, { consent: true, orgId });
-  await ledgerCreated(db, "student", [student], user.id, enquiryId && enquiry ? "Registered from an enquiry" : null);
   // Registered by the desk rather than by the branch: the branch is told, so the
   // file does not sit unassigned in a list nobody is watching.
   if (isStaff(user)) {
@@ -172,51 +231,26 @@ export async function createStudentAction(_: FormState, formData: FormData): Pro
     await notifyUsers([assignedToId], "Student assigned to you", `${d.firstName} ${d.lastName}`, `/students/${student.id}/profile`);
   }
 
-  // Registered straight from an enquiry: close the enquiry against this student.
-  if (enquiry) {
-    if (isStaff(user) || enquiry.orgId === user.orgId) {
-      await updateTracked("enquiry", enquiry.id, { stage: "CONVERTED", studentId: student.id, nextFollowUpAt: null, updatedAt: new Date() }, { by: user.id, action: "enquiry.convert" });
-      // The enquiry's line on the ledger ends here, pointing at the student
-      // file that carries it on.
-      await appendLedger(db, [
-        {
-          kind: "CONVERTED",
-          entity: "enquiry",
-          entityId: enquiry.id,
-          orgId: enquiry.orgId,
-          ownerId: enquiry.assignedToId,
-          detail: student.medcityId ? `Student ${student.medcityId}` : "Student registered without a Medcity ID",
-          actorId: user.id,
-        },
-      ]);
-      await db.insert(schema.enquiryNotes).values({
-        enquiryId: enquiry.id,
-        authorId: user.id,
-        body: `Registered as a student: ${d.firstName} ${d.lastName}.`,
-        stageAfter: "CONVERTED",
-      });
-      await audit(user.id, "enquiry.convert", "enquiry", enquiry.id, { studentId: student.id });
+  if (convert && enquiry) {
+    await audit(user.id, "enquiry.convert", "enquiry", enquiry.id, { studentId: student.id });
 
-      // The desk used to learn a student existed when an application turned
-      // up, which can be weeks later, and the document list did not exist
-      // until somebody opened the tab that builds it. Registration hands the
-      // file over now: the list is opened, somebody at the desk is put on it,
-      // and the desk is told.
-      await handEnquiryToDocumentation(student.id, user.id, `${d.firstName} ${d.lastName}`);
+    // The desk used to learn a student existed when an application turned
+    // up, which can be weeks later, and the document list did not exist
+    // until somebody opened the tab that builds it. Registration hands the
+    // file over now: the list is opened, somebody at the desk is put on it,
+    // and the desk is told.
+    await handEnquiryToDocumentation(student.id, user.id, `${d.firstName} ${d.lastName}`);
 
-      // A lead a sub-agent referred keeps its referrer on the student file, and
-      // the earning is opened the same day so the sub-agent can see it coming.
-      // The branch owns the student; the sub-agent is who gets paid for them.
-      if (enquiry.submittedByOrgId) {
-        await updateTracked("student", student.id, { referredByOrgId: enquiry.submittedByOrgId }, { by: user.id, action: "student.referral" });
-        await openEarningForStudent(student.id, enquiry.submittedByOrgId);
-        await notifyUsers(
-          await partnerRecipients(enquiry.submittedByOrgId),
-          "Your referral has been registered",
-          `${d.firstName} ${d.lastName} is now a Medcity student.`,
-          "/referrals",
-        );
-      }
+    // The earning for a referred lead is opened the same day so the sub-agent
+    // can see it coming.
+    if (enquiry.submittedByOrgId) {
+      await openEarningForStudent(student.id, enquiry.submittedByOrgId);
+      await notifyUsers(
+        await partnerRecipients(enquiry.submittedByOrgId),
+        "Your referral has been registered",
+        `${d.firstName} ${d.lastName} is now a Medcity student.`,
+        "/referrals",
+      );
     }
   }
   redirect(`/students/${student.id}/profile`);

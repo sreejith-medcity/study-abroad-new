@@ -3,7 +3,7 @@ import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/permissions";
-import { mayMerge, planMerge, type MergeRecord } from "@/lib/enquiry-routing";
+import { isHeadOffice, mayMerge, planMerge, type MergeRecord } from "@/lib/enquiry-routing";
 import { notifyUsers } from "@/server/notify";
 import { appendLedger } from "@/server/ledger";
 import { updateTracked, updateTrackedMany } from "@/server/record-history";
@@ -39,7 +39,8 @@ export async function mergeEnquiries(user: SessionUser, keepId: string, removeId
   const removeOwnerActive = remove.assignedToId
     ? !!(await db.query.users.findFirst({ where: and(eq(schema.users.id, remove.assignedToId), eq(schema.users.active, true)), columns: { id: true } }))
     : false;
-  const first = planMerge(keep as MergeRecord, remove as MergeRecord, { removeOwnerActive });
+  const headOffice = isHeadOffice(user);
+  const first = planMerge(keep as MergeRecord, remove as MergeRecord, { removeOwnerActive, headOffice });
   if (!first.ok) return first;
 
   const now = new Date();
@@ -54,7 +55,7 @@ export async function mergeEnquiries(user: SessionUser, keepId: string, removeId
       const r = fresh.find((x) => x.id === remove.id);
       if (!k || !r) throw new MergeRefused("That enquiry could not be found.");
       if (!mayMerge(user, k.orgId, r.orgId)) throw new MergeRefused("Only the head office, or the branch head for two enquiries of their own branch, may merge enquiries.");
-      const plan = planMerge(k as MergeRecord, r as MergeRecord, { removeOwnerActive: r.assignedToId === remove.assignedToId ? removeOwnerActive : false });
+      const plan = planMerge(k as MergeRecord, r as MergeRecord, { removeOwnerActive: r.assignedToId === remove.assignedToId ? removeOwnerActive : false, headOffice });
       if (!plan.ok) throw new MergeRefused(plan.why);
       const { clearLost, ...set } = plan.set;
 

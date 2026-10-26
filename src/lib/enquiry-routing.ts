@@ -189,14 +189,34 @@ const FILL_LABEL: Record<(typeof FILLABLE)[number], string> = {
  * Refused: the same enquiry twice, either already merged, and a duplicate that
  * became a student, because the student file points at it. The kept one may
  * be the converted one.
+ *
+ * A sub-agent's referral folded into an enquiry that has no referrer decides
+ * who is paid for the person, so only the head office may do it. When the
+ * kept enquiry is already a student, nobody may: the student file would keep
+ * no referrer while the enquiry named one, so the referral is set on the
+ * student instead, and is never half applied.
  */
-export function planMerge(keep: MergeRecord, remove: MergeRecord, opts: { removeOwnerActive: boolean }): MergePlan {
+export function planMerge(keep: MergeRecord, remove: MergeRecord, opts: { removeOwnerActive: boolean; headOffice: boolean }): MergePlan {
   if (keep.id === remove.id) return { ok: false, why: "That is the same enquiry." };
   if (keep.mergedIntoId || keep.stage === "MERGED") return { ok: false, why: "The enquiry to keep has itself been merged into another." };
   if (remove.mergedIntoId || remove.stage === "MERGED") return { ok: false, why: "That enquiry has already been merged." };
   if (remove.studentId || remove.stage === "CONVERTED") return { ok: false, why: `${remove.name} is already a student. Open that enquiry and merge this one into it instead.` };
   if (keep.submittedByOrgId && remove.submittedByOrgId && keep.submittedByOrgId !== remove.submittedByOrgId) {
     return { ok: false, why: "The two were referred by different sub-agents. Who is paid for the person is the desk's decision, so they are left apart." };
+  }
+  if (remove.submittedByOrgId && !keep.submittedByOrgId) {
+    if (keep.studentId || keep.stage === "CONVERTED") {
+      return {
+        ok: false,
+        why: `${keep.name} is already a student, and ${remove.name}'s enquiry was referred by a sub-agent. A merge would leave the student without that referral, so it is not merged: set the referring sub-agent on the student instead.`,
+      };
+    }
+    if (!opts.headOffice) {
+      return {
+        ok: false,
+        why: `${remove.name}'s enquiry was referred by a sub-agent and this one was not. Merging would decide who is paid for the person, so only the head office may merge these two.`,
+      };
+    }
   }
 
   const set: Extract<MergePlan, { ok: true }>["set"] = {};

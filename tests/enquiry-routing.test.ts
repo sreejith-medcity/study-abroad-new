@@ -230,7 +230,7 @@ test("a merge fills only the blanks on the enquiry kept", () => {
   const plan = planMerge(
     rec({ city: "Pala", email: null }),
     rec({ id: "r", city: "Kottayam", email: "a@example.com", interestCountry: "Germany", budgetLakhs: 0 }),
-    { removeOwnerActive: true },
+    { removeOwnerActive: true, headOffice: true },
   );
   assert.ok(plan.ok);
   if (!plan.ok) return;
@@ -243,13 +243,13 @@ test("a merge fills only the blanks on the enquiry kept", () => {
 });
 
 test("the kept owner stays; the duplicate's owner is taken only when nobody holds it and they are active", () => {
-  const kept = planMerge(rec({ assignedToId: "anu" }), rec({ id: "r", assignedToId: "binu" }), { removeOwnerActive: true });
+  const kept = planMerge(rec({ assignedToId: "anu" }), rec({ id: "r", assignedToId: "binu" }), { removeOwnerActive: true, headOffice: true });
   assert.ok(kept.ok && kept.set.assignedToId === undefined);
-  const taken = planMerge(rec({}), rec({ id: "r", assignedToId: "binu" }), { removeOwnerActive: true });
+  const taken = planMerge(rec({}), rec({ id: "r", assignedToId: "binu" }), { removeOwnerActive: true, headOffice: true });
   assert.ok(taken.ok && taken.set.assignedToId === "binu");
-  const gone = planMerge(rec({}), rec({ id: "r", assignedToId: "binu" }), { removeOwnerActive: false });
+  const gone = planMerge(rec({}), rec({ id: "r", assignedToId: "binu" }), { removeOwnerActive: false, headOffice: true });
   assert.ok(gone.ok && gone.set.assignedToId === undefined);
-  const elsewhere = planMerge(rec({}), rec({ id: "r", orgId: "kochi", assignedToId: "binu" }), { removeOwnerActive: true });
+  const elsewhere = planMerge(rec({}), rec({ id: "r", orgId: "kochi", assignedToId: "binu" }), { removeOwnerActive: true, headOffice: true });
   assert.ok(elsewhere.ok && elsewhere.set.assignedToId === undefined);
 });
 
@@ -257,7 +257,7 @@ test("the sooner follow-up and the later last contact are kept", () => {
   const plan = planMerge(
     rec({ nextFollowUpAt: day("2026-11-10"), lastContactedAt: day("2026-10-01") }),
     rec({ id: "r", nextFollowUpAt: day("2026-11-01"), lastContactedAt: day("2026-10-20") }),
-    { removeOwnerActive: true },
+    { removeOwnerActive: true, headOffice: true },
   );
   assert.ok(plan.ok);
   if (!plan.ok) return;
@@ -266,7 +266,7 @@ test("the sooner follow-up and the later last contact are kept", () => {
 });
 
 test("a lost enquiry kept over one still being worked comes back to that stage", () => {
-  const plan = planMerge(rec({ stage: "LOST" }), rec({ id: "r", stage: "QUALIFIED", nextFollowUpAt: day("2026-11-01") }), { removeOwnerActive: true });
+  const plan = planMerge(rec({ stage: "LOST" }), rec({ id: "r", stage: "QUALIFIED", nextFollowUpAt: day("2026-11-01") }), { removeOwnerActive: true, headOffice: true });
   assert.ok(plan.ok);
   if (!plan.ok) return;
   assert.equal(plan.set.stage, "QUALIFIED");
@@ -275,33 +275,55 @@ test("a lost enquiry kept over one still being worked comes back to that stage",
 });
 
 test("an open kept enquiry keeps its stage whatever the duplicate's", () => {
-  const plan = planMerge(rec({ stage: "NEW" }), rec({ id: "r", stage: "LOST" }), { removeOwnerActive: true });
+  const plan = planMerge(rec({ stage: "NEW" }), rec({ id: "r", stage: "LOST" }), { removeOwnerActive: true, headOffice: true });
   assert.ok(plan.ok && plan.set.stage === undefined && !plan.set.clearLost);
 });
 
 test("a merge refuses the same enquiry, one already merged, and a duplicate that is a student", () => {
-  assert.equal(planMerge(rec({}), rec({}), { removeOwnerActive: true }).ok, false);
-  assert.equal(planMerge(rec({}), rec({ id: "r", mergedIntoId: "x", stage: "MERGED" }), { removeOwnerActive: true }).ok, false);
-  assert.equal(planMerge(rec({ stage: "MERGED", mergedIntoId: "x" }), rec({ id: "r" }), { removeOwnerActive: true }).ok, false);
-  const student = planMerge(rec({}), rec({ id: "r", stage: "CONVERTED", studentId: "s1" }), { removeOwnerActive: true });
+  assert.equal(planMerge(rec({}), rec({}), { removeOwnerActive: true, headOffice: true }).ok, false);
+  assert.equal(planMerge(rec({}), rec({ id: "r", mergedIntoId: "x", stage: "MERGED" }), { removeOwnerActive: true, headOffice: true }).ok, false);
+  assert.equal(planMerge(rec({ stage: "MERGED", mergedIntoId: "x" }), rec({ id: "r" }), { removeOwnerActive: true, headOffice: true }).ok, false);
+  const student = planMerge(rec({}), rec({ id: "r", stage: "CONVERTED", studentId: "s1" }), { removeOwnerActive: true, headOffice: true });
   assert.equal(student.ok, false);
   assert.ok(!student.ok && /already a student/.test(student.why));
   // The converted one may be the one kept.
-  assert.equal(planMerge(rec({ stage: "CONVERTED", studentId: "s1" }), rec({ id: "r" }), { removeOwnerActive: true }).ok, true);
+  assert.equal(planMerge(rec({ stage: "CONVERTED", studentId: "s1" }), rec({ id: "r" }), { removeOwnerActive: true, headOffice: true }).ok, true);
 });
 
 test("the first referrer is kept, and two different referrers are left for the desk", () => {
-  const carried = planMerge(rec({}), rec({ id: "r", submittedByOrgId: "horizon" }), { removeOwnerActive: true });
+  const carried = planMerge(rec({}), rec({ id: "r", submittedByOrgId: "horizon" }), { removeOwnerActive: true, headOffice: true });
   assert.ok(carried.ok && carried.set.submittedByOrgId === "horizon");
-  const clash = planMerge(rec({ submittedByOrgId: "horizon" }), rec({ id: "r", submittedByOrgId: "other" }), { removeOwnerActive: true });
+  const clash = planMerge(rec({ submittedByOrgId: "horizon" }), rec({ id: "r", submittedByOrgId: "other" }), { removeOwnerActive: true, headOffice: true });
   assert.equal(clash.ok, false);
+});
+
+test("only the head office folds a referral into an enquiry with no referrer", () => {
+  const branchHead = planMerge(rec({}), rec({ id: "r", submittedByOrgId: "horizon" }), { removeOwnerActive: true, headOffice: false });
+  assert.equal(branchHead.ok, false);
+  assert.ok(!branchHead.ok && /only the head office/.test(branchHead.why));
+  const desk = planMerge(rec({}), rec({ id: "r", submittedByOrgId: "horizon" }), { removeOwnerActive: true, headOffice: true });
+  assert.ok(desk.ok && desk.set.submittedByOrgId === "horizon");
+  // The same referrer on both, or none on the duplicate, is the branch head's to merge.
+  assert.equal(planMerge(rec({ submittedByOrgId: "horizon" }), rec({ id: "r", submittedByOrgId: "horizon" }), { removeOwnerActive: true, headOffice: false }).ok, true);
+  assert.equal(planMerge(rec({ submittedByOrgId: "horizon" }), rec({ id: "r" }), { removeOwnerActive: true, headOffice: false }).ok, true);
+  assert.equal(planMerge(rec({}), rec({ id: "r" }), { removeOwnerActive: true, headOffice: false }).ok, true);
+});
+
+test("a referral is never merged into an enquiry that is already a student, whoever asks", () => {
+  for (const headOffice of [true, false]) {
+    const plan = planMerge(rec({ stage: "CONVERTED", studentId: "s1" }), rec({ id: "r", submittedByOrgId: "horizon" }), { removeOwnerActive: true, headOffice });
+    assert.equal(plan.ok, false);
+    assert.ok(!plan.ok && /already a student/.test(plan.why) && /on the student instead/.test(plan.why));
+  }
+  // A converted enquiry still takes a duplicate nobody referred.
+  assert.equal(planMerge(rec({ stage: "CONVERTED", studentId: "s1" }), rec({ id: "r" }), { removeOwnerActive: true, headOffice: false }).ok, true);
 });
 
 test("answers to the branch's questions are joined without repeating any", () => {
   const plan = planMerge(
     rec({ answers: [{ question: "Course", answer: "IELTS" }] }),
     rec({ id: "r", answers: [{ question: "Course", answer: "IELTS" }, { question: "Batch", answer: "Morning" }], repeatCount: 2 }),
-    { removeOwnerActive: true },
+    { removeOwnerActive: true, headOffice: true },
   );
   assert.ok(plan.ok);
   if (!plan.ok) return;
