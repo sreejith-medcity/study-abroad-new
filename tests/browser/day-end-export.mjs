@@ -75,8 +75,8 @@ const cells = (row, from, to) => {
   return out;
 };
 
-// The default clock, so a report answered at ten past five that day reads as verified in hours.
-clock("17:00", "17:45", "23:59");
+// The clock the sweep runs on: the day end popup is not due at whatever hour the suite runs, and a report answered at ten past five that day still reads as verified in hours.
+clock("23:58", "23:58", "23:59");
 
 /* ---------------- Yesterday, seeded ---------------- */
 const uk = idOf("uk.docs@medcity.test");
@@ -192,7 +192,7 @@ const exportsBefore = n("select count(*) from audit_logs where action = 'journal
   check(anon.status === 401, "nobody signed in gets nothing");
 }
 
-clock("17:00", "17:45", "23:59");
+clock("23:58", "23:58", "23:59");
 await browser.close();
 console.log(fails.length === 0 ? "\nall passed" : `\n${fails.length} failed`);
 process.exit(fails.length === 0 ? 0 : 1);

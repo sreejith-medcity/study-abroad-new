@@ -99,9 +99,12 @@ sql(`
   insert into users (id, org_id, name, email, password_hash, role, locale)
   values ('user-typo-test', 'org-typo-test', 'Never Signed In', 'never.signed.in@example.test', 'x', 'PARTNER', 'en')
   on conflict (id) do update set last_sign_in_at = null`);
+// A branch's own fold, found by the name in its heading. Matching any fold whose text holds the
+// name also matched other branches, because the move-a-person form lists every branch by name.
+const fold = (name) => page.locator("details", { has: page.locator(":scope > summary", { hasText: name }) }).first();
 await page.goto(`${BASE}/admin/partners`);
 await hydrated(page);
-const branch = page.locator("details").filter({ hasText: "Branch Typed By Mistake" }).first();
+const branch = fold("Branch Typed By Mistake");
 await openAll(page);
 check((await branch.getByRole("button", { name: "Delete this branch" }).count()) > 0, "a branch nobody has touched offers to be deleted");
 await branch.getByRole("button", { name: "Delete this branch" }).click();
@@ -115,7 +118,7 @@ const live = sql("select id from organizations where type = 'BRANCH' and id in (
 const liveName = sql(`select name from organizations where id = '${live}'`);
 await page.goto(`${BASE}/admin/partners`);
 await hydrated(page);
-const working = page.locator("details").filter({ hasText: liveName }).first();
+const working = fold(liveName);
 await openAll(page);
 check((await working.getByRole("button", { name: "Delete this branch" }).count()) === 0, `a branch with students is not offered a delete (${liveName})`);
 check((await working.getByRole("button", { name: /Close this branch/ }).count()) > 0, "it is offered the close that keeps everything");
@@ -135,7 +138,7 @@ check(!offered, "and it is not offered when registering a student");
 // Open it again, and it is back.
 await page.goto(`${BASE}/admin/partners`);
 await hydrated(page);
-const shut = page.locator("details").filter({ hasText: liveName }).first();
+const shut = fold(liveName);
 await openAll(page);
 await shut.getByRole("button", { name: /Open it again/ }).click();
 for (let t0 = Date.now(); sql(`select active from organizations where id = '${live}'`) !== "t" && Date.now() - t0 < 15000; ) await page.waitForTimeout(300);
@@ -145,7 +148,7 @@ check(sql(`select active from organizations where id = '${live}'`) === "t", "and
 await page.goto(`${BASE}/admin/partners`);
 await hydrated(page);
 const hqName = sql("select name from organizations where type = 'HQ' limit 1");
-const hq = page.locator("details").filter({ hasText: hqName }).first();
+const hq = fold(hqName);
 await openAll(page);
 check((await hq.getByRole("button", { name: /Close this branch|Delete this branch/ }).count()) === 0, "the head office is offered neither");
 
