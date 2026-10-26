@@ -140,6 +140,10 @@ export async function documentationQueue(filters: QueueFilters, userId: string) 
       ? sql`exists (select 1 from ${ci} mine where mine.student_id = ${ci.studentId} and mine.claimed_by_id = ${userId} and mine.state in ('UPLOADED', 'IN_REVIEW'))`
       : undefined,
   ].filter(Boolean);
+  // The upload the row is going on, by the item's current version; one row at
+  // most, by the unique index on (item, version). Rows without one fall back
+  // to the item's own time.
+  const sentIn = sql<Date>`coalesce(${cf.uploadedAt}, ${ci.updatedAt})`.mapWith(ci.updatedAt);
   const rows = await db
     .select({
       id: ci.id,
@@ -155,7 +159,10 @@ export async function documentationQueue(filters: QueueFilters, userId: string) 
       claimedById: ci.claimedById,
       claimedAt: ci.claimedAt,
       claimedByName: claimant.name,
-      uploadedAt: ci.updatedAt,
+      // When the file the desk is going on was sent in, not when the row was
+      // last touched: claiming or moving a document touches the row and would
+      // read as the wait starting again.
+      uploadedAt: sentIn,
       dueOn: ci.dueOn,
       typeCode: ci.typeCode,
       source: ci.source,
@@ -176,8 +183,9 @@ export async function documentationQueue(filters: QueueFilters, userId: string) 
     .leftJoin(claimant, eq(claimant.id, ci.claimedById))
     .leftJoin(dr, eq(dr.id, ci.requirementId))
     .leftJoin(schema.documents, eq(schema.documents.id, ci.documentId))
+    .leftJoin(cf, and(eq(cf.itemId, ci.id), eq(cf.version, ci.version)))
     .where(and(...where))
-    .orderBy(filters.sort === "VISA_FIRST" ? desc(ci.stage) : asc(ci.updatedAt))
+    .orderBy(filters.sort === "VISA_FIRST" ? desc(ci.stage) : asc(sentIn))
     // Generous, because the page shows students and a student cut off halfway
     // through their documents would read as having fewer waiting than they do.
     .limit(500);
