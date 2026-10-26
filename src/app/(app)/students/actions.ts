@@ -9,7 +9,8 @@ import { db, schema } from "@/db";
 import { hashPassword, requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { phoneKey } from "@/lib/phone";
-import { ADMIN_ROLES, APP_ROLES, DESK_ASSIGNING_ROLES, PARTNER_ROLES, PROCESSING_ROLES, canAssignStudents, isAdmin, isCounsellor, isStaff, STUDENT_WORK_ROLES } from "@/lib/permissions";
+import { ADMIN_ROLES, APP_ROLES, DESK_ASSIGNING_ROLES, PARTNER_ROLES, PROCESSING_ROLES, canAssignStudents, isAdmin, isStaff, STUDENT_WORK_ROLES } from "@/lib/permissions";
+import { convertedStudentOwner } from "@/lib/conversion";
 import { can } from "@/server/capabilities";
 import { readAim } from "@/lib/aims";
 import { adminIds, notifyUsers, partnerRecipients, deskRecipients } from "@/server/notify";
@@ -104,12 +105,26 @@ export async function createStudentAction(_: FormState, formData: FormData): Pro
     if (sameNumber) return { error: says(sameNumber, "that number"), fieldErrors: { phone: ["Already registered"] } };
   }
 
+  // Registered straight from an enquiry: read it now, because who the
+  // student is given to depends on who the enquiry was with. A branch head
+  // converting a counsellor's enquiry without choosing "Assign to" used to
+  // land the student unassigned and registered by the head, which under the
+  // rule that a counsellor sees only their own files meant the counsellor
+  // could no longer open the student their enquiry now linked to.
+  const enquiryId = String(formData.get("enquiryId") || "");
+  const enquiry = enquiryId ? await db.query.enquiries.findFirst({ where: eq(schema.enquiries.id, enquiryId) }) : null;
+  const enquiryOwner =
+    enquiry?.assignedToId && (isStaff(user) || enquiry.orgId === user.orgId)
+      ? await db.query.users.findFirst({ where: eq(schema.users.id, enquiry.assignedToId), columns: { id: true, role: true, orgId: true, active: true } })
+      : null;
+  const assignedToId = convertedStudentOwner(d.assignedToId, user, orgId, enquiryOwner ?? null);
+
   const [student] = await db
     .insert(schema.students)
     .values({
       orgId,
       createdById: user.id,
-      assignedToId: d.assignedToId ?? (isCounsellor(user.role) ? user.id : null),
+      assignedToId,
       firstName: d.firstName,
       lastName: d.lastName,
       email: d.email,
@@ -129,7 +144,7 @@ export async function createStudentAction(_: FormState, formData: FormData): Pro
   // file does not sit unassigned in a list nobody is watching.
   if (isStaff(user)) {
     await notifyUsers(
-      await partnerRecipients(orgId, d.assignedToId ?? null),
+      await partnerRecipients(orgId, assignedToId),
       "A student registered for you",
       `${d.firstName} ${d.lastName} was registered by the Overseas team. Assign a counsellor when you can.`,
       `/students/${student.id}/profile`,
@@ -137,10 +152,8 @@ export async function createStudentAction(_: FormState, formData: FormData): Pro
   }
 
   // Registered straight from an enquiry: close the enquiry against this student.
-  const enquiryId = String(formData.get("enquiryId") || "");
-  if (enquiryId) {
-    const enquiry = await db.query.enquiries.findFirst({ where: eq(schema.enquiries.id, enquiryId) });
-    if (enquiry && (isStaff(user) || enquiry.orgId === user.orgId)) {
+  if (enquiry) {
+    if (isStaff(user) || enquiry.orgId === user.orgId) {
       await db
         .update(schema.enquiries)
         .set({ stage: "CONVERTED", studentId: student.id, nextFollowUpAt: null, updatedAt: new Date() })

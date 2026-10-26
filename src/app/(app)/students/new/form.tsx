@@ -15,6 +15,8 @@ export type StudentPrefill = {
   preferredLevel?: string;
   enquiryId?: string;
   orgId?: string;
+  /** The counsellor the enquiry was with, so converting it keeps the student with them. */
+  assignedToId?: string;
 };
 
 export function NewStudentForm({
@@ -63,7 +65,7 @@ export function NewStudentForm({
           {AIMS.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
         </SelectField>
         {counsellors.length > 0 && (
-          <SelectField label="Assign to" name="assignedToId" defaultValue="">
+          <SelectField label="Assign to" name="assignedToId" defaultValue={prefill.assignedToId ?? ""}>
             <option value="">Me / unassigned</option>
             {counsellors.map((c) => <option key={c.id} value={c.id}>{c.deskLabel ?? c.name}</option>)}
           </SelectField>

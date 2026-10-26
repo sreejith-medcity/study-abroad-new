@@ -44,6 +44,13 @@ if (!enquiryId) {
   process.exit(1);
 }
 
+// The enquiry is with one of the branch's counsellors, as a walk-in a
+// counsellor has been ringing would be. Converting it must leave the student
+// with that counsellor, or the enquiry links them to a file they cannot open.
+const branchOrg = sql(`select org_id from users where email = '${branchEmail}'`);
+const counsellorId = sql(`select id from users where org_id = '${branchOrg}' and role in ('COUNSELLOR','SENIOR_COUNSELLOR','TRAINEE_COUNSELLOR') and active order by created_at limit 1`);
+if (counsellorId) sql(`update enquiries set assigned_to_id = '${counsellorId}' where id = '${enquiryId}'`);
+
 const deskBefore = Number(sql(`
   select count(*) from notifications n join users u on u.id = n.user_id
   where u.role in ('DOCUMENTATION','APPLICATION_TEAM_LEADER')`));
@@ -63,6 +70,14 @@ await page.waitForURL(/\/students\/[^/]+\/profile/, { timeout: 25000 }).catch(()
 const studentId = sql(`select coalesce(student_id, '') from enquiries where id = '${enquiryId}'`);
 check(!!studentId, "the enquiry converted into a student");
 check(sql(`select stage from enquiries where id = '${enquiryId}'`) === "CONVERTED", "and is closed as converted");
+if (counsellorId) {
+  check(
+    sql(`select coalesce(assigned_to_id, '') from students where id = '${studentId}'`) === counsellorId,
+    "the student stays with the counsellor the enquiry was with, though the branch head registered them",
+  );
+} else {
+  console.log("  skip  no counsellor at the branch to hold the enquiry, so the owner check did not run");
+}
 
 // 1. The list exists from day one, rather than when somebody opens the tab.
 const items = Number(sql(`select count(*) from checklist_items where student_id = '${studentId}'`));

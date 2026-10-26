@@ -36,7 +36,9 @@ export default async function NewStudentPage({ searchParams }: { searchParams: P
 
   // The branch an enquiry already belongs to is the branch its student belongs
   // to, so the desk converting one does not have to remember whose lead it was.
-  const enquiry = enquiryId ? await db.query.enquiries.findFirst({ where: eq(schema.enquiries.id, enquiryId), with: { org: { columns: { id: true, type: true } } } }) : null;
+  const enquiry = enquiryId
+    ? await db.query.enquiries.findFirst({ where: eq(schema.enquiries.id, enquiryId), columns: { id: true, orgId: true, assignedToId: true }, with: { org: { columns: { id: true, type: true } } } })
+    : null;
   const branches = staff
     ? await db
         .select({ id: schema.organizations.id, name: schema.organizations.name, city: schema.organizations.city })
@@ -51,6 +53,12 @@ export default async function NewStudentPage({ searchParams }: { searchParams: P
   const counsellors = staff ? [] : await orgUsers(user.orgId);
   const countries = await db.select({ name: schema.countries.name }).from(schema.countries).orderBy(asc(schema.countries.name));
 
+  // The counsellor who worked the enquiry is the one the student goes to,
+  // unless whoever is registering picks somebody else. Offered as the default
+  // only when they are in the list this person may choose from; the action
+  // falls back to the same person when the box is left on "Me / unassigned".
+  const enquiryOwner = enquiry?.assignedToId && counsellors.some((c) => c.id === enquiry.assignedToId) ? enquiry.assignedToId : undefined;
+
   const prefill = {
     firstName: one("firstName"),
     lastName: one("lastName"),
@@ -60,6 +68,7 @@ export default async function NewStudentPage({ searchParams }: { searchParams: P
     preferredPathway: one("preferredPathway"),
     enquiryId,
     orgId: suggestedOrg,
+    assignedToId: enquiryOwner,
   };
 
   return (
