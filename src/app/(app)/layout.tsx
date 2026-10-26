@@ -176,6 +176,9 @@ const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/income", label: "Income and rate cards", icon: "insights" },
       { href: "/admin/invoices", label: "Invoices", icon: "commission" },
       { href: "/admin/payments", label: "Online payments", icon: "wallet" },
+      // Targets are set in rupees and registrations against the money above,
+      // which keeps Reports short enough to read at a glance.
+      { href: "/targets", label: "Targets", icon: "insights" },
     ],
   },
   {
@@ -184,7 +187,6 @@ const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/insights", label: "Insights", icon: "insights" },
       { href: "/journal/report", label: "Day end reports", icon: "deadlines" },
       { href: "/reports/lost-reasons", label: "Lost reasons", icon: "enquiry" },
-      { href: "/targets", label: "Targets", icon: "insights" },
       { href: "/learning", label: "Learning resources", icon: "learning" },
       { href: "/support", label: "Help desk", icon: "support" },
     ],
