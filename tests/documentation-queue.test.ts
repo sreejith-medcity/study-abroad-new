@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { documentCount, groupQueue, holdersText, type QueueGroupRow } from "../src/lib/documentation-queue";
+import { documentCount, groupQueue, holdersText, QUEUE_PAGE, queuePageNumber, queuePaging, type QueueGroupRow } from "../src/lib/documentation-queue";
 import type { JourneyStage } from "../src/db/schema";
 
 const today = new Date("2026-10-26T10:00:00Z");
@@ -63,6 +63,36 @@ test("a document with no time recorded goes to the back, not the front", () => {
     groupQueue(rows, "OLDEST", { today }).map((g) => g.studentId),
     ["s2", "s1"],
   );
+  // The same under visa stage first: the two sorts agree about an unrecorded time.
+  assert.deepEqual(
+    groupQueue(rows, "VISA_FIRST", { today }).map((g) => g.studentId),
+    ["s2", "s1"],
+  );
+  // Two with no time are equal, and fall back to the name.
+  const neither = [row({ studentId: "s2", uploadedAt: null }), row({ studentId: "s1", uploadedAt: null })];
+  assert.deepEqual(
+    groupQueue(neither, "OLDEST", { today }).map((g) => g.studentId),
+    ["s1", "s2"],
+  );
+});
+
+test("the page number read from the address: the first unless a whole number past it is asked for", () => {
+  assert.equal(queuePageNumber(undefined), 1);
+  assert.equal(queuePageNumber(""), 1);
+  assert.equal(queuePageNumber("0"), 1);
+  assert.equal(queuePageNumber("-3"), 1);
+  assert.equal(queuePageNumber("abc"), 1);
+  assert.equal(queuePageNumber("2"), 2);
+  assert.equal(queuePageNumber("2.9"), 2);
+  assert.equal(queuePageNumber(["4", "9"]), 4);
+});
+
+test("the links at the foot: a page after only when this one was full, a page before only past the first", () => {
+  assert.equal(QUEUE_PAGE, 60);
+  assert.deepEqual(queuePaging(1, false), { previous: null, next: null });
+  assert.deepEqual(queuePaging(1, true), { previous: null, next: 2 });
+  assert.deepEqual(queuePaging(3, true), { previous: 2, next: 4 });
+  assert.deepEqual(queuePaging(3, false), { previous: 2, next: null });
 });
 
 test("visa stage first: a student with a visa document leads, then the stages nearest it, oldest within", () => {

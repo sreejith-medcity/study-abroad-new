@@ -1,7 +1,8 @@
 import "server-only";
 import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { CLAIM_MINUTES, gate, standing, stageRank, validUntil, type Gate, type GateItem, visaFirstOrder } from "@/lib/journey";
+import { CLAIM_MINUTES, gate, standing, STAGES, stageRank, URGENT_DAYS, validUntil, type Gate, type GateItem, visaFirstOrder, visaFirstRank } from "@/lib/journey";
+import { QUEUE_PAGE } from "@/lib/documentation-queue";
 import { courseStartFor, intakeStart, requirementsFor, studentContext, syncChecklist, type Requirement, type StudentContext } from "@/db/documentation-sync";
 import type { ChecklistState, JourneyStage, RequirementSource } from "@/db/schema";
 import { DOCUMENTATION_ROLES, PARTNER_ROLES } from "@/lib/permissions";
@@ -117,7 +118,7 @@ export type QueueRow = {
   documentId: string | null;
 };
 
-export type QueueFilters = { branch?: string; stage?: JourneyStage; vendor?: string; sort?: "OLDEST" | "VISA_FIRST"; mine?: string };
+export type QueueFilters = { branch?: string; stage?: JourneyStage; vendor?: string; sort?: "OLDEST" | "VISA_FIRST"; mine?: string; page?: number };
 
 /**
  * The documentation team's queue: everything a file has been sent for and
@@ -128,8 +129,15 @@ export type QueueFilters = { branch?: string; stage?: JourneyStage; vendor?: str
  * "Mine" is the students this person has a claim on, with all of that
  * student's waiting documents, rather than the claimed documents alone: once
  * somebody has a student's file open they check the rest of it too.
+ *
+ * Paged by student, sixty at a time. It used to read the first five hundred
+ * documents, which the page then folded into students: past five hundred, a
+ * student straddling the cut showed fewer documents than they had, and the
+ * students past it were not there at all. So the students on a page are
+ * chosen first, in the queue's own order, and then every waiting document of
+ * theirs is read, with no cap, so a student is never shown half.
  */
-export async function documentationQueue(filters: QueueFilters, userId: string) {
+export async function documentationQueue(filters: QueueFilters, userId: string): Promise<{ rows: QueueRow[]; hasNext: boolean }> {
   const claimant = schema.users;
   const where = [
     inArray(ci.state, ["UPLOADED", "IN_REVIEW"] as const),
@@ -144,6 +152,49 @@ export async function documentationQueue(filters: QueueFilters, userId: string) 
   // most, by the unique index on (item, version). Rows without one fall back
   // to the item's own time.
   const sentIn = sql<Date>`coalesce(${cf.uploadedAt}, ${ci.updatedAt})`.mapWith(ci.updatedAt);
+
+  // Which students this page holds. Each student is placed by their lead
+  // document under the same rule lib/journey.ts sorts by: under visa first,
+  // the stage's rank, then a deadline inside a fortnight, then the longest
+  // wait; under oldest first, the longest wait alone. The lead is picked per
+  // student with a window, and the students are then ordered by their leads,
+  // so page two starts exactly where page one stopped.
+  const visaFirst = filters.sort === "VISA_FIRST";
+  const rank = visaFirst
+    ? sql<number>`case ${sql.join(STAGES.map((s) => sql`when ${eq(ci.stage, s.value)} then ${sql.raw(String(visaFirstRank(s.value)))}`), sql` `)} else 0 end`
+    : sql<number>`0`;
+  const urgency = visaFirst
+    ? sql<number | null>`case when ${ci.dueOn} is not null and ${ci.dueOn} - current_date <= ${sql.raw(String(URGENT_DAYS))} then ${ci.dueOn} - current_date end`
+    : sql<number | null>`null::int`;
+  const lead = db
+    .select({
+      studentId: ci.studentId,
+      rank: rank.as("rank"),
+      urgency: urgency.as("urgency"),
+      sentIn: sentIn.as("sent_in"),
+      name: sql<string>`${st.firstName} || ' ' || ${st.lastName}`.as("name"),
+      rn: sql<number>`row_number() over (partition by ${ci.studentId} order by ${rank}, ${urgency} nulls last, ${sentIn})`.as("rn"),
+    })
+    .from(ci)
+    .innerJoin(st, eq(st.id, ci.studentId))
+    .leftJoin(ap, eq(ap.id, ci.applicationId))
+    .leftJoin(pr, eq(pr.id, ap.routeId))
+    .leftJoin(cf, and(eq(cf.itemId, ci.id), eq(cf.version, ci.version)))
+    .where(and(...where))
+    .as("lead");
+  const page = Math.max(1, Math.floor(filters.page ?? 1));
+  const picked = await db
+    .select({ studentId: lead.studentId })
+    .from(lead)
+    .where(eq(lead.rn, 1))
+    .orderBy(asc(lead.rank), sql`${lead.urgency} nulls last`, asc(lead.sentIn), asc(lead.name), asc(lead.studentId))
+    // One more than the page, to know whether there is a page after this one.
+    .limit(QUEUE_PAGE + 1)
+    .offset((page - 1) * QUEUE_PAGE);
+  const hasNext = picked.length > QUEUE_PAGE;
+  const ids = picked.slice(0, QUEUE_PAGE).map((r) => r.studentId);
+  if (!ids.length) return { rows: [], hasNext: false };
+
   const rows = await db
     .select({
       id: ci.id,
@@ -184,11 +235,11 @@ export async function documentationQueue(filters: QueueFilters, userId: string) 
     .leftJoin(dr, eq(dr.id, ci.requirementId))
     .leftJoin(schema.documents, eq(schema.documents.id, ci.documentId))
     .leftJoin(cf, and(eq(cf.itemId, ci.id), eq(cf.version, ci.version)))
-    .where(and(...where))
-    .orderBy(filters.sort === "VISA_FIRST" ? desc(ci.stage) : asc(sentIn))
-    // Generous, because the page shows students and a student cut off halfway
-    // through their documents would read as having fewer waiting than they do.
-    .limit(500);
+    // Every waiting document of the students on this page, uncapped: the
+    // page shows students, and a student cut off halfway through their
+    // documents would read as having fewer waiting than they do.
+    .where(and(...where, inArray(ci.studentId, ids)))
+    .orderBy(visaFirst ? desc(ci.stage) : asc(sentIn));
   const mapped: QueueRow[] = rows.map((r) => ({
     id: r.id,
     studentId: r.studentId,
@@ -216,8 +267,8 @@ export async function documentationQueue(filters: QueueFilters, userId: string) 
   // The rule itself is in lib/journey.ts, so it can be tested without a
   // database and so the queue and anything built on it later cannot disagree
   // about what "visa first" means.
-  if (filters.sort === "VISA_FIRST") mapped.sort((a, b) => visaFirstOrder(a, b));
-  return mapped;
+  if (visaFirst) mapped.sort((a, b) => visaFirstOrder(a, b));
+  return { rows: mapped, hasNext };
 }
 
 /** How many are waiting, and how many this person has claimed. */

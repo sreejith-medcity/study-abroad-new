@@ -247,6 +247,21 @@ export function visaFirstRank(stage: JourneyStage): number {
 export type QueueOrderItem = { stage: JourneyStage; dueOn: string | null; uploadedAt: Date | null };
 
 /**
+ * When a document was sent in, as a number to sort by. One with no time
+ * recorded sorts after everything that has one: it cannot be said to have
+ * waited longer than a file whose wait is known, and putting it first would
+ * hold the queue open on a row that says "Not recorded".
+ */
+export const sentInAt = (uploadedAt: Date | null) => (uploadedAt ? uploadedAt.getTime() : Number.POSITIVE_INFINITY);
+
+/** Oldest first, by when the document was sent in; two with no time are equal. */
+export function oldestFirst(a: { uploadedAt: Date | null }, b: { uploadedAt: Date | null }): number {
+  const x = sentInAt(a.uploadedAt);
+  const y = sentInAt(b.uploadedAt);
+  return x === y ? 0 : x - y;
+}
+
+/**
  * The sort the team lives on.
  *
  * The visa stage first, then whatever is nearest to it. Inside any stage, a file
@@ -269,5 +284,5 @@ export function visaFirstOrder(a: QueueOrderItem, b: QueueOrderItem, today = new
   if (ua != null) return -1;
   if (ub != null) return 1;
 
-  return (a.uploadedAt?.getTime() ?? 0) - (b.uploadedAt?.getTime() ?? 0);
+  return oldestFirst(a, b);
 }

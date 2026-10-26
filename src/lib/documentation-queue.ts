@@ -9,7 +9,7 @@
  */
 
 import type { JourneyStage } from "@/db/schema";
-import { claimHeld, stageRank, visaFirstOrder } from "./journey";
+import { claimHeld, oldestFirst, stageRank, visaFirstOrder } from "./journey";
 
 export type QueueSort = "OLDEST" | "VISA_FIRST";
 
@@ -60,10 +60,12 @@ export type GroupOptions = {
   today?: Date;
 };
 
-const time = (d: Date | null) => (d ? d.getTime() : Number.POSITIVE_INFINITY);
-
-/** Oldest first; a document with no time recorded goes last rather than first. */
-const oldestOrder = (a: QueueGroupRow, b: QueueGroupRow) => time(a.uploadedAt) - time(b.uploadedAt);
+/**
+ * Oldest first; a document with no time recorded goes last rather than first.
+ * The same rule the visa-first order falls back to, from lib/journey.ts, so
+ * the two sorts cannot place an unrecorded time differently.
+ */
+const oldestOrder = (a: QueueGroupRow, b: QueueGroupRow) => oldestFirst(a, b);
 
 /**
  * Folds per-document rows into one group per student and orders the groups.
@@ -129,6 +131,26 @@ export function groupQueue<T extends QueueGroupRow>(rows: T[], sort: QueueSort, 
     return oldestOrder(lead(a), lead(b)) || a.studentName.localeCompare(b.studentName);
   });
   return groups;
+}
+
+/* ---------------- Paging ---------------- */
+
+/** Students per page of the queue. */
+export const QUEUE_PAGE = 60;
+
+/** The page asked for in the address, or the first; nonsense reads as the first. */
+export function queuePageNumber(raw: string | string[] | undefined): number {
+  const n = Math.floor(Number(Array.isArray(raw) ? raw[0] : raw));
+  return Number.isFinite(n) && n >= 1 ? n : 1;
+}
+
+/**
+ * Where the links at the foot of the page go: the page before, when there is
+ * one, and the page after, when this one was full. The first page carries no
+ * number in the address, so the plain queue and page 1 are the same link.
+ */
+export function queuePaging(page: number, hasNext: boolean): { previous: number | null; next: number | null } {
+  return { previous: page > 1 ? page - 1 : null, next: hasNext ? page + 1 : null };
 }
 
 /** "3 documents" or "1 document". */

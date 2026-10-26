@@ -10,8 +10,8 @@ import { isAdmin, PROCESSING_ROLES } from "@/lib/permissions";
 import { activeRejectionReasons, branchChecked, deskOfficers, documentationQueue, queueCounts } from "@/server/documentation";
 import { can } from "@/server/capabilities";
 import { claimHeld, CLAIM_MINUTES, STAGES, stageLabel } from "@/lib/journey";
-import { documentCount, groupQueue, holdersText } from "@/lib/documentation-queue";
-import { Card, CardHeader, Chip, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
+import { documentCount, groupQueue, holdersText, QUEUE_PAGE, queuePageNumber, queuePaging } from "@/lib/documentation-queue";
+import { Card, CardHeader, Chip, EmptyState, LinkButton, PageHeader, Table, Td, Th } from "@/components/ui";
 import { ItemActions } from "../students/[id]/documentation/client";
 import { RunReminders } from "./chase";
 import { Reassign } from "./reassign";
@@ -35,7 +35,7 @@ function waited(since: Date | null) {
 export default async function DocumentationQueuePage({
   searchParams,
 }: {
-  searchParams: Promise<{ branch?: string; stage?: string; vendor?: string; sort?: string; mine?: string; view?: string }>;
+  searchParams: Promise<{ branch?: string; stage?: string; vendor?: string; sort?: string; mine?: string; view?: string; page?: string }>;
 }) {
   const user = await requireUser([...PROCESSING_ROLES]);
   // The saved ways of looking at this list, each with what it holds now.
@@ -43,9 +43,10 @@ export default async function DocumentationQueuePage({
   const sp = await searchParams;
   const sort = sp.sort === "VISA_FIRST" ? "VISA_FIRST" : "OLDEST";
   const branchView = sp.view === "branch";
+  const page = queuePageNumber(sp.page);
   const canReassign = await can(user, "REASSIGN_DOCUMENTS");
-  const [rows, counts, reasons, branches, vendors, checkedByBranches, officers] = await Promise.all([
-    documentationQueue({ branch: sp.branch, stage: sp.stage as JourneyStage | undefined, vendor: sp.vendor, sort, mine: sp.mine }, user.id),
+  const [queue, counts, reasons, branches, vendors, checkedByBranches, officers] = await Promise.all([
+    documentationQueue({ branch: sp.branch, stage: sp.stage as JourneyStage | undefined, vendor: sp.vendor, sort, mine: sp.mine, page }, user.id),
     queueCounts(user.id),
     activeRejectionReasons(),
     db.select({ id: schema.organizations.id, name: schema.organizations.name }).from(schema.organizations).orderBy(asc(schema.organizations.name)),
@@ -56,11 +57,14 @@ export default async function DocumentationQueuePage({
 
   // One row per student, because the desk picks up a file, not a document.
   const mine = sp.mine === "1";
-  const students = groupQueue(rows, sort, { viewerId: user.id, mineFirst: mine });
+  const students = groupQueue(queue.rows, sort, { viewerId: user.id, mineFirst: mine });
+  const paging = queuePaging(page, queue.hasNext);
   const routeChip = (code: string, colour: string | null) => (
     <span key={code} className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium text-white" style={{ backgroundColor: colour ?? "#475569" }}>{code}</span>
   );
 
+  // The page number is not carried: a change of mode, sort or filter starts
+  // again at the first page, and only the links at the foot name a page.
   const href = (next: Record<string, string | undefined>) => {
     const params = new URLSearchParams();
     const merged = { branch: sp.branch, stage: sp.stage, vendor: sp.vendor, sort: sp.sort, mine: sp.mine, view: sp.view, ...next };
@@ -68,6 +72,7 @@ export default async function DocumentationQueuePage({
     const q = params.toString();
     return `/documentation${q ? `?${q}` : ""}`;
   };
+  const pageHref = (n: number) => href({ page: n > 1 ? String(n) : undefined });
   const pill = (on: boolean) => (on ? "rounded-full bg-brand-600 px-3 py-1 text-xs font-medium text-white" : "rounded-full border border-line px-3 py-1 text-xs text-muted hover:text-ink");
 
   return (
@@ -146,7 +151,11 @@ export default async function DocumentationQueuePage({
           </Table>
         </Card>
       ) : students.length === 0 ? (
-        mine ? (
+        page > 1 ? (
+          <EmptyState title="Nothing on this page" action={<LinkButton variant="secondary" href={pageHref(1)}>Back to the first page</LinkButton>}>
+            The queue has moved on since this page was opened.
+          </EmptyState>
+        ) : mine ? (
           <EmptyState title="Nothing with you">Claim a document from the queue and that student appears here, with everything else of theirs that is waiting.</EmptyState>
         ) : (
           <EmptyState title="Nothing to check">Every document that has been sent in has been decided. A student appears here as soon as one of their uploads lands.</EmptyState>
@@ -249,6 +258,25 @@ export default async function DocumentationQueuePage({
               />
             ))}
           </Table>
+          {(paging.previous !== null || paging.next !== null) && (
+            <div data-list-foot className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3 text-sm text-muted">
+              <span>
+                Students {(page - 1) * QUEUE_PAGE + 1} to {(page - 1) * QUEUE_PAGE + students.length}, {QUEUE_PAGE} to a page
+              </span>
+              <span className="flex items-center gap-2">
+                {paging.previous !== null && (
+                  <LinkButton variant="secondary" size="sm" href={pageHref(paging.previous)} scroll={false}>
+                    Previous
+                  </LinkButton>
+                )}
+                {paging.next !== null && (
+                  <LinkButton variant="secondary" size="sm" href={pageHref(paging.next)} scroll={false}>
+                    Next {QUEUE_PAGE} students
+                  </LinkButton>
+                )}
+              </span>
+            </div>
+          )}
         </Card>
       )}
     </>

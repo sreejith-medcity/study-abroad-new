@@ -6,6 +6,7 @@ import {
   gate,
   lockedMissing,
   nextStage,
+  oldestFirst,
   stageLabel,
   stageRank,
   standing,
@@ -193,4 +194,13 @@ test("with nothing due, the queue is oldest first, which is what stops somebody 
   const old: QueueOrderItem = { stage: "OFFER", dueOn: null, uploadedAt: new Date("2026-08-01T00:00:00Z") };
   const recent: QueueOrderItem = { stage: "OFFER", dueOn: null, uploadedAt: new Date("2026-09-28T00:00:00Z") };
   assert.deepEqual([recent, old].sort((a, b) => visaFirstOrder(a, b, today)), [old, recent]);
+});
+
+test("a document with no time recorded waits behind the ones whose wait is known", () => {
+  const unknown: QueueOrderItem = { stage: "OFFER", dueOn: null, uploadedAt: null };
+  const known: QueueOrderItem = { stage: "OFFER", dueOn: null, uploadedAt: new Date("2026-09-28T00:00:00Z") };
+  assert.deepEqual([unknown, known].sort((a, b) => visaFirstOrder(a, b, today)), [known, unknown]);
+  assert.equal(visaFirstOrder(unknown, { ...unknown }, today), 0, "two unrecorded times are equal, not NaN");
+  assert.equal(oldestFirst(unknown, known) > 0, true);
+  assert.equal(oldestFirst(unknown, { ...unknown }), 0);
 });
