@@ -3231,6 +3231,113 @@ export const auditLogs = pgTable(
   ],
 );
 
+/**
+ * One row per change to a student, an enquiry, an application or a staff
+ * account: which fields moved, from what to what, who did it and when.
+ *
+ * Written by the one helper every portal action updates these records
+ * through (src/server/record-history.ts), one row per record per action, so
+ * a save that touches nine fields is one insert rather than nine. Only the
+ * fields named in src/lib/record-history.ts are kept: a password hash, a
+ * session counter or a sign-in time never reaches this table.
+ */
+export const recordVersions = pgTable(
+  "record_versions",
+  {
+    id: id(),
+    entity: text("entity").$type<"student" | "enquiry" | "application" | "user">().notNull(),
+    entityId: text("entity_id").notNull(),
+    /** The branch the record belonged to after the change, for the branch filter and the branch head's view. */
+    orgId: text("org_id"),
+    /** The student the record belongs to (the record itself for a student), so the student scope decides who reads it. */
+    studentId: text("student_id"),
+    /** [{ field, before, after }], with the field as the schema names it. */
+    changes: jsonb("changes").$type<{ field: string; before: unknown; after: unknown }[]>().notNull(),
+    /** What was done: student.profile, enquiry.update, application.status, restore. */
+    action: text("action").notNull(),
+    changedById: text("changed_by_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("record_versions_entity_idx").on(t.entity, t.entityId, t.createdAt),
+    index("record_versions_time_idx").on(t.createdAt.desc()),
+    index("record_versions_org_idx").on(t.orgId, t.createdAt.desc()),
+    index("record_versions_by_idx").on(t.changedById, t.createdAt.desc()),
+    index("record_versions_student_idx").on(t.studentId),
+  ],
+);
+
+/**
+ * Who owned each student and enquiry over time, append-only and hash-chained.
+ *
+ * Every entry carries the hash of the one before it, and its own hash covers
+ * its fields and that previous hash (the formula is in src/lib/ledger.ts), so
+ * changing, removing or reordering any entry breaks every hash after it and
+ * Verify on /admin/ledger says which entry. Names are copied in at the time
+ * rather than joined, because a renamed person or branch must not change what
+ * an old entry says. No foreign keys, so removing an account never has to
+ * touch an entry.
+ */
+export const ownershipLedger = pgTable(
+  "ownership_ledger",
+  {
+    id: id(),
+    seq: integer("seq").notNull(),
+    /** OPENING, CREATED, ASSIGNED, BRANCH_MOVE, HANDOVER, CONVERTED or REMOVED. */
+    kind: text("kind").notNull(),
+    entity: text("entity").$type<"student" | "enquiry">().notNull(),
+    entityId: text("entity_id").notNull(),
+    orgId: text("org_id"),
+    orgName: text("org_name"),
+    ownerId: text("owner_id"),
+    ownerName: text("owner_name"),
+    prevOrgId: text("prev_org_id"),
+    prevOrgName: text("prev_org_name"),
+    prevOwnerId: text("prev_owner_id"),
+    prevOwnerName: text("prev_owner_name"),
+    detail: text("detail"),
+    actorId: text("actor_id"),
+    actorName: text("actor_name"),
+    /** Set by the portal, not the database, so the hash and the row agree to the millisecond. */
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+    prevHash: text("prev_hash").notNull(),
+    hash: text("hash").notNull(),
+  },
+  (t) => [uniqueIndex("ownership_ledger_seq_uq").on(t.seq), index("ownership_ledger_entity_idx").on(t.entity, t.entityId, t.seq)],
+);
+
+/** The ledger's last entry, locked while an entry is appended so two appends never share a number. */
+export const ledgerHead = pgTable("ledger_head", {
+  id: text("id").primaryKey(),
+  seq: integer("seq").notNull().default(0),
+  headHash: text("head_hash").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * The ledger's head hash, stamped on the public OpenTimestamps calendars at
+ * most once a day. Free and needs no account; with no network the attempt is
+ * kept as FAILED and the ledger simply reads "not stamped".
+ */
+export const ledgerStamps = pgTable(
+  "ledger_stamps",
+  {
+    id: id(),
+    uptoSeq: integer("upto_seq").notNull(),
+    headHash: text("head_hash").notNull(),
+    statement: text("statement").notNull(),
+    digest: text("digest").notNull(),
+    /** The .ots proof, base64. Null when no calendar answered. */
+    proof: text("proof"),
+    calendars: text("calendars").array().notNull().default(sql`'{}'::text[]`),
+    /** SENT or FAILED. */
+    status: text("status").notNull(),
+    error: text("error"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("ledger_stamps_time_idx").on(t.createdAt.desc())],
+);
+
 // ---------- Relations ----------
 
 export const organizationsRelations = relations(organizations, ({ one, many }) => ({
