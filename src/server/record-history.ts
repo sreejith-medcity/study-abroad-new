@@ -224,14 +224,22 @@ export async function versionsOf(entity: HistoryEntity, entityId: string): Promi
 
 /** Names for every id the given changes hold, read in one query per kind that has any. */
 export async function nameBook(items: readonly { entity: HistoryEntity; changes: readonly FieldChange[] }[]): Promise<NameBook> {
-  const want = { user: new Set<string>(), org: new Set<string>(), status: new Set<string>(), route: new Set<string>(), team: new Set<string>() };
+  const want = {
+    user: new Set<string>(),
+    org: new Set<string>(),
+    status: new Set<string>(),
+    route: new Set<string>(),
+    team: new Set<string>(),
+    lostReason: new Set<string>(),
+    enquiry: new Set<string>(),
+  };
   for (const it of items) {
     const ids = idsToName(it.entity, it.changes);
     for (const k of Object.keys(want) as (keyof typeof want)[]) for (const id of ids[k]) want[k].add(id);
   }
   const book: NameBook = new Map();
   const list = (s: Set<string>) => [...s].slice(0, 5000);
-  const [u, o, s, r, t] = await Promise.all([
+  const [u, o, s, r, t, lr, en] = await Promise.all([
     want.user.size ? db.select({ id: schema.users.id, name: schema.users.name }).from(schema.users).where(inArray(schema.users.id, list(want.user))) : [],
     want.org.size ? db.select({ id: schema.organizations.id, name: schema.organizations.name }).from(schema.organizations).where(inArray(schema.organizations.id, list(want.org))) : [],
     want.status.size ? db.select({ id: schema.statusDefinitions.id, name: schema.statusDefinitions.label }).from(schema.statusDefinitions).where(inArray(schema.statusDefinitions.id, list(want.status))) : [],
@@ -243,8 +251,12 @@ export async function nameBook(items: readonly { entity: HistoryEntity; changes:
           .where(inArray(schema.programRoutes.id, list(want.route)))
       : [],
     want.team.size ? db.select({ id: schema.teams.id, name: schema.teams.name }).from(schema.teams).where(inArray(schema.teams.id, list(want.team))) : [],
+    want.lostReason.size
+      ? db.select({ id: schema.lostReasons.id, name: schema.lostReasons.label }).from(schema.lostReasons).where(inArray(schema.lostReasons.id, list(want.lostReason)))
+      : [],
+    want.enquiry.size ? db.select({ id: schema.enquiries.id, name: schema.enquiries.name }).from(schema.enquiries).where(inArray(schema.enquiries.id, list(want.enquiry))) : [],
   ]);
-  for (const row of [...u, ...o, ...s, ...r, ...t]) book.set(row.id, row.name);
+  for (const row of [...u, ...o, ...s, ...r, ...t, ...lr, ...en]) book.set(row.id, row.name);
   return book;
 }
 

@@ -19,6 +19,7 @@ import {
 } from "@/lib/enquiry-routing";
 import { lostReasonText } from "@/lib/lost-reasons";
 import { notifyUsers } from "@/server/notify";
+import { updateTracked } from "@/server/record-history";
 import { SOURCE_LABEL, STAGE_LABEL } from "@/server/enquiries";
 
 const e = schema.enquiries;
@@ -119,7 +120,15 @@ type NewEnquiry = { id: string; orgId: string; name: string; phone: string; sour
 export async function routeNewEnquiry(row: NewEnquiry, actorId: string | null, opts: { memo?: RouteMemo; notify?: boolean } = {}): Promise<RouteResult | null> {
   const picked = await routeEnquiry({ orgId: row.orgId, source: row.source, pathway: row.interestPathway }, opts.memo);
   if (!picked) return null;
-  await db.update(e).set({ assignedToId: picked.userId, updatedAt: new Date() }).where(and(eq(e.id, row.id), isNull(e.assignedToId)));
+  // Versioned, and on the ownership ledger as an assignment naming the rule.
+  // Somebody who took it in the meantime keeps it: the rule then changes nothing.
+  const done = await updateTracked(
+    "enquiry",
+    row.id,
+    { assignedToId: picked.userId, updatedAt: new Date() },
+    { by: actorId, action: "enquiry.route", where: isNull(e.assignedToId), ledgerDetail: `By the routing rule "${picked.ruleName}"` },
+  );
+  if (!done) return null;
   await db.insert(schema.enquiryNotes).values({ enquiryId: row.id, body: `Given to ${picked.userName} by the routing rule "${picked.ruleName}".` });
   await audit(actorId, "enquiry.route", "enquiry", row.id, { to: picked.userId, rule: picked.ruleId });
   if (opts.notify !== false && picked.userId !== actorId) {
@@ -168,7 +177,7 @@ export async function applyRepeat(
       authorId: arrival.actorId,
       body: `Enquired again on ${when}, ${arrival.via} (${sourceLabel}). No second enquiry was made.${said}`,
     });
-    await db.update(e).set({ repeatCount: sql`${e.repeatCount} + 1`, updatedAt: new Date() }).where(eq(e.id, current.id));
+    await updateTracked("enquiry", current.id, { repeatCount: sql`${e.repeatCount} + 1`, updatedAt: new Date() }, { by: arrival.actorId, action: "enquiry.repeat" });
     await audit(arrival.actorId, "enquiry.repeat", "enquiry", current.id, { source: arrival.source, via: arrival.via });
     if (current.assignedToId && current.assignedToId !== arrival.actorId) {
       await notifyUsers([current.assignedToId], "An enquiry of yours came in again", `${current.name} · ${current.phone} · ${sourceLabel}`, `/enquiries/${current.id}`);
@@ -183,9 +192,12 @@ export async function applyRepeat(
     if (!owner) ownerId = null;
   }
   const was = lostReasonText(current.lostReasonPicked?.label, current.lostReason);
-  await db
-    .update(e)
-    .set({
+  // Versioned; an owner who has left is cleared, which the ownership ledger
+  // records as the reopening, before the rules pick somebody new.
+  await updateTracked(
+    "enquiry",
+    current.id,
+    {
       stage: plan.stageAfter,
       assignedToId: ownerId,
       lostReasonId: null,
@@ -194,8 +206,9 @@ export async function applyRepeat(
       nextFollowUpAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
       repeatCount: sql`${e.repeatCount} + 1`,
       updatedAt: new Date(),
-    })
-    .where(eq(e.id, current.id));
+    },
+    { by: arrival.actorId, action: "enquiry.reopen", ledgerDetail: `Reopened from lost, ${arrival.via}; the owner had left` },
+  );
   await db.insert(schema.enquiryNotes).values({
     enquiryId: current.id,
     authorId: arrival.actorId,

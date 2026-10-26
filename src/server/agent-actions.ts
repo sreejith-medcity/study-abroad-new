@@ -542,7 +542,11 @@ export async function assignReferralAction(_: FormState, formData: FormData): Pr
         where: and(eq(schema.users.orgId, branch.id), eq(schema.users.role, "PARTNER"), eq(schema.users.active, true)),
       });
 
-  await updateTracked("enquiry", enquiryId, { orgId: branch.id, assignedToId: owner?.id ?? null, updatedAt: new Date() }, { by: user.id, action: "referral.assign", ledgerDetail: "A sub-agent's referral given to a branch" });
+  await updateTracked("enquiry", enquiryId, { orgId: branch.id, assignedToId: owner?.id ?? null, updatedAt: new Date() }, {
+    by: user.id,
+    action: "referral.assign",
+    ledgerDetail: `A sub-agent's referral given to a branch${routed ? `, by the routing rule "${routed.ruleName}"` : ""}`,
+  });
   await db.insert(schema.enquiryNotes).values({
     enquiryId,
     authorId: user.id,

@@ -133,6 +133,8 @@ const COVERED = [
   "resource.download",
   "pack.download",
   "passport.reveal",
+  // A merge writes one entry for each enquiry; the line is "enquiry.merge".
+  "enquiry.merged",
 ];
 
 /** "student.reassign" said as a person would say it. */
@@ -164,6 +166,23 @@ const SAYS: Record<string, string> = {
   "enquiry.convert": "Turned an enquiry into a student",
   "enquiry.stage": "Moved an enquiry",
   "enquiry.assign": "Gave an enquiry to somebody",
+  "enquiry.route": "Had an enquiry given out by a routing rule",
+  "enquiry.repeat": "Added a repeat enquiry to the one already open",
+  "enquiry.reopen": "Reopened a lost enquiry that came back",
+  "enquiry.merge": "Merged a duplicate enquiry into another",
+  "enquiry.lost": "Closed an enquiry as lost",
+  "enquiry.lost_report_export": "Downloaded the lost reasons report",
+  "routing.create": "Added an enquiry routing rule",
+  "routing.update": "Changed an enquiry routing rule",
+  "routing.delete": "Deleted an enquiry routing rule",
+  "lost_reason.create": "Added a lost reason",
+  "lost_reason.update": "Changed a lost reason",
+  "lost_reason.off": "Took a lost reason off the list",
+  "lost_reason.on": "Put a lost reason back on the list",
+  "history.restore": "Put a field back from the change history",
+  "history.export": "Downloaded the change history",
+  "ledger.verify": "Checked the ownership ledger",
+  "ledger.stamp": "Stamped the ownership ledger",
   "task.update": "Changed a follow-up",
   "task.push": "Moved a follow-up to another day",
   "task.delete": "Deleted a follow-up",

@@ -26,6 +26,7 @@ export const LEDGER_KIND_LABEL: Record<string, string> = {
   BRANCH_MOVE: "Moved to another branch",
   HANDOVER: "Handed to the documentation desk",
   CONVERTED: "Registered as a student",
+  MERGED: "Merged into another enquiry",
   REMOVED: "Removed",
 };
 

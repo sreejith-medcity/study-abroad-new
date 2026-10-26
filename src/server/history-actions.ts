@@ -33,7 +33,8 @@ async function mayRestore(user: SessionUser, entity: HistoryEntity, id: string, 
   }
   if (entity === "enquiry") {
     if (!([...PARTNER_ROLES, ...ADMIN_ROLES] as readonly string[]).includes(user.role)) return "Your role does not work enquiries.";
-    await getEnquiryForUser(user, id);
+    const enquiry = await getEnquiryForUser(user, id);
+    if (enquiry.stage === "MERGED") return "This enquiry was merged into another. Work it there.";
     return null;
   }
   if (entity === "application") {

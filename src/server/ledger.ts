@@ -19,7 +19,7 @@ import { buildOts, CALENDARS, ChainCheck, GENESIS, seal, stampDue, stampStatemen
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type Writer = typeof db | Tx;
 
-export type LedgerKind = "OPENING" | "CREATED" | "ASSIGNED" | "BRANCH_MOVE" | "HANDOVER" | "CONVERTED" | "REMOVED";
+export type LedgerKind = "OPENING" | "CREATED" | "ASSIGNED" | "BRANCH_MOVE" | "HANDOVER" | "CONVERTED" | "MERGED" | "REMOVED";
 
 /** What a caller says happened. Names are looked up here, at the moment it happened. */
 export type LedgerInput = {

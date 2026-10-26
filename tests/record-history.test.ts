@@ -174,3 +174,25 @@ test("a CSV cell is quoted where needed and never starts a formula", () => {
   assert.equal(csvCell("=SUM(A1)"), "'=SUM(A1)");
   assert.equal(csvCell(null), "");
 });
+
+test("an enquiry's lost reason, merge and reopening are kept, named, and never put back from the history", () => {
+  const before = { stage: "LOST", lostReasonId: "r1", lostReason: "UK fees", lostAt: new Date("2026-10-01T05:00:00Z"), repeatCount: 0, mergedIntoId: null };
+  const after = { stage: "MERGED", lostReasonId: null, lostReason: null, lostAt: null, repeatCount: 1, mergedIntoId: "e2" };
+  const changes = trackedChanges("enquiry", before, after);
+  assert.deepEqual(
+    changes.map((c) => c.field),
+    ["stage", "lostReasonId", "lostReason", "lostAt", "repeatCount", "mergedIntoId"],
+  );
+  for (const c of changes) assert.equal(restoreRule("enquiry", c.field).ok, false, c.field);
+  assert.equal(showValue("enquiry", "stage", "MERGED"), "Merged");
+  const names = new Map([
+    ["r1", "Budget"],
+    ["e2", "Rahul Nair"],
+  ]);
+  assert.equal(showValue("enquiry", "lostReasonId", "r1", names), "Budget");
+  assert.equal(showValue("enquiry", "mergedIntoId", "e2", names), "Rahul Nair");
+  assert.equal(showValue("enquiry", "mergedIntoId", "gone", names), NOT_RECORDED);
+  const ids = idsToName("enquiry", changes);
+  assert.deepEqual([...ids.lostReason], ["r1"]);
+  assert.deepEqual([...ids.enquiry], ["e2"]);
+});

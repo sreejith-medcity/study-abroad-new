@@ -5,6 +5,8 @@ import type { SessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/permissions";
 import { mayMerge, planMerge, type MergeRecord } from "@/lib/enquiry-routing";
 import { notifyUsers } from "@/server/notify";
+import { appendLedger } from "@/server/ledger";
+import { updateTracked, updateTrackedMany } from "@/server/record-history";
 
 const e = schema.enquiries;
 
@@ -46,11 +48,12 @@ export async function mergeEnquiries(user: SessionUser, keepId: string, removeId
       .where(eq(schema.enquiryNotes.enquiryId, remove.id))
       .returning({ id: schema.enquiryNotes.id });
     // An enquiry merged into the duplicate earlier now points at the survivor.
-    await tx.update(e).set({ mergedIntoId: keep.id }).where(eq(e.mergedIntoId, remove.id));
+    await updateTrackedMany("enquiry", eq(e.mergedIntoId, remove.id), { mergedIntoId: keep.id }, { by: user.id, action: "enquiry.merge", tx });
     // The CRM id is unique, so it leaves the duplicate before it lands on the survivor.
-    await tx
-      .update(e)
-      .set({
+    await updateTracked(
+      "enquiry",
+      remove.id,
+      {
         stage: "MERGED",
         mergedIntoId: keep.id,
         mergedAt: now,
@@ -58,16 +61,34 @@ export async function mergeEnquiries(user: SessionUser, keepId: string, removeId
         nextFollowUpAt: null,
         ...(set.crmId ? { crmId: null } : {}),
         updatedAt: now,
-      })
-      .where(eq(e.id, remove.id));
-    await tx
-      .update(e)
-      .set({
+      },
+      { by: user.id, action: "enquiry.merged", tx },
+    );
+    // The survivor's filled-in details are a version of their own; an owner
+    // taken over from the duplicate is an assignment on the ledger.
+    await updateTracked(
+      "enquiry",
+      keep.id,
+      {
         ...set,
         ...(clearLost ? { lostReasonId: null, lostReason: null, lostAt: null } : {}),
         updatedAt: now,
-      })
-      .where(eq(e.id, keep.id));
+      },
+      { by: user.id, action: "enquiry.merge", tx, ledgerDetail: `Taken over from ${remove.name}'s enquiry, merged into this one` },
+    );
+    // The duplicate's line on the ownership ledger ends here, pointing at the
+    // enquiry that carries it on, as a conversion's does at the student.
+    await appendLedger(tx, [
+      {
+        kind: "MERGED",
+        entity: "enquiry",
+        entityId: remove.id,
+        orgId: remove.orgId,
+        ownerId: remove.assignedToId,
+        detail: `Merged into ${keep.name}'s enquiry${remove.orgId === keep.orgId ? "" : ` at ${keep.org.name}`}`,
+        actorId: user.id,
+      },
+    ]);
     const where = remove.orgId === keep.orgId ? "" : `, ${remove.org.name}`;
     await tx.insert(schema.enquiryNotes).values([
       {

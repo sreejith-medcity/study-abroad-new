@@ -149,6 +149,9 @@ check(sql(`select assigned_to_id from enquiries where id = '${webId}'`) === germ
 check(sql(`select count(*) from enquiry_notes where enquiry_id = '${webId}' and body like '%routing rule "Web degree ${tag}"%'`) === "1", "manual: its history says which rule gave it out");
 check(sql(`select count(*) from audit_logs where action = 'enquiry.route' and entity_id = '${webId}'`) === "1", "manual: the routing is audited");
 check(sql(`select count(*) from notifications where user_id = '${germany}' and href = '/enquiries/${webId}' and title = 'New enquiry assigned to you'`) === "1", "manual: the person it went to is told, as before");
+check(sql(`select string_agg(kind, ',' order by seq) from ownership_ledger where entity = 'enquiry' and entity_id = '${webId}'`) === "CREATED,ASSIGNED", "manual: on the ownership ledger as created, then assigned");
+check(sql(`select owner_id || '|' || detail from ownership_ledger where entity_id = '${webId}' and kind = 'ASSIGNED'`) === `${germany}|By the routing rule "Web degree ${tag}"`, "manual: the ledger's assignment names the rule");
+check(sql(`select count(*) from record_versions where entity = 'enquiry' and entity_id = '${webId}' and action = 'enquiry.route' and changes @> '[{"field":"assignedToId"}]'`) === "1", "manual: the assignment is a version on the enquiry's history");
 
 for (const n of [1, 2]) {
   const before = openCounts();
@@ -272,6 +275,7 @@ const call = async (body) => {
   check(sql(`select count(*) from enquiry_notes where enquiry_id = '${vishnu}' and body like 'Came back%branch form%Website%Budget below what the UK route needs%Ready to try again%'`) === "1", "repeat: the note says it came back, through what, and what it was lost for");
   check(sql(`select lost_reason is null and lost_reason_id is null and next_follow_up_at is not null from enquiries where id = '${vishnu}'`) === "t", "repeat: the lost reason is cleared and a follow-up set");
   check(sql(`select count(*) from audit_logs where action = 'enquiry.reopen' and entity_id = '${vishnu}'`) === "1", "repeat: the reopening is audited");
+  check(sql(`select count(*) from record_versions where entity_id = '${vishnu}' and action = 'enquiry.reopen' and changes @> '[{"field":"stage","before":"LOST"}]' and changes @> '[{"field":"lostReason","after":null}]'`) === "1", "repeat: the reopening is a version, the stage and the lost reason cleared with it");
   check(sql(`select count(*) from notifications where user_id = '${ukDocs}' and href = '/enquiries/${vishnu}' and title = 'A lost enquiry came back'`) === "1", "repeat: the owner is told");
   text = await go(counsellor, `/enquiries/${vishnu}`);
   check(/Came again\s*1 time/.test(text), "repeat: the enquiry says the person came again");
@@ -316,6 +320,9 @@ check(sql(`select merged_into_id || '|' || (merged_by_id is not null) from enqui
 check(sql(`select count(*) from enquiry_notes where enquiry_id = '${nandana}' and body like 'Walked into Kochi ${tag}%'`) === "1", "merge: its history moved to the enquiry kept");
 check(sql(`select count(*) from enquiry_notes where enquiry_id = '${dup}'`) === "1", "merge: leaving one line on the duplicate saying where it went");
 check(sql(`select count(*) from audit_logs where action = 'enquiry.merge' and entity_id = '${nandana}' and meta->>'merged' = '${dup}'`) === "1", "merge: audited with what was folded in");
+check(sql(`select count(*) from record_versions where entity_id = '${dup}' and action = 'enquiry.merged' and changes @> '[{"field":"stage","after":"MERGED"}]' and changes @> '[{"field":"mergedIntoId","after":"${nandana}"}]'`) === "1", "merge: the duplicate's history has it becoming merged, and into what");
+check(sql(`select count(*) from record_versions where entity_id = '${nandana}' and action = 'enquiry.merge'`) === "1", "merge: the details filled in on the kept one are a version of it");
+check(sql(`select kind || '|' || coalesce(owner_id, '') || '|' || detail from ownership_ledger where entity_id = '${dup}' order by seq desc limit 1`).startsWith("MERGED|"), "merge: the duplicate's line on the ownership ledger ends as merged");
 text = await waitText(admin, /Merged into this one/);
 check(/Merged into this one/.test(text) && text.includes(`Nandana Kochi ${tag}`), "merge: the kept enquiry lists what was folded into it");
 text = await go(admin, `/enquiries/${dup}`);
@@ -324,6 +331,24 @@ await go(admin, `/enquiries?q=${encodeURIComponent(`Nandana Kochi ${tag}`)}`);
 check((await admin.locator("main").getByRole("link", { name: `Nandana Kochi ${tag}` }).count()) === 0, "merge: the list no longer counts the person twice");
 await go(admin, `/enquiries?stage=MERGED&q=${encodeURIComponent(`Nandana Kochi ${tag}`)}`);
 check((await admin.locator("main").getByRole("link", { name: `Nandana Kochi ${tag}` }).count()) === 1, "merge: asking for merged ones finds it");
+text = await go(admin, `/enquiries/${dup}/history`);
+check(/Merged into another enquiry/.test(text) && text.includes("Nandana Prakash"), "merge: the duplicate's History tab reads the merge, naming the enquiry kept");
+
+// Registering a student from the merged one is refused on the server, pointing at the one kept.
+{
+  await kochiHead.goto(`${BASE}/students/new?enquiryId=${dup}`);
+  await hydrated(kochiHead);
+  await kochiHead.fill('input[name="firstName"]', "Merged");
+  await kochiHead.fill('input[name="lastName"]', `Convert${tag}`);
+  await kochiHead.fill('input[name="phone"]', `+91 70${tag}91`);
+  await kochiHead.fill('input[name="email"]', `merged.convert${tag}@example.com`);
+  const consent = kochiHead.locator('input[name="consent"]');
+  if (await consent.count()) await consent.first().check();
+  await kochiHead.click('main button[type="submit"]');
+  const said = await waitText(kochiHead, /was merged into/);
+  check(/was merged into Nandana Prakash's enquiry/.test(said), "merge: registering a student from the merged enquiry is refused, naming the enquiry it went into");
+  check(sql(`select count(*) from students where email = 'merged.convert${tag}@example.com'`) === "0" && sql(`select stage from enquiries where id = '${dup}'`) === "MERGED", "merge: no student is made and the duplicate stays merged");
+}
 
 // The same email at the same branch, merged by the branch head.
 {
@@ -367,6 +392,9 @@ await counsellor.getByRole("button", { name: "Close as lost" }).click();
 check(await toast(counsellor, /Closed as lost/), "lost: closed with the reason");
 check((await waitSql(`select stage from enquiries where id = '${lostId}'`, "LOST")) === "LOST", "lost: the stage is Lost");
 check(sql(`select r.label || '|' || e.lost_reason || '|' || (e.lost_at is not null) from enquiries e join lost_reasons r on r.id = e.lost_reason_id where e.id = '${lostId}'`) === "Budget|UK fees too high|true", "lost: the reason, the words beside it and when are recorded");
+check(sql(`select count(*) from record_versions v join enquiries e on e.id = v.entity_id where v.entity_id = '${lostId}' and v.action = 'enquiry.lost' and v.changes @> jsonb_build_array(jsonb_build_object('field', 'lostReasonId', 'after', e.lost_reason_id))`) === "1", "lost: closing it is a version with the reason picked");
+text = await go(counsellor, `/enquiries/${lostId}/history`);
+check(/Reason lost/.test(text) && /Budget/.test(text), "lost: the History tab names the reason picked");
 text = await go(counsellor, `/enquiries/${lostId}`);
 check(/Budget: UK fees too high/.test(text), "lost: the page reads the reason and the words together");
 

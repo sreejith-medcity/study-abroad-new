@@ -3283,7 +3283,7 @@ export const ownershipLedger = pgTable(
   {
     id: id(),
     seq: integer("seq").notNull(),
-    /** OPENING, CREATED, ASSIGNED, BRANCH_MOVE, HANDOVER, CONVERTED or REMOVED. */
+    /** OPENING, CREATED, ASSIGNED, BRANCH_MOVE, HANDOVER, CONVERTED, MERGED or REMOVED. */
     kind: text("kind").notNull(),
     entity: text("entity").$type<"student" | "enquiry">().notNull(),
     entityId: text("entity_id").notNull(),

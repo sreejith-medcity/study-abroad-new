@@ -211,7 +211,7 @@ export async function applyIncomingEnquiry(e: IncomingEnquiry): Promise<{ ok: tr
   const repeat = await findRepeat(owner.id, e.phone.trim());
   if (repeat.kind !== "create") {
     const out = await applyRepeat(repeat, { source: "OTHER", actorId: null, via: `from Medcity's CRM as ${e.crmId}`, message: e.notes });
-    await db.update(schema.enquiries).set({ crmId: e.crmId }).where(and(eq(schema.enquiries.id, out.enquiryId), isNull(schema.enquiries.crmId)));
+    await updateTracked("enquiry", out.enquiryId, { crmId: e.crmId }, { by: null, action: "crm.enquiry.link", where: isNull(schema.enquiries.crmId) });
     return { ok: true, enquiryId: out.enquiryId, created: false };
   }
 

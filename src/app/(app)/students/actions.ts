@@ -114,7 +114,17 @@ export async function createStudentAction(_: FormState, formData: FormData): Pro
   // rule that a counsellor sees only their own files meant the counsellor
   // could no longer open the student their enquiry now linked to.
   const enquiryId = String(formData.get("enquiryId") || "");
-  const enquiry = enquiryId ? await db.query.enquiries.findFirst({ where: eq(schema.enquiries.id, enquiryId) }) : null;
+  const enquiry = enquiryId ? await db.query.enquiries.findFirst({ where: eq(schema.enquiries.id, enquiryId), with: { mergedInto: { columns: { id: true, name: true, phone: true } } } }) : null;
+  // A merged enquiry is the same person as the one it was folded into, and
+  // registering from it would leave that one open beside a student. Refused
+  // here, whatever the form sent, saying where to go instead.
+  if (enquiry && enquiry.stage === "MERGED" && (isStaff(user) || enquiry.orgId === user.orgId)) {
+    return {
+      error: enquiry.mergedInto
+        ? `This enquiry was merged into ${enquiry.mergedInto.name}'s enquiry (${enquiry.mergedInto.phone}). Open that enquiry and register the student from there.`
+        : "This enquiry was merged into another enquiry. Register the student from that one.",
+    };
+  }
   const enquiryOwner =
     enquiry?.assignedToId && (isStaff(user) || enquiry.orgId === user.orgId)
       ? await db.query.users.findFirst({ where: eq(schema.users.id, enquiry.assignedToId), columns: { id: true, role: true, orgId: true, active: true } })

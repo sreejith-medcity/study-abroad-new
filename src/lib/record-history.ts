@@ -16,7 +16,7 @@ export type { FieldChange };
 export type HistoryEntity = "student" | "enquiry" | "application" | "user";
 
 /** How a stored value is read back to a person. */
-type Kind = "text" | "day" | "time" | "bool" | "number" | "month" | "user" | "org" | "status" | "route" | "team" | "enum" | "answers" | "passport";
+type Kind = "text" | "day" | "time" | "bool" | "number" | "month" | "user" | "org" | "status" | "route" | "team" | "lostReason" | "enquiry" | "enum" | "answers" | "passport";
 
 export type FieldDef = {
   label: string;
@@ -49,12 +49,14 @@ const WHY = {
   lock: "Locking follows the application and the edit requests, so it is changed with the lock control on the file.",
   archive: "Archive and bring back a file from the student list.",
   referral: "Who referred a student decides who is paid for them, so it is not changed from here.",
+  merge: "A merge moves the duplicate's history across and closes it, so it is not undone from here.",
+  repeat: "This counts the times the person came again, and is kept by the portal as they arrive.",
 } as const;
 
 const PATHWAY = PATHWAY_LABEL;
 const LEVEL = LEVEL_LABEL;
 const JOURNEY: Record<string, string> = Object.fromEntries(STAGES.map((s) => [s.value, `${s.number}. ${s.label}`]));
-const ENQUIRY_STAGE: Record<string, string> = { NEW: "New", CONTACTED: "Contacted", QUALIFIED: "Qualified", COUNSELLING: "In counselling", CONVERTED: "Converted", LOST: "Lost" };
+const ENQUIRY_STAGE: Record<string, string> = { NEW: "New", CONTACTED: "Contacted", QUALIFIED: "Qualified", COUNSELLING: "In counselling", CONVERTED: "Converted", LOST: "Lost", MERGED: "Merged" };
 const ENQUIRY_SOURCE: Record<string, string> = {
   WALK_IN: "Walk in",
   PHONE: "Phone call",
@@ -143,7 +145,12 @@ export const HISTORY_FIELDS: Record<HistoryEntity, Record<string, FieldDef>> = {
     budgetLakhs: { label: "Budget (lakhs)", kind: "number" },
     notes: { label: "Notes", kind: "text" },
     nextFollowUpAt: { label: "Next follow up", kind: "time" },
-    lostReason: { label: "Reason lost", kind: "text", noRestore: WHY.enquiryStage },
+    lostReasonId: { label: "Reason lost", kind: "lostReason", noRestore: WHY.enquiryStage },
+    lostReason: { label: "Why it was lost, in words", kind: "text", noRestore: WHY.enquiryStage },
+    lostAt: { label: "Lost on", kind: "time", noRestore: WHY.enquiryStage },
+    repeatCount: { label: "Times enquired again", kind: "number", noRestore: WHY.repeat },
+    mergedIntoId: { label: "Merged into", kind: "enquiry", noRestore: WHY.merge },
+    crmId: { label: "CRM id", kind: "text", noRestore: WHY.fixed },
     assignedToId: { label: "Owner", kind: "user", noRestore: WHY.assignment },
     orgId: { label: "Branch", kind: "org", noRestore: WHY.branch },
     studentId: { label: "Student file", kind: "text", noRestore: WHY.enquiryStage },
@@ -259,7 +266,7 @@ export function columnValue(entity: HistoryEntity, field: string, value: unknown
 
 export const NOT_RECORDED = "Not recorded";
 
-/** Names for the ids a history holds: people, branches, statuses, routes and teams. */
+/** Names for the ids a history holds: people, branches, statuses, routes, teams, lost reasons and enquiries. */
 export type NameBook = Map<string, string>;
 
 /**
@@ -287,6 +294,8 @@ export function showValue(entity: HistoryEntity, field: string, value: unknown, 
     case "status":
     case "route":
     case "team":
+    case "lostReason":
+    case "enquiry":
       return names?.get(String(value)) ?? NOT_RECORDED;
     case "passport": {
       const s = String(value);
@@ -311,10 +320,18 @@ export function showValue(entity: HistoryEntity, field: string, value: unknown, 
 
 /** The ids in a set of changes that need a name, by kind. */
 export function idsToName(entity: HistoryEntity, changes: readonly FieldChange[]) {
-  const out = { user: new Set<string>(), org: new Set<string>(), status: new Set<string>(), route: new Set<string>(), team: new Set<string>() };
+  const out = {
+    user: new Set<string>(),
+    org: new Set<string>(),
+    status: new Set<string>(),
+    route: new Set<string>(),
+    team: new Set<string>(),
+    lostReason: new Set<string>(),
+    enquiry: new Set<string>(),
+  };
   for (const c of changes) {
     const kind = HISTORY_FIELDS[entity]?.[c.field]?.kind;
-    if (kind === "user" || kind === "org" || kind === "status" || kind === "route" || kind === "team") {
+    if (kind === "user" || kind === "org" || kind === "status" || kind === "route" || kind === "team" || kind === "lostReason" || kind === "enquiry") {
       for (const v of [c.before, c.after]) if (typeof v === "string" && v) out[kind].add(v);
     }
   }
