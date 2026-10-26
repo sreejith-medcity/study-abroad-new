@@ -78,7 +78,9 @@ export default async function Pipeline({ lens }: { lens: Lens }) {
     { slug: "payments-done", label: "Paid", value: t.feesPaid, tone: "good" as const, href: `/applications?kpi=payments${mine}` },
     { slug: "payments-pending", label: "Fee pending", value: t.feesDue, tone: "stop" as const, href: `/applications?kpi=fees_due${mine}` },
     { slug: "waiting-on-you", label: "Waiting on you", value: waiting, tone: "warn" as const, href: `/applications?group=PENDING_PARTNER${mine}` },
-    { slug: "not-given-to-anyone", label: counsellor ? "Not given to anyone at the branch" : "Not given to anyone", value: loose, tone: "info" as const, href: "/students?assignedTo=none" },
+    // "At the branch" only where the figure is one branch's: a desk counsellor
+    // or a view-as with no branch picked reads the whole portal's.
+    { slug: "not-given-to-anyone", label: counsellor && (lens.org || !staff) ? "Not given to anyone at the branch" : "Not given to anyone", value: loose, tone: "info" as const, href: "/students?assignedTo=none" },
     ...(t.revenue ? [{ slug: "total-revenue-expected", label: "Revenue due", value: inrShort(t.revenue.expected), tone: "gold" as const, href: staff ? "/admin/commission?status=EXPECTED" : "/commission" }] : []),
     ...(wallet ? [{ slug: "wallet", label: "Wallet", value: inrShort(wallet.balance), tone: "gold" as const, href: "/wallet" }] : []),
   ];

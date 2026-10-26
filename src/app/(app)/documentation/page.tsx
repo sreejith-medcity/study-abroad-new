@@ -65,7 +65,7 @@ export default async function DocumentationQueuePage({
     <>
       <PageHeader
         title="Documentation queue"
-        subtitle={`${counts.waiting} waiting · ${counts.mine} claimed by you. Oldest first, and a document is claimed while somebody checks it so two people never check the same one.`}
+        subtitle={`${counts.waiting} ${counts.waiting === 1 ? "document" : "documents"} from ${counts.students} ${counts.students === 1 ? "student" : "students"} waiting · ${counts.mine} claimed by you. Oldest first, and a document is claimed while somebody checks it so two people never check the same one.`}
         actions={isAdmin(user) ? <RunReminders /> : undefined}
       />
 

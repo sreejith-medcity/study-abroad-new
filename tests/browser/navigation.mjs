@@ -60,7 +60,7 @@ for (const [email, who, ip] of [["sreejith@miak.in", "the Overseas team", "10.80
 
   // The portal's own number for the documentation queue, against the badge.
   if (email === "sreejith@miak.in") {
-    const waiting = Number(sql("select count(*) from checklist_items where state in ('UPLOADED','IN_REVIEW')"));
+    const waiting = Number(sql("select count(distinct student_id) from checklist_items where state in ('UPLOADED','IN_REVIEW')"));
     // Its group is shut on arrival, so open it the way somebody would.
     await page.locator("aside nav details summary").filter({ hasText: "APPLICATIONS" }).click();
     await page.waitForTimeout(300);

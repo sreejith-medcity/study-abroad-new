@@ -208,11 +208,13 @@ export async function queueCounts(userId: string) {
   const [row] = await db
     .select({
       waiting: sql<number>`count(*)`.mapWith(Number),
+      // The menu counts students, so the page says both: documents and whose.
+      students: sql<number>`count(distinct ${ci.studentId})`.mapWith(Number),
       mine: sql<number>`count(*) filter (where ${ci.claimedById} = ${userId})`.mapWith(Number),
     })
     .from(ci)
     .where(inArray(ci.state, ["UPLOADED", "IN_REVIEW"] as const));
-  return row ?? { waiting: 0, mine: 0 };
+  return row ?? { waiting: 0, students: 0, mine: 0 };
 }
 
 /** The reasons the team may pick from, newest additions last. */
