@@ -357,6 +357,7 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
                 <span className="font-medium">{row.user?.deskLabel ?? row.user?.name}</span>
                 <Chip tone="info">{row.part}</Chip>
                 <span className="text-xs text-muted">{ROLE_LABEL[row.user?.role ?? ""] ?? row.user?.role}</span>
+                {row.user?.department && <span className="text-xs text-muted">{row.user.department}</span>}
                 {row.user && !row.user.active && <Chip tone="warn">No longer active</Chip>}
                 {mayAssign && (
                   <form action={removePersonFromFileAction} className="ml-auto">

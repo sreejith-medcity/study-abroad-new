@@ -125,9 +125,63 @@ check(sql(`select active from users where id = '${ukDocs}'`) === "t", "switch on
 // Reset a password.
 await go(op, "/settings/team");
 const row = op.getByTestId(`member-${email}`);
-await row.getByText("Desk and password").click();
+await row.getByText("Details and password").click();
 await row.getByRole("button", { name: "New password for New Counsellor" }).click();
 check(await op.getByText(new RegExp(`One-time password for ${email.replace(".", "\\.")}: \\S+\\. They are signed out`)).first().waitFor({ timeout: 10000 }).then(() => true, () => false), "reset: a one-time password, shown once");
+
+// The branch head corrects a counsellor's name, email and department.
+// Written after the owner found nobody could fix a misspelt name without
+// making a new account.
+const newId = sql(`select id from users where email = '${email}'`);
+const renamed = `renamed.counsellor${Date.now() % 100000}@medcity.test`;
+await go(op, "/settings/team");
+await hydrated(op);
+const member = op.getByTestId(`member-${email}`);
+await member.getByText("Details and password").click();
+await member.locator(`#email-${newId}`).fill("UK.DOCS@medcity.test");
+await member.getByRole("button", { name: "Save details" }).click();
+check(await member.getByText("Someone already signs in with that email.").waitFor({ timeout: 10000 }).then(() => true, () => false), "edit: an email already in use is refused, whatever its case");
+await member.locator(`#name-${newId}`).fill("Renamed Counsellor");
+await member.locator(`#email-${newId}`).fill(renamed);
+await member.locator(`#dept-${newId}`).selectOption("Ausbildung");
+await member.getByRole("button", { name: "Save details" }).click();
+check(await toast(op, /now signs in with/), "edit: the save says they now sign in with the new address");
+check(sql(`select name || '|' || email || '|' || coalesce(department, '') from users where id = '${newId}'`) === `Renamed Counsellor|${renamed}|Ausbildung`, "edit: name, email and department saved on the same account");
+check(sql(`select count(*) from audit_logs where action = 'team.edit' and entity_id = '${newId}'`) === "1", "edit: audited");
+check(sql(`select count(*) from notifications where user_id = '${newId}' and title = 'Your sign-in email changed'`) === "1", "edit: the counsellor is told their sign-in email changed");
+const oldTry = await signIn(email, "10.105.1.7");
+check(/\/login/.test(oldTry.page.url()), "edit: the old email no longer signs in");
+await oldTry.ctx.close();
+
+// The department shows on the row and the list filters by it.
+let shown = await go(op, "/settings/team");
+check((await op.getByTestId(`member-${renamed}`).innerText()).includes("Ausbildung"), "department: shown on the row");
+await op.locator("#department-filter").selectOption("Ausbildung");
+await op.locator("[data-department-filter]").getByRole("button", { name: "Show" }).click();
+await op.waitForURL(/department=Ausbildung/, { timeout: 10000 }).catch(() => {});
+await hydrated(op);
+check((await op.getByTestId(`member-${renamed}`).count()) === 1 && (await op.getByTestId("member-uk.docs@medcity.test").count()) === 0, "department: the filter keeps the people in it and drops the rest");
+
+// A branch head cannot move anybody, and cannot edit somebody at another branch.
+shown = await go(op, "/settings/team");
+check(!/Move to another branch/.test(shown), "access: the branch head is not offered a move");
+const partnersPage = await op.goto(`${BASE}/admin/partners`);
+await hydrated(op);
+check(/\/forbidden/.test(op.url()) || partnersPage.status() >= 400 || !/Partners and people/.test(await main(op)), "access: the branch head cannot open the head office's people screen");
+const elsewhere = sql("select id from users where email = 'staff@horizon.test'");
+const elsewhereName = sql(`select name from users where id = '${elsewhere}'`);
+await go(op, "/settings/team");
+await hydrated(op);
+const mine = op.getByTestId(`member-${renamed}`);
+await mine.getByText("Details and password").click();
+// The form is pointed at somebody else's counsellor, which a browser of the
+// screen cannot do but a request can.
+const editForm = mine.locator("form").filter({ has: op.getByRole("button", { name: "Save details" }) });
+await editForm.locator('input[name="userId"]').evaluate((el, id) => { el.value = id; }, elsewhere);
+await mine.locator(`#name-${newId}`).fill("Should Not Change");
+await mine.getByRole("button", { name: "Save details" }).click();
+check(await mine.getByText("That person is not a counsellor in your branch.").waitFor({ timeout: 10000 }).then(() => true, () => false), "access: editing another branch's person is refused");
+check(sql(`select name from users where id = '${elsewhere}'`) === elsewhereName, "access: and nothing changed on them");
 
 // Counsellors cannot manage the team; other branches cannot see it.
 const c2 = await signIn("germany@medcity.test", "10.105.1.5");

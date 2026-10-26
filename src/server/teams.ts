@@ -59,7 +59,7 @@ export async function peopleToAdd(user: SessionUser) {
 export async function peopleOnFile(studentId: string) {
   return db.query.studentPeople.findMany({
     where: eq(schema.studentPeople.studentId, studentId),
-    with: { user: { columns: { id: true, name: true, deskLabel: true, role: true, active: true } } },
+    with: { user: { columns: { id: true, name: true, deskLabel: true, department: true, role: true, active: true } } },
     orderBy: asc(schema.studentPeople.createdAt),
   });
 }

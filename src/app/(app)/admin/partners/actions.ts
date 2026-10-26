@@ -3,14 +3,18 @@
 import { seatFree } from "@/lib/seats";
 import { revalidatePath } from "next/cache";
 import { randomBytes } from "crypto";
-import { and, count, eq, inArray, isNotNull } from "drizzle-orm";
+import { and, count, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
-import { hashPassword, requireUser } from "@/lib/auth";
+import { hashPassword, requireUser, type SessionUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
+import { departmentChoice } from "@/lib/departments";
+import { emailProblem, normalizeEmail, planMove, roleFitRefusal, roleFitsOrg } from "@/lib/people";
 import { ADMIN_ROLES, HQ_ROLES, PARTNER_ROLES, ROLE_LABEL, canManageSuperAdmins, canManageUsers, canResetPasswords, isFamilyRole } from "@/lib/permissions";
+import { notifyUsers } from "@/server/notify";
 import { makeSlug } from "@/server/public-form";
 import { orgIsUntouched } from "@/server/org-untouched";
+import { departments, getSettings } from "@/server/settings";
 
 import type { FormState } from "@/lib/form-state";
 export type { FormState };
@@ -55,8 +59,18 @@ const addUser = z.object({
   name: z.string().trim().min(2, "Name is required").max(100),
   email: z.string().trim().toLowerCase().email("Enter a valid email"),
   deskLabel: z.string().trim().max(60).optional(),
+  department: z.string().trim().max(60).optional(),
   role: z.enum([...PARTNER_ROLES, "ADMIN", "MANAGEMENT", "SUPER_ADMIN", "OPS_MANAGER", "DOCUMENTATION"]),
 });
+
+/** Somebody else already signing in with this address, in any case. */
+async function emailTaken(email: string, exceptUserId?: string) {
+  const row = await db.query.users.findFirst({
+    where: and(sql`lower(${schema.users.email}) = ${email}`, exceptUserId ? ne(schema.users.id, exceptUserId) : undefined),
+    columns: { id: true },
+  });
+  return !!row;
+}
 
 export async function addUserAction(_: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser([...ADMIN_ROLES]);
@@ -77,7 +91,10 @@ export async function addUserAction(_: FormState, formData: FormData): Promise<F
     return { error: "Only a super admin can create Medcity Overseas staff accounts." };
   }
   if (org.type !== "HQ" && !(PARTNER_ROLES as readonly string[]).includes(d.role)) return { error: "A partner's people are a branch head or one of the counsellor roles." };
-  if (await db.query.users.findFirst({ where: eq(schema.users.email, d.email) })) return { error: "A user with that email already exists." };
+  if (!roleFitsOrg(d.role, org.type)) return { error: roleFitRefusal(d.role, org.type) };
+  if (await emailTaken(d.email)) return { error: "A user with that email already exists." };
+  const dept = departmentChoice(d.department, departments(await getSettings()));
+  if (!dept.ok) return { error: dept.error, fieldErrors: { department: [dept.error] } };
 
   if (org.type !== "HQ") {
     const [{ n }] = await db.select({ n: count() }).from(schema.users).where(and(eq(schema.users.orgId, org.id), eq(schema.users.active, true), inArray(schema.users.role, [...PARTNER_ROLES])));
@@ -85,8 +102,11 @@ export async function addUserAction(_: FormState, formData: FormData): Promise<F
   }
 
   const password = tempPassword();
-  const [created] = await db.insert(schema.users).values({ name: d.name, email: d.email, deskLabel: d.deskLabel || null, role: d.role, orgId: org.id, passwordHash: await hashPassword(password) }).returning();
-  await audit(user.id, "user.create", "user", created.id, { orgId: org.id, role: d.role });
+  const [created] = await db
+    .insert(schema.users)
+    .values({ name: d.name, email: d.email, deskLabel: d.deskLabel || null, department: dept.department, role: d.role, orgId: org.id, passwordHash: await hashPassword(password) })
+    .returning();
+  await audit(user.id, "user.create", "user", created.id, { orgId: org.id, role: d.role, department: dept.department });
   revalidatePath("/admin/partners");
   return { keep: true, ok: `User added. Temporary password for ${d.email}: ${password}` };
 }
@@ -286,18 +306,197 @@ export async function resetPublicSlugAction(formData: FormData) {
   revalidatePath("/admin/partners");
 }
 
-/** The free-text job title beside someone's name. */
-export async function setTitleAction(_: FormState, formData: FormData): Promise<FormState> {
+/**
+ * Who the head office may edit: anybody but themselves (their own details are
+ * on Settings), and Medcity Overseas staff only when they manage users, the
+ * same line toggleUserAction draws.
+ */
+async function editableByDesk(actor: SessionUser, userId: string) {
+  const target = await db.query.users.findFirst({ where: eq(schema.users.id, userId), with: { org: true } });
+  if (!target) return { error: "User not found." as const };
+  if (isFamilyRole(target.role)) return { error: "A student or parent sign-in is managed from the student's file." as const };
+  if ((HQ_ROLES as readonly string[]).includes(target.role) && !canManageUsers(actor)) {
+    return { error: "Only a super admin or an ops manager can edit Medcity Overseas staff." as const };
+  }
+  return { target };
+}
+
+const editUser = z.object({
+  userId: z.string().min(1),
+  name: z.string().trim().min(2, "Name is required").max(100),
+  email: z.string().trim().max(254),
+  deskLabel: z.string().trim().max(60).optional(),
+  department: z.string().trim().max(60).optional(),
+});
+
+/**
+ * A person's name, sign-in email, job title and department.
+ *
+ * The account keeps its id, so everything it has done stays its own. A new
+ * email ends their sessions, so they sign in again with the address that now
+ * works, and they are told so in a notice they read when they do.
+ */
+export async function editUserAction(_: FormState, formData: FormData): Promise<FormState> {
   const actor = await requireUser([...ADMIN_ROLES]);
-  if (!canManageUsers(actor)) return { error: "Only a super admin or an ops manager can change titles." };
-  const userId = String(formData.get("userId"));
-  const title = String(formData.get("deskLabel") ?? "").trim().slice(0, 60);
+  const parsed = editUser.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Check the highlighted fields." };
+  const d = parsed.data;
+  if (d.userId === actor.id) return { error: "Your own name and email are on Settings." };
+  const found = await editableByDesk(actor, d.userId);
+  if ("error" in found) return { error: found.error };
+  const target = found.target;
 
-  const target = await db.query.users.findFirst({ where: eq(schema.users.id, userId) });
-  if (!target) return { error: "User not found." };
+  const email = normalizeEmail(d.email);
+  const problem = emailProblem(email);
+  if (problem) return { error: "Check the highlighted fields.", fieldErrors: { email: [problem] } };
+  if (email !== target.email.toLowerCase() && (await emailTaken(email, target.id))) {
+    return { error: "Somebody else already signs in with that email.", fieldErrors: { email: ["Already in use"] } };
+  }
+  const dept = departmentChoice(d.department, departments(await getSettings()));
+  if (!dept.ok) return { error: dept.error, fieldErrors: { department: [dept.error] } };
 
-  await db.update(schema.users).set({ deskLabel: title || null }).where(eq(schema.users.id, userId));
-  await audit(actor.id, "user.title", "user", userId, { email: target.email, title: title || null });
+  const deskLabel = d.deskLabel || null;
+  const emailChanged = email !== target.email;
+  const changes: Record<string, { from: string | null; to: string | null }> = {};
+  if (d.name !== target.name) changes.name = { from: target.name, to: d.name };
+  if (emailChanged) changes.email = { from: target.email, to: email };
+  if (deskLabel !== target.deskLabel) changes.deskLabel = { from: target.deskLabel, to: deskLabel };
+  if (dept.department !== target.department) changes.department = { from: target.department, to: dept.department };
+  if (Object.keys(changes).length === 0) return { ok: "Nothing changed." };
+
+  await db
+    .update(schema.users)
+    .set({
+      name: d.name,
+      email,
+      deskLabel,
+      department: dept.department,
+      ...(emailChanged ? { sessionVersion: target.sessionVersion + 1 } : {}),
+    })
+    .where(eq(schema.users.id, target.id));
+  await audit(actor.id, "user.edit", "user", target.id, { email: target.email, changes });
+  if (emailChanged) {
+    await notifyUsers([target.id], "Your sign-in email changed", `From now on, sign in with ${email}. The old address, ${target.email}, no longer signs in.`, "/settings");
+  }
   revalidatePath("/admin/partners");
-  return { ok: title ? `${target.name} is now "${title}".` : `Title cleared for ${target.name}.` };
+  return { ok: emailChanged ? `Saved. ${d.name} now signs in with ${email}, and has been signed out to do so.` : `Saved ${d.name}'s details.` };
+}
+
+const moveUser = z.object({
+  userId: z.string().min(1),
+  toOrgId: z.string().min(1),
+  studentsChoice: z.string().optional(),
+  handToId: z.string().optional(),
+});
+
+/**
+ * Moves a person to another branch or sub-agent firm.
+ *
+ * Their students do not go with them: a student belongs to the branch that
+ * registered them, and a counsellor who leaves it could not open those files
+ * from the new one. So the students are handed to a named colleague at the
+ * old branch, or left with nobody there, and the person is taken off every
+ * file at the old branch they were named on. All of it in one transaction,
+ * so a refusal part way leaves nothing half moved.
+ */
+export async function moveUserAction(_: FormState, formData: FormData): Promise<FormState> {
+  const actor = await requireUser([...ADMIN_ROLES]);
+  const parsed = moveUser.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Check the highlighted fields." };
+  const d = parsed.data;
+  if (d.userId === actor.id) return { error: "Ask another admin to move you." };
+  const found = await editableByDesk(actor, d.userId);
+  if ("error" in found) return { error: found.error };
+  const target = found.target;
+
+  const to = await db.query.organizations.findFirst({ where: eq(schema.organizations.id, d.toOrgId) });
+  if (!to) return { error: "Organisation not found." };
+  if (to.type === "HQ" && !canManageUsers(actor)) return { error: "Only a super admin or an ops manager can move somebody into Medcity Overseas." };
+
+  const [{ n: students }] = await db
+    .select({ n: count() })
+    .from(schema.students)
+    .where(and(eq(schema.students.assignedToId, target.id), eq(schema.students.orgId, target.orgId)));
+  const colleague = d.handToId
+    ? ((await db.query.users.findFirst({ where: eq(schema.users.id, d.handToId), columns: { id: true, orgId: true, role: true, active: true, name: true } })) ?? null)
+    : null;
+
+  const planned = planMove({
+    person: { id: target.id, role: target.role, orgId: target.orgId },
+    from: { id: target.org.id, type: target.org.type },
+    to: { id: to.id, type: to.type, active: to.active },
+    students,
+    choice: d.studentsChoice ?? "",
+    colleague,
+  });
+  if (!planned.ok) return { error: planned.error };
+  const plan = planned.plan;
+
+  // A sub-agent firm has its tier's seats, and a person moving in takes one.
+  if (to.type === "SUB_AGENT" && target.active) {
+    const [{ n }] = await db.select({ n: count() }).from(schema.users).where(and(eq(schema.users.orgId, to.id), eq(schema.users.active, true), inArray(schema.users.role, [...PARTNER_ROLES])));
+    if (!seatFree(to, n)) return { error: `${to.name} has used all ${to.counsellorSeats} seats for its tier.` };
+  }
+
+  const fromOrg = target.org;
+  const handed: { id: string; firstName: string; lastName: string }[] = [];
+  let takenOff = 0;
+  await db.transaction(async (tx) => {
+    await tx.update(schema.users).set({ orgId: to.id, sessionVersion: target.sessionVersion + 1 }).where(eq(schema.users.id, target.id));
+    if (plan.students > 0) {
+      const rows = await tx
+        .update(schema.students)
+        .set({ assignedToId: plan.handTo, updatedAt: new Date() })
+        .where(and(eq(schema.students.assignedToId, target.id), eq(schema.students.orgId, fromOrg.id)))
+        .returning({ id: schema.students.id, firstName: schema.students.firstName, lastName: schema.students.lastName });
+      handed.push(...rows);
+      // The hand-over is written the way a reassign from the student's file
+      // is, one row per student, so the file's own history reads the same.
+      if (rows.length) {
+        await tx.insert(schema.auditLogs).values(
+          rows.map((r) => ({ actorId: actor.id, action: "student.reassign", entityType: "student", entityId: r.id, meta: { from: target.id, to: plan.handTo, via: "user.move" } })),
+        );
+      }
+    }
+    const off = await tx
+      .delete(schema.studentPeople)
+      .where(
+        and(
+          eq(schema.studentPeople.userId, target.id),
+          inArray(schema.studentPeople.studentId, tx.select({ id: schema.students.id }).from(schema.students).where(eq(schema.students.orgId, fromOrg.id))),
+        ),
+      )
+      .returning({ id: schema.studentPeople.id });
+    takenOff = off.length;
+    await tx.insert(schema.auditLogs).values({
+      actorId: actor.id,
+      action: "user.move",
+      entityType: "user",
+      entityId: target.id,
+      meta: { email: target.email, from: fromOrg.id, fromName: fromOrg.name, to: to.id, toName: to.name, students: plan.students, handTo: plan.handTo, takenOffFiles: takenOff },
+    });
+  });
+
+  if (plan.handTo) {
+    for (const s of handed) await notifyUsers([plan.handTo], "Student assigned to you", `${s.firstName} ${s.lastName}`, `/students/${s.id}/profile`);
+  }
+  await notifyUsers(
+    [target.id],
+    `You have been moved to ${to.name}`,
+    plan.students > 0
+      ? plan.handTo
+        ? `Your ${plan.students === 1 ? "student" : `${plan.students} students`} at ${fromOrg.name} ${plan.students === 1 ? "has" : "have"} been handed to ${colleague?.name ?? "a colleague"}.`
+        : `Your ${plan.students === 1 ? "student" : `${plan.students} students`} at ${fromOrg.name} ${plan.students === 1 ? "stays" : "stay"} there, unassigned for now.`
+      : `Your work from now on is at ${to.name}.`,
+    "/dashboard",
+  );
+  revalidatePath("/admin/partners");
+  revalidatePath("/students");
+  const about =
+    plan.students > 0
+      ? plan.handTo
+        ? ` ${plan.students} ${plan.students === 1 ? "student" : "students"} handed to ${colleague?.name ?? "a colleague"}.`
+        : ` ${plan.students} ${plan.students === 1 ? "student" : "students"} left unassigned at ${fromOrg.name}.`
+      : "";
+  return { ok: `${target.name} is now at ${to.name}.${about} They have been signed out and told.` };
 }

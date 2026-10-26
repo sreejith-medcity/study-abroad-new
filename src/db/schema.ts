@@ -388,6 +388,13 @@ export const users = pgTable(
       .notNull()
       .references(() => organizations.id),
     deskLabel: text("desk_label"),
+    /**
+     * Which part of the business this person works in: Ausbildung, NCLEX-RN,
+     * Visa. One of the names kept on app_settings.departments, so the people
+     * lists can be read one department at a time. Nothing else depends on it
+     * yet. Null for anybody who has not been put in one.
+     */
+    department: text("department"),
     /** Set on STUDENT logins: the one student file this account may read. */
     studentId: text("student_id"),
     locale: text("locale").notNull().default("en"),
@@ -2485,6 +2492,16 @@ export const appSettings = pgTable("app_settings", {
   journalOutOfHours: text("journal_out_of_hours").notNull().default("17:45"),
   journalCutoff: text("journal_cutoff").notNull().default("23:59"),
   journalOnSundays: boolean("journal_on_sundays").notNull().default(false),
+
+  /**
+   * The departments a person can be put in, as the head office names them.
+   * Kept here rather than in code because the list is Medcity's to change
+   * when a desk opens or closes, without a deploy.
+   */
+  departments: text("departments")
+    .array()
+    .notNull()
+    .default(sql`'{"Study abroad","Ausbildung","NCLEX-RN","Documentation","Placement","Visa","Travel desk","Finance","Management"}'::text[]`),
 
   updatedById: text("updated_by_id").references(() => users.id),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

@@ -3,7 +3,7 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { canManageSettings } from "@/lib/permissions";
 import { fmtDateTime } from "@/lib/format";
-import { getSettings, fxRates, signInPoints, tierTargets } from "@/server/settings";
+import { getSettings, departments, fxRates, signInPoints, tierTargets } from "@/server/settings";
 import { Alert, Card, CardHeader } from "@/components/ui";
 import { PlatformForm } from "../forms";
 import { ArtworkPanel } from "../artwork";
@@ -114,6 +114,7 @@ export default async function PlatformSettingsPage() {
             journalOutOfHours: settings.journalOutOfHours,
             journalCutoff: settings.journalCutoff,
             journalOnSundays: settings.journalOnSundays,
+            departments: departments(settings),
           }}
         />
         </div>

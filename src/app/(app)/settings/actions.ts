@@ -13,6 +13,7 @@ import { canManageSettings, isPartner, isSuperAdmin } from "@/lib/permissions";
 import { getSettings } from "@/server/settings";
 import { UploadError, deleteUpload, saveBrandImage } from "@/server/storage";
 import { passwordProblem } from "@/lib/password";
+import { DEFAULT_DEPARTMENTS, parseDepartments } from "@/lib/departments";
 
 import type { FormState } from "@/lib/form-state";
 export type { FormState };
@@ -178,6 +179,9 @@ const platformShape = z.object({
   journalDayEnd: z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "A time like 17:00"),
   journalOutOfHours: z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "A time like 17:45"),
   journalCutoff: z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "A time like 23:59"),
+  // One department per line. An empty box keeps the defaults rather than
+  // leaving every person with nothing to be put in.
+  departments: z.string().optional().transform((v) => parseDepartments(v ?? "")),
 });
 
 export async function savePlatformAction(_: FormState, formData: FormData): Promise<FormState> {
@@ -229,6 +233,7 @@ export async function savePlatformAction(_: FormState, formData: FormData): Prom
       journalOutOfHours: d.journalOutOfHours,
       journalCutoff: d.journalCutoff,
       journalOnSundays: formData.get("journalOnSundays") === "on",
+      departments: d.departments.length > 0 ? d.departments : [...DEFAULT_DEPARTMENTS],
       updatedById: user.id,
       updatedAt: new Date(),
     })

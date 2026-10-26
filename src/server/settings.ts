@@ -3,6 +3,7 @@ import { cache } from "react";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { AppSettings } from "@/db/schema";
+import { DEFAULT_DEPARTMENTS } from "@/lib/departments";
 
 const DEFAULT_POINTS = [
   "Register students and apply to universities, Ausbildung and nursing routes in one place",
@@ -54,6 +55,7 @@ const FALLBACK: AppSettings = {
   journalOutOfHours: "17:45",
   journalCutoff: "23:59",
   journalOnSundays: false,
+  departments: [...DEFAULT_DEPARTMENTS],
   updatedById: null,
   updatedAt: new Date(0),
 };
@@ -148,4 +150,9 @@ export function brandStyle(settings: AppSettings) {
 
 export function signInPoints(settings: AppSettings) {
   return settings.signInPoints.length > 0 ? settings.signInPoints : DEFAULT_POINTS;
+}
+
+/** The departments a person can be put in. An emptied list falls back to the defaults, so the picker is never blank. */
+export function departments(settings: AppSettings): string[] {
+  return settings.departments.length > 0 ? settings.departments : [...DEFAULT_DEPARTMENTS];
 }

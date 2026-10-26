@@ -227,6 +227,16 @@ export function PlatformForm({ settings }: { settings: PlatformValues }) {
           <TextField label="Hours" name="supportHours" defaultValue={settings.supportHours ?? ""} placeholder="Mon to Sat, 9 to 6" />
         </div>
       </Section>
+
+      <Section title="Departments" hint="The parts of the business a person can be put in: Ausbildung, NCLEX-RN, Visa. Shown beside their name and used to filter the people lists.">
+        <TextareaField
+          label="Departments"
+          name="departments"
+          rows={6}
+          defaultValue={settings.departments.join("\n")}
+          hint="One per line. Somebody already in a department you remove keeps it until they are edited."
+        />
+      </Section>
     </ActionForm>
   );
 }
@@ -257,6 +267,7 @@ export type PlatformValues = {
   journalOutOfHours: string;
   journalCutoff: string;
   journalOnSundays: boolean;
+  departments: string[];
 };
 
 function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {

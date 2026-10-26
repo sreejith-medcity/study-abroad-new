@@ -92,10 +92,11 @@ async function signIn(email, ip, password = "Password@123") {
   listed.includes("Documentation team") ? ok("the role chip reads Documentation team") : bad("role chip missing");
   await page.screenshot({ path: `${OUT}/01-people.png`, fullPage: true });
 
-  // titles can be edited in place
+  // titles can be edited in place, with the rest of the person's details
   const row = page.locator("main li").filter({ hasText: `docs.person${tag}@medcityoverseas.test` }).first();
+  await row.locator("[data-edit-person] summary").click();
   await row.locator('input[name="deskLabel"]').fill("Germany desk documentation");
-  await row.getByRole("button", { name: "Save title" }).click();
+  await row.getByRole("button", { name: "Save details" }).click();
   // Assert the change itself rather than the toast, which fades after a few seconds.
   await page.locator("main").getByText("Germany desk documentation").first().waitFor({ timeout: 12000 })
     .then(() => ok("a title can be changed in place"))
