@@ -10,10 +10,12 @@ import { isAdmin, PROCESSING_ROLES } from "@/lib/permissions";
 import { activeRejectionReasons, branchChecked, deskOfficers, documentationQueue, queueCounts } from "@/server/documentation";
 import { can } from "@/server/capabilities";
 import { claimHeld, CLAIM_MINUTES, STAGES, stageLabel } from "@/lib/journey";
+import { documentCount, groupQueue, holdersText } from "@/lib/documentation-queue";
 import { Card, CardHeader, Chip, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
 import { ItemActions } from "../students/[id]/documentation/client";
 import { RunReminders } from "./chase";
 import { Reassign } from "./reassign";
+import { StudentRows } from "./student-rows";
 import type { JourneyStage } from "@/db/schema";
 
 export const metadata = { title: "Documentation queue" };
@@ -52,6 +54,13 @@ export default async function DocumentationQueuePage({
     canReassign ? deskOfficers() : Promise.resolve([]),
   ]);
 
+  // One row per student, because the desk picks up a file, not a document.
+  const mine = sp.mine === "1";
+  const students = groupQueue(rows, sort, { viewerId: user.id, mineFirst: mine });
+  const routeChip = (code: string, colour: string | null) => (
+    <span key={code} className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium text-white" style={{ backgroundColor: colour ?? "#475569" }}>{code}</span>
+  );
+
   const href = (next: Record<string, string | undefined>) => {
     const params = new URLSearchParams();
     const merged = { branch: sp.branch, stage: sp.stage, vendor: sp.vendor, sort: sp.sort, mine: sp.mine, view: sp.view, ...next };
@@ -65,7 +74,7 @@ export default async function DocumentationQueuePage({
     <>
       <PageHeader
         title="Documentation queue"
-        subtitle={`${counts.waiting} ${counts.waiting === 1 ? "document" : "documents"} from ${counts.students} ${counts.students === 1 ? "student" : "students"} waiting · ${counts.mine} claimed by you. Oldest first, and a document is claimed while somebody checks it so two people never check the same one.`}
+        subtitle={`${counts.waiting} ${counts.waiting === 1 ? "document" : "documents"} from ${counts.students} ${counts.students === 1 ? "student" : "students"} waiting · ${counts.mine} claimed by you. One row per student, oldest first; open a row for the documents. A document is claimed while somebody checks it so two people never check the same one.`}
         actions={isAdmin(user) ? <RunReminders /> : undefined}
       />
 
@@ -136,8 +145,12 @@ export default async function DocumentationQueuePage({
             </tbody>
           </Table>
         </Card>
-      ) : rows.length === 0 ? (
-        <EmptyState title="Nothing to check">Every document that has been sent in has been decided. New uploads land here.</EmptyState>
+      ) : students.length === 0 ? (
+        mine ? (
+          <EmptyState title="Nothing with you">Claim a document from the queue and that student appears here, with everything else of theirs that is waiting.</EmptyState>
+        ) : (
+          <EmptyState title="Nothing to check">Every document that has been sent in has been decided. A student appears here as soon as one of their uploads lands.</EmptyState>
+        )
       ) : (
         <Card>
           <Table>
@@ -145,71 +158,96 @@ export default async function DocumentationQueuePage({
               <tr>
                 <Th>Waiting</Th>
                 <Th>Student and branch</Th>
-                <Th>Document</Th>
                 <Th>Stage</Th>
                 <Th>Route</Th>
+                <Th>Documents</Th>
                 <Th>With</Th>
                 <Th />
               </tr>
             </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.id}>
-                  <Td className="whitespace-nowrap text-xs tabular">
-                    {waited(r.uploadedAt)}
-                    {r.dueOn && <span className="block text-2xs text-muted">Wanted by {fmtDate(r.dueOn)}</span>}
-                  </Td>
-                  <Td>
-                    <Link href={`/students/${r.studentId}/documentation`} className="font-medium text-brand-600 hover:underline">{r.studentName}</Link>
-                    <span className="block text-xs text-muted">{r.branch}</span>
-                  </Td>
-                  <Td>{r.label}{r.version > 0 && <span className="ml-2 text-xs text-muted">v{r.version}</span>}</Td>
-                  <Td className="whitespace-nowrap text-xs">{stageLabel(r.stage)}</Td>
-                  <Td>
-                    {r.vendorCode ? (
-                      <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium text-white" style={{ backgroundColor: r.vendorColour ?? "#475569" }}>{r.vendorCode}</span>
-                    ) : (
-                      <span className="text-xs text-muted">No route</span>
-                    )}
-                  </Td>
-                  <Td className="text-xs">
-                    {r.claimedById && claimHeld(r.claimedAt) ? (
-                      <Chip tone="info">{r.claimedById === user.id ? `You, for ${CLAIM_MINUTES} min` : (r.claimedByName ?? "Claimed")}</Chip>
-                    ) : (
-                      <span className="text-muted">Unclaimed</span>
-                    )}
-                    {/* Somebody opened it and went home: whoever runs the desk
-                        can move it rather than wait for the claim to lapse. */}
-                    {canReassign && r.claimedById && r.claimedById !== user.id && (
-                      <Reassign itemId={r.id} holder={r.claimedByName ?? null} officers={officers.filter((o) => o.id !== r.claimedById)} />
-                    )}
-                  </Td>
-                  <Td>
-                    <ItemActions
-                      item={{
-                        id: r.id,
-                        studentId: r.studentId,
-                        label: r.label,
-                        state: r.state,
-                        typeCode: r.typeCode,
-                        source: r.source,
-                        version: r.version,
-                        validityMonths: r.validityMonths,
-                        issuedOn: r.issuedOn,
-                        guidance: r.guidance,
-                        fileName: r.fileName,
-                        documentId: r.documentId,
-                        claimedById: r.claimedById,
-                        claimedAt: r.claimedAt ? r.claimedAt.toISOString() : null,
-                      }}
-                      reasons={reasons.map((x) => ({ code: x.code, label: x.label }))}
-                      canProcess
-                      userId={user.id}
-                    />
-                  </Td>
-                </tr>
-              ))}
-            </tbody>
+            {students.map((g) => (
+              <StudentRows
+                key={g.studentId}
+                studentId={g.studentId}
+                studentName={g.studentName}
+                count={g.items.length}
+                defaultOpen={mine}
+                summary={
+                  <>
+                    <Td className="whitespace-nowrap text-xs tabular">
+                      {waited(g.oldestUploadedAt)}
+                      {g.soonestDueOn && <span className="block text-2xs text-muted">Wanted by {fmtDate(g.soonestDueOn)}</span>}
+                    </Td>
+                    <Td>
+                      <Link href={`/students/${g.studentId}/documentation`} className="font-medium text-brand-600 hover:underline">{g.studentName}</Link>
+                      <span className="block text-xs text-muted">{g.branch}</span>
+                    </Td>
+                    <Td className="whitespace-nowrap text-xs">{stageLabel(g.stage)}</Td>
+                    <Td>
+                      {g.routes.length > 0 ? (
+                        <span className="inline-flex flex-wrap gap-1">{g.routes.map((r) => routeChip(r.code, r.colour))}</span>
+                      ) : (
+                        <span className="text-xs text-muted">No route</span>
+                      )}
+                    </Td>
+                    <Td className="whitespace-nowrap text-sm">{documentCount(g.items.length)}</Td>
+                    <Td className="text-xs">
+                      {g.holders.length > 0 ? <Chip tone="info">{holdersText(g.holders, user.id)}</Chip> : <span className="text-muted">None claimed</span>}
+                    </Td>
+                  </>
+                }
+                documents={g.items.map((r) => (
+                  <tr key={r.id} className="bg-surface-2/40">
+                    <Td className="whitespace-nowrap text-xs tabular">
+                      {waited(r.uploadedAt)}
+                      {r.dueOn && <span className="block text-2xs text-muted">Wanted by {fmtDate(r.dueOn)}</span>}
+                    </Td>
+                    <Td className="pl-6">
+                      {r.label}
+                      {r.version > 0 && <span className="ml-2 text-xs text-muted">v{r.version}</span>}
+                    </Td>
+                    <Td className="whitespace-nowrap text-xs">{stageLabel(r.stage)}</Td>
+                    <Td>{r.vendorCode ? routeChip(r.vendorCode, r.vendorColour) : <span className="text-xs text-muted">No route</span>}</Td>
+                    <Td />
+                    <Td className="text-xs">
+                      {r.claimedById && claimHeld(r.claimedAt) ? (
+                        <Chip tone="info">{r.claimedById === user.id ? `You, for ${CLAIM_MINUTES} min` : (r.claimedByName ?? "Claimed")}</Chip>
+                      ) : (
+                        <span className="text-muted">Unclaimed</span>
+                      )}
+                      {/* Somebody opened it and went home: whoever runs the desk
+                          can move it rather than wait for the claim to lapse. */}
+                      {canReassign && r.claimedById && r.claimedById !== user.id && (
+                        <Reassign itemId={r.id} holder={r.claimedByName ?? null} officers={officers.filter((o) => o.id !== r.claimedById)} />
+                      )}
+                    </Td>
+                    <Td>
+                      <ItemActions
+                        item={{
+                          id: r.id,
+                          studentId: r.studentId,
+                          label: r.label,
+                          state: r.state,
+                          typeCode: r.typeCode,
+                          source: r.source,
+                          version: r.version,
+                          validityMonths: r.validityMonths,
+                          issuedOn: r.issuedOn,
+                          guidance: r.guidance,
+                          fileName: r.fileName,
+                          documentId: r.documentId,
+                          claimedById: r.claimedById,
+                          claimedAt: r.claimedAt ? r.claimedAt.toISOString() : null,
+                        }}
+                        reasons={reasons.map((x) => ({ code: x.code, label: x.label }))}
+                        canProcess
+                        userId={user.id}
+                      />
+                    </Td>
+                  </tr>
+                ))}
+              />
+            ))}
           </Table>
         </Card>
       )}

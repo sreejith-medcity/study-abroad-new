@@ -341,17 +341,61 @@ const waitingLabel = waitingPick.split("|")[1] ?? "";
 const dp = docs.page;
 text = await go(dp, "/documentation");
 check(/waiting/.test(text) && /Oldest first/.test(text) && /Visa stage first/.test(text), "queue: it opens oldest first and offers the visa sort");
-check(/Unclaimed/.test(text), "queue: an unclaimed document says so");
 
-check(text.includes(waitingLabel), `queue: the document waiting is listed (${waitingLabel})`);
-await dp.screenshot({ path: `${OUT}/03-queue.png`, fullPage: true });
+// The header says how much is waiting, in documents and in students.
+const waitingDocs = sql("select count(*) from checklist_items where state in ('UPLOADED','IN_REVIEW')");
+const waitingStudents = sql("select count(distinct student_id) from checklist_items where state in ('UPLOADED','IN_REVIEW')");
+const claimedByMe = sql("select count(*) from checklist_items where state in ('UPLOADED','IN_REVIEW') and claimed_by_id = (select id from users where email = 'documentation@medcityoverseas.test')");
+check(
+  text.includes(`${waitingDocs} document${waitingDocs === "1" ? "" : "s"} from ${waitingStudents} student${waitingStudents === "1" ? "" : "s"} waiting`) && text.includes(`${claimedByMe} claimed by you`),
+  `queue: the header counts documents, students and the viewer's claims (${waitingDocs} from ${waitingStudents}, ${claimedByMe} mine)`,
+);
+
+// One row per student, not one per document: the desk picks up a file.
+const studentRows = dp.locator("tbody[data-student]");
+check(String(await studentRows.count()) === waitingStudents, `queue: one row per student (${await studentRows.count()} rows for ${waitingStudents} students, ${waitingDocs} documents)`);
+check((await dp.locator("tbody[data-student] > tr").count()) === (await studentRows.count()), "queue: the documents are folded away until a row is opened");
 
 const waitingId = waitingPick.split("|")[0] ?? "";
 if (!waitingId) bad("queue: no document is waiting with a file on it; run npm run db:seed");
-// Two students can be waiting on the same document, and claiming one moves it
-// down the oldest-first sort, so the row is found by whose file it is.
-const waitingStudent = sql(`select s.first_name || ' ' || s.last_name from checklist_items ci join students s on s.id = ci.student_id where ci.id = '${waitingId}'`);
-const queueRow = dp.locator("tr").filter({ hasText: waitingStudent }).filter({ hasText: waitingLabel }).first();
+// Two students can be waiting on the same document, so the row is found by
+// whose file it is; the document is then found under that student.
+const waitingStudentId = sql(`select student_id from checklist_items where id = '${waitingId}'`);
+const waitingStudent = sql(`select s.first_name || ' ' || s.last_name from students s where s.id = '${waitingStudentId}'`);
+// A second document from the same student, so the row has something to fold:
+// the seed leaves each student with one waiting, which is one row either way.
+// An optional one, so the later picks of a required document are not robbed.
+const secondPick = sql(
+  `select id || '|' || state from checklist_items where student_id = '${waitingStudentId}' and id <> '${waitingId}' and state in ('NOT_ASKED','ASKED')
+   order by required asc, stage limit 1`,
+);
+const [second, secondState] = secondPick.split("|");
+if (second) sql(`update checklist_items set state = 'UPLOADED', decided_at = null, decided_by_id = null, claimed_by_id = null, claimed_at = null, updated_at = now() where id = '${second}'`);
+const waitingCount = sql(`select count(*) from checklist_items where student_id = '${waitingStudentId}' and state in ('UPLOADED','IN_REVIEW')`);
+check(!second || waitingCount === "2", `queue: the student now has two documents waiting (${waitingCount})`);
+text = await go(dp, "/documentation");
+check(String(await studentRows.count()) === sql("select count(distinct student_id) from checklist_items where state in ('UPLOADED','IN_REVIEW')"), "queue: a second document from the same student does not add a row");
+const studentRow = dp.locator(`tbody[data-student="${waitingStudentId}"]`);
+check((await studentRow.count()) === 1, `queue: ${waitingStudent} has one row`);
+text = await studentRow.innerText();
+check(text.includes(`${waitingCount} document${waitingCount === "1" ? "" : "s"}`), `queue: the row says how many documents are waiting (${waitingCount})`);
+check(!text.includes(waitingLabel), "queue: the document itself is not on the closed row");
+check(/None claimed|with you|with /.test(text), "queue: the row says who holds the student's documents");
+check((await studentRow.locator('a[href$="/documentation"]').getAttribute("href")) === `/students/${waitingStudentId}/documentation`, "queue: the student's name opens their file");
+await dp.screenshot({ path: `${OUT}/03-queue.png`, fullPage: true });
+
+// Opening the row shows the documents, with the same controls as before.
+const opener = studentRow.getByRole("button", { name: /Show the/ });
+check((await opener.getAttribute("aria-expanded")) === "false", "queue: the row has an opener that says it is closed");
+await opener.click();
+check((await studentRow.getByRole("button", { name: /Hide the/ }).getAttribute("aria-expanded")) === "true", "queue: opened, the opener says so");
+check(String(await studentRow.locator("tr").count()) === String(Number(waitingCount) + 1), `queue: opened, one row per waiting document (${waitingCount})`);
+text = await studentRow.innerText();
+check(text.includes(waitingLabel), `queue: the document waiting is listed under its student (${waitingLabel})`);
+check(/Unclaimed/.test(text), "queue: an unclaimed document says so");
+await dp.screenshot({ path: `${OUT}/03b-queue-open.png`, fullPage: true });
+
+const queueRow = studentRow.locator("tr").filter({ hasText: waitingLabel }).first();
 await queueRow.getByRole("button", { name: "Check" }).click();
 check(await dp.getByRole("dialog").filter({ hasText: /Checking/ }).first().isVisible(), "queue: checking opens beside the document");
 await dp.getByRole("button", { name: /Claim it for/ }).click();
@@ -359,8 +403,21 @@ check((await waitSql(`select state from checklist_items where id = '${waitingId}
 const claimedBy = sql(`select u.email from checklist_items ci join users u on u.id = ci.claimed_by_id where ci.id = '${waitingId}'`);
 check(claimedBy === "documentation@medcityoverseas.test", "queue: it is claimed by whoever opened it");
 
+// Mine: the students this person holds a document of, opened, their own claims first.
 text = await go(dp, "/documentation?mine=1");
-check(text.includes(waitingLabel), "queue: Mine shows what this person claimed");
+const mineStudents = sql(
+  `select count(distinct student_id) from checklist_items where state in ('UPLOADED','IN_REVIEW')
+   and claimed_by_id = (select id from users where email = 'documentation@medcityoverseas.test')`,
+);
+check(String(await dp.locator("tbody[data-student]").count()) === mineStudents, `queue: Mine shows only the students with a document claimed by this person (${mineStudents})`);
+const mineRow = dp.locator(`tbody[data-student="${waitingStudentId}"]`);
+check((await mineRow.count()) === 1, "queue: Mine lists the student whose document was just claimed");
+text = await mineRow.innerText();
+check(text.includes(waitingLabel), "queue: Mine opens the row, so what this person claimed is in view");
+check(/1 with you|\d+ with you/.test(text), "queue: the row says how many of them are with you");
+check((await mineRow.locator("tr").nth(1).innerText()).includes("You, for"), "queue: under Mine the documents with you come first");
+await dp.screenshot({ path: `${OUT}/03c-queue-mine.png`, fullPage: true });
+if (second) sql(`update checklist_items set state = '${secondState}' where id = '${second}'`);
 
 // A rejection needs a reason, and the reason is what the student reads.
 // Counted as a change rather than as a total: the refused versions are kept
@@ -368,7 +425,9 @@ check(text.includes(waitingLabel), "queue: Mine shows what this person claimed")
 // finds three. Asserting "one" made the suite fail on its own history.
 const refusedBefore = Number(sql(`select count(*) from checklist_files where item_id = '${waitingId}' and outcome = 'REJECTED'`));
 await go(dp, "/documentation");
-const again = dp.locator("tr").filter({ hasText: waitingStudent }).filter({ hasText: waitingLabel }).first();
+const againRow = dp.locator(`tbody[data-student="${waitingStudentId}"]`);
+await againRow.getByRole("button", { name: /Show the/ }).click();
+const again = againRow.locator("tr").filter({ hasText: waitingLabel }).first();
 await again.getByRole("button", { name: "Check" }).click();
 await dp.getByRole("button", { name: "Reject" }).click();
 check(await waitText(dp, /Pick a reason the student can act on/) || (await dp.locator("text=Pick a reason").first().isVisible()), "check: a rejection without a reason is refused");

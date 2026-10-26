@@ -122,7 +122,12 @@ export type QueueFilters = { branch?: string; stage?: JourneyStage; vendor?: str
 /**
  * The documentation team's queue: everything a file has been sent for and
  * nobody has decided. Oldest first, because the file that has waited longest is
- * the one somebody is chasing.
+ * the one somebody is chasing. One row per document here; the page folds them
+ * into one row per student with lib/documentation-queue.ts.
+ *
+ * "Mine" is the students this person has a claim on, with all of that
+ * student's waiting documents, rather than the claimed documents alone: once
+ * somebody has a student's file open they check the rest of it too.
  */
 export async function documentationQueue(filters: QueueFilters, userId: string) {
   const claimant = schema.users;
@@ -131,7 +136,9 @@ export async function documentationQueue(filters: QueueFilters, userId: string) 
     filters.branch ? eq(st.orgId, filters.branch) : undefined,
     filters.stage ? eq(ci.stage, filters.stage) : undefined,
     filters.vendor ? eq(pr.vendorId, filters.vendor) : undefined,
-    filters.mine === "1" ? eq(ci.claimedById, userId) : undefined,
+    filters.mine === "1"
+      ? sql`exists (select 1 from ${ci} mine where mine.student_id = ${ci.studentId} and mine.claimed_by_id = ${userId} and mine.state in ('UPLOADED', 'IN_REVIEW'))`
+      : undefined,
   ].filter(Boolean);
   const rows = await db
     .select({
@@ -171,7 +178,9 @@ export async function documentationQueue(filters: QueueFilters, userId: string) 
     .leftJoin(schema.documents, eq(schema.documents.id, ci.documentId))
     .where(and(...where))
     .orderBy(filters.sort === "VISA_FIRST" ? desc(ci.stage) : asc(ci.updatedAt))
-    .limit(200);
+    // Generous, because the page shows students and a student cut off halfway
+    // through their documents would read as having fewer waiting than they do.
+    .limit(500);
   const mapped: QueueRow[] = rows.map((r) => ({
     id: r.id,
     studentId: r.studentId,
