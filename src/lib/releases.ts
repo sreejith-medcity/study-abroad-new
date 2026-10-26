@@ -12,6 +12,15 @@ export type Release = { version: string; date: string; changes: string[] };
 
 export const RELEASES: Release[] = [
   {
+    version: "1.5.1",
+    date: "2026-10-26",
+    changes: [
+      "A counsellor sees only their own students everywhere: Students by stage, the search, the deadlines page and the placement tracker now apply the same rule as the students list, so a counsellor's board no longer shows the whole branch.",
+      "A counsellor's dashboard says how many of the branch's students are not given to anyone, which is why their list is longer than their own students.",
+      "The Documentation badge counts students with a document waiting, not documents, and the queue says both.",
+    ],
+  },
+  {
     version: "1.5.0",
     date: "2026-10-26",
     changes: [

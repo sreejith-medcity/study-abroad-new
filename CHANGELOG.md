@@ -5,6 +5,12 @@ version in package.json and adds an entry here and in src/lib/releases.ts (the
 What's new page reads that one). After applying a release, tag it with the
 version so it can be found and rolled back to.
 
+## 1.5.1 (26 October 2026)
+
+- A counsellor sees only their own students everywhere: Students by stage, the search, the deadlines page and the placement tracker now apply the same rule as the students list, so a counsellor's board no longer shows the whole branch.
+- A counsellor's dashboard says how many of the branch's students are not given to anyone, which is why their list is longer than their own students.
+- The Documentation badge counts students with a document waiting, not documents, and the queue says both.
+
 ## 1.5.0 (26 October 2026)
 
 - The draft review points out the drafts worth a look before publishing: a duplicate of another course at the university, a fee far from others at that level in that country, a fee kept in words, no intakes, an odd course length, an odd English score. A Show filter keeps the clean ones apart, and Publish all clean drafts publishes only those.
