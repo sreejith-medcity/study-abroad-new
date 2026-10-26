@@ -4,7 +4,7 @@ import { utcYear } from "@/lib/now";
 import { ActionForm } from "@/components/action-form";
 import { SelectField, TextField, TextareaField } from "@/components/fields";
 import { Button, Input, Select, Textarea } from "@/components/ui";
-import { createEnquiryAction, logFollowUpAction, markEnquiryLostAction, updateEnquiryAction } from "./actions";
+import { createEnquiryAction, logFollowUpAction, markEnquiryLostAction, mergeEnquiryAction, updateEnquiryAction } from "./actions";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const SOURCES: [string, string][] = [
@@ -22,7 +22,6 @@ const STAGES: [string, string][] = [
   ["CONTACTED", "Contacted"],
   ["QUALIFIED", "Qualified"],
   ["COUNSELLING", "In counselling"],
-  ["LOST", "Lost"],
 ];
 
 export type Person = { id: string; name: string; deskLabel: string | null };
@@ -153,12 +152,36 @@ export function FollowUpForm({ enquiryId, stage }: { enquiryId: string; stage: s
   );
 }
 
-export function LostForm({ enquiryId }: { enquiryId: string }) {
+/** Closing as lost: a reason from the list kept in Settings, and a few words if they help. */
+export function LostForm({ enquiryId, reasons }: { enquiryId: string; reasons: { id: string; label: string }[] }) {
   return (
     <ActionForm action={markEnquiryLostAction} hideSubmit className="space-y-2">
       <input type="hidden" name="enquiryId" value={enquiryId} />
-      <Textarea name="lostReason" rows={2} placeholder="Chose another consultant, budget, deferred to next year…" aria-label="Why this enquiry was lost" />
+      <SelectField label="Reason" name="lostReasonId" required defaultValue="">
+        <option value="" disabled>Pick the reason</option>
+        {reasons.map((r) => (
+          <option key={r.id} value={r.id}>{r.label}</option>
+        ))}
+      </SelectField>
+      <Textarea name="lostReason" rows={2} placeholder="Anything worth adding (optional)" aria-label="More about why this enquiry was lost" />
       <Button type="submit" variant="danger" size="sm">Close as lost</Button>
+    </ActionForm>
+  );
+}
+
+/** Folding a duplicate into the enquiry on screen, confirmed with a tick. */
+export function MergeForm({ keepId, removeId, removeName, keepName }: { keepId: string; removeId: string; removeName: string; keepName: string }) {
+  return (
+    <ActionForm action={mergeEnquiryAction} hideSubmit className="space-y-2">
+      <input type="hidden" name="keepId" value={keepId} />
+      <input type="hidden" name="removeId" value={removeId} />
+      <label className="flex items-start gap-2 text-sm">
+        <input type="checkbox" name="confirm" className="mt-0.5" />
+        <span>
+          Fold {removeName}&apos;s enquiry into {keepName}&apos;s. Its history moves here and it is closed as merged.
+        </span>
+      </label>
+      <Button type="submit" variant="secondary" size="sm">Merge into this enquiry</Button>
     </ActionForm>
   );
 }

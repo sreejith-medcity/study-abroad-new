@@ -8,20 +8,30 @@ import { orgUsers } from "@/server/queries";
 import { SOURCE_LABEL, STAGE_LABEL, STAGE_TONE, getEnquiryForUser } from "@/server/enquiries";
 import { Alert, Button, Card, CardHeader, Chip, DataList, LinkButton, PageHeader, Select } from "@/components/ui";
 import { IconChat, IconCheck, IconPlus } from "@/components/icons";
-import { EnquiryForm, FollowUpForm, LostForm } from "../forms";
+import { EnquiryForm, FollowUpForm, LostForm, MergeForm } from "../forms";
+import { possibleDuplicates } from "@/server/enquiry-routing";
+import { mergedInto } from "@/server/enquiry-merge";
+import { lostReasonList } from "@/server/lost-reasons";
+import { lostReasonText } from "@/lib/lost-reasons";
+import { mayMerge } from "@/lib/enquiry-routing";
 import { claimEnquiryAction, setEnquiryStageAction } from "../actions";
 
 export const metadata = { title: "Enquiry" };
 
 const OPEN_STAGES = ["NEW", "CONTACTED", "QUALIFIED", "COUNSELLING"];
 
-export default async function EnquiryPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EnquiryPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ repeat?: string; merged?: string }> }) {
   const user = await requireUser([...PARTNER_ROLES, ...ADMIN_ROLES]);
   const { id } = await params;
+  const sp = await searchParams;
   const enquiry = await getEnquiryForUser(user, id);
-  const [people, countries] = await Promise.all([
+  const merged = enquiry.stage === "MERGED";
+  const [people, countries, reasons, duplicates, folded] = await Promise.all([
     orgUsers(enquiry.orgId),
     db.select({ name: schema.countries.name }).from(schema.countries).orderBy(asc(schema.countries.name)),
+    lostReasonList({ activeOnly: true }),
+    merged ? Promise.resolve({ visible: [], elsewhere: 0 }) : possibleDuplicates(user, enquiry),
+    mergedInto(enquiry.id),
   ]);
 
   const notes = [...enquiry.notes].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
@@ -53,7 +63,7 @@ export default async function EnquiryPage({ params }: { params: Promise<{ id: st
             <LinkButton href={`/students/${enquiry.studentId}/profile`} variant="secondary">
               <IconCheck className="size-4" /> Open student file
             </LinkButton>
-          ) : !isStaff(user) ? (
+          ) : !isStaff(user) && !merged ? (
             <LinkButton href={convertHref}>
               <IconPlus className="size-4" /> Register as student
             </LinkButton>
@@ -61,13 +71,39 @@ export default async function EnquiryPage({ params }: { params: Promise<{ id: st
         }
       />
 
+      {sp.repeat === "note" && (
+        <Alert tone="info" title="Already on the list">
+          This number already had an open enquiry, so what you entered was added to it as a note instead of making a second one.
+        </Alert>
+      )}
+      {sp.repeat === "reopen" && (
+        <Alert tone="info" title="A lost enquiry came back">
+          This number had an enquiry closed as lost. It is reopened, with a note saying it came back.
+        </Alert>
+      )}
+      {sp.merged && <Alert tone="ok" title="Merged">The duplicate&apos;s history is on this enquiry now, and the duplicate is closed as merged.</Alert>}
+      {merged && (
+        <Alert tone="info" title="Merged into another enquiry">
+          {enquiry.mergedInto ? (
+            <>
+              This was folded into{" "}
+              <Link href={`/enquiries/${enquiry.mergedInto.id}`} className="font-medium underline">
+                {enquiry.mergedInto.name}&apos;s enquiry
+              </Link>
+              {enquiry.mergedAt ? ` on ${fmtDate(enquiry.mergedAt)}` : ""}. Its history is there.
+            </>
+          ) : (
+            "It was folded into another enquiry."
+          )}
+        </Alert>
+      )}
       {overdue && (
         <Alert tone="warn" title="Follow up is overdue">
           This was due {fmtDate(enquiry.nextFollowUpAt)}. Log what happened below and set the next date.
         </Alert>
       )}
-      {enquiry.stage === "LOST" && enquiry.lostReason && (
-        <Alert tone="bad" title="Closed as lost">{enquiry.lostReason}</Alert>
+      {enquiry.stage === "LOST" && (
+        <Alert tone="bad" title="Closed as lost">{lostReasonText(enquiry.lostReasonPicked?.label, enquiry.lostReason)}</Alert>
       )}
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
@@ -110,6 +146,7 @@ export default async function EnquiryPage({ params }: { params: Promise<{ id: st
             )}
           </Card>
 
+          {!merged && (
           <Card>
             <CardHeader title="Details" subtitle="Correct anything that changed" />
             <div className="p-4 pt-0">
@@ -136,6 +173,7 @@ export default async function EnquiryPage({ params }: { params: Promise<{ id: st
               />
             </div>
           </Card>
+          )}
         </div>
 
         <div className="space-y-5">
@@ -156,6 +194,7 @@ export default async function EnquiryPage({ params }: { params: Promise<{ id: st
                 { label: "Owner", value: enquiry.assignedTo?.name ?? "Unassigned" },
                 { label: "Last contacted", value: enquiry.lastContactedAt ? fmtDate(enquiry.lastContactedAt) : "Never" },
                 { label: "Next follow up", value: enquiry.nextFollowUpAt ? fmtDate(enquiry.nextFollowUpAt) : "Not set", tone: overdue ? "bad" : undefined },
+                ...(enquiry.repeatCount > 0 ? [{ label: "Came again", value: `${enquiry.repeatCount} time${enquiry.repeatCount === 1 ? "" : "s"}` }] : []),
               ]}
             />
             {open && (
@@ -186,8 +225,60 @@ export default async function EnquiryPage({ params }: { params: Promise<{ id: st
             <Card>
               <CardHeader title="Not going ahead?" subtitle="Closing it keeps the follow-up list honest" />
               <div className="p-4 pt-0">
-                <LostForm enquiryId={enquiry.id} />
+                <LostForm enquiryId={enquiry.id} reasons={reasons} />
               </div>
+            </Card>
+          )}
+
+          {!merged && (duplicates.visible.length > 0 || duplicates.elsewhere > 0) && (
+            <Card>
+              <CardHeader
+                title="Possible duplicates"
+                subtitle="Other enquiries with the same number or email"
+                action={<Chip tone="warn">{duplicates.visible.length + duplicates.elsewhere}</Chip>}
+              />
+              <ul className="divide-y divide-line border-t border-line" aria-label="Possible duplicates">
+                {duplicates.visible.map((d) => (
+                  <li key={d.id} className="space-y-2 p-4">
+                    <div className="flex flex-wrap items-baseline gap-2">
+                      <Link href={`/enquiries/${d.id}`} className="text-sm font-medium text-brand-600 hover:underline">
+                        {d.name}
+                      </Link>
+                      <Chip tone={STAGE_TONE[d.stage]}>{STAGE_LABEL[d.stage]}</Chip>
+                    </div>
+                    <p className="text-xs text-muted">
+                      Same {d.matchedOn} · {d.orgName} · {d.ownerName ?? "Unassigned"} · logged {fmtDate(d.createdAt)}
+                    </p>
+                    {mayMerge(user, enquiry.orgId, d.orgId) && d.stage !== "CONVERTED" && (
+                      <details>
+                        <summary className="cursor-pointer text-xs font-medium text-brand-600">Merge {d.name} into this one</summary>
+                        <div className="mt-2">
+                          <MergeForm keepId={enquiry.id} removeId={d.id} removeName={d.name} keepName={enquiry.name} />
+                        </div>
+                      </details>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              {duplicates.elsewhere > 0 && (
+                <p className="border-t border-line px-4 py-3 text-xs text-muted">
+                  {duplicates.elsewhere} more with another branch. The head office can see {duplicates.elsewhere === 1 ? "it" : "them"} and merge.
+                </p>
+              )}
+            </Card>
+          )}
+
+          {folded.length > 0 && (
+            <Card>
+              <CardHeader title="Merged into this one" subtitle={`${folded.length} duplicate${folded.length === 1 ? "" : "s"}`} />
+              <ul className="divide-y divide-line border-t border-line">
+                {folded.map((f) => (
+                  <li key={f.id} className="p-4 text-sm">
+                    <Link href={`/enquiries/${f.id}`} className="font-medium text-brand-600 hover:underline">{f.name}</Link>
+                    <span className="text-xs text-muted"> · {f.phone}{f.mergedAt ? ` · ${fmtDate(f.mergedAt)}` : ""}</span>
+                  </li>
+                ))}
+              </ul>
             </Card>
           )}
 

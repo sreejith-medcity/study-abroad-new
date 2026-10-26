@@ -7,7 +7,7 @@ import { cn } from "@/components/ui";
  * Settings reads best in a narrow column, except the permissions matrix, which
  * is ten columns wide and unreadable squeezed into one.
  */
-const WIDE = ["/settings/access"];
+const WIDE = ["/settings/access", "/settings/enquiries"];
 
 export function SettingsWidth({ children }: { children: React.ReactNode }) {
   const path = usePathname();

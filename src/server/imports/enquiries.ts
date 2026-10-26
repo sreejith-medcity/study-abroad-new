@@ -1,11 +1,13 @@
 import "server-only";
-import { and, eq, inArray, ne } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, ne } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
+import { notifyUsers } from "@/server/notify";
 import { EMAIL, PHONE, day, num, oneOf, text, type Problems } from "@/lib/import-values";
 import { branchOwner, branchResolver, emptyResult, lineOf, staffByEmail, type ImportResult } from "./common";
 import { isCounsellor } from "@/lib/permissions";
+import { applyRepeat, newRouteMemo, routeNewEnquiry } from "@/server/enquiry-routing";
 
 export const ENQUIRY_COLUMNS = ["branch", "name", "phone", "email", "city", "source", "interest_country", "interest_pathway", "intake_month", "intake_year", "budget_lakhs", "next_follow_up", "counsellor_email", "notes"] as const;
 export const ENQUIRY_EXAMPLE = ["", "Rahul Nair", "+91 94460 11223", "rahul.nair@example.com", "Pala", "WALK_IN", "Germany", "AUSBILDUNG", "9", "2027", "8", "2026-10-05", "", "Plus two science, 78%. Wants nursing Ausbildung."];
@@ -17,8 +19,10 @@ const SOURCE_ALIASES: Record<string, (typeof schema.enquirySource.enumValues)[nu
 
 /**
  * Leads from a sheet or another CRM. A phone number already open as an
- * enquiry in the branch only has its blank fields filled in; anything else
- * becomes a new enquiry with its follow-up date.
+ * enquiry in the branch only has its blank fields filled in; a number the
+ * branch had lost is reopened, with a note saying it came back in the upload;
+ * anything else becomes a new enquiry with its follow-up date, given to whoever
+ * the routing rules pick when the sheet names nobody.
  */
 export async function importEnquiries(user: SessionUser, rows: Record<string, string>[], commit: boolean): Promise<ImportResult> {
   const out = emptyResult();
@@ -67,6 +71,16 @@ export async function importEnquiries(user: SessionUser, rows: Record<string, st
     : [];
   const digits = (s: string) => s.replace(/\D/g, "").slice(-10);
   const byPhone = new Map(open.map((e) => [`${e.orgId}|${digits(e.phone)}`, e]));
+  // Lost ones, newest last so the most recent wins the key.
+  const lost = orgIds.length
+    ? await db
+        .select({ id: schema.enquiries.id, orgId: schema.enquiries.orgId, phone: schema.enquiries.phone, name: schema.enquiries.name, createdAt: schema.enquiries.createdAt, lastContactedAt: schema.enquiries.lastContactedAt })
+        .from(schema.enquiries)
+        .where(and(inArray(schema.enquiries.orgId, orgIds), eq(schema.enquiries.stage, "LOST"), isNull(schema.enquiries.mergedIntoId)))
+        .orderBy(asc(schema.enquiries.createdAt))
+    : [];
+  const lostByPhone = new Map(lost.map((e) => [`${e.orgId}|${digits(e.phone)}`, e]));
+  const reopened = new Set<string>();
   const owners = new Map<string, string | null>();
   for (const id of orgIds) owners.set(id, (await branchOwner(id))?.id ?? null);
 
@@ -82,6 +96,23 @@ export async function importEnquiries(user: SessionUser, rows: Record<string, st
       assignedToId = hit.id;
     }
     const current = byPhone.get(`${plan.orgId}|${digits(plan.phone)}`);
+    const wasLost = current ? undefined : lostByPhone.get(`${plan.orgId}|${digits(plan.phone)}`);
+    if (wasLost) {
+      // The same lost enquiry twice in one file is reopened once.
+      if (reopened.has(wasLost.id)) {
+        out.unchanged++;
+        continue;
+      }
+      reopened.add(wasLost.id);
+      out.updated++;
+      if (out.sample.length < 8) out.sample.push(`Reopen (was lost): ${wasLost.name} · ${plan.phone} · ${plan.orgName}`);
+      if (!commit) continue;
+      await applyRepeat(
+        { kind: "reopen", target: { id: wasLost.id, stage: "LOST", createdAt: wasLost.createdAt, lastContactedAt: wasLost.lastContactedAt }, stageAfter: wasLost.lastContactedAt ? "CONTACTED" : "NEW" },
+        { source: (plan.fields.source as (typeof schema.enquirySource.enumValues)[number] | null) ?? "OTHER", actorId: user.id, via: "in a bulk upload", message: plan.fields.notes as string | null },
+      );
+      continue;
+    }
     if (!current) {
       out.created++;
       if (out.sample.length < 8) out.sample.push(`New: ${plan.fields.name} · ${plan.phone} · ${plan.orgName}`);
@@ -127,12 +158,25 @@ export async function importEnquiries(user: SessionUser, rows: Record<string, st
     if (out.sample.length < 8) out.sample.push(`Fill in: ${current.name} · ${plan.phone} (${Object.keys(set).join(", ")})`);
     if (!commit) continue;
     await db.update(schema.enquiries).set({ ...set, updatedAt: new Date() }).where(eq(schema.enquiries.id, current.id));
+    await db.insert(schema.enquiryNotes).values({ enquiryId: current.id, authorId: user.id, body: `Came in again in a bulk upload; filled in ${Object.keys(set).length} blank detail${Object.keys(set).length === 1 ? "" : "s"}. No second enquiry was made.` });
     await audit(user.id, "enquiry.update", "enquiry", current.id, { source: "bulk upload", fields: Object.keys(set) });
   }
+  const memo = newRouteMemo();
+  const given = new Map<string, number>();
   for (let i = 0; i < toCreate.length; i += 250) {
-    const made = await db.insert(schema.enquiries).values(toCreate.slice(i, i + 250)).returning({ id: schema.enquiries.id });
+    const made = await db.insert(schema.enquiries).values(toCreate.slice(i, i + 250)).returning();
     await db.insert(schema.enquiryNotes).values(made.map((m) => ({ enquiryId: m.id, authorId: user.id, body: "Added from a bulk upload." })));
     await db.insert(schema.auditLogs).values(made.map((m) => ({ actorId: user.id, action: "enquiry.create", entityType: "enquiry", entityId: m.id, meta: { source: "bulk upload" } })));
+    // Rows naming nobody go by the routing rules. One notice per person for
+    // the whole upload, rather than one per row.
+    for (const m of made) {
+      if (m.assignedToId) continue;
+      const picked = await routeNewEnquiry(m, user.id, { memo, notify: false });
+      if (picked && picked.userId !== user.id) given.set(picked.userId, (given.get(picked.userId) ?? 0) + 1);
+    }
+  }
+  for (const [userId, n] of given) {
+    await notifyUsers([userId], n === 1 ? "New enquiry assigned to you" : `${n} new enquiries assigned to you`, "From a bulk upload", "/enquiries?stage=OPEN");
   }
   return out;
 }

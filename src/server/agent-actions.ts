@@ -17,6 +17,7 @@ import { AGENT_CONSENT, checkOwnerId, OWNER_ID_KINDS } from "@/lib/agents";
 import { GSTIN_RE, PAN_RE, gstinMatchesPan } from "@/lib/billing";
 import { activeMou, mouStanding } from "@/server/agents";
 import { openReferralEarning } from "@/server/referral-earnings";
+import { routeEnquiry, routeNewEnquiry } from "@/server/enquiry-routing";
 
 import type { FormState } from "@/lib/form-state";
 export type { FormState };
@@ -507,6 +508,8 @@ export async function submitReferralAction(_: FormState, formData: FormData): Pr
     stageAfter: "NEW",
   });
   await audit(user.id, "referral.submit", "enquiry", row.id, { agent: user.orgId });
+  // The head office's own rules may name somebody at the desk for referrals.
+  await routeNewEnquiry(row, user.id);
   await notifyUsers(await adminIds(), "A sub-agent has referred somebody", `${d.name} · ${d.phone} · from ${user.orgName}`, "/admin/agents?tab=referrals");
   revalidatePath("/referrals");
   return { redirectTo: "/referrals?sent=1" };
@@ -528,10 +531,14 @@ export async function assignReferralAction(_: FormState, formData: FormData): Pr
   if (!branch) return { error: "Pick a branch or the head office." };
 
   // A referral needs an owner inside the branch as well, or it lands in a list
-  // nobody is accountable for.
-  const owner = await db.query.users.findFirst({
-    where: and(eq(schema.users.orgId, branch.id), eq(schema.users.role, "PARTNER"), eq(schema.users.active, true)),
-  });
+  // nobody is accountable for: whoever the branch's routing rules pick, and
+  // the branch head where no rule takes it.
+  const routed = await routeEnquiry({ orgId: branch.id, source: "REFERRAL", pathway: enquiry.interestPathway });
+  const owner = routed
+    ? { id: routed.userId }
+    : await db.query.users.findFirst({
+        where: and(eq(schema.users.orgId, branch.id), eq(schema.users.role, "PARTNER"), eq(schema.users.active, true)),
+      });
 
   await db
     .update(schema.enquiries)
@@ -540,10 +547,10 @@ export async function assignReferralAction(_: FormState, formData: FormData): Pr
   await db.insert(schema.enquiryNotes).values({
     enquiryId,
     authorId: user.id,
-    body: `Given to ${branch.name} to work.`,
+    body: `Given to ${branch.name} to work.${routed ? ` ${routed.userName} holds it, by the routing rule "${routed.ruleName}".` : ""}`,
     stageAfter: enquiry.stage,
   });
-  await audit(user.id, "referral.assign", "enquiry", enquiryId, { to: branch.id });
+  await audit(user.id, "referral.assign", "enquiry", enquiryId, { to: branch.id, owner: owner?.id ?? null, rule: routed?.ruleId ?? null });
   await notifyUsers(await partnerRecipients(branch.id, owner?.id ?? null), "A referral for you to work", `${enquiry.name} · ${enquiry.phone}`, `/enquiries/${enquiryId}`);
   if (enquiry.submittedByOrgId) {
     await notifyUsers(await partnerRecipients(enquiry.submittedByOrgId), "Your referral has been picked up", `${enquiry.name} is with ${branch.name}.`, "/referrals");

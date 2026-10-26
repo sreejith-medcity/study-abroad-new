@@ -127,7 +127,12 @@ export const enquirySource = pgEnum("enquiry_source", [
   "SOCIAL",
   "OTHER",
 ]);
-export const enquiryStage = pgEnum("enquiry_stage", ["NEW", "CONTACTED", "QUALIFIED", "COUNSELLING", "CONVERTED", "LOST"]);
+/**
+ * MERGED is a duplicate folded into another enquiry: its notes moved across and
+ * it points at the one that survived. It is closed, never deleted, so the merge
+ * can be read back.
+ */
+export const enquiryStage = pgEnum("enquiry_stage", ["NEW", "CONTACTED", "QUALIFIED", "COUNSELLING", "CONVERTED", "LOST", "MERGED"]);
 export const commissionBasis = pgEnum("commission_basis", ["PERCENT_TUITION", "FLAT"]);
 /** What has to happen before a route's commission can be invoiced. */
 export const payableOn = pgEnum("payable_on", ["OFFER_ACCEPTED", "FEE_PAID", "VISA_APPROVED", "ENROLMENT_CONFIRMED"]);
@@ -3069,7 +3074,21 @@ export const enquiries = pgTable(
     notes: text("notes"),
     nextFollowUpAt: timestamp("next_follow_up_at", { withTimezone: true }),
     lastContactedAt: timestamp("last_contacted_at", { withTimezone: true }),
+    /**
+     * Free text. Before the reasons list existed this was the whole reason; now
+     * it is the optional detail beside the reason picked from the list.
+     */
     lostReason: text("lost_reason"),
+    /** The reason picked from the list in Settings. Null on enquiries closed before the list existed. */
+    lostReasonId: text("lost_reason_id").references(() => lostReasons.id),
+    /** When it was closed as lost. Null on enquiries closed before this was recorded. */
+    lostAt: timestamp("lost_at", { withTimezone: true }),
+    /** How many times the same person came back after this enquiry was first taken. */
+    repeatCount: integer("repeat_count").notNull().default(0),
+    /** Set on a duplicate folded into another enquiry: the one that survived. */
+    mergedIntoId: text("merged_into_id").references((): AnyPgColumn => enquiries.id),
+    mergedAt: timestamp("merged_at", { withTimezone: true }),
+    mergedById: text("merged_by_id").references(() => users.id),
     /** Answers to the branch's own questions, with each question as it was asked. */
     answers: jsonb("answers").$type<{ question: string; answer: string }[]>().notNull().default(sql`'[]'::jsonb`),
     studentId: text("student_id").references(() => students.id),
@@ -3089,7 +3108,61 @@ export const enquiries = pgTable(
     index("enquiries_follow_up_idx").on(t.nextFollowUpAt),
     index("enquiries_referrer_idx").on(t.submittedByOrgId),
     uniqueIndex("enquiries_crm_id_uq").on(t.crmId),
+    // The last ten digits of the number, which is how a repeat and a duplicate are matched.
+    index("enquiries_phone_key_idx").on(sql`right(regexp_replace(${t.phone}, '[^0-9]', '', 'g'), 10)`),
+    index("enquiries_email_idx").on(sql`lower(${t.email})`),
   ],
+);
+
+/**
+ * Why enquiries are lost, as a list Medcity keeps in Settings, so the reasons
+ * can be counted. A reason in use is switched off rather than removed.
+ */
+export const lostReasons = pgTable(
+  "lost_reasons",
+  {
+    id: id(),
+    label: text("label").notNull(),
+    active: boolean("active").notNull().default(true),
+    sortOrder: integer("sort_order").notNull().default(100),
+    createdById: text("created_by_id").references(() => users.id),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("lost_reasons_label_uq").on(sql`lower(${t.label})`)],
+);
+
+/**
+ * Who a new enquiry goes to when it arrives without an owner.
+ *
+ * Rules are read in order; the first whose source, pathway and branch match
+ * decides. It names a person, or leaves the pick to round robin across the
+ * branch's active counsellors, fewest open enquiries first. A rule with no
+ * branch applies to every organisation and is the head office's to set; a
+ * branch head sets rules for their own branch only.
+ */
+export const enquiryRoutingRules = pgTable(
+  "enquiry_routing_rules",
+  {
+    id: id(),
+    name: text("name").notNull(),
+    /** Null: every organisation's enquiries. */
+    orgId: text("org_id").references(() => organizations.id, { onDelete: "cascade" }),
+    /** Null: any source. */
+    source: enquirySource("source"),
+    /** Null: any pathway, including none given. */
+    pathway: pathway("pathway"),
+    /** PERSON or ROUND_ROBIN. */
+    method: text("method").notNull().default("ROUND_ROBIN"),
+    assignToId: text("assign_to_id").references(() => users.id, { onDelete: "set null" }),
+    priority: integer("priority").notNull().default(100),
+    active: boolean("active").notNull().default(true),
+    /** How many enquiries this rule has given out. */
+    assignedCount: integer("assigned_count").notNull().default(0),
+    createdById: text("created_by_id").references(() => users.id),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("enquiry_routing_rules_idx").on(t.active, t.priority)],
 );
 
 /** One row per contact attempt, so the follow-up history is never overwritten. */
@@ -3736,6 +3809,8 @@ export const payoutRequestsRelations = relations(payoutRequests, ({ one }) => ({
 
 export const enquiriesRelations = relations(enquiries, ({ one, many }) => ({
   org: one(organizations, { fields: [enquiries.orgId], references: [organizations.id] }),
+  lostReasonPicked: one(lostReasons, { fields: [enquiries.lostReasonId], references: [lostReasons.id] }),
+  mergedInto: one(enquiries, { fields: [enquiries.mergedIntoId], references: [enquiries.id] }),
   assignedTo: one(users, { fields: [enquiries.assignedToId], references: [users.id] }),
   createdBy: one(users, { fields: [enquiries.createdById], references: [users.id], relationName: "enquiryCreator" }),
   student: one(students, { fields: [enquiries.studentId], references: [students.id] }),

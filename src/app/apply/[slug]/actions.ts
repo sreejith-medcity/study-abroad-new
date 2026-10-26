@@ -2,7 +2,7 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { and, eq, gte } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { audit } from "@/lib/audit";
@@ -10,6 +10,7 @@ import { orgForPrepSlug, orgForPublicSlug } from "@/server/public-form";
 import { answerError } from "@/lib/signup-questions";
 import { rateLimit } from "@/server/rate-limit";
 import { notifyUsers, partnerRecipients } from "@/server/notify";
+import { applyRepeat, findRepeat, routeNewEnquiry } from "@/server/enquiry-routing";
 
 export type PublicFormState = { error?: string; fieldErrors?: Record<string, string[] | undefined> };
 
@@ -68,12 +69,14 @@ export async function submitPublicEnquiryAction(_: PublicFormState, formData: Fo
   const byPhone = rateLimit(`apply:phone:${d.phone}`, { limit: 2, windowMs: 24 * 60 * 60 * 1000, blockMs: 24 * 60 * 60 * 1000 });
   if (!byPhone.allowed) return { error: "We already have your enquiry. Someone from the branch will call you." };
 
-  // The same number twice in a day is the same person, not a new enquiry.
-  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const existing = await db.query.enquiries.findFirst({
-    where: and(eq(schema.enquiries.orgId, org.id), eq(schema.enquiries.phone, d.phone), gte(schema.enquiries.createdAt, dayAgo)),
-  });
-  if (existing) redirect(back);
+  // The same number at this branch is the same person, not a new enquiry: an
+  // open enquiry is told they came again, and a lost one is reopened. The
+  // person filling the form sees the same thank-you either way.
+  const repeat = await findRepeat(org.id, d.phone);
+  if (repeat.kind !== "create") {
+    await applyRepeat(repeat, { source: "WEBSITE", actorId: null, via: `through the branch ${prep ? "test preparation page" : "form"}`, message: d.message });
+    redirect(back);
+  }
 
   const owner = await db.query.users.findFirst({
     where: and(eq(schema.users.orgId, org.id), eq(schema.users.role, "PARTNER"), eq(schema.users.active, true)),
@@ -106,6 +109,7 @@ export async function submitPublicEnquiryAction(_: PublicFormState, formData: Fo
   });
   await audit(null, "enquiry.public_submit", "enquiry", row.id, { org: org.name, source: "WEBSITE" });
   await notifyUsers(await partnerRecipients(org.id), prep ? "New test prep enquiry" : "New enquiry from your form", `${d.name} · ${d.phone}`, `/enquiries/${row.id}`);
+  await routeNewEnquiry(row, null);
 
   redirect(back);
 }

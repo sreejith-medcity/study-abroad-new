@@ -211,7 +211,8 @@ export async function referralsFor(orgId: string) {
     .leftJoin(o, eq(o.id, e.orgId))
     .leftJoin(s, eq(s.id, e.studentId))
     .leftJoin(re, eq(re.studentId, e.studentId))
-    .where(eq(e.submittedByOrgId, orgId))
+    // A merged enquiry lives on as the one it was folded into, which carries the referrer.
+    .where(and(eq(e.submittedByOrgId, orgId), sql`${e.stage} <> 'MERGED'`))
     .orderBy(desc(e.createdAt))
     .limit(300);
 }
@@ -220,7 +221,7 @@ export async function referralCounts(orgId: string) {
   const rows = await db
     .select({ stage: schema.enquiries.stage, n: sql<number>`count(*)::int` })
     .from(schema.enquiries)
-    .where(eq(schema.enquiries.submittedByOrgId, orgId))
+    .where(and(eq(schema.enquiries.submittedByOrgId, orgId), sql`${schema.enquiries.stage} <> 'MERGED'`))
     .groupBy(schema.enquiries.stage);
   const by = Object.fromEntries(rows.map((r) => [r.stage, Number(r.n)]));
   const total = Object.values(by).reduce((a, b) => a + b, 0);

@@ -15,6 +15,7 @@ export const STAGE_LABEL: Record<EnquiryStage, string> = {
   COUNSELLING: "In counselling",
   CONVERTED: "Converted",
   LOST: "Lost",
+  MERGED: "Merged",
 };
 
 export const STAGE_TONE: Record<EnquiryStage, "neutral" | "info" | "warn" | "ok" | "bad" | "brand"> = {
@@ -24,6 +25,7 @@ export const STAGE_TONE: Record<EnquiryStage, "neutral" | "info" | "warn" | "ok"
   COUNSELLING: "warn",
   CONVERTED: "ok",
   LOST: "bad",
+  MERGED: "neutral",
 };
 
 /** Stages that still need a follow-up. */
@@ -64,7 +66,9 @@ export function readEnquiryFilters(sp: Record<string, string | string[] | undefi
 }
 
 export function enquiryWhere(user: SessionUser, f: EnquiryFilters): SQL | undefined {
-  const conds: (SQL | undefined)[] = [orgScope(user, e.orgId)];
+  // A merged enquiry is the same person as the one it was folded into, so it
+  // is listed only when somebody asks for the merged ones.
+  const conds: (SQL | undefined)[] = [orgScope(user, e.orgId), f.stage === "MERGED" ? undefined : sql`${e.stage} <> 'MERGED'`];
   if (f.q) {
     const like = `%${f.q}%`;
     conds.push(or(ilike(e.name, like), ilike(e.phone, like), ilike(e.email, like), ilike(e.city, like)));
@@ -115,6 +119,9 @@ export function enquiryBase() {
     .$dynamic();
 }
 
+/** Everything but the enquiries folded into another, which would count one person twice. */
+const notMerged = sql`${e.stage} <> 'MERGED'`;
+
 /** Headline counts for the list page and the dashboards. */
 export async function enquiryCounts(user: SessionUser, extra?: SQL) {
   // postgres-js will not bind a Date inside a raw fragment, so pass ISO text and cast.
@@ -134,7 +141,7 @@ export async function enquiryCounts(user: SessionUser, extra?: SQL) {
       lost: sql<number>`(count(*) filter (where ${e.stage} = 'LOST'))::int`,
     })
     .from(e)
-    .where(and(orgScope(user, e.orgId), extra));
+    .where(and(orgScope(user, e.orgId), notMerged, extra));
   return row;
 }
 
@@ -144,7 +151,7 @@ export async function stageCounts(user: SessionUser) {
     .from(e)
     .where(orgScope(user, e.orgId))
     .groupBy(e.stage);
-  const out = { NEW: 0, CONTACTED: 0, QUALIFIED: 0, COUNSELLING: 0, CONVERTED: 0, LOST: 0 } as Record<EnquiryStage, number>;
+  const out = { NEW: 0, CONTACTED: 0, QUALIFIED: 0, COUNSELLING: 0, CONVERTED: 0, LOST: 0, MERGED: 0 } as Record<EnquiryStage, number>;
   for (const r of rows) out[r.stage] = Number(r.n);
   return out;
 }
@@ -153,7 +160,7 @@ export async function sourceMix(user: SessionUser) {
   const rows = await db
     .select({ source: e.source, n: count() })
     .from(e)
-    .where(orgScope(user, e.orgId))
+    .where(and(orgScope(user, e.orgId), notMerged))
     .groupBy(e.source)
     .orderBy(desc(count()));
   return rows.map((r) => ({ label: SOURCE_LABEL[r.source], value: Number(r.n), href: `/enquiries?source=${r.source}` }));
@@ -176,7 +183,7 @@ export async function followUpQueue(user: SessionUser, limit = 6) {
 export async function getEnquiryForUser(user: SessionUser, id: string) {
   const row = await db.query.enquiries.findFirst({
     where: eq(e.id, id),
-    with: { assignedTo: true, createdBy: true, org: true, student: true, notes: { with: { author: true } } },
+    with: { assignedTo: true, createdBy: true, org: true, student: true, lostReasonPicked: true, mergedInto: true, notes: { with: { author: true } } },
   });
   if (!row) notFound();
   if (!isStaff(user) && row.orgId !== user.orgId) notFound();
@@ -195,7 +202,7 @@ export async function enquiryTrend(user: SessionUser, months = 6) {
       converted: sql<number>`(count(*) filter (where ${e.stage} = 'CONVERTED'))::int`,
     })
     .from(e)
-    .where(and(orgScope(user, e.orgId), gte(e.createdAt, from)))
+    .where(and(orgScope(user, e.orgId), notMerged, gte(e.createdAt, from)))
     .groupBy(sql`1`);
   const map = new Map(rows.map((r) => [r.m, r]));
   const out: { label: string; a: number; b: number }[] = [];

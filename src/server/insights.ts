@@ -145,7 +145,8 @@ export async function enquiryEffectiveness(user: SessionUser) {
       lost: sql<number>`(count(*) filter (where ${en.stage} = 'LOST'))::int`,
     })
     .from(en)
-    .where(orgScope(user, en.orgId))
+    // A merged duplicate is the same person as the enquiry it was folded into.
+    .where(and(orgScope(user, en.orgId), sql`${en.stage} <> 'MERGED'`))
     .groupBy(en.source)
     .orderBy(sql`2 desc`);
   return rows.map((r) => ({ source: r.source, total: Number(r.total), converted: Number(r.converted), lost: Number(r.lost) }));

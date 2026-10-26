@@ -1,9 +1,11 @@
 import "server-only";
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, eq, isNull, ne, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { DATE_FIELDS, conflictSummary, planFieldUpdates, type FieldPlan, type SyncableField } from "@/lib/crm-link";
 import { tryMintStudentId } from "@/server/medcity-id";
 import { adminIds, notifyUsers } from "@/server/notify";
+import { audit } from "@/lib/audit";
+import { applyRepeat, findRepeat, routeNewEnquiry } from "@/server/enquiry-routing";
 
 /**
  * Taking a student or a lead in from Medcity's own CRM.
@@ -201,6 +203,16 @@ export async function applyIncomingEnquiry(e: IncomingEnquiry): Promise<{ ok: tr
   });
   if (!anybody) return { ok: false, status: 500, why: `${owner.name} has nobody active to own the lead` };
 
+  // The same number already at that branch: a note on the open enquiry, or
+  // the lost one reopened, instead of a second enquiry. The CRM's id goes on
+  // the enquiry it landed on when that has none, so a retry finds it.
+  const repeat = await findRepeat(owner.id, e.phone.trim());
+  if (repeat.kind !== "create") {
+    const out = await applyRepeat(repeat, { source: "OTHER", actorId: null, via: `from Medcity's CRM as ${e.crmId}`, message: e.notes });
+    await db.update(schema.enquiries).set({ crmId: e.crmId }).where(and(eq(schema.enquiries.id, out.enquiryId), isNull(schema.enquiries.crmId)));
+    return { ok: true, enquiryId: out.enquiryId, created: false };
+  }
+
   const [row] = await db
     .insert(schema.enquiries)
     .values({
@@ -224,5 +236,7 @@ export async function applyIncomingEnquiry(e: IncomingEnquiry): Promise<{ ok: tr
     body: `Came from Medcity's CRM as ${e.crmId}.`,
     stageAfter: "NEW",
   });
+  await audit(null, "enquiry.create", "enquiry", row.id, { source: "crm", crmId: e.crmId });
+  await routeNewEnquiry(row, null);
   return { ok: true, enquiryId: row.id, created: true };
 }

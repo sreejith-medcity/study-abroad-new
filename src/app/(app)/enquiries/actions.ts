@@ -10,11 +10,17 @@ import { audit } from "@/lib/audit";
 import { ADMIN_ROLES, PARTNER_ROLES, isCounsellor, isStaff } from "@/lib/permissions";
 import { notifyUsers } from "@/server/notify";
 import { getEnquiryForUser, STAGE_LABEL } from "@/server/enquiries";
+import { applyRepeat, findRepeat, routeNewEnquiry } from "@/server/enquiry-routing";
+import { mergeEnquiries } from "@/server/enquiry-merge";
+import { isOpenStage } from "@/lib/enquiry-routing";
 
 import type { FormState } from "@/lib/form-state";
 export type { FormState };
 
 const ROLES = [...PARTNER_ROLES, ...ADMIN_ROLES] as const;
+
+const MERGED_REFUSAL = "This enquiry was merged into another. Work it there.";
+const LOST_HINT = "To close it as lost, use Not going ahead, so the reason is recorded.";
 
 const optionalText = z.string().trim().max(200).optional().transform((v) => v || null);
 const optionalDate = z
@@ -58,12 +64,14 @@ export async function createEnquiryAction(_: FormState, formData: FormData): Pro
   const orgId = isStaff(user) ? String(formData.get("orgId") || user.orgId) : user.orgId;
   if (!(await assertAssignee(orgId, d.assignedToId))) return { error: "Pick someone from that organisation." };
 
-  // Same number, same branch, still open: treat it as the existing enquiry.
-  const duplicate = await db.query.enquiries.findFirst({
-    where: and(eq(schema.enquiries.orgId, orgId), eq(schema.enquiries.phone, d.phone)),
-  });
-  if (duplicate && duplicate.stage !== "LOST" && duplicate.stage !== "CONVERTED") {
-    return { error: `${duplicate.name} is already on the list with this number. Open that enquiry and log a follow-up instead.` };
+  // The same number at the same branch is the same person: an open enquiry
+  // takes what was typed as a note, and a lost one is reopened, rather than
+  // a second enquiry being made beside it.
+  const repeat = await findRepeat(orgId, d.phone);
+  if (repeat.kind !== "create") {
+    const out = await applyRepeat(repeat, { source: d.source, actorId: user.id, via: `entered by ${user.name}`, message: d.notes });
+    revalidatePath("/enquiries");
+    redirect(`/enquiries/${out.enquiryId}?repeat=${out.kind}`);
   }
 
   const [row] = await db
@@ -91,7 +99,10 @@ export async function createEnquiryAction(_: FormState, formData: FormData): Pro
     await db.insert(schema.enquiryNotes).values({ enquiryId: row.id, authorId: user.id, body: d.notes });
   }
   await audit(user.id, "enquiry.create", "enquiry", row.id, { source: d.source });
-  if (row.assignedToId && row.assignedToId !== user.id) {
+  if (!row.assignedToId) {
+    // Nobody named: the routing rules decide, and tell the person they pick.
+    await routeNewEnquiry(row, user.id);
+  } else if (row.assignedToId !== user.id) {
     await notifyUsers([row.assignedToId], "New enquiry assigned to you", `${row.name} · ${row.phone}`, `/enquiries/${row.id}`);
   }
   redirect(`/enquiries/${row.id}`);
@@ -101,6 +112,7 @@ export async function updateEnquiryAction(_: FormState, formData: FormData): Pro
   const user = await requireUser([...ROLES]);
   const id = String(formData.get("enquiryId"));
   const existing = await getEnquiryForUser(user, id);
+  if (existing.stage === "MERGED") return { error: MERGED_REFUSAL };
   const parsed = enquiryShape.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Check the highlighted fields." };
   const d = parsed.data;
@@ -145,6 +157,8 @@ export async function logFollowUpAction(_: FormState, formData: FormData): Promi
   const d = parsed.data;
   const enquiry = await getEnquiryForUser(user, d.enquiryId);
   if (enquiry.stage === "CONVERTED") return { error: "This enquiry is already a student." };
+  if (enquiry.stage === "MERGED") return { error: MERGED_REFUSAL };
+  if (d.stage === "LOST" || d.stage === "MERGED" || d.stage === "CONVERTED") return { fieldErrors: { stage: [LOST_HINT] }, error: LOST_HINT };
 
   const stage = d.stage ?? (enquiry.stage === "NEW" ? "CONTACTED" : enquiry.stage);
   await db.insert(schema.enquiryNotes).values({ enquiryId: enquiry.id, authorId: user.id, body: d.body, stageAfter: stage });
@@ -167,9 +181,11 @@ export async function setEnquiryStageAction(formData: FormData) {
   const user = await requireUser([...ROLES]);
   const id = String(formData.get("enquiryId"));
   const stage = String(formData.get("stage")) as schema.EnquiryStage;
-  if (!schema.enquiryStage.enumValues.includes(stage)) return;
+  // Only between the open stages: lost needs its reason, and converted and
+  // merged each have their own action.
+  if (!isOpenStage(stage)) return;
   const enquiry = await getEnquiryForUser(user, id);
-  if (enquiry.stage === stage) return;
+  if (enquiry.stage === stage || !isOpenStage(enquiry.stage)) return;
   await db
     .update(schema.enquiries)
     .set({ stage, updatedAt: new Date(), ...(stage === "LOST" ? { nextFollowUpAt: null } : {}) })
@@ -187,33 +203,64 @@ export async function setEnquiryStageAction(formData: FormData) {
 
 const lostShape = z.object({
   enquiryId: z.string().min(1),
-  lostReason: z.string().trim().min(3, "Say why, so the branch can learn from it").max(300),
+  lostReasonId: z.string().trim().min(1, "Pick the reason from the list"),
+  lostReason: z.string().trim().max(300).optional().transform((v) => v || null),
 });
 
+/**
+ * Closing an enquiry as lost. The reason is picked from the list kept in
+ * Settings, so it can be counted; a few words beside it are optional.
+ */
 export async function markEnquiryLostAction(_: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser([...ROLES]);
   const parsed = lostShape.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Check the highlighted fields." };
+  if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Pick the reason it was lost." };
   const enquiry = await getEnquiryForUser(user, parsed.data.enquiryId);
+  if (!isOpenStage(enquiry.stage)) return { error: `This enquiry is ${STAGE_LABEL[enquiry.stage].toLowerCase()} already.` };
+  const reason = await db.query.lostReasons.findFirst({
+    where: and(eq(schema.lostReasons.id, parsed.data.lostReasonId), eq(schema.lostReasons.active, true)),
+  });
+  if (!reason) return { fieldErrors: { lostReasonId: ["Pick a reason from the list"] }, error: "That reason is no longer on the list. Pick another." };
+  const detail = parsed.data.lostReason;
   await db
     .update(schema.enquiries)
-    .set({ stage: "LOST", lostReason: parsed.data.lostReason, nextFollowUpAt: null, updatedAt: new Date() })
+    .set({ stage: "LOST", lostReasonId: reason.id, lostReason: detail, lostAt: new Date(), nextFollowUpAt: null, updatedAt: new Date() })
     .where(eq(schema.enquiries.id, enquiry.id));
   await db.insert(schema.enquiryNotes).values({
     enquiryId: enquiry.id,
     authorId: user.id,
-    body: `Closed as lost: ${parsed.data.lostReason}`,
+    body: `Closed as lost: ${reason.label}${detail ? `. ${detail}` : ""}`,
     stageAfter: "LOST",
   });
-  await audit(user.id, "enquiry.lost", "enquiry", enquiry.id, { reason: parsed.data.lostReason });
+  await audit(user.id, "enquiry.lost", "enquiry", enquiry.id, { reasonId: reason.id, reason: reason.label, detail });
   revalidatePath(`/enquiries/${enquiry.id}`);
+  revalidatePath("/enquiries");
   return { ok: "Closed as lost." };
+}
+
+/**
+ * Folding a duplicate into the enquiry on screen. The head office may merge
+ * any two; a branch head two of their own branch's.
+ */
+export async function mergeEnquiryAction(_: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser([...ROLES]);
+  const keepId = String(formData.get("keepId") ?? "");
+  const removeId = String(formData.get("removeId") ?? "");
+  if (!keepId || !removeId) return { error: "Pick the enquiry to merge." };
+  if (formData.get("confirm") !== "on") return { fieldErrors: { confirm: ["Tick to confirm"] }, error: "Tick the box to confirm the merge." };
+  const out = await mergeEnquiries(user, keepId, removeId);
+  if (!out.ok) return { error: out.why };
+  revalidatePath("/enquiries");
+  revalidatePath(`/enquiries/${out.keepId}`);
+  revalidatePath(`/enquiries/${removeId}`);
+  return { ok: `Merged. ${out.moved} history entr${out.moved === 1 ? "y" : "ies"} moved across.`, redirectTo: `/enquiries/${out.keepId}?merged=1` };
 }
 
 export async function claimEnquiryAction(formData: FormData) {
   const user = await requireUser([...ROLES]);
   const id = String(formData.get("enquiryId"));
   const enquiry = await getEnquiryForUser(user, id);
+  if (enquiry.stage === "MERGED") return;
   await db
     .update(schema.enquiries)
     .set({ assignedToId: user.id, updatedAt: new Date() })

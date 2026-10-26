@@ -8,6 +8,8 @@ import { viewsWithPins } from "@/server/views";
 import { fmtDate, intakeLabel } from "@/lib/format";
 import { ADMIN_ROLES, PARTNER_ROLES, isStaff } from "@/lib/permissions";
 import { orgUsers } from "@/server/queries";
+import { mayManageRouting } from "@/lib/enquiry-routing";
+import { mayReadLostReport } from "@/server/lost-reasons";
 import {
   SOURCE_LABEL,
   STAGE_LABEL,
@@ -74,9 +76,16 @@ export default async function EnquiriesPage({ searchParams }: { searchParams: Pr
         title="Enquiries"
         subtitle="Every walk-in, call and message before it becomes a student file. Log the follow-up, then convert when they are ready."
         actions={
-          <LinkButton href="/enquiries/new">
-            <IconPlus className="size-4" /> New enquiry
-          </LinkButton>
+          <>
+            {mayManageRouting(user) && (
+              <LinkButton href="/settings/enquiries" variant="secondary">
+                Routing and lost reasons
+              </LinkButton>
+            )}
+            <LinkButton href="/enquiries/new">
+              <IconPlus className="size-4" /> New enquiry
+            </LinkButton>
+          </>
         }
       />
 
@@ -154,7 +163,7 @@ export default async function EnquiriesPage({ searchParams }: { searchParams: Pr
                 </thead>
                 <tbody>
                   {list.map((r) => {
-                    const overdue = r.nextFollowUpAt && r.nextFollowUpAt.getTime() < now && !["CONVERTED", "LOST"].includes(r.stage);
+                    const overdue = r.nextFollowUpAt && r.nextFollowUpAt.getTime() < now && !["CONVERTED", "LOST", "MERGED"].includes(r.stage);
                     return (
                       <tr key={r.id}>
                         <Td>
@@ -182,7 +191,7 @@ export default async function EnquiriesPage({ searchParams }: { searchParams: Pr
                         <Td className="whitespace-nowrap">
                           {r.nextFollowUpAt ? (
                             <Chip tone={overdue ? "bad" : "neutral"}>{fmtDate(r.nextFollowUpAt)}</Chip>
-                          ) : ["CONVERTED", "LOST"].includes(r.stage) ? (
+                          ) : ["CONVERTED", "LOST", "MERGED"].includes(r.stage) ? (
                             <span className="text-xs text-muted">Closed {fmtDate(r.createdAt)}</span>
                           ) : (
                             <Chip tone="warn">No date</Chip>
@@ -235,7 +244,7 @@ export default async function EnquiriesPage({ searchParams }: { searchParams: Pr
                 { label: "Enquiries logged", value: counts.total },
                 { label: "Became students", value: counts.converted, tone: "ok" },
                 { label: "Conversion rate", value: counts.total ? `${Math.round((counts.converted / counts.total) * 100)}%` : "0%" },
-                { label: "Closed as lost", value: counts.lost, tone: counts.lost ? "warn" : undefined },
+                { label: "Closed as lost", value: counts.lost, tone: counts.lost ? "warn" : undefined, href: mayReadLostReport(user) ? "/reports/lost-reasons" : undefined },
                 { label: "Still open", value: counts.open },
               ]}
             />

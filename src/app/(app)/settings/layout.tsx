@@ -1,5 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { canManageSettings, ROLE_LABEL } from "@/lib/permissions";
+import { mayManageRouting } from "@/lib/enquiry-routing";
 import { PageHeader } from "@/components/ui";
 import { SubTabs } from "@/components/tabs";
 import { SettingsWidth } from "./width";
@@ -16,6 +17,8 @@ export default async function SettingsLayout({ children }: { children: React.Rea
           { href: "/settings/students", label: "Students" },
         ]
       : []),
+    // Who new enquiries go to and why enquiries are lost: the head office, and a branch head for their branch.
+    ...(mayManageRouting(user) ? [{ href: "/settings/enquiries", label: "Enquiries" }] : []),
     ...(canManageSettings(user) ? [{ href: "/settings/platform", label: "Platform" }, { href: "/settings/access", label: "Who may do what" }] : []),
   ];
 

@@ -181,6 +181,7 @@ const ADMIN_NAV: NavGroup[] = [
     items: [
       { href: "/admin/insights", label: "Insights", icon: "insights" },
       { href: "/journal/report", label: "Day end reports", icon: "deadlines" },
+      { href: "/reports/lost-reasons", label: "Lost reasons", icon: "enquiry" },
       { href: "/targets", label: "Targets", icon: "insights" },
       { href: "/learning", label: "Learning resources", icon: "learning" },
       { href: "/support", label: "Help desk", icon: "support" },
@@ -326,6 +327,7 @@ const MANAGEMENT_NAV: NavGroup[] = [
       { href: "/admin/commission", label: "Commission", icon: "commission" },
       { href: "/admin/insights", label: "Insights", icon: "insights" },
       { href: "/journal/report", label: "Day end reports", icon: "deadlines" },
+      { href: "/reports/lost-reasons", label: "Lost reasons", icon: "enquiry" },
       { href: "/learning", label: "Learning resources", icon: "learning" },
     ],
   },
@@ -400,6 +402,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         // month of their own branch's day end figures.
         ...(user.role === "PARTNER" ? [{ href: "/targets", label: "Targets", icon: "insights" as const }] : []),
         ...(user.role === "PARTNER" && journalIssued(user.role, user.orgType) ? [{ href: "/journal/report", label: "Day end figures", icon: "deadlines" as const }] : []),
+        // Why the branch's enquiries were lost.
+        ...(user.role === "PARTNER" ? [{ href: "/reports/lost-reasons", label: "Lost reasons", icon: "enquiry" as const }] : []),
         { href: "/settings", label: "Settings", icon: "settings" },
       ],
     },
