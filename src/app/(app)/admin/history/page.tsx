@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { APP_ROLES } from "@/lib/permissions";
 import { fmtDateTime } from "@/lib/format";
-import { ENTITY_LABEL, fieldLabel, readHistoryFilters, showValue, type HistoryEntity } from "@/lib/record-history";
+import { ENTITY_LABEL, feedWindow, fieldLabel, readFeedCursor, readHistoryFilters, showValue, type HistoryEntity } from "@/lib/record-history";
 import { can } from "@/server/capabilities";
 import { feedBranches, feedViewer, mayReadLedger } from "@/server/history-feed";
 import { feedPage, feedPeople, feedWhere, nameBook, recordTitles } from "@/server/record-history";
@@ -23,18 +23,18 @@ const PAGE = 50;
  */
 export default async function ChangeHistoryPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const user = await requireUser([...APP_ROLES]);
-  const f = readHistoryFilters(await searchParams);
-  const page = Math.max(1, Number(f.page ?? 1));
+  const sp = await searchParams;
+  const f = readHistoryFilters(sp);
+  const cursor = readFeedCursor(sp);
   const viewer = await feedViewer(user);
   const where = feedWhere(viewer, f);
-  const [rows, people, branches, fullPassport] = await Promise.all([
-    feedPage(where, PAGE + 1, (page - 1) * PAGE),
+  const [fetched, people, branches, fullPassport] = await Promise.all([
+    feedPage(where, PAGE + 1, cursor),
     feedPeople(viewer),
     viewer.headOffice ? feedBranches() : Promise.resolve([]),
     can(user, "SEE_FULL_PASSPORT"),
   ]);
-  const hasNext = rows.length > PAGE;
-  const list = rows.slice(0, PAGE);
+  const { rows: list, older, newer } = feedWindow(fetched, PAGE, cursor);
   const [names, titles] = await Promise.all([nameBook(list), recordTitles(list)]);
   const qs = (extra: Record<string, string>) => new URLSearchParams({ ...(f as Record<string, string>), ...extra }).toString();
   const scopeLine = viewer.headOffice
@@ -148,17 +148,24 @@ export default async function ChangeHistoryPage({ searchParams }: { searchParams
             </tbody>
           </Table>
         )}
-        {(page > 1 || hasNext) && (
-          <div className="flex items-center justify-between border-t border-line px-4 py-3 text-md">
-            <span className="text-muted">Page {page}, newest first</span>
+        {(cursor || older || newer) && (
+          <div className="flex items-center justify-between border-t border-line px-4 py-3 text-md" data-history-pager>
+            <span className="text-muted">
+              Newest first.{" "}
+              {cursor && (
+                <Link href={`/admin/history?${qs({})}`} className="font-medium text-brand-600 hover:underline">
+                  Back to the newest
+                </Link>
+              )}
+            </span>
             <div className="flex gap-2">
-              {page > 1 && (
-                <LinkButton variant="secondary" href={`/admin/history?${qs({ page: String(page - 1) })}`}>
+              {newer && (
+                <LinkButton variant="secondary" href={`/admin/history?${qs({ before: newer })}`}>
                   Previous
                 </LinkButton>
               )}
-              {hasNext && (
-                <LinkButton variant="secondary" href={`/admin/history?${qs({ page: String(page + 1) })}`}>
+              {older && (
+                <LinkButton variant="secondary" href={`/admin/history?${qs({ after: older })}`}>
                   Next
                 </LinkButton>
               )}

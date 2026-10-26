@@ -1,7 +1,8 @@
 import { and, asc, desc, eq, exists, gte, inArray, lt, or, sql, type SQL } from "drizzle-orm";
 import type { PgUpdateSetSource } from "drizzle-orm/pg-core";
 import { db, schema } from "@/db";
-import { dayRange, idsToName, trackedChanges, type FieldChange, type HistoryEntity, type HistoryFilters, type NameBook } from "@/lib/record-history";
+import { dayRange, idsToName, numberVersions, trackedChanges, VERSION_LIMIT, type FeedCursor, type FieldChange, type HistoryEntity, type HistoryFilters, type NameBook } from "@/lib/record-history";
+import { APP_ROLES } from "@/lib/permissions";
 import { appendLedger, type LedgerInput } from "@/server/ledger";
 
 /**
@@ -210,16 +211,35 @@ export type VersionRow = {
   by: string | null;
 };
 
-/** Every version of one record, oldest first, numbered from 1. */
-export async function versionsOf(entity: HistoryEntity, entityId: string): Promise<VersionRow[]> {
+/**
+ * The newest versions of one record (VERSION_LIMIT of them), oldest first,
+ * numbered as they stand in its whole history from 1. When the record has
+ * more, the oldest listed is numbered above 1, which the tab says.
+ */
+export async function versionsOf(entity: HistoryEntity, entityId: string, limit = VERSION_LIMIT): Promise<VersionRow[]> {
   const v = schema.recordVersions;
   const rows = await db
-    .select({ id: v.id, entity: v.entity, entityId: v.entityId, changes: v.changes, action: v.action, createdAt: v.createdAt, byId: v.changedById, by: schema.users.name })
+    .select({
+      id: v.id,
+      entity: v.entity,
+      entityId: v.entityId,
+      changes: v.changes,
+      action: v.action,
+      createdAt: v.createdAt,
+      byId: v.changedById,
+      by: schema.users.name,
+      total: sql<number>`(count(*) over ())::int`,
+    })
     .from(v)
     .leftJoin(schema.users, eq(v.changedById, schema.users.id))
     .where(and(eq(v.entity, entity), eq(v.entityId, entityId)))
-    .orderBy(asc(v.createdAt), asc(v.id));
-  return rows.map((r, i) => ({ ...r, n: i + 1 }));
+    .orderBy(desc(v.createdAt), desc(v.id))
+    .limit(limit);
+  const total = rows.length ? Number(rows[0].total) : 0;
+  return numberVersions(
+    rows.map((r) => ({ id: r.id, entity: r.entity, entityId: r.entityId, changes: r.changes, action: r.action, createdAt: r.createdAt, byId: r.byId, by: r.by })),
+    total,
+  );
 }
 
 /** Names for every id the given changes hold, read in one query per kind that has any. */
@@ -344,9 +364,18 @@ export type FeedRow = {
   org: string | null;
 };
 
-/** A page of the feed, newest first. */
-export async function feedPage(where: SQL, limit: number, offset: number): Promise<FeedRow[]> {
+/**
+ * Rows of the feed, paged by the last row seen on (created_at, id), newest
+ * first; with a "before" cursor, the rows newer than it, oldest first, for
+ * feedWindow to turn round. Without a cursor, the newest rows.
+ */
+export async function feedPage(where: SQL, limit: number, cursor: FeedCursor = null): Promise<FeedRow[]> {
   const v = schema.recordVersions;
+  // The cursor row's own time and id, read in the database, so the comparison
+  // is made at the column's full precision rather than a JavaScript date's.
+  const at = cursor ? sql`(select cur.created_at, cur.id from record_versions cur where cur.id = ${cursor.id})` : null;
+  const keyset = !cursor ? undefined : cursor.dir === "after" ? sql`(${v.createdAt}, ${v.id}) < ${at}` : sql`(${v.createdAt}, ${v.id}) > ${at}`;
+  const order = cursor?.dir === "before" ? [asc(v.createdAt), asc(v.id)] : [desc(v.createdAt), desc(v.id)];
   return db
     .select({
       id: v.id,
@@ -364,10 +393,9 @@ export async function feedPage(where: SQL, limit: number, offset: number): Promi
     .from(v)
     .leftJoin(schema.users, eq(v.changedById, schema.users.id))
     .leftJoin(schema.organizations, eq(v.orgId, schema.organizations.id))
-    .where(where)
-    .orderBy(desc(v.createdAt), desc(v.id))
-    .limit(limit)
-    .offset(offset);
+    .where(and(where, keyset))
+    .orderBy(...order)
+    .limit(limit);
 }
 
 /** What each row is about, in words: a student's name, an enquiry's name, an application's number, a person's name. */
@@ -391,14 +419,14 @@ export async function recordTitles(rows: readonly { entity: HistoryEntity; entit
   return out;
 }
 
-/** The people who have made changes the viewer may read, for the "who" filter. */
+/**
+ * The people for the feed's "who" filter, scoped like the feed itself rather
+ * than read off the history: the head office picks from every staff account,
+ * a branch head from their branch's, a counsellor only themselves.
+ */
 export async function feedPeople(viewer: FeedViewer) {
-  const v = schema.recordVersions;
-  return db
-    .selectDistinct({ id: schema.users.id, name: schema.users.name })
-    .from(v)
-    .innerJoin(schema.users, eq(v.changedById, schema.users.id))
-    .where(feedScope(viewer))
-    .orderBy(asc(schema.users.name))
-    .limit(300);
+  const us = schema.users;
+  const staff = inArray(us.role, [...APP_ROLES]);
+  const who = viewer.headOffice ? staff : viewer.seesBranch ? and(staff, eq(us.orgId, viewer.orgId)) : eq(us.id, viewer.id);
+  return db.select({ id: us.id, name: us.name }).from(us).where(who).orderBy(asc(us.name), asc(us.id)).limit(1000);
 }

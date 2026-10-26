@@ -22,7 +22,7 @@ export async function GET(req: Request) {
 
   const f = readHistoryFilters(Object.fromEntries(new URL(req.url).searchParams));
   const viewer = await feedViewer(user);
-  const rows = await feedPage(feedWhere(viewer, f), 20000, 0);
+  const rows = await feedPage(feedWhere(viewer, f), 20000);
   const [names, titles, fullPassport] = await Promise.all([nameBook(rows), recordTitles(rows), can(user, "SEE_FULL_PASSPORT")]);
 
   const header = ["When (IST)", "Who", "Record type", "Record", "Branch", "What was done", "Field", "Before", "After"];

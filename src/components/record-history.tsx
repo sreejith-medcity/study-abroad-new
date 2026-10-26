@@ -88,13 +88,18 @@ export function RecordHistory({
   started?: { at: Date; by: string | null };
 }) {
   const latest = versions.at(-1);
+  // Only the newest versions are listed; the numbers are the record's own, so
+  // the oldest listed is above 1 when older ones are left out. The version
+  // before it is as far back as a compare can read.
+  const hidden = versions.length ? versions[0].n - 1 : 0;
+  const top = latest?.n ?? 0;
   const show = (field: string, value: unknown) => showValue(entity, field, value, names, { fullPassport });
   const pick = (raw: string | undefined, fallback: number) => {
     const n = Number(raw);
-    return Number.isInteger(n) && n >= 0 && n <= versions.length ? n : fallback;
+    return Number.isInteger(n) && n >= hidden && n <= top ? n : fallback;
   };
-  const left = pick(a, Math.max(0, versions.length - 1));
-  const right = pick(b, versions.length);
+  const left = pick(a, Math.max(hidden, top - 1));
+  const right = pick(b, top);
   const diffs = compareVersions(entity, versions, left, right);
 
   return (
@@ -105,7 +110,11 @@ export function RecordHistory({
         <Card>
           <CardHeader
             title="Versions"
-            subtitle={latest ? `${versions.length} saved change${versions.length === 1 ? "" : "s"} · last ${fmtDateTime(latest.createdAt)} by ${latest.by ?? "the portal"}` : "No changes recorded yet"}
+            subtitle={
+              latest
+                ? `${top} saved change${top === 1 ? "" : "s"}${hidden ? `, the newest ${versions.length} listed` : ""} · last ${fmtDateTime(latest.createdAt)} by ${latest.by ?? "the portal"}`
+                : "No changes recorded yet"
+            }
           />
           {versions.length === 0 ? (
             <p className="px-4 py-8 text-center text-sm text-muted" data-history-empty>
@@ -156,10 +165,17 @@ export function RecordHistory({
                   </ul>
                 </li>
               ))}
-              <li className="px-4 py-3 text-sm text-muted" data-version="0">
-                <span className="font-semibold text-ink">Version 0</span> · as it stood before the first change kept here
-                {started ? `. Created ${fmtDateTime(started.at)}${started.by ? ` by ${started.by}` : ""}.` : "."}
-              </li>
+              {hidden > 0 ? (
+                <li className="px-4 py-3 text-sm text-muted" data-versions-hidden={hidden}>
+                  {hidden} older version{hidden === 1 ? " is" : "s are"} not listed here; this tab shows the newest {versions.length}. Every one of them is kept, and the change history across the
+                  portal lists them by date.
+                </li>
+              ) : (
+                <li className="px-4 py-3 text-sm text-muted" data-version="0">
+                  <span className="font-semibold text-ink">Version 0</span> · as it stood before the first change kept here
+                  {started ? `. Created ${fmtDateTime(started.at)}${started.by ? ` by ${started.by}` : ""}.` : "."}
+                </li>
+              )}
             </ol>
           )}
         </Card>
@@ -173,7 +189,7 @@ export function RecordHistory({
               <>
                 <form className="flex flex-wrap items-center gap-2 px-4 pt-3" data-compare>
                   <Select name="a" defaultValue={String(left)} aria-label="First version" className="w-auto py-1.5 text-sm">
-                    {[0, ...versions.map((v) => v.n)].map((n) => (
+                    {[hidden, ...versions.map((v) => v.n)].map((n) => (
                       <option key={n} value={n}>
                         Version {n}
                       </option>
@@ -181,7 +197,7 @@ export function RecordHistory({
                   </Select>
                   <span className="text-sm text-muted">with</span>
                   <Select name="b" defaultValue={String(right)} aria-label="Second version" className="w-auto py-1.5 text-sm">
-                    {[0, ...versions.map((v) => v.n)].map((n) => (
+                    {[hidden, ...versions.map((v) => v.n)].map((n) => (
                       <option key={n} value={n}>
                         Version {n}
                       </option>

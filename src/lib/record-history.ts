@@ -393,7 +393,7 @@ export function compareVersions(entity: HistoryEntity, versions: readonly Versio
 
 // ---------- The feed ----------
 
-export type HistoryFilters = { entity?: string; by?: string; org?: string; from?: string; to?: string; page?: string };
+export type HistoryFilters = { entity?: string; by?: string; org?: string; from?: string; to?: string };
 
 const isDay = (v?: string) => !!v && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(new Date(`${v}T00:00:00Z`).getTime());
 
@@ -414,9 +414,62 @@ export function readHistoryFilters(sp: Record<string, string | string[] | undefi
   if (isDay(from)) out.from = from;
   const to = one("to");
   if (isDay(to)) out.to = to;
-  const page = one("page");
-  if (page && /^\d{1,5}$/.test(page) && Number(page) > 1) out.page = page;
   return out;
+}
+
+/**
+ * Where a page of the feed starts. The feed is paged by the last row seen
+ * rather than by a page number, so a change saved while somebody pages
+ * through neither repeats a row nor skips one: "after" is the oldest row of
+ * the page before (the Next link), "before" the newest row of the page after
+ * (the Previous link). Neither, or one that is not a row id, is the newest page.
+ */
+export type FeedCursor = { dir: "after" | "before"; id: string } | null;
+
+const isRowId = (v?: string) => !!v && /^[A-Za-z0-9_-]{8,64}$/.test(v);
+
+export function readFeedCursor(sp: Record<string, string | string[] | undefined>): FeedCursor {
+  const one = (k: string) => {
+    const v = sp[k];
+    return (Array.isArray(v) ? v[0] : v)?.trim() || undefined;
+  };
+  const after = one("after");
+  if (isRowId(after)) return { dir: "after", id: after! };
+  const before = one("before");
+  if (isRowId(before)) return { dir: "before", id: before! };
+  return null;
+}
+
+/**
+ * One page of the feed from the rows read for it. The query reads one row
+ * more than a page, newest first for the newest page and for Next, oldest
+ * first for Previous, so whether there is more that way is known without a
+ * count. Returns the page newest first, and the cursors for the links.
+ */
+export function feedWindow<T extends { id: string }>(fetched: readonly T[], limit: number, cursor: FeedCursor): { rows: T[]; older: string | null; newer: string | null } {
+  const more = fetched.length > limit;
+  const taken = fetched.slice(0, limit);
+  const rows = cursor?.dir === "before" ? [...taken].reverse() : taken;
+  const hasOlder = cursor?.dir === "before" ? rows.length > 0 : more;
+  const hasNewer = cursor?.dir === "before" ? more : cursor?.dir === "after";
+  return {
+    rows,
+    older: hasOlder && rows.length ? rows[rows.length - 1].id : null,
+    newer: hasNewer && rows.length ? rows[0].id : null,
+  };
+}
+
+/** How many versions a record's History tab lists: the newest ones. */
+export const VERSION_LIMIT = 200;
+
+/**
+ * Versions read newest first, as many as the tab lists, numbered as they
+ * stand in the whole history (the oldest of all is 1) and returned oldest
+ * first. The numbers stay the same whether or not older ones are left out.
+ */
+export function numberVersions<T>(newestFirst: readonly T[], total: number): (T & { n: number })[] {
+  const count = newestFirst.length;
+  return [...newestFirst].reverse().map((r, i) => ({ ...r, n: total - count + 1 + i }));
 }
 
 /** A day as the India day it names: from midnight IST, to the midnight after. */

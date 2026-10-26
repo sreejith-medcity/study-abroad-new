@@ -5,16 +5,20 @@ import {
   compareVersions,
   csvCell,
   dayRange,
+  feedWindow,
   fieldLabel,
   HISTORY_FIELDS,
   idsToName,
   NOT_RECORDED,
+  numberVersions,
   planFieldRestore,
+  readFeedCursor,
   readHistoryFilters,
   restoreRule,
   showValue,
   trackedChanges,
   valueAt,
+  VERSION_LIMIT,
 } from "../src/lib/record-history";
 
 test("only kept fields that really changed are recorded", () => {
@@ -159,8 +163,50 @@ test("a field changed and changed back is the same in a compare", () => {
 });
 
 test("the feed's filters keep what makes sense and drop the rest", () => {
-  assert.deepEqual(readHistoryFilters({ entity: "student", from: "2026-10-01", to: "nonsense", page: "2", by: "u1" }), { entity: "student", from: "2026-10-01", by: "u1", page: "2" });
+  assert.deepEqual(readHistoryFilters({ entity: "student", from: "2026-10-01", to: "nonsense", after: "abcdefgh12", by: "u1" }), { entity: "student", from: "2026-10-01", by: "u1" });
   assert.deepEqual(readHistoryFilters({ entity: "invoice", page: "1" }), {});
+});
+
+test("the feed's cursor is a row id, Next before Previous, and anything else is the newest page", () => {
+  assert.deepEqual(readFeedCursor({ after: "mvplcqazDSyLVAzKIocV" }), { dir: "after", id: "mvplcqazDSyLVAzKIocV" });
+  assert.deepEqual(readFeedCursor({ before: "mvplcr6tJm-dW4DK5B1Z" }), { dir: "before", id: "mvplcr6tJm-dW4DK5B1Z" });
+  assert.deepEqual(readFeedCursor({ after: "aaaaaaaa1", before: "bbbbbbbb1" }), { dir: "after", id: "aaaaaaaa1" });
+  assert.equal(readFeedCursor({ after: "x' or 1=1" }), null);
+  assert.equal(readFeedCursor({ page: "2" }), null);
+  assert.equal(readFeedCursor({}), null);
+});
+
+test("a page of the feed knows which way there is more", () => {
+  const rows = (...ids: string[]) => ids.map((id) => ({ id }));
+  // The newest page, with more behind it: Next only.
+  assert.deepEqual(feedWindow(rows("e", "d", "c"), 2, null), { rows: rows("e", "d"), older: "d", newer: null });
+  // The newest page, all of it: no links.
+  assert.deepEqual(feedWindow(rows("b", "a"), 2, null), { rows: rows("b", "a"), older: null, newer: null });
+  // Next, with still more: both links.
+  assert.deepEqual(feedWindow(rows("c", "b", "a"), 2, { dir: "after", id: "d" }), { rows: rows("c", "b"), older: "b", newer: "c" });
+  // Next, the last page: Previous only.
+  assert.deepEqual(feedWindow(rows("a"), 2, { dir: "after", id: "b" }), { rows: rows("a"), older: null, newer: "a" });
+  // Previous reads oldest first and is shown newest first; more newer: both links.
+  assert.deepEqual(feedWindow(rows("c", "d", "e"), 2, { dir: "before", id: "b" }), { rows: rows("d", "c"), older: "c", newer: "d" });
+  // Previous back to the newest: Next only.
+  assert.deepEqual(feedWindow(rows("c", "d"), 2, { dir: "before", id: "b" }), { rows: rows("d", "c"), older: "c", newer: null });
+  // A cursor that leads nowhere: an empty page with no links.
+  assert.deepEqual(feedWindow([], 2, { dir: "after", id: "zzzzzzzz" }), { rows: [], older: null, newer: null });
+});
+
+test("the History tab numbers the newest versions as they stand in the whole history", () => {
+  const newestFirst = [{ id: "v250" }, { id: "v249" }, { id: "v248" }];
+  assert.deepEqual(numberVersions(newestFirst, 250), [
+    { id: "v248", n: 248 },
+    { id: "v249", n: 249 },
+    { id: "v250", n: 250 },
+  ]);
+  assert.deepEqual(numberVersions([{ id: "b" }, { id: "a" }], 2), [
+    { id: "a", n: 1 },
+    { id: "b", n: 2 },
+  ]);
+  assert.deepEqual(numberVersions([], 0), []);
+  assert.equal(VERSION_LIMIT, 200);
 });
 
 test("a day is the India day it names", () => {
