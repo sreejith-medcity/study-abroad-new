@@ -12,6 +12,15 @@ export type Release = { version: string; date: string; changes: string[] };
 
 export const RELEASES: Release[] = [
   {
+    version: "1.5.0",
+    date: "2026-10-26",
+    changes: [
+      "The draft review points out the drafts worth a look before publishing: a duplicate of another course at the university, a fee far from others at that level in that country, a fee kept in words, no intakes, an odd course length, an odd English score. A Show filter keeps the clean ones apart, and Publish all clean drafts publishes only those.",
+      "Two staff guides in the learning library, each with a short course: The day end report, and The Ausbildung process in the portal. A How this works link opens them from the report and the Ausbildung screens.",
+      "System moved to the Set up group of the menu.",
+    ],
+  },
+  {
     version: "1.4.0",
     date: "2026-10-26",
     changes: [

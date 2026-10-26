@@ -5,6 +5,12 @@ version in package.json and adds an entry here and in src/lib/releases.ts (the
 What's new page reads that one). After applying a release, tag it with the
 version so it can be found and rolled back to.
 
+## 1.5.0 (26 October 2026)
+
+- The draft review points out the drafts worth a look before publishing: a duplicate of another course at the university, a fee far from others at that level in that country, a fee kept in words, no intakes, an odd course length, an odd English score. A Show filter keeps the clean ones apart, and Publish all clean drafts publishes only those.
+- Two staff guides in the learning library, each with a short course: The day end report, and The Ausbildung process in the portal. A How this works link opens them from the report and the Ausbildung screens.
+- System moved to the Set up group of the menu.
+
 ## 1.4.0 (26 October 2026)
 
 - A System screen under Reports tells the owner the portal is well: the release running, the database and its counts, where documents are kept and whether the folder is writable, every scheduled job's last run with a Run now for the owner, and the health check, with a Copy report button. No password is ever on it.
