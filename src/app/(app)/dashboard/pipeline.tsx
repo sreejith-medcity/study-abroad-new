@@ -226,7 +226,11 @@ export default async function Pipeline({ lens }: { lens: Lens }) {
           <Placements
             ausbildung={placed.ausbildung}
             nclex={placed.nclex}
-            query={[lens.viewingAs && lens.org ? `branch=${lens.org}` : "", lens.viewingAs && lens.person ? `who=${lens.person.id}` : ""].filter(Boolean).join("&")}
+            // The same "of" the figures were counted with (see placements in
+            // server/dashboard-work.ts), so the tracker opens on the same
+            // students. The counsellor picker's "who" would narrow to the
+            // files assigned to them and lose the ones they registered.
+            query={[lens.viewingAs && lens.org ? `branch=${lens.org}` : "", lens.ofPerson ? `of=${lens.ofPerson}` : ""].filter(Boolean).join("&")}
           />
         </Card>
       )}

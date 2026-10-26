@@ -9,6 +9,7 @@ import { NCLEX_STATES } from "@/lib/nclex";
 import { ausbildungContacts, chargingCountries, overTurnaroundCount, trackerChoices, trackerRows, type TrackerRow, type TrackerShow, type TrackerTab } from "@/server/ausbildung";
 import { commissionVisible } from "@/server/commission-visibility";
 import { FilterBar } from "@/components/filter-bar";
+import { OwnFilesNote } from "@/components/own-files-note";
 import { Card, EmptyState, PageHeader, Table, Td, Th, cn } from "@/components/ui";
 
 export const metadata = { title: "Placement tracker" };
@@ -43,7 +44,9 @@ export default async function AusbildungTrackerPage({ searchParams }: { searchPa
   // is Ausbildung's, and the other tabs have no statuses it places.
   const department = tab === "ausbildung" && AUSBILDUNG_DEPARTMENTS.some((d) => d.key === sp.dept) ? (sp.dept as AusbildungDepartment) : undefined;
   const [rows, choices, money, charging, contacts, over] = await Promise.all([
-    trackerRows(user, { tab, org: sp.branch, counsellor: sp.who, q: sp.q, show, department }),
+    // "of" is one person's own files, the way a dashboard's figures link
+    // here; "who" is the counsellor named on the file, the bar's own picker.
+    trackerRows(user, { tab, org: sp.branch, counsellor: sp.who, of: sp.of, q: sp.q, show, department }),
     trackerChoices(user),
     commissionVisible(user),
     chargingCountries(),
@@ -70,6 +73,7 @@ export default async function AusbildungTrackerPage({ searchParams }: { searchPa
           ) : undefined
         }
       />
+      <OwnFilesNote of={sp.of} />
 
       <div className="mb-4 flex flex-wrap items-center gap-2" role="tablist" aria-label="Which students">
         {(
@@ -110,6 +114,7 @@ export default async function AusbildungTrackerPage({ searchParams }: { searchPa
 
       <FilterBar
         primary={5}
+        keep={["of"]}
         fields={[
           { kind: "search", name: "q", label: "Student", placeholder: "Name, Medcity ID or phone" },
           ...(choices.orgs.length > 1 ? [{ kind: "select" as const, name: "branch", label: "Branch", options: choices.orgs.map((o) => ({ value: o.id, label: o.name })) }] : []),

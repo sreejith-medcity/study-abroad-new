@@ -11,6 +11,7 @@ import { assignableFor, orgUsers, readFilters, studentWhere } from "@/server/que
 import { peopleOnFiles } from "@/server/teams";
 import { Card, Chip, EmptyState, LinkButton, PageHeader, Table, Td, Th } from "@/components/ui";
 import { FilterBar } from "@/components/filter-bar";
+import { OwnFilesNote } from "@/components/own-files-note";
 import { IconMail, IconPhone, IconPlus, IconStudents } from "@/components/icons";
 import { archiveStudentAction } from "./actions";
 import { RowAssign } from "./row-assign";
@@ -118,10 +119,15 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
         }
       />
 
+      <OwnFilesNote of={f.of} />
+
       <ViewTabs scope="STUDENTS" views={savedViews} canShareWithEverybody={staff} />
 
       <FilterBar
         primary={4}
+        // One person's own files is where you are, not what you asked, so
+        // "Clear all" keeps it: a dashboard's figure linked here with it.
+        keep={["of"]}
         fields={[
           { kind: "search", name: "q", label: "Search", placeholder: "Name, Medcity ID, email or phone" },
           staff

@@ -4,7 +4,7 @@ import type { PgColumn } from "drizzle-orm/pg-core";
 import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { orgScope } from "@/lib/permissions";
-import { ownStudentsOnly } from "@/server/scope";
+import { ownStudentsOnly, ownedByPerson } from "@/server/scope";
 import { AUSBILDUNG_CONTACT_AREA, AUSBILDUNG_STEPS, AUSBILDUNG_TEAM, MENTOR_PART, departmentOfStatus, moduleStanding, timedStatusCodes, type AusbildungDepartment, type ModuleState } from "@/lib/ausbildung";
 import { nclexStanding, type NclexResult } from "@/lib/nclex";
 
@@ -134,7 +134,23 @@ const currentAusbildungOver = sql<boolean>`coalesce((
 
 export type TrackerTab = "ausbildung" | "nclex" | "service";
 export type TrackerShow = "all" | "interview" | "contract" | "german" | "unpaid" | "over";
-export type TrackerFilters = { tab: TrackerTab; org?: string; counsellor?: string; q?: string; show?: TrackerShow; department?: AusbildungDepartment };
+export type TrackerFilters = {
+  tab: TrackerTab;
+  org?: string;
+  /** The counsellor named on the file, which is the tracker's own picker. */
+  counsellor?: string;
+  /**
+   * One person's own students, by the rule their students list applies
+   * (registered by them, assigned to them, or worked by them). A dashboard's
+   * placement figures link through this, so the list opened holds exactly
+   * what the figure counted; the counsellor picker alone would drop the
+   * students they registered and nobody has been given yet.
+   */
+  of?: string;
+  q?: string;
+  show?: TrackerShow;
+  department?: AusbildungDepartment;
+};
 
 export type ServiceCharge = {
   /** Per currency, what was raised (invoiced where it was, else expected) and what came in. */
@@ -194,6 +210,7 @@ export async function trackerRows(user: SessionUser, f: TrackerFilters, limit = 
   ];
   if (f.org) conds.push(eq(s.orgId, f.org));
   if (f.counsellor) conds.push(eq(s.assignedToId, f.counsellor));
+  if (f.of) conds.push(await ownedByPerson(f.of));
   if (f.q) {
     const like = `%${f.q.trim()}%`;
     conds.push(or(ilike(s.firstName, like), ilike(s.lastName, like), ilike(sql`${s.firstName} || ' ' || ${s.lastName}`, like), ilike(s.medcityId, like), ilike(s.phone, like)));

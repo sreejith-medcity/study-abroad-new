@@ -424,10 +424,15 @@ export async function unassigned(lens: Lens) {
  */
 export async function placements(lens: Lens) {
   // A counsellor's own board reads the tracker as they do, which already
-  // narrows to their own students; naming them as the counsellor on top would
-  // drop the students they registered and nobody has been given yet. Somebody
-  // viewing as a counsellor names them, which is the tracker's own picker.
-  const scope = { org: lens.org ?? undefined, counsellor: lens.viewingAs ? lens.person?.id : undefined };
+  // narrows to their own students. Where the board is one person's and the
+  // viewer's own list would show more (somebody viewing as them, or a desk
+  // counsellor who sees every student), the tracker is asked for that
+  // person's own files by the same rule every other tile applies, and the
+  // links carry the same "of" so the list opened holds the figure. Naming
+  // them as the counsellor on the file instead dropped the students they
+  // registered and nobody had been given yet, so the figure and the list
+  // disagreed.
+  const scope = { org: lens.org ?? undefined, of: lens.ofPerson ?? undefined };
   const [aus, nclex] = await Promise.all([trackerRows(lens.user, { tab: "ausbildung", ...scope }), trackerRows(lens.user, { tab: "nclex", ...scope })]);
   const dayAgo = Date.now() - 86_400_000;
   const unpaid = (r: (typeof aus)[number]) => !r.charge.any || r.charge.byCurrency.some((b) => b.received < b.owed) || r.charge.unpriced > 0;

@@ -12,6 +12,7 @@ import { APP_ROLES, isStaff } from "@/lib/permissions";
 import { applicationScope, applicationsBase, applicationWhere, orgUsers, readFilters } from "@/server/queries";
 import { Card, EmptyState, LinkButton, PageHeader, StatusBadge, Table, Td, Th, cn } from "@/components/ui";
 import { FilterBar } from "@/components/filter-bar";
+import { OwnFilesNote } from "@/components/own-files-note";
 import { IconApplications, IconExport } from "@/components/icons";
 
 export const metadata = { title: "Applications" };
@@ -56,9 +57,14 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
         actions={<LinkButton variant="secondary" href={`/api/applications/export?${exportQs}`} prefetch={false}><IconExport className="size-4" /> Export CSV</LinkButton>}
       />
 
+      <OwnFilesNote of={f.of} />
+
       <ViewTabs scope="APPLICATIONS" views={savedViews} canShareWithEverybody={staff} />
       <FilterBar
         primary={4}
+        // One person's own files is where you are, not what you asked, so
+        // "Clear all" keeps it: a dashboard's figure linked here with it.
+        keep={["of"]}
         fields={[
           { kind: "search", name: "student", label: "Student", placeholder: "Student name" },
           staff

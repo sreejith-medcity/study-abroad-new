@@ -387,6 +387,20 @@ const lead = await open("sreejith@miak.in");
   const whoseHref = await tileHref(page, "my-students");
   check(whoseHref.includes(`of=${who}`), `and "My students" opens that person's list (${whoseHref})`);
   check((await listTotal(page, whoseHref)) === theirs, "which holds the same number");
+  // The placement figures on that board are that person's own files too, and
+  // open the tracker on the same students rather than on the files assigned
+  // to them alone.
+  if ((await page.locator("[data-placements]").count()) === 1) {
+    const tile = page.locator('[data-placement="ausbildung-students"]');
+    const shown = Number((await tile.locator("[data-figure]").innerText()).replace(/[^0-9]/g, ""));
+    const href = await tile.getAttribute("href");
+    check(href.includes(`of=${who}`) && !href.includes("who="), `placements on a viewed-as board carry "of", not the counsellor picker (${href})`);
+    await page.goto(`${BASE}${href}`);
+    await page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
+    await hydrated(page);
+    check((await page.locator("[data-tracker-row]").count()) === shown, `and the tracker holds the same number (${shown})`);
+    check((await page.locator(`[data-own-files="${who}"]`).count()) === 1, "and says whose own files it is showing");
+  }
 
   await page.goto(`${BASE}/dashboard?as=finance`);
   await hydrated(page);
