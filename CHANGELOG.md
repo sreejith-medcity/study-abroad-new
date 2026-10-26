@@ -5,6 +5,17 @@ version in package.json and adds an entry here and in src/lib/releases.ts (the
 What's new page reads that one). After applying a release, tag it with the
 version so it can be found and rolled back to.
 
+## 1.7.0 (27 October 2026)
+
+- New enquiries without an owner are given out by routing rules: by source, pathway and branch, each naming a person or sharing enquiries in turn among the branch's active counsellors, fewest open enquiries first. The head office sets rules for any branch and a branch head for their own, under Settings, Enquiries. With no matching rule an enquiry stays with the branch to hand out, as before.
+- A number that enquires again no longer makes a duplicate: an open enquiry gets a note saying it came again and from where, and a lost one is reopened with a follow-up for the next day.
+- Each enquiry shows possible duplicates at any branch by phone or email, and the head office or the branch head can merge them: the history moves to the enquiry kept and the other is marked Merged.
+- Closing an enquiry as lost asks for a reason from a list kept in Settings, and Reports has a Lost reasons report by reason, source and branch with a CSV.
+- Every change to a student, an enquiry, an application or a staff account is kept: who changed which field, from what, to what and when. History tabs compare any two versions and put a single field back where that is safe, and Change history lists every change a person may read.
+- Who owns each student and enquiry over time is kept on an ownership ledger that only ever grows, each entry sealed with the one before it; the Ownership ledger screen checks the whole chain and names any entry that has been changed.
+
+On the VPS this release runs `docker compose --profile tools run --rm migrate` (migrations 0078 to 0081) before the new build; build migration 0081's indexes off-peak.
+
 ## 1.6.0 (26 October 2026)
 
 - A counsellor's students are the ones given to them and the ones they registered themselves, and nobody else's. A student a colleague registered and nobody has been given to no longer appears in every counsellor's list; the branch head hands them out.

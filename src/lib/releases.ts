@@ -12,6 +12,18 @@ export type Release = { version: string; date: string; changes: string[] };
 
 export const RELEASES: Release[] = [
   {
+    version: "1.7.0",
+    date: "2026-10-27",
+    changes: [
+      "New enquiries without an owner are given out by routing rules: by source, pathway and branch, each naming a person or sharing enquiries in turn among the branch's active counsellors, fewest open enquiries first. The head office sets rules for any branch and a branch head for their own, under Settings, Enquiries. With no matching rule an enquiry stays with the branch to hand out, as before.",
+      "A number that enquires again no longer makes a duplicate: an open enquiry gets a note saying it came again and from where, and a lost one is reopened with a follow-up for the next day.",
+      "Each enquiry shows possible duplicates at any branch by phone or email, and the head office or the branch head can merge them: the history moves to the enquiry kept and the other is marked Merged.",
+      "Closing an enquiry as lost asks for a reason from a list kept in Settings, and Reports has a Lost reasons report by reason, source and branch with a CSV.",
+      "Every change to a student, an enquiry, an application or a staff account is kept: who changed which field, from what, to what and when. History tabs compare any two versions and put a single field back where that is safe, and Change history lists every change a person may read.",
+      "Who owns each student and enquiry over time is kept on an ownership ledger that only ever grows, each entry sealed with the one before it; the Ownership ledger screen checks the whole chain and names any entry that has been changed.",
+    ],
+  },
+  {
     version: "1.6.0",
     date: "2026-10-26",
     changes: [
