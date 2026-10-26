@@ -3,13 +3,13 @@
 import { seatFree } from "@/lib/seats";
 import { revalidatePath } from "next/cache";
 import { randomBytes } from "crypto";
-import { and, count, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
+import { and, asc, count, eq, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { hashPassword, requireUser, type SessionUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { departmentChoice } from "@/lib/departments";
-import { emailProblem, normalizeEmail, planMove, roleFitRefusal, roleFitsOrg } from "@/lib/people";
+import { emailProblem, moveSummary, normalizeEmail, planMove, roleFitRefusal, roleFitsOrg, taskTaker } from "@/lib/people";
 import { ADMIN_ROLES, HQ_ROLES, PARTNER_ROLES, ROLE_LABEL, canManageSuperAdmins, canManageUsers, canResetPasswords, isFamilyRole } from "@/lib/permissions";
 import { notifyUsers } from "@/server/notify";
 import { makeSlug } from "@/server/public-form";
@@ -62,6 +62,9 @@ const addUser = z.object({
   department: z.string().trim().max(60).optional(),
   role: z.enum([...PARTNER_ROLES, "ADMIN", "MANAGEMENT", "SUPER_ADMIN", "OPS_MANAGER", "DOCUMENTATION"]),
 });
+
+/** Postgres refusing a row because another already holds the same unique value. */
+const uniqueViolation = (e: unknown) => (e as { code?: string }).code === "23505" || (e as { cause?: { code?: string } }).cause?.code === "23505";
 
 /** Somebody else already signing in with this address, in any case. */
 async function emailTaken(email: string, exceptUserId?: string) {
@@ -352,7 +355,7 @@ export async function editUserAction(_: FormState, formData: FormData): Promise<
   if (email !== target.email.toLowerCase() && (await emailTaken(email, target.id))) {
     return { error: "Somebody else already signs in with that email.", fieldErrors: { email: ["Already in use"] } };
   }
-  const dept = departmentChoice(d.department, departments(await getSettings()));
+  const dept = departmentChoice(d.department, departments(await getSettings()), target.department);
   if (!dept.ok) return { error: dept.error, fieldErrors: { department: [dept.error] } };
 
   const deskLabel = d.deskLabel || null;
@@ -364,16 +367,26 @@ export async function editUserAction(_: FormState, formData: FormData): Promise<
   if (dept.department !== target.department) changes.department = { from: target.department, to: dept.department };
   if (Object.keys(changes).length === 0) return { ok: "Nothing changed." };
 
-  await db
-    .update(schema.users)
-    .set({
-      name: d.name,
-      email,
-      deskLabel,
-      department: dept.department,
-      ...(emailChanged ? { sessionVersion: target.sessionVersion + 1 } : {}),
-    })
-    .where(eq(schema.users.id, target.id));
+  try {
+    await db
+      .update(schema.users)
+      .set({
+        name: d.name,
+        email,
+        deskLabel,
+        department: dept.department,
+        // Bumped in the database rather than from the row read earlier, so two
+        // bumps landing at once cannot write the same number and keep a
+        // session alive that both meant to end.
+        ...(emailChanged ? { sessionVersion: sql`${schema.users.sessionVersion} + 1` } : {}),
+      })
+      .where(eq(schema.users.id, target.id));
+  } catch (e) {
+    // Somebody took the address between the check above and this write. The
+    // same answer as the check gives, rather than a dead screen.
+    if (uniqueViolation(e)) return { error: "Somebody else already signs in with that email.", fieldErrors: { email: ["Already in use"] } };
+    throw e;
+  }
   await audit(actor.id, "user.edit", "user", target.id, { email: target.email, changes });
   if (emailChanged) {
     await notifyUsers([target.id], "Your sign-in email changed", `From now on, sign in with ${email}. The old address, ${target.email}, no longer signs in.`, "/settings");
@@ -420,14 +433,20 @@ export async function moveUserAction(_: FormState, formData: FormData): Promise<
   const colleague = d.handToId
     ? ((await db.query.users.findFirst({ where: eq(schema.users.id, d.handToId), columns: { id: true, orgId: true, role: true, active: true, name: true } })) ?? null)
     : null;
+  // The active branch heads at either end, the person moving not counted,
+  // for the rule that a branch has exactly one.
+  const activeHead = (orgId: string) => and(eq(schema.users.orgId, orgId), eq(schema.users.role, "PARTNER"), eq(schema.users.active, true), ne(schema.users.id, target.id));
+  const [{ n: othersAtFrom }] = await db.select({ n: count() }).from(schema.users).where(activeHead(target.orgId));
+  const [{ n: atTarget }] = await db.select({ n: count() }).from(schema.users).where(activeHead(to.id));
 
   const planned = planMove({
-    person: { id: target.id, role: target.role, orgId: target.orgId },
-    from: { id: target.org.id, type: target.org.type },
-    to: { id: to.id, type: to.type, active: to.active },
+    person: { id: target.id, role: target.role, orgId: target.orgId, active: target.active },
+    from: { id: target.org.id, type: target.org.type, name: target.org.name },
+    to: { id: to.id, type: to.type, active: to.active, name: to.name },
     students,
     choice: d.studentsChoice ?? "",
     colleague,
+    heads: { othersAtFrom, atTarget },
   });
   if (!planned.ok) return { error: planned.error };
   const plan = planned.plan;
@@ -441,8 +460,15 @@ export async function moveUserAction(_: FormState, formData: FormData): Promise<
   const fromOrg = target.org;
   const handed: { id: string; firstName: string; lastName: string }[] = [];
   let takenOff = 0;
-  await db.transaction(async (tx) => {
-    await tx.update(schema.users).set({ orgId: to.id, sessionVersion: target.sessionVersion + 1 }).where(eq(schema.users.id, target.id));
+  // The open tasks on their name at the old branch: how many there were, and
+  // who they went to. Null when nobody there could take them.
+  const { tasks, tasksTo } = await db.transaction(async (tx): Promise<{ tasks: number; tasksTo: { id: string; name: string } | null }> => {
+    // Bumped in the database rather than from the row read earlier, so two
+    // bumps landing at once cannot write the same number.
+    await tx
+      .update(schema.users)
+      .set({ orgId: to.id, sessionVersion: sql`${schema.users.sessionVersion} + 1` })
+      .where(eq(schema.users.id, target.id));
     if (plan.students > 0) {
       const rows = await tx
         .update(schema.students)
@@ -468,35 +494,61 @@ export async function moveUserAction(_: FormState, formData: FormData): Promise<
       )
       .returning({ id: schema.studentPeople.id });
     takenOff = off.length;
+
+    // Their open tasks at the old branch would otherwise sit on the name of
+    // somebody who is no longer there, where nobody at the branch looks.
+    const openTasks = and(eq(schema.tasks.assignedToId, target.id), eq(schema.tasks.orgId, fromOrg.id), isNull(schema.tasks.doneAt));
+    const [{ n: tasks }] = await tx.select({ n: count() }).from(schema.tasks).where(openTasks);
+    let tasksTo: { id: string; name: string } | null = null;
+    if (tasks > 0) {
+      const head = plan.handTo
+        ? null
+        : ((await tx.query.users.findFirst({ where: activeHead(fromOrg.id), columns: { id: true, name: true }, orderBy: asc(schema.users.name) })) ?? null);
+      const takerId = taskTaker(plan, head);
+      if (takerId) {
+        await tx.update(schema.tasks).set({ assignedToId: takerId }).where(openTasks);
+        tasksTo = plan.handTo && colleague ? { id: colleague.id, name: colleague.name } : head;
+      }
+    }
     await tx.insert(schema.auditLogs).values({
       actorId: actor.id,
       action: "user.move",
       entityType: "user",
       entityId: target.id,
-      meta: { email: target.email, from: fromOrg.id, fromName: fromOrg.name, to: to.id, toName: to.name, students: plan.students, handTo: plan.handTo, takenOffFiles: takenOff },
+      meta: {
+        email: target.email,
+        from: fromOrg.id,
+        fromName: fromOrg.name,
+        to: to.id,
+        toName: to.name,
+        students: plan.students,
+        handTo: plan.handTo,
+        takenOffFiles: takenOff,
+        tasks,
+        tasksTo: tasksTo?.id ?? null,
+        tasksLeft: tasksTo ? 0 : tasks,
+      },
     });
+    return { tasks, tasksTo };
   });
 
   if (plan.handTo) {
     for (const s of handed) await notifyUsers([plan.handTo], "Student assigned to you", `${s.firstName} ${s.lastName}`, `/students/${s.id}/profile`);
   }
-  await notifyUsers(
-    [target.id],
-    `You have been moved to ${to.name}`,
-    plan.students > 0
-      ? plan.handTo
-        ? `Your ${plan.students === 1 ? "student" : `${plan.students} students`} at ${fromOrg.name} ${plan.students === 1 ? "has" : "have"} been handed to ${colleague?.name ?? "a colleague"}.`
-        : `Your ${plan.students === 1 ? "student" : `${plan.students} students`} at ${fromOrg.name} ${plan.students === 1 ? "stays" : "stay"} there, unassigned for now.`
-      : `Your work from now on is at ${to.name}.`,
-    "/dashboard",
-  );
+  if (tasksTo && tasks > 0) {
+    await notifyUsers([tasksTo.id], "Tasks handed to you", `${tasks} open ${tasks === 1 ? "task" : "tasks"} from ${target.name}, who has moved to ${to.name}.`, "/my-day");
+  }
+  const said = moveSummary({
+    name: target.name,
+    fromName: fromOrg.name,
+    toName: to.name,
+    students: plan.students,
+    colleagueName: plan.handTo ? (colleague?.name ?? "a colleague") : null,
+    tasks,
+    tasksTo: tasksTo?.name ?? null,
+  });
+  await notifyUsers([target.id], `You have been moved to ${to.name}`, said.forPerson, "/dashboard");
   revalidatePath("/admin/partners");
   revalidatePath("/students");
-  const about =
-    plan.students > 0
-      ? plan.handTo
-        ? ` ${plan.students} ${plan.students === 1 ? "student" : "students"} handed to ${colleague?.name ?? "a colleague"}.`
-        : ` ${plan.students} ${plan.students === 1 ? "student" : "students"} left unassigned at ${fromOrg.name}.`
-      : "";
-  return { ok: `${target.name} is now at ${to.name}.${about} They have been signed out and told.` };
+  return { ok: said.forDesk };
 }

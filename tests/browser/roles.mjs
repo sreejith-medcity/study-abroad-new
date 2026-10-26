@@ -61,10 +61,13 @@ async function signIn(email, ip, password = "Password@123") {
     ? ok("the role description updates with the choice")
     : bad("no description for documentation");
 
-  await page.locator('main input[name="name"]').first().fill(`Docs Person ${tag}`);
-  await page.locator('main input[name="email"]').first().fill(`docs.person${tag}@medcityoverseas.test`);
-  await page.locator('main input[aria-label="Job title for the new account"]').first().fill("Germany documentation");
-  await page.getByRole("button", { name: "Add user" }).first().click();
+  // The add form's own boxes: every person's edit fold has a name and an
+  // email box of its own, folded away, which a bare name selector would find first.
+  const addForm = page.locator("main form").filter({ has: page.locator('select[aria-label="Role for the new account"]') }).first();
+  await addForm.locator('input[name="name"]').fill(`Docs Person ${tag}`);
+  await addForm.locator('input[name="email"]').fill(`docs.person${tag}@medcityoverseas.test`);
+  await addForm.locator('input[aria-label="Job title for the new account"]').fill("Germany documentation");
+  await addForm.getByRole("button", { name: "Add user" }).click();
   // A one-time password stays on the page rather than riding a toast that fades,
   // because somebody has to read it out or copy it before it is gone for good.
   const credential = page.locator("main").getByText(/Temporary password for .*@/i).first();

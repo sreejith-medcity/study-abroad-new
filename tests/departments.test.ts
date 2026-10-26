@@ -40,4 +40,18 @@ describe("a person's department", () => {
     assert.ok(!r.ok);
     assert.match(r.error, /Settings, Platform/);
   });
+
+  it("keeps the department the person already has after it left the list", () => {
+    assert.deepEqual(departmentChoice("placement", list, "Placement"), { ok: true, department: "Placement" });
+    assert.deepEqual(departmentChoice("Placement", list, "Placement"), { ok: true, department: "Placement" });
+  });
+
+  it("still refuses a name off the list that is not theirs", () => {
+    assert.ok(!departmentChoice("Finance", list, "Placement").ok);
+    assert.ok(!departmentChoice("Placement", list, null).ok);
+  });
+
+  it("still takes a listed name over the one they had", () => {
+    assert.deepEqual(departmentChoice("Ausbildung", list, "Placement"), { ok: true, department: "Ausbildung" });
+  });
 });

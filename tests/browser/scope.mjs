@@ -149,8 +149,11 @@ const exportText = async (page) => (await page.request.get(`${BASE}/api/applicat
   const registerable = await options(c.page, 'select[name="studentId"]');
   check(registerable.includes("sc_free") && !registerable.includes("sc_other"), "the register picker offers the unassigned student and not another counsellor's");
 
-  // Requesting program options for a student.
+  // Requesting program options for a student. The picker is only on screen
+  // once the request is said to be for a student already registered.
   await go(c.page, "/program-options/new");
+  await c.page.getByText("A student already registered").click();
+  await c.page.locator("select#or-student").waitFor({ timeout: 10000 });
   const requestable = await options(c.page, "select#or-student");
   check(requestable.includes("sc_mine") && !requestable.includes("sc_other"), "the program options request offers their own student and not another counsellor's");
 

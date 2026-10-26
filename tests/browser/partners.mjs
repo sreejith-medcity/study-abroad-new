@@ -129,6 +129,12 @@ sql(`
 const wards = sql(`select string_agg(id, ',') from (select id from students where org_id = '${kottayam}' and not archived order by created_at limit 2) s`).split(",").filter(Boolean);
 sql(`update students set assigned_to_id = '${PERSON}' where id in (${wards.map((w) => `'${w}'`).join(",")})`);
 sql(`insert into student_people (id, student_id, user_id, part) values ('sp-move-test', '${wards[0]}', '${PERSON}', 'Visa test') on conflict (id) do update set student_id = excluded.student_id, user_id = excluded.user_id`);
+// Two tasks on their desk at Kottayam, one still open and one done, so the
+// move can be seen to hand on the open one and leave the finished one alone.
+sql(`delete from tasks where id in ('task-move-open', 'task-move-done')`);
+sql(`insert into tasks (id, org_id, student_id, title, due_on, assigned_to_id, created_by_id, done_at, done_by_id)
+     values ('task-move-open', '${kottayam}', '${wards[0]}', 'Move test open task', current_date, '${PERSON}', '${kottayamHead}', null, null),
+            ('task-move-done', '${kottayam}', '${wards[1]}', 'Move test done task', current_date, '${PERSON}', '${kottayamHead}', now(), '${PERSON}')`);
 check(wards.length === 2 && seen(`select count(*) from students where assigned_to_id = '${PERSON}' and org_id = '${kottayam}'`) === 2, "setup: two Kottayam students are assigned to the person");
 
 // The person is signed in, so the edit can be seen to sign them out.
@@ -223,8 +229,13 @@ const noticesBefore = seen(`select count(*) from notifications where user_id = '
 await row.locator('select[name="toOrgId"]').selectOption(kochi);
 await row.locator('input[name="studentsChoice"][value="hand"]').check();
 await row.locator('select[name="handToId"]').selectOption(senior);
+const taskNoticesBefore = seen(`select count(*) from notifications where user_id = '${senior}' and title = 'Tasks handed to you'`);
 await row.getByRole("button", { name: "Move Moved Person" }).click();
-check(await page.locator('[role="status"]').filter({ hasText: /is now at Medcity Kochi/ }).first().waitFor({ timeout: 15000 }).then(() => true, () => false), "move: the save says where they are now");
+// The row leaves the Kottayam fold the moment the save lands, so the
+// confirmation has to come from the toast host in the shell, not the form.
+const moveToast = page.locator('[role="status"]').filter({ hasText: /is now at Medcity Kochi/ }).first();
+check(await moveToast.waitFor({ timeout: 15000 }).then(() => true, () => false), "move: the save says where they are now");
+check(/2 students handed to .+\. 1 open task handed to /.test((await moveToast.innerText().catch(() => "")).replace(/\s+/g, " ")), "move: and says the students and the open task went to the colleague");
 check(sql(`select org_id || '|' || session_version from users where id = '${PERSON}'`) === `${kochi}|3`, "move: they are at Kochi, signed out again");
 check(seen(`select count(*) from students where id in (${wards.map((w) => `'${w}'`).join(",")}) and assigned_to_id = '${senior}' and org_id = '${kottayam}'`) === 2, "move: both students went to the colleague and stayed at Kottayam");
 check(peopleBefore === 1 && seen(`select count(*) from student_people where user_id = '${PERSON}'`) === 0, "move: taken off the Kottayam file they were named on");
@@ -232,7 +243,23 @@ check(seen(`select count(*) from audit_logs where action = 'user.move' and entit
 check(seen(`select count(*) from audit_logs where action = 'student.reassign' and meta->>'via' = 'user.move' and meta->>'from' = '${PERSON}'`) === reassignBefore + 2, "move: each hand-over is on the student's own record");
 check(seen(`select count(*) from notifications where user_id = '${senior}' and title = 'Student assigned to you'`) === noticesBefore + 2, "move: the colleague is told about each student");
 check(seen(`select count(*) from notifications where user_id = '${PERSON}' and title = 'You have been moved to Medcity Kochi'`) === 1, "move: the person is told");
+check(sql(`select assigned_to_id || '|' || org_id from tasks where id = 'task-move-open'`) === `${senior}|${kottayam}`, "move: their open task at Kottayam went to the colleague and stayed at Kottayam");
+check(sql(`select assigned_to_id from tasks where id = 'task-move-done'`) === PERSON, "move: the task they had finished stays on their record");
+check(seen(`select count(*) from audit_logs where action = 'user.move' and entity_id = '${PERSON}' and meta->>'tasks' = '1' and meta->>'tasksTo' = '${senior}' and meta->>'tasksLeft' = '0'`) >= 1, "move: the audit row counts the task and says who took it");
+check(seen(`select count(*) from notifications where user_id = '${senior}' and title = 'Tasks handed to you'`) === taskNoticesBefore + 1, "move: the colleague is told about the task");
 check(/Medcity Kochi/.test(await (await findRow(NEW_EMAIL)).locator("xpath=ancestor::*[starts-with(@id, 'org-')]").innerText()), "move: listed under Kochi now");
+
+// A branch keeps its head: the only active head of Kottayam cannot be moved
+// away, and a head cannot be moved into a branch that already has one.
+const headRow = await findRow("kottayam@medcity.test");
+await headRow.locator("[data-move-person] summary").click();
+const headTargets = await headRow.locator('select[name="toOrgId"] option').allInnerTexts();
+check(headTargets.some((t) => /Medcity Kochi/.test(t)), `move: a branch head is offered the other branches (${headTargets.join(", ")})`);
+await headRow.locator('select[name="toOrgId"]').selectOption(kochi);
+if ((await headRow.locator('input[name="studentsChoice"][value="leave"]').count()) > 0) await headRow.locator('input[name="studentsChoice"][value="leave"]').check();
+await headRow.getByRole("button", { name: /^Move / }).click();
+check(await headRow.getByText(/Medcity Kottayam would be left without a branch head/).waitFor({ timeout: 10000 }).then(() => true, () => false), "move: taking the only head away from a branch is refused in plain words");
+check(sql(`select org_id from users where id = '${kottayamHead}'`) === kottayam, "move: and the head is still at Kottayam");
 
 await browser.close();
 console.log(fails.length === 0 ? "\nall good" : `\n${fails.length} failed`);

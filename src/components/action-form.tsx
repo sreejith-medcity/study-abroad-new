@@ -46,7 +46,22 @@ export function ActionForm({
    */
   trackUnsaved?: boolean;
 }) {
-  const [state, formAction, pending] = useActionState<FormState, FormData>(action, {});
+  // The latest action, read at submit time, so the wrapper below can stay
+  // the same function across renders.
+  const latest = useRef(action);
+  latest.current = action;
+  const [state, formAction, pending] = useActionState<FormState, FormData>(async (prev, fd) => {
+    const next = await latest.current(prev, fd);
+    // The toast is raised here, as the answer arrives, and not from an effect
+    // on this component. A save can take the form off the screen in the same
+    // commit that carries its answer: a person's row edited under a search
+    // the new email no longer matches, or a person moved to another fold.
+    // An effect on a component unmounted in that commit never runs, so the
+    // confirmation was never shown. The toast host lives in the shell and is
+    // still there whatever the save did to this form.
+    if (next?.ok && !next.keep) toast(next.ok);
+    return next;
+  }, {});
   const [dismissed, setDismissed] = useState(false);
   const [refused, setRefused] = useState<string | null>(null);
   // A complaint about what was typed stops being true the moment somebody
@@ -64,9 +79,8 @@ export function ActionForm({
   useEffect(() => {
     if (trackUnsaved && ref.current) savedSnapshot.current = snapshotOf(ref.current);
   }, [trackUnsaved]);
-  // The toast is raised before any navigation, because an action that both says
-  // something and moves the page would otherwise say it to a screen the person
-  // never sees. The toast host lives in the shell, so it survives the move.
+  // Anything worth keeping (a one-time password) stays on the page as a panel.
+  // Everything else was already raised as a toast when the answer arrived.
   useEffect(() => {
     if (!state.ok) return;
     if (resetOnSuccess) ref.current?.reset();
@@ -75,9 +89,6 @@ export function ActionForm({
       ref.current.removeAttribute("data-unsaved");
     }
     setDismissed(false);
-    // Anything worth keeping stays on the page. Everything else is a toast, which
-    // keeps the confirmation visible even when the form has scrolled away.
-    if (!state.keep) toast(state.ok);
   }, [state, resetOnSuccess, trackUnsaved]);
   useEffect(() => {
     if (state.redirectTo) router.push(state.redirectTo);

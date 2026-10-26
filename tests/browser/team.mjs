@@ -53,11 +53,13 @@ check(/\d+ (person|people) active/.test(text) && /Owner/.test(text) && !/seats i
 
 // Add a counsellor.
 const email = `new.counsellor${Date.now() % 100000}@medcity.test`;
-await op.locator('[name="name"]').fill("New Counsellor");
-await op.locator('[name="email"]').fill("uk.docs@medcity.test");
+// The add form's own boxes: every member's edit fold has a name and an
+// email box of its own now.
+await op.locator("#tm-name").fill("New Counsellor");
+await op.locator("#tm-email").fill("uk.docs@medcity.test");
 await op.getByRole("button", { name: "Add counsellor" }).click();
 check(await op.getByText("Someone already signs in with this email").waitFor({ timeout: 10000 }).then(() => true, () => false), "add: an email already in use is refused");
-await op.locator('[name="email"]').fill(email);
+await op.locator("#tm-email").fill(email);
 await op.locator("#tm-desk").fill("Ireland desk");
 await op.getByRole("button", { name: "Add counsellor" }).click();
 const note = await op.locator('[role="status"], [role="alert"], .text-good-700, main').filter({ hasText: /One-time password for/ }).first().innerText({ timeout: 10000 }).catch(() => "");
@@ -97,8 +99,8 @@ text = await go(op, "/settings/team");
 check((await op.getByRole("button", { name: "Add counsellor" }).count()) === 1 && !/Every seat is in use/.test(text), "branch: still takes more people whatever the old seat number says");
 const many = Number(sql(`select count(*) from users where org_id = '${org}' and active and role in ('PARTNER','COUNSELLOR','SENIOR_COUNSELLOR','TRAINEE_COUNSELLOR','SUB_AGENT_COUNSELLOR')`));
 for (let i = 0; i < 2; i++) {
-  await op.locator('[name="name"]').fill(`Extra Counsellor ${i}`);
-  await op.locator('[name="email"]').fill(`new.counsellor.extra${i}.${Date.now() % 100000}@medcity.test`);
+  await op.locator("#tm-name").fill(`Extra Counsellor ${i}`);
+  await op.locator("#tm-email").fill(`new.counsellor.extra${i}.${Date.now() % 100000}@medcity.test`);
   await op.getByRole("button", { name: "Add counsellor" }).click();
   await toast(op, /One-time password/);
   await go(op, "/settings/team");

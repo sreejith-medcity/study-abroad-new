@@ -45,11 +45,21 @@ export function parseDepartments(text: string): string[] {
  * means none. A name that is not on the list is refused rather than saved,
  * because the filter on the people lists reads the list, and a department
  * nobody can filter by is a department nobody can find.
+ *
+ * The one exception is the department the person already has. A name taken
+ * off the list in Settings stays on the people who had it, and the edit
+ * screen offers it back to them, so saving their name or email must not be
+ * refused over a department that did not change.
  */
-export function departmentChoice(value: string | null | undefined, list: readonly string[]): { ok: true; department: string | null } | { ok: false; error: string } {
+export function departmentChoice(
+  value: string | null | undefined,
+  list: readonly string[],
+  current: string | null | undefined = null,
+): { ok: true; department: string | null } | { ok: false; error: string } {
   const typed = (value ?? "").trim();
   if (!typed) return { ok: true, department: null };
   const match = list.find((d) => d.toLowerCase() === typed.toLowerCase());
-  if (!match) return { ok: false, error: "Pick a department from the list. The list is kept in Settings, Platform." };
-  return { ok: true, department: match };
+  if (match) return { ok: true, department: match };
+  if (current && current.toLowerCase() === typed.toLowerCase()) return { ok: true, department: current };
+  return { ok: false, error: "Pick a department from the list. The list is kept in Settings, Platform." };
 }

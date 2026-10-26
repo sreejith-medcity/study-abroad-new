@@ -31,6 +31,9 @@ const newCounsellor = z.object({
   department: z.string().trim().max(60).optional(),
 });
 
+/** Postgres refusing a row because another already holds the same unique value. */
+const uniqueViolation = (e: unknown) => (e as { code?: string }).code === "23505" || (e as { cause?: { code?: string } }).cause?.code === "23505";
+
 /** Somebody else already signing in with this address, in any case. */
 async function emailTaken(email: string, exceptUserId?: string) {
   const row = await db.query.users.findFirst({
@@ -82,7 +85,7 @@ export async function setCounsellorActiveAction(fd: FormData) {
   }
   let moved = 0;
   await db.transaction(async (tx) => {
-    await tx.update(schema.users).set({ active: on, sessionVersion: target.sessionVersion + 1 }).where(eq(schema.users.id, target.id));
+    await tx.update(schema.users).set({ active: on, sessionVersion: sql`${schema.users.sessionVersion} + 1` }).where(eq(schema.users.id, target.id));
     if (!on) {
       const r = await tx
         .update(schema.students)
@@ -103,7 +106,7 @@ export async function resetCounsellorPasswordAction(_: FormState, fd: FormData):
   const password = tempPassword();
   await db
     .update(schema.users)
-    .set({ passwordHash: await hashPassword(password), mustChangePassword: true, passwordUpdatedAt: new Date(), sessionVersion: target.sessionVersion + 1 })
+    .set({ passwordHash: await hashPassword(password), mustChangePassword: true, passwordUpdatedAt: new Date(), sessionVersion: sql`${schema.users.sessionVersion} + 1` })
     .where(eq(schema.users.id, target.id));
   await audit(owner.id, "team.password_reset", "user", target.id, { email: target.email });
   return { keep: true, ok: `One-time password for ${target.email}: ${password}. They are signed out and choose a new one at sign in.` };
@@ -137,7 +140,7 @@ export async function editMemberAction(_: FormState, fd: FormData): Promise<Form
   if (email !== target.email.toLowerCase() && (await emailTaken(email, target.id))) {
     return { fieldErrors: { email: ["Someone already signs in with this email"] }, error: "Someone already signs in with that email." };
   }
-  const dept = departmentChoice(d.department, departments(await getSettings()));
+  const dept = departmentChoice(d.department, departments(await getSettings()), target.department);
   if (!dept.ok) return { fieldErrors: { department: [dept.error] }, error: "Check the highlighted fields." };
 
   const emailChanged = email !== target.email;
@@ -148,10 +151,26 @@ export async function editMemberAction(_: FormState, fd: FormData): Promise<Form
   if (dept.department !== target.department) changes.department = { from: target.department, to: dept.department };
   if (Object.keys(changes).length === 0) return { ok: "Nothing changed." };
 
-  await db
-    .update(schema.users)
-    .set({ name: d.name, email, deskLabel: d.deskLabel, department: dept.department, ...(emailChanged ? { sessionVersion: target.sessionVersion + 1 } : {}) })
-    .where(eq(schema.users.id, target.id));
+  try {
+    await db
+      .update(schema.users)
+      .set({
+        name: d.name,
+        email,
+        deskLabel: d.deskLabel,
+        department: dept.department,
+        // Bumped in the database rather than from the row read earlier, so two
+        // bumps landing at once cannot write the same number and keep a
+        // session alive that both meant to end.
+        ...(emailChanged ? { sessionVersion: sql`${schema.users.sessionVersion} + 1` } : {}),
+      })
+      .where(eq(schema.users.id, target.id));
+  } catch (e) {
+    // Somebody took the address between the check above and this write. The
+    // same answer as the check gives, rather than a dead screen.
+    if (uniqueViolation(e)) return { fieldErrors: { email: ["Someone already signs in with this email"] }, error: "Someone already signs in with that email." };
+    throw e;
+  }
   await audit(owner.id, "team.edit", "user", target.id, { email: target.email, changes });
   if (emailChanged) {
     await notifyUsers([target.id], "Your sign-in email changed", `From now on, sign in with ${email}. The old address, ${target.email}, no longer signs in.`, "/settings");
