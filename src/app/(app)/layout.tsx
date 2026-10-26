@@ -417,7 +417,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         ...(user.role === "PARTNER" ? [{ href: "/targets", label: "Targets", icon: "insights" as const }] : []),
         ...(user.role === "PARTNER" && journalIssued(user.role, user.orgType) ? [{ href: "/journal/report", label: "Day end figures", icon: "deadlines" as const }] : []),
         // Why the branch's enquiries were lost.
-        ...(user.role === "PARTNER" ? [{ href: "/reports/lost-reasons", label: "Lost reasons", icon: "enquiry" as const }] : []),
+        ...(user.role === "PARTNER" && user.orgType === "BRANCH" ? [{ href: "/reports/lost-reasons", label: "Lost reasons", icon: "enquiry" as const }] : []),
         { href: "/settings", label: "Settings", icon: "settings" },
       ],
     },

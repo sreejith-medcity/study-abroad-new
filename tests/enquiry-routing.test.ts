@@ -129,6 +129,9 @@ test("the head office sets every rule; a branch head only their own branch's", (
   const counsellor = { role: "COUNSELLOR", orgId: "kottayam", orgType: "BRANCH" };
   assert.equal(isHeadOffice(admin), true);
   assert.equal(isBranchHead(head), true);
+  // A sub-agent's owner signs in as PARTNER too, and runs no branch.
+  assert.equal(isBranchHead({ role: "PARTNER", orgId: "agent", orgType: "SUB_AGENT" }), false);
+  assert.equal(mayManageRouting({ role: "PARTNER", orgId: "agent", orgType: "SUB_AGENT" }), false);
   assert.equal(mayManageRouting(counsellor), false);
   assert.equal(mayManageRouting({ role: "MANAGEMENT", orgId: "hq", orgType: "HQ" }), false);
   assert.equal(mayEditRuleFor(admin, null), true);

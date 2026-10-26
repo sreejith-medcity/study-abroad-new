@@ -367,7 +367,7 @@ export async function countedFigures(day: string, userIds: string[]): Promise<Ma
     db
       .select({ who: en.assignedToId, n: count })
       .from(en)
-      .where(and(inArray(en.assignedToId, userIds), within(en.createdAt)))
+      .where(and(inArray(en.assignedToId, userIds), within(en.createdAt), sql`${en.stage} <> 'MERGED'`))
       .groupBy(en.assignedToId),
     db
       .select({ who: cl.byId, n: count })

@@ -163,19 +163,25 @@ export type RepeatOutcome = { kind: "note" | "reopen"; enquiryId: string; name: 
  */
 export async function applyRepeat(
   plan: Exclude<RepeatPlan, { kind: "create" }>,
-  arrival: { source: RoutingSource; actorId: string | null; via: string; message?: string | null },
+  arrival: { source: RoutingSource; actorId: string | null; via: string; message?: string | null; name?: string | null; email?: string | null },
 ): Promise<RepeatOutcome> {
   const current = await db.query.enquiries.findFirst({ where: eq(e.id, plan.target.id), with: { lostReasonPicked: true } });
   if (!current) throw new Error("The enquiry to repeat on has gone");
   const when = fmtDate(new Date());
   const said = arrival.message?.trim() ? `\n\n"${arrival.message.trim()}"` : "";
+  // A number a family shares: what the arrival gave as the name and email is
+  // kept on the note when it differs, rather than lost with the second enquiry
+  // that was not made.
+  const otherName = arrival.name?.trim() && arrival.name.trim().toLowerCase() !== current.name.trim().toLowerCase() ? arrival.name.trim() : null;
+  const otherEmail = arrival.email?.trim() && arrival.email.trim().toLowerCase() !== (current.email ?? "").trim().toLowerCase() ? arrival.email.trim() : null;
+  const gave = otherName || otherEmail ? `\n\nThis time gave ${[otherName ? `the name ${otherName}` : null, otherEmail ? `the email ${otherEmail}` : null].filter(Boolean).join(" and ")}.` : "";
   const sourceLabel = SOURCE_LABEL[arrival.source];
 
   if (plan.kind === "note") {
     await db.insert(schema.enquiryNotes).values({
       enquiryId: current.id,
       authorId: arrival.actorId,
-      body: `Enquired again on ${when}, ${arrival.via} (${sourceLabel}). No second enquiry was made.${said}`,
+      body: `Enquired again on ${when}, ${arrival.via} (${sourceLabel}). No second enquiry was made.${said}${gave}`,
     });
     await updateTracked("enquiry", current.id, { repeatCount: sql`${e.repeatCount} + 1`, updatedAt: new Date() }, { by: arrival.actorId, action: "enquiry.repeat" });
     await audit(arrival.actorId, "enquiry.repeat", "enquiry", current.id, { source: arrival.source, via: arrival.via });
@@ -193,8 +199,10 @@ export async function applyRepeat(
   }
   const was = lostReasonText(current.lostReasonPicked?.label, current.lostReason);
   // Versioned; an owner who has left is cleared, which the ownership ledger
-  // records as the reopening, before the rules pick somebody new.
-  await updateTracked(
+  // records as the reopening, before the rules pick somebody new. Only while
+  // it is still lost: one merged or converted since it was looked up (a bulk
+  // upload reads the lost ones once, at the start) is left as it is.
+  const reopened = await updateTracked(
     "enquiry",
     current.id,
     {
@@ -207,12 +215,20 @@ export async function applyRepeat(
       repeatCount: sql`${e.repeatCount} + 1`,
       updatedAt: new Date(),
     },
-    { by: arrival.actorId, action: "enquiry.reopen", ledgerDetail: `Reopened from lost, ${arrival.via}; the owner had left` },
+    { by: arrival.actorId, action: "enquiry.reopen", where: eq(e.stage, "LOST"), ledgerDetail: `Reopened from lost, ${arrival.via}; the owner had left` },
   );
+  if (!reopened) {
+    await db.insert(schema.enquiryNotes).values({
+      enquiryId: current.id,
+      authorId: arrival.actorId,
+      body: `Enquired again on ${when}, ${arrival.via} (${sourceLabel}). It was no longer lost, so it was not reopened.${said}${gave}`,
+    });
+    return { kind: "note", enquiryId: current.id, name: current.name };
+  }
   await db.insert(schema.enquiryNotes).values({
     enquiryId: current.id,
     authorId: arrival.actorId,
-    body: `Came back on ${when}, ${arrival.via} (${sourceLabel}). Reopened from lost (it had been lost for: ${was}); stage is now ${STAGE_LABEL[plan.stageAfter]}.${said}`,
+    body: `Came back on ${when}, ${arrival.via} (${sourceLabel}). Reopened from lost (it had been lost for: ${was}); stage is now ${STAGE_LABEL[plan.stageAfter]}.${said}${gave}`,
     stageAfter: plan.stageAfter,
   });
   await audit(arrival.actorId, "enquiry.reopen", "enquiry", current.id, { source: arrival.source, via: arrival.via, stage: plan.stageAfter, ownerKept: !!ownerId, wasLostFor: was });

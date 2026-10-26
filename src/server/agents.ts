@@ -254,7 +254,7 @@ export async function referralQueue(onlyUnassigned = false) {
     })
     .from(e)
     .innerJoin(agent, eq(agent.id, e.submittedByOrgId))
-    .where(isNotNull(e.submittedByOrgId))
+    .where(and(isNotNull(e.submittedByOrgId), sql`${e.stage} <> 'MERGED'`))
     .orderBy(desc(e.createdAt))
     .limit(300);
 

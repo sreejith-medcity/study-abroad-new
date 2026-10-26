@@ -244,8 +244,11 @@ const HEAD_OFFICE = ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN"];
 /** The head office: sets every rule and keeps the lost reasons list. */
 export const isHeadOffice = (u: Pick<Who, "role">) => HEAD_OFFICE.includes(u.role);
 
-/** A branch head: the owner of a branch, who sets their own branch's rules. */
-export const isBranchHead = (u: Who) => u.role === "PARTNER" && u.orgType !== "HQ";
+/**
+ * A branch head: the owner of a branch, who sets their own branch's rules. A
+ * sub-agent's owner also signs in as PARTNER, and is not one.
+ */
+export const isBranchHead = (u: Who) => u.role === "PARTNER" && u.orgType === "BRANCH";
 
 /** Who may see and set routing rules at all. */
 export const mayManageRouting = (u: Who) => isHeadOffice(u) || isBranchHead(u);

@@ -182,7 +182,12 @@ export async function clearDemoData(actorId: string): Promise<Record<string, num
       // does not: it is append-only, and its entries name no student.
       sql`delete from record_versions where student_id in (select id from _students)
             or (entity = 'application' and entity_id in (select id from _apps))
-            or (entity = 'user' and entity_id in (select id from _users))`,
+            or (entity = 'user' and entity_id in (select id from _users))
+            or (entity = 'enquiry' and entity_id in (select id from enquiries where org_id in (select id from _orgs) or email like '%@example.com'))`,
+      // A real enquiry merged into a sample one keeps its own row; only the pointer goes.
+      sql`update enquiries set merged_into_id = null
+            where merged_into_id in (select id from enquiries where org_id in (select id from _orgs) or email like '%@example.com')
+              and not (org_id in (select id from _orgs) or email like '%@example.com')`,
       sql`delete from applications where id in (select id from _apps)`,
       sql`delete from enquiries where org_id in (select id from _orgs) or email like '%@example.com'`,
       sql`delete from tickets where org_id in (select id from _orgs)`,

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, or, sql } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import { db, schema } from "@/db";
 import { buildOts, CALENDARS, ChainCheck, GENESIS, seal, stampDue, stampStatement, type LedgerEntry, type LedgerFields, type Verification } from "@/lib/ledger";
@@ -51,9 +51,25 @@ export async function appendLedger(w: Writer, inputs: readonly LedgerInput[]): P
     const [head] = await tx.select().from(schema.ledgerHead).where(eq(schema.ledgerHead.id, HEAD)).for("update");
 
     const L = schema.ownershipLedger;
-    const ids = [...new Set(inputs.filter((i) => i.kind !== "CREATED").map((i) => i.entityId))];
+    // By entity and id, so the lookup runs on ownership_ledger_entity_idx
+    // rather than reading the whole ledger while the head is held.
+    const idsOf = (entity: "student" | "enquiry") => [...new Set(inputs.filter((i) => i.kind !== "CREATED" && i.entity === entity).map((i) => i.entityId))];
+    const studentIds = idsOf("student");
+    const enquiryIds = idsOf("enquiry");
     const onLedger = new Set(
-      ids.length ? (await tx.selectDistinct({ id: L.entityId }).from(L).where(inArray(L.entityId, ids))).map((r) => r.id) : [],
+      studentIds.length || enquiryIds.length
+        ? (
+            await tx
+              .selectDistinct({ id: L.entityId })
+              .from(L)
+              .where(
+                or(
+                  studentIds.length ? and(eq(L.entity, "student"), inArray(L.entityId, studentIds)) : undefined,
+                  enquiryIds.length ? and(eq(L.entity, "enquiry"), inArray(L.entityId, enquiryIds)) : undefined,
+                ),
+              )
+          ).map((r) => r.id)
+        : [],
     );
     const list: LedgerInput[] = [];
     for (const i of inputs) {
@@ -124,22 +140,31 @@ export async function ledgerFor(entity: "student" | "enquiry", entityId: string)
 /** Recomputes every hash in order, five thousand entries at a time, and checks the head. */
 export async function verifyLedger(): Promise<Verification> {
   const L = schema.ownershipLedger;
-  const [head] = await db.select().from(schema.ledgerHead).where(eq(schema.ledgerHead.id, HEAD)).limit(1);
-  const check = new ChainCheck();
-  for (let after = 0; ; ) {
-    const batch = await db.select().from(L).where(gt(L.seq, after)).orderBy(asc(L.seq)).limit(5000);
-    if (!batch.length) break;
-    let going = true;
-    for (const e of batch) {
-      if (!check.add(e as LedgerEntry)) {
-        going = false;
-        break;
+  // The head and every entry are read from one snapshot: entries appended
+  // while the check runs are not seen, so they cannot be counted against an
+  // older head and make an intact chain read as broken. Anything beyond the
+  // head in that snapshot is still reported.
+  return db.transaction(
+    async (tx) => {
+      const [head] = await tx.select().from(schema.ledgerHead).where(eq(schema.ledgerHead.id, HEAD)).limit(1);
+      const check = new ChainCheck();
+      for (let after = 0; ; ) {
+        const batch = await tx.select().from(L).where(gt(L.seq, after)).orderBy(asc(L.seq)).limit(5000);
+        if (!batch.length) break;
+        let going = true;
+        for (const e of batch) {
+          if (!check.add(e as LedgerEntry)) {
+            going = false;
+            break;
+          }
+        }
+        if (!going) break;
+        after = batch.at(-1)!.seq;
       }
-    }
-    if (!going) break;
-    after = batch.at(-1)!.seq;
-  }
-  return check.result(head ? { seq: head.seq, hash: head.headHash } : null);
+      return check.result(head ? { seq: head.seq, hash: head.headHash } : null);
+    },
+    { isolationLevel: "repeatable read", accessMode: "read only" },
+  );
 }
 
 export async function ledgerHeadRow() {

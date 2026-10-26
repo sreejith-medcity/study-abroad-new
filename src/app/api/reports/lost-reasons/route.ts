@@ -11,7 +11,7 @@ import { SOURCE_LABEL } from "@/server/enquiries";
 export async function GET(req: Request) {
   const user = await getSession();
   if (!user) return new Response("Sign in required", { status: 401 });
-  if (!mayReadLostReport(user)) return new Response("Not found", { status: 404 });
+  if (user.mustChangePassword || !mayReadLostReport(user)) return new Response("Not found", { status: 404 });
   const url = new URL(req.url);
   const period = reportPeriod(url.searchParams.get("from") ?? undefined, url.searchParams.get("to") ?? undefined, istDay());
   const everyBranch = isHeadOffice(user) || user.role === "MANAGEMENT";
@@ -27,6 +27,7 @@ export async function GET(req: Request) {
     headers: {
       "content-type": "text/csv; charset=utf-8",
       "content-disposition": `attachment; filename="lost-reasons-${period.from}-to-${period.to}.csv"`,
+      "cache-control": "no-store",
     },
   });
 }

@@ -210,7 +210,7 @@ export async function applyIncomingEnquiry(e: IncomingEnquiry): Promise<{ ok: tr
   // the enquiry it landed on when that has none, so a retry finds it.
   const repeat = await findRepeat(owner.id, e.phone.trim());
   if (repeat.kind !== "create") {
-    const out = await applyRepeat(repeat, { source: "OTHER", actorId: null, via: `from Medcity's CRM as ${e.crmId}`, message: e.notes });
+    const out = await applyRepeat(repeat, { source: "OTHER", actorId: null, via: `from Medcity's CRM as ${e.crmId}`, message: e.notes, name: e.name, email: e.email });
     await updateTracked("enquiry", out.enquiryId, { crmId: e.crmId }, { by: null, action: "crm.enquiry.link", where: isNull(schema.enquiries.crmId) });
     return { ok: true, enquiryId: out.enquiryId, created: false };
   }

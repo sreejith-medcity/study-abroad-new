@@ -38,7 +38,7 @@ export async function lostReasonUse() {
 }
 
 /** Who may read the lost reasons report: the head office, management, and a branch head for their branch. */
-export const mayReadLostReport = (user: SessionUser) => isHeadOffice(user) || user.role === "MANAGEMENT" || (user.role === "PARTNER" && user.orgType !== "HQ");
+export const mayReadLostReport = (user: SessionUser) => isHeadOffice(user) || user.role === "MANAGEMENT" || (user.role === "PARTNER" && user.orgType === "BRANCH");
 
 /**
  * When an enquiry was lost. Recorded from now on; for one closed before it

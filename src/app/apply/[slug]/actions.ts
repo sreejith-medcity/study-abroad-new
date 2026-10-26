@@ -12,6 +12,7 @@ import { rateLimit } from "@/server/rate-limit";
 import { notifyUsers, partnerRecipients } from "@/server/notify";
 import { applyRepeat, findRepeat, routeNewEnquiry } from "@/server/enquiry-routing";
 import { ledgerCreated } from "@/server/record-history";
+import { matchKey } from "@/lib/phone";
 
 export type PublicFormState = { error?: string; fieldErrors?: Record<string, string[] | undefined> };
 
@@ -67,7 +68,10 @@ export async function submitPublicEnquiryAction(_: PublicFormState, formData: Fo
   const caller = (head.get("x-forwarded-for") ?? head.get("x-real-ip") ?? "unknown").split(",")[0].trim();
   const byIp = rateLimit(`apply:ip:${caller}`, { limit: 5, windowMs: 10 * 60 * 1000, blockMs: 30 * 60 * 1000 });
   if (!byIp.allowed) return { error: "We have had a few submissions from here already. Please try again later, or call the branch." };
-  const byPhone = rateLimit(`apply:phone:${d.phone}`, { limit: 2, windowMs: 24 * 60 * 60 * 1000, blockMs: 24 * 60 * 60 * 1000 });
+  // Every spelling of the number counts as one ("+91 98470 12345", "09847012345"),
+  // so the limit cannot be stepped round by retyping it, and a stranger cannot
+  // flood a branch with "came again" notes and notices for somebody's number.
+  const byPhone = rateLimit(`apply:phone:${matchKey(d.phone) ?? d.phone}`, { limit: 2, windowMs: 24 * 60 * 60 * 1000, blockMs: 24 * 60 * 60 * 1000 });
   if (!byPhone.allowed) return { error: "We already have your enquiry. Someone from the branch will call you." };
 
   // The same number at this branch is the same person, not a new enquiry: an
@@ -75,7 +79,7 @@ export async function submitPublicEnquiryAction(_: PublicFormState, formData: Fo
   // person filling the form sees the same thank-you either way.
   const repeat = await findRepeat(org.id, d.phone);
   if (repeat.kind !== "create") {
-    await applyRepeat(repeat, { source: "WEBSITE", actorId: null, via: `through the branch ${prep ? "test preparation page" : "form"}`, message: d.message });
+    await applyRepeat(repeat, { source: "WEBSITE", actorId: null, via: `through the branch ${prep ? "test preparation page" : "form"}`, message: d.message, name: d.name, email: d.email });
     redirect(back);
   }
 

@@ -529,6 +529,7 @@ export async function assignReferralAction(_: FormState, formData: FormData): Pr
   const enquiry = await db.query.enquiries.findFirst({ where: eq(schema.enquiries.id, enquiryId) });
   if (!enquiry?.submittedByOrgId) return { error: "That is not a sub-agent's referral." };
   if (enquiry.studentId) return { error: "That one is already registered as a student." };
+  if (enquiry.stage === "MERGED") return { error: "That referral was merged into another enquiry. Pass that one on instead." };
   const branch = await db.query.organizations.findFirst({ where: and(eq(schema.organizations.id, orgId), ne(schema.organizations.type, "SUB_AGENT")) });
   if (!branch) return { error: "Pick a branch or the head office." };
 

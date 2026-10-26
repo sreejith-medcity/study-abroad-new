@@ -68,7 +68,7 @@ export async function importEnquiries(user: SessionUser, rows: Record<string, st
   const orgIds = [...new Set(plans.map((x) => x.orgId))];
   const staff = await staffByEmail(orgIds);
   const open = orgIds.length
-    ? await db.select().from(schema.enquiries).where(and(inArray(schema.enquiries.orgId, orgIds), ne(schema.enquiries.stage, "CONVERTED"), ne(schema.enquiries.stage, "LOST")))
+    ? await db.select().from(schema.enquiries).where(and(inArray(schema.enquiries.orgId, orgIds), ne(schema.enquiries.stage, "CONVERTED"), ne(schema.enquiries.stage, "LOST"), ne(schema.enquiries.stage, "MERGED")))
     : [];
   const digits = (s: string) => s.replace(/\D/g, "").slice(-10);
   const byPhone = new Map(open.map((e) => [`${e.orgId}|${digits(e.phone)}`, e]));
@@ -110,7 +110,7 @@ export async function importEnquiries(user: SessionUser, rows: Record<string, st
       if (!commit) continue;
       await applyRepeat(
         { kind: "reopen", target: { id: wasLost.id, stage: "LOST", createdAt: wasLost.createdAt, lastContactedAt: wasLost.lastContactedAt }, stageAfter: wasLost.lastContactedAt ? "CONTACTED" : "NEW" },
-        { source: (plan.fields.source as (typeof schema.enquirySource.enumValues)[number] | null) ?? "OTHER", actorId: user.id, via: "in a bulk upload", message: plan.fields.notes as string | null },
+        { source: (plan.fields.source as (typeof schema.enquirySource.enumValues)[number] | null) ?? "OTHER", actorId: user.id, via: "in a bulk upload", message: plan.fields.notes as string | null, name: plan.fields.name as string | null, email: plan.fields.email as string | null },
       );
       continue;
     }

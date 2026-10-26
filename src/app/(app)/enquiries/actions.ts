@@ -70,7 +70,7 @@ export async function createEnquiryAction(_: FormState, formData: FormData): Pro
   // a second enquiry being made beside it.
   const repeat = await findRepeat(orgId, d.phone);
   if (repeat.kind !== "create") {
-    const out = await applyRepeat(repeat, { source: d.source, actorId: user.id, via: `entered by ${user.name}`, message: d.notes });
+    const out = await applyRepeat(repeat, { source: d.source, actorId: user.id, via: `entered by ${user.name}`, message: d.notes, name: d.name, email: d.email });
     revalidatePath("/enquiries");
     redirect(`/enquiries/${out.enquiryId}?repeat=${out.kind}`);
   }
@@ -163,6 +163,9 @@ export async function logFollowUpAction(_: FormState, formData: FormData): Promi
   const enquiry = await getEnquiryForUser(user, d.enquiryId);
   if (enquiry.stage === "CONVERTED") return { error: "This enquiry is already a student." };
   if (enquiry.stage === "MERGED") return { error: MERGED_REFUSAL };
+  // A lost enquiry is reopened by entering it again, which clears its reason;
+  // a follow-up logged on it would move the stage and leave the reason behind.
+  if (enquiry.stage === "LOST") return { error: "This enquiry is closed as lost. Add it again as a new enquiry with the same number to reopen it." };
   if (d.stage === "LOST" || d.stage === "MERGED" || d.stage === "CONVERTED") return { fieldErrors: { stage: [LOST_HINT] }, error: LOST_HINT };
 
   const stage = d.stage ?? (enquiry.stage === "NEW" ? "CONTACTED" : enquiry.stage);
@@ -173,7 +176,7 @@ export async function logFollowUpAction(_: FormState, formData: FormData): Promi
     {
       stage,
       lastContactedAt: new Date(),
-      nextFollowUpAt: d.nextFollowUpAt ?? (stage === "LOST" ? null : enquiry.nextFollowUpAt),
+      nextFollowUpAt: d.nextFollowUpAt ?? enquiry.nextFollowUpAt,
       updatedAt: new Date(),
     },
     { by: user.id, action: "enquiry.follow_up" },
