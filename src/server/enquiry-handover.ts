@@ -5,6 +5,7 @@ import { audit } from "@/lib/audit";
 import { DOCUMENTATION_ROLES } from "@/lib/permissions";
 import { syncChecklist } from "@/db/documentation-sync";
 import { notifyUsers } from "@/server/notify";
+import { appendLedger } from "@/server/ledger";
 
 /** What a desk person is doing on a file handed over at registration. */
 export const DOCUMENTS_PART = "Documents";
@@ -56,6 +57,23 @@ export async function handEnquiryToDocumentation(studentId: string, byId: string
     if (!already) {
       await db.insert(schema.studentPeople).values({ studentId, userId: officerId, part: DOCUMENTS_PART, addedById: byId });
       await audit(byId, "student.handover", "student", studentId, { to: officerId, part: DOCUMENTS_PART });
+      // The counsellor still carries the file; the ledger records that the
+      // desk now works it beside them, and who on the desk.
+      const student = await db.query.students.findFirst({ where: eq(schema.students.id, studentId), columns: { orgId: true, assignedToId: true } });
+      const officer = await db.query.users.findFirst({ where: eq(schema.users.id, officerId), columns: { name: true } });
+      if (student) {
+        await appendLedger(db, [
+          {
+            kind: "HANDOVER",
+            entity: "student",
+            entityId: studentId,
+            orgId: student.orgId,
+            ownerId: student.assignedToId,
+            detail: `Documents with ${officer?.name ?? "the documentation desk"}`,
+            actorId: byId,
+          },
+        ]);
+      }
     }
   }
 

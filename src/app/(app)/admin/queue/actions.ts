@@ -7,6 +7,7 @@ import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { DESK_ASSIGNING_ROLES, DOCUMENTATION_ROLES } from "@/lib/permissions";
 import { notifyUsers } from "@/server/notify";
+import { updateTracked } from "@/server/record-history";
 
 /**
  * Putting an application on an officer's desk.
@@ -32,7 +33,7 @@ export async function assignOfficerAction(fd: FormData) {
     if (!(DOCUMENTATION_ROLES as readonly string[]).includes(officer.role)) return;
   }
 
-  await db.update(schema.applications).set({ officerId, updatedAt: new Date() }).where(eq(schema.applications.id, applicationId));
+  await updateTracked("application", applicationId, { officerId, updatedAt: new Date() }, { by: user.id, action: "application.officer" });
   await audit(user.id, "application.officer", "application", applicationId, { from: app.officerId, to: officerId });
   if (officerId && officerId !== user.id) {
     await notifyUsers([officerId], "An application is on your desk", app.ackNo, `/students/${app.studentId}/applications?app=${applicationId}`);

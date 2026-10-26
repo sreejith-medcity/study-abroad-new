@@ -6,6 +6,7 @@ import { tryMintStudentId } from "@/server/medcity-id";
 import { adminIds, notifyUsers } from "@/server/notify";
 import { audit } from "@/lib/audit";
 import { applyRepeat, findRepeat, routeNewEnquiry } from "@/server/enquiry-routing";
+import { ledgerCreated, updateTracked } from "@/server/record-history";
 
 /**
  * Taking a student or a lead in from Medcity's own CRM.
@@ -115,6 +116,7 @@ export async function applyIncomingStudent(incoming: IncomingStudent, actorNote:
       entityId: made.id,
       meta: { crmId: incoming.crmId, branch: branch.name, by: actorNote, fields: plan.changed.map((c) => c.field) },
     });
+    await ledgerCreated(db, "student", [made], null, "From Medcity's CRM");
     return { ok: true, created: true, studentId: made.id, medcityId: made.medcityId, plan };
   }
 
@@ -129,7 +131,7 @@ export async function applyIncomingStudent(incoming: IncomingStudent, actorNote:
   // A write only touches updatedAt when something actually changed, or every
   // sync would make the portal's copy look newer than it is.
   if (plan.changed.length > 0) set.updatedAt = new Date();
-  await db.update(schema.students).set(set).where(eq(schema.students.id, student.id));
+  await updateTracked("student", student.id, set, { by: null, action: "crm.student.update" });
 
   if (plan.changed.length > 0) {
     await db.insert(schema.auditLogs).values({
@@ -230,6 +232,7 @@ export async function applyIncomingEnquiry(e: IncomingEnquiry): Promise<{ ok: tr
       nextFollowUpAt: new Date(Date.now() + 24 * 60 * 60_000),
     })
     .returning();
+  await ledgerCreated(db, "enquiry", [row], null, "From Medcity's CRM");
   await db.insert(schema.enquiryNotes).values({
     enquiryId: row.id,
     authorId: anybody.id,

@@ -10,6 +10,7 @@ import { ADMIN_ROLES, DECIDE_REFUSAL, OWN_UPLOAD_REFUSAL, PROCESSING_ROLES, isSt
 import { can } from "@/server/capabilities";
 import { claimHeld, CLAIM_MINUTES, stageLabel, validUntil, waiveRefusal } from "@/lib/journey";
 import { getStudentForUser } from "@/server/queries";
+import { updateTracked } from "@/server/record-history";
 import { sendWhatsAppRecorded } from "@/server/whatsapp";
 import { stageGate, studentChecklist, studentContext, syncChecklist } from "@/server/documentation";
 import { packContents, packFits } from "@/server/pack";
@@ -365,7 +366,7 @@ export async function setStageAction(_: FormState, fd: FormData): Promise<FormSt
     await db.insert(schema.gateOverrides).values({ studentId, stage: student.journeyStage, reason, missing: leaving.missing.map((m) => m.label), actorId: user.id });
     await audit(user.id, "gate.override", "student", studentId, { stage: student.journeyStage, reason, missing: leaving.missing.map((m) => m.label) });
   }
-  await db.update(schema.students).set({ journeyStage: stage, stageEnteredAt: new Date(), updatedAt: new Date() }).where(eq(schema.students.id, studentId));
+  await updateTracked("student", studentId, { journeyStage: stage, stageEnteredAt: new Date(), updatedAt: new Date() }, { by: user.id, action: "student.stage" });
   await audit(user.id, "student.stage", "student", studentId, { from: student.journeyStage, to: stage });
   await sendStageChange(studentId, {
     medcityId: student.medcityId,

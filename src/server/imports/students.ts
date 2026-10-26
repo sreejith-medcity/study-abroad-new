@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, inArray, or, sql } from "drizzle-orm";
+import { and, inArray, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
@@ -8,6 +8,7 @@ import { createId } from "@/lib/id";
 import { reserveStudentIds } from "@/server/medcity-id";
 import { branchOwner, branchResolver, emptyResult, lineOf, phoneKey, staffByEmail, type ImportResult } from "./common";
 import { isCounsellor } from "@/lib/permissions";
+import { ledgerCreated, updateTracked } from "@/server/record-history";
 
 export const STUDENT_COLUMNS = [
   "branch", "name", "first_name", "last_name", "email", "phone", "counsellor_email", "consent",
@@ -254,7 +255,7 @@ export async function importStudents(user: SessionUser, rows: Row[], commit: boo
     out.updated++;
     if (out.sample.length < 8) out.sample.push(`Fill in: ${plan.label} (${[...Object.keys(set), ...newAcademics.map((a) => (a.level === "SCHOOL" ? "12th marks" : "bachelor's")), ...newTests.map((t) => t.test)].join(", ")})`);
     if (!commit) continue;
-    if (Object.keys(set).length) await db.update(schema.students).set({ ...set, updatedAt: new Date() }).where(eq(schema.students.id, current.id));
+    if (Object.keys(set).length) await updateTracked("student", current.id, { ...set, updatedAt: new Date() }, { by: user.id, action: "student.bulk_upload" });
     if (newAcademics.length) await db.insert(schema.academicRecords).values(newAcademics.map((a) => ({ ...a, institution: a.institution!, studentId: current.id })));
     if (newTests.length) await db.insert(schema.testScores).values(newTests.map((t) => ({ ...t, studentId: current.id })));
     await audit(user.id, "student.profile.update", "student", current.id, { source: "bulk upload", fields: Object.keys(set) });
@@ -309,7 +310,8 @@ export async function importStudents(user: SessionUser, rows: Row[], commit: boo
           } as typeof schema.students.$inferInsert;
         }),
       )
-      .returning({ id: schema.students.id });
+      .returning({ id: schema.students.id, orgId: schema.students.orgId, assignedToId: schema.students.assignedToId });
+    await ledgerCreated(db, "student", made, user.id, "From a bulk upload");
     const academics = chunk.flatMap(({ plan, id }) => plan.academics.map((a) => ({ ...a, institution: a.institution!, studentId: id })));
     const tests = chunk.flatMap(({ plan, id }) => plan.tests.map((t) => ({ ...t, studentId: id })));
     if (academics.length) await db.insert(schema.academicRecords).values(academics);

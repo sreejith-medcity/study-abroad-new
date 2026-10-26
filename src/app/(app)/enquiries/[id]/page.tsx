@@ -3,7 +3,7 @@ import { asc } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fmtDate, fmtDateTime, intakeLabel } from "@/lib/format";
-import { ADMIN_ROLES, PARTNER_ROLES, isStaff } from "@/lib/permissions";
+import { ADMIN_ROLES, PARTNER_ROLES, isAdmin, isStaff } from "@/lib/permissions";
 import { orgUsers } from "@/server/queries";
 import { SOURCE_LABEL, STAGE_LABEL, STAGE_TONE, getEnquiryForUser } from "@/server/enquiries";
 import { Alert, Button, Card, CardHeader, Chip, DataList, LinkButton, PageHeader, Select } from "@/components/ui";
@@ -15,6 +15,9 @@ import { lostReasonList } from "@/server/lost-reasons";
 import { lostReasonText } from "@/lib/lost-reasons";
 import { mayMerge } from "@/lib/enquiry-routing";
 import { claimEnquiryAction, setEnquiryStageAction } from "../actions";
+import { SubTabs } from "@/components/tabs";
+import { OwnershipTimeline } from "@/components/ownership-timeline";
+import { ledgerFor } from "@/server/ledger";
 
 export const metadata = { title: "Enquiry" };
 
@@ -26,12 +29,13 @@ export default async function EnquiryPage({ params, searchParams }: { params: Pr
   const sp = await searchParams;
   const enquiry = await getEnquiryForUser(user, id);
   const merged = enquiry.stage === "MERGED";
-  const [people, countries, reasons, duplicates, folded] = await Promise.all([
+  const [people, countries, reasons, duplicates, folded, ownership] = await Promise.all([
     orgUsers(enquiry.orgId),
     db.select({ name: schema.countries.name }).from(schema.countries).orderBy(asc(schema.countries.name)),
     lostReasonList({ activeOnly: true }),
     merged ? Promise.resolve({ visible: [], elsewhere: 0 }) : possibleDuplicates(user, enquiry),
     mergedInto(enquiry.id),
+    ledgerFor("enquiry", enquiry.id),
   ]);
 
   const notes = [...enquiry.notes].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
@@ -70,6 +74,16 @@ export default async function EnquiryPage({ params, searchParams }: { params: Pr
           ) : undefined
         }
       />
+
+      <div className="mb-4">
+        <SubTabs
+          label="Enquiry"
+          tabs={[
+            { href: `/enquiries/${enquiry.id}`, label: "Enquiry" },
+            { href: `/enquiries/${enquiry.id}/history`, label: "History" },
+          ]}
+        />
+      </div>
 
       {sp.repeat === "note" && (
         <Alert tone="info" title="Already on the list">
@@ -281,6 +295,8 @@ export default async function EnquiryPage({ params, searchParams }: { params: Pr
               </ul>
             </Card>
           )}
+
+          <OwnershipTimeline entries={ownership} owner={enquiry.assignedTo?.name ?? "nobody"} admin={isStaff(user) && isAdmin(user)} />
 
           {enquiry.stage === "CONVERTED" && enquiry.student && (
             <Card className="p-4">

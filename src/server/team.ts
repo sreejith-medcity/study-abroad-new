@@ -14,6 +14,7 @@ import { BRANCH_COUNSELLOR_ROLES, PARTNER_ROLES } from "@/lib/permissions";
 import { seatFree } from "@/lib/seats";
 import { notifyUsers } from "@/server/notify";
 import { departments, getSettings } from "@/server/settings";
+import { updateTracked, updateTrackedMany } from "@/server/record-history";
 
 const tempPassword = () => `Mc-${randomBytes(6).toString("base64url")}`;
 
@@ -85,13 +86,14 @@ export async function setCounsellorActiveAction(fd: FormData) {
   }
   let moved = 0;
   await db.transaction(async (tx) => {
-    await tx.update(schema.users).set({ active: on, sessionVersion: sql`${schema.users.sessionVersion} + 1` }).where(eq(schema.users.id, target.id));
+    await updateTracked("user", target.id, { active: on, sessionVersion: sql`${schema.users.sessionVersion} + 1` }, { by: owner.id, action: on ? "team.activate" : "team.deactivate", tx });
     if (!on) {
-      const r = await tx
-        .update(schema.students)
-        .set({ assignedToId: owner.id })
-        .where(and(eq(schema.students.orgId, owner.orgId), eq(schema.students.assignedToId, target.id)))
-        .returning({ id: schema.students.id });
+      const r = await updateTrackedMany(
+        "student",
+        and(eq(schema.students.orgId, owner.orgId), eq(schema.students.assignedToId, target.id))!,
+        { assignedToId: owner.id },
+        { by: owner.id, action: "student.reassign", tx, ledgerDetail: `${target.name} was switched off` },
+      );
       moved = r.length;
     }
   });
@@ -152,9 +154,10 @@ export async function editMemberAction(_: FormState, fd: FormData): Promise<Form
   if (Object.keys(changes).length === 0) return { ok: "Nothing changed." };
 
   try {
-    await db
-      .update(schema.users)
-      .set({
+    await updateTracked(
+      "user",
+      target.id,
+      {
         name: d.name,
         email,
         deskLabel: d.deskLabel,
@@ -163,8 +166,9 @@ export async function editMemberAction(_: FormState, fd: FormData): Promise<Form
         // bumps landing at once cannot write the same number and keep a
         // session alive that both meant to end.
         ...(emailChanged ? { sessionVersion: sql`${schema.users.sessionVersion} + 1` } : {}),
-      })
-      .where(eq(schema.users.id, target.id));
+      },
+      { by: owner.id, action: "team.edit" },
+    );
   } catch (e) {
     // Somebody took the address between the check above and this write. The
     // same answer as the check gives, rather than a dead screen.

@@ -7,6 +7,7 @@ import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { PARTNER_ROLES, STAFF_ROLES, STUDENT_WORK_ROLES, canAssignStudents, isStaff } from "@/lib/permissions";
 import { getStudentForUser } from "@/server/queries";
+import { updateTracked } from "@/server/record-history";
 import type { FormState } from "@/lib/form-state";
 
 const clean = (v: FormDataEntryValue | null, max = 40) => String(v ?? "").trim().slice(0, max);
@@ -22,7 +23,7 @@ export async function setStudentTeamAction(fd: FormData) {
     const team = await db.query.teams.findFirst({ where: eq(schema.teams.id, teamId) });
     if (!team) return;
   }
-  await db.update(schema.students).set({ teamId, updatedAt: new Date() }).where(eq(schema.students.id, studentId));
+  await updateTracked("student", studentId, { teamId, updatedAt: new Date() }, { by: user.id, action: "student.team" });
   await audit(user.id, "student.team", "student", studentId, { from: student.teamId, to: teamId });
   revalidatePath(`/students/${studentId}`, "layout");
 }

@@ -4,6 +4,7 @@ import { db, schema } from "@/db";
 import { audit } from "@/lib/audit";
 import { open } from "@/lib/secret-box";
 import { adminIds, notifyUsers, partnerRecipients } from "@/server/notify";
+import { updateTracked } from "@/server/record-history";
 
 export type RazorpayConfig = { keyId: string; keySecret: string; webhookSecret: string | null; enabled: boolean; source: "env" | "settings" };
 
@@ -47,7 +48,7 @@ export async function markOrderPaid(orderId: string, paymentId: string, actorId:
   if (!row) return false;
   if (row.purpose === "APPLICATION_FEE" && row.applicationId) {
     const app = await db.query.applications.findFirst({ where: eq(schema.applications.id, row.applicationId), with: { student: true } });
-    await db.update(schema.applications).set({ feeStatus: "PAID" }).where(eq(schema.applications.id, row.applicationId));
+    await updateTracked("application", row.applicationId, { feeStatus: "PAID" }, { by: actorId, action: "application.fee_paid_online" });
     if (app) {
       const href = `/students/${app.studentId}/applications?app=${app.id}`;
       await notifyUsers([...(await partnerRecipients(app.orgId, app.student.assignedToId)), ...(await adminIds())], `${app.ackNo}: application fee paid online`, `${row.currency} ${(row.amountMinor / 100).toFixed(2)}`, href);

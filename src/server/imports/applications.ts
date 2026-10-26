@@ -7,6 +7,7 @@ import { day, num, oneOf, text, type Problems } from "@/lib/import-values";
 import { changeStatus, StatusChangeError } from "@/server/applications";
 import { offerVisa, saveOfferVisa, type OfferVisaValues } from "@/server/offer-visa";
 import { emptyResult, lineOf, type ImportResult } from "./common";
+import { updateTracked } from "@/server/record-history";
 
 export const APPLICATION_COLUMNS = [
   "ack_no", "status", "status_reason", "priority",
@@ -87,7 +88,7 @@ export async function importApplicationUpdates(user: SessionUser, rows: Record<s
     if (!commit) continue;
     try {
       if (priority && priority !== app.priority) {
-        await db.update(schema.applications).set({ priority }).where(eq(schema.applications.id, app.id));
+        await updateTracked("application", app.id, { priority }, { by: user.id, action: "application.bulk_upload" });
         await audit(user.id, "application.priority", "application", app.id, { from: app.priority, to: priority, source: "bulk upload" });
       }
       if (offerChanged.length) {

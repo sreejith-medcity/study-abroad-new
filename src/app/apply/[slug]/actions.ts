@@ -11,6 +11,7 @@ import { answerError } from "@/lib/signup-questions";
 import { rateLimit } from "@/server/rate-limit";
 import { notifyUsers, partnerRecipients } from "@/server/notify";
 import { applyRepeat, findRepeat, routeNewEnquiry } from "@/server/enquiry-routing";
+import { ledgerCreated } from "@/server/record-history";
 
 export type PublicFormState = { error?: string; fieldErrors?: Record<string, string[] | undefined> };
 
@@ -108,6 +109,7 @@ export async function submitPublicEnquiryAction(_: PublicFormState, formData: Fo
     body: `Came in through the branch ${prep ? "test preparation page" : "form"}.${d.message ? `\n\n"${d.message}"` : ""}\n\nConsent recorded: ${CONSENT_TEXT}`,
   });
   await audit(null, "enquiry.public_submit", "enquiry", row.id, { org: org.name, source: "WEBSITE" });
+  await ledgerCreated(db, "enquiry", [row], null, "From the branch's public form");
   await notifyUsers(await partnerRecipients(org.id), prep ? "New test prep enquiry" : "New enquiry from your form", `${d.name} · ${d.phone}`, `/enquiries/${row.id}`);
   await routeNewEnquiry(row, null);
 

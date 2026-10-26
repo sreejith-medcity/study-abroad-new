@@ -79,6 +79,8 @@ const partnerNav = (home: string): NavGroup[] => [
       { href: "/updates", label: "Updates", icon: "spark" },
       { href: "/events", label: "Events", icon: "events" },
       { href: "/training", label: "Training", icon: "training" },
+      // Who changed what on their own files, or the branch's for a branch head.
+      { href: "/admin/history", label: "Change history", icon: "shield" },
     ],
   },
 ];
@@ -185,6 +187,16 @@ const ADMIN_NAV: NavGroup[] = [
       { href: "/targets", label: "Targets", icon: "insights" },
       { href: "/learning", label: "Learning resources", icon: "learning" },
       { href: "/support", label: "Help desk", icon: "support" },
+    ],
+  },
+  {
+    // Who changed what, and who owned which file when: read when something
+    // has to be traced, so it is shut until then.
+    title: "Records",
+    folded: true,
+    items: [
+      { href: "/admin/history", label: "Change history", icon: "shield" },
+      { href: "/admin/ledger", label: "Ownership ledger", icon: "shield" },
     ],
   },
   {
@@ -329,6 +341,8 @@ const MANAGEMENT_NAV: NavGroup[] = [
       { href: "/journal/report", label: "Day end reports", icon: "deadlines" },
       { href: "/reports/lost-reasons", label: "Lost reasons", icon: "enquiry" },
       { href: "/learning", label: "Learning resources", icon: "learning" },
+      { href: "/admin/history", label: "Change history", icon: "shield" },
+      { href: "/admin/ledger", label: "Ownership ledger", icon: "shield" },
     ],
   },
 ];

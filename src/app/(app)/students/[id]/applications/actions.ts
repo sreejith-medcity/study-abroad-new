@@ -23,6 +23,7 @@ import { getSettings } from "@/server/settings";
 import { offerVisa, saveOfferVisa } from "@/server/offer-visa";
 import { saveUpload, UploadError } from "@/server/storage";
 import { sendWhatsApp } from "@/server/whatsapp";
+import { updateTracked } from "@/server/record-history";
 
 import type { FormState } from "@/lib/form-state";
 export type { FormState };
@@ -117,7 +118,7 @@ export async function createApplicationAction(_: FormState, formData: FormData):
     })
     .returning();
   await db.insert(schema.statusHistory).values({ applicationId: app.id, toStatusId: first.id, changedById: user.id });
-  if (!student.preferredPathway) await db.update(schema.students).set({ preferredPathway: program.pathway }).where(eq(schema.students.id, student.id));
+  if (!student.preferredPathway) await updateTracked("student", student.id, { preferredPathway: program.pathway }, { by: user.id, action: "student.pathway_from_application" });
 
   const deadline = await db.query.programDeadlines.findFirst({
     where: and(eq(schema.programDeadlines.programId, program.id), eq(schema.programDeadlines.intakeYear, year), eq(schema.programDeadlines.intakeMonth, month)),
@@ -138,7 +139,7 @@ export async function setVendorReferenceAction(formData: FormData) {
   const reference = String(formData.get("vendorReference") ?? "").trim().slice(0, 60) || null;
   const app = await db.query.applications.findFirst({ where: eq(schema.applications.id, applicationId) });
   if (!app) return;
-  await db.update(schema.applications).set({ vendorReference: reference, updatedAt: new Date() }).where(eq(schema.applications.id, applicationId));
+  await updateTracked("application", applicationId, { vendorReference: reference, updatedAt: new Date() }, { by: user.id, action: "application.vendor_reference" });
   await audit(user.id, "application.vendor_reference", "application", applicationId, { reference });
   revalidatePath(`/students/${app.studentId}/applications`);
 }
@@ -263,7 +264,7 @@ export async function setDocumentTypeAction(formData: FormData) {
 export async function markFeePaidAction(formData: FormData) {
   const user = await requireUser([...ADMIN_ROLES]);
   const applicationId = String(formData.get("applicationId"));
-  await db.update(schema.applications).set({ feeStatus: "PAID" }).where(and(eq(schema.applications.id, applicationId), inArray(schema.applications.feeStatus, ["DUE"])));
+  await updateTracked("application", applicationId, { feeStatus: "PAID" }, { by: user.id, action: "application.fee_paid", where: inArray(schema.applications.feeStatus, ["DUE"]) });
   await audit(user.id, "application.fee_paid", "application", applicationId);
   revalidatePath("/", "layout");
 }
@@ -325,7 +326,7 @@ export async function setPriorityAction(fd: FormData) {
   if (!(schema.applicationPriority.enumValues as readonly string[]).includes(priority)) return;
   const app = await getApplicationForUser(user, String(fd.get("applicationId") ?? ""));
   if (app.priority === priority) return;
-  await db.update(schema.applications).set({ priority: priority as "HIGH" }).where(eq(schema.applications.id, app.id));
+  await updateTracked("application", app.id, { priority: priority as "HIGH" }, { by: user.id, action: "application.priority" });
   await audit(user.id, "application.priority", "application", app.id, { from: app.priority, to: priority });
   revalidatePath(`/students/${app.studentId}/applications`);
   revalidatePath("/applications");

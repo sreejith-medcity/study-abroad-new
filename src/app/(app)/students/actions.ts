@@ -19,6 +19,8 @@ import { tryMintStudentId } from "@/server/medcity-id";
 import { openEarningForStudent } from "@/server/agent-actions";
 import { handEnquiryToDocumentation } from "@/server/enquiry-handover";
 import { BACKGROUND_QUESTIONS, CONTACT_RELATIONS } from "@/lib/background";
+import { ledgerCreated, updateTracked } from "@/server/record-history";
+import { appendLedger } from "@/server/ledger";
 
 import type { FormState } from "@/lib/form-state";
 export type { FormState };
@@ -140,6 +142,7 @@ export async function createStudentAction(_: FormState, formData: FormData): Pro
     })
     .returning();
   await audit(user.id, "student.create", "student", student.id, { consent: true, orgId });
+  await ledgerCreated(db, "student", [student], user.id, enquiryId && enquiry ? "Registered from an enquiry" : null);
   // Registered by the desk rather than by the branch: the branch is told, so the
   // file does not sit unassigned in a list nobody is watching.
   if (isStaff(user)) {
@@ -162,10 +165,20 @@ export async function createStudentAction(_: FormState, formData: FormData): Pro
   // Registered straight from an enquiry: close the enquiry against this student.
   if (enquiry) {
     if (isStaff(user) || enquiry.orgId === user.orgId) {
-      await db
-        .update(schema.enquiries)
-        .set({ stage: "CONVERTED", studentId: student.id, nextFollowUpAt: null, updatedAt: new Date() })
-        .where(eq(schema.enquiries.id, enquiry.id));
+      await updateTracked("enquiry", enquiry.id, { stage: "CONVERTED", studentId: student.id, nextFollowUpAt: null, updatedAt: new Date() }, { by: user.id, action: "enquiry.convert" });
+      // The enquiry's line on the ledger ends here, pointing at the student
+      // file that carries it on.
+      await appendLedger(db, [
+        {
+          kind: "CONVERTED",
+          entity: "enquiry",
+          entityId: enquiry.id,
+          orgId: enquiry.orgId,
+          ownerId: enquiry.assignedToId,
+          detail: student.medcityId ? `Student ${student.medcityId}` : "Student registered without a Medcity ID",
+          actorId: user.id,
+        },
+      ]);
       await db.insert(schema.enquiryNotes).values({
         enquiryId: enquiry.id,
         authorId: user.id,
@@ -185,7 +198,7 @@ export async function createStudentAction(_: FormState, formData: FormData): Pro
       // the earning is opened the same day so the sub-agent can see it coming.
       // The branch owns the student; the sub-agent is who gets paid for them.
       if (enquiry.submittedByOrgId) {
-        await db.update(schema.students).set({ referredByOrgId: enquiry.submittedByOrgId }).where(eq(schema.students.id, student.id));
+        await updateTracked("student", student.id, { referredByOrgId: enquiry.submittedByOrgId }, { by: user.id, action: "student.referral" });
         await openEarningForStudent(student.id, enquiry.submittedByOrgId);
         await notifyUsers(
           await partnerRecipients(enquiry.submittedByOrgId),
@@ -227,7 +240,7 @@ export async function reassignStudentAction(formData: FormData) {
     const headOffice = assignee.org?.type === "HQ";
     if (!sameBranch && !(headOffice && isStaff(user))) return;
   }
-  await db.update(schema.students).set({ assignedToId, updatedAt: new Date() }).where(eq(schema.students.id, studentId));
+  await updateTracked("student", studentId, { assignedToId, updatedAt: new Date() }, { by: user.id, action: "student.reassign" });
   await audit(user.id, "student.reassign", "student", studentId, { from: student.assignedToId, to: assignedToId });
   if (assignedToId) await notifyUsers([assignedToId], "Student assigned to you", `${student.firstName} ${student.lastName}`, `/students/${studentId}/profile`);
   revalidatePath("/students");
@@ -239,10 +252,14 @@ export async function archiveStudentAction(formData: FormData) {
   const student = await getStudentForUser(user, studentId);
   const [{ n }] = await db.select({ n: count() }).from(schema.applications).where(eq(schema.applications.studentId, studentId));
   if (n > 0) {
-    await db.update(schema.students).set({ archived: !student.archived }).where(eq(schema.students.id, studentId));
+    await updateTracked("student", studentId, { archived: !student.archived }, { by: user.id, action: student.archived ? "student.unarchive" : "student.archive" });
     await audit(user.id, student.archived ? "student.unarchive" : "student.archive", "student", studentId);
   } else {
-    await db.delete(schema.students).where(eq(schema.students.id, studentId));
+    await db.transaction(async (tx) => {
+      await tx.delete(schema.students).where(eq(schema.students.id, studentId));
+      // The ledger keeps the file's line, closed: who held it when it went.
+      await appendLedger(tx, [{ kind: "REMOVED", entity: "student", entityId: studentId, orgId: student.orgId, ownerId: student.assignedToId, actorId: user.id }]);
+    });
     await audit(user.id, "student.delete", "student", studentId);
   }
   revalidatePath("/students");
@@ -307,7 +324,7 @@ export async function savePersonalAction(_: FormState, formData: FormData): Prom
   else if (!data.mailingAddress) return { fieldErrors: { mailingAddress: ["Enter the mailing address, or tick that it is the same as the permanent one"] }, error: "Check the highlighted fields." };
   // Counsellors see a masked passport; an unchanged masked value must not overwrite the real number.
   if (data.passportNumber?.includes("•")) data.passportNumber = student.passportNumber;
-  await db.update(schema.students).set({ ...data, updatedAt: new Date() }).where(eq(schema.students.id, studentId));
+  await updateTracked("student", studentId, { ...data, updatedAt: new Date() }, { by: user.id, action: "student.profile" });
   await audit(user.id, "student.profile.update", "student", studentId, { section: "personal" });
   revalidatePath(`/students/${studentId}`, "layout");
   return { ok: "Saved." };
@@ -398,7 +415,7 @@ export async function saveBackgroundAction(_: FormState, formData: FormData): Pr
     answers[q.key] = { answer: a === "yes", details: a === "yes" ? details : null };
   }
   if (Object.keys(fieldErrors).length) return { fieldErrors, error: "Answer every question; a yes needs details." };
-  await db.update(schema.students).set({ background: answers, updatedAt: new Date() }).where(eq(schema.students.id, studentId));
+  await updateTracked("student", studentId, { background: answers, updatedAt: new Date() }, { by: user.id, action: "student.background" });
   await audit(user.id, "student.profile.update", "student", studentId, { section: "background" });
   revalidatePath(`/students/${studentId}`, "layout");
   return { ok: "Background answers saved." };
@@ -481,7 +498,7 @@ export async function toggleLockAction(formData: FormData) {
   const user = await requireUser([...ADMIN_ROLES]);
   const studentId = String(formData.get("studentId"));
   const student = await getStudentForUser(user, studentId);
-  await db.update(schema.students).set({ profileLocked: !student.profileLocked }).where(eq(schema.students.id, studentId));
+  await updateTracked("student", studentId, { profileLocked: !student.profileLocked }, { by: user.id, action: student.profileLocked ? "student.unlock" : "student.lock" });
   await db
     .update(schema.editRequests)
     .set({ status: "APPROVED" })
@@ -584,7 +601,7 @@ export async function applyPassportAction(_: FormState, formData: FormData): Pro
   const set = Object.fromEntries(Object.entries(parsed.data).filter(([, v]) => v !== null));
   if (!Object.keys(set).length) return { error: "Nothing to save." };
   if (parsed.data.passportIssue && parsed.data.passportExpiry && parsed.data.passportExpiry <= parsed.data.passportIssue) return { fieldErrors: { passportExpiry: ["Expiry must be after issue"] }, error: "Check the highlighted fields." };
-  await db.update(schema.students).set({ ...set, updatedAt: new Date() }).where(eq(schema.students.id, studentId));
+  await updateTracked("student", studentId, { ...set, updatedAt: new Date() }, { by: user.id, action: "student.passport" });
   await audit(user.id, "student.profile.update", "student", studentId, { section: "passport", source: "document" });
   revalidatePath(`/students/${studentId}`, "layout");
   return { ok: "Passport details saved." };

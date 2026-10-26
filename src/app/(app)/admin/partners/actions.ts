@@ -15,6 +15,7 @@ import { notifyUsers } from "@/server/notify";
 import { makeSlug } from "@/server/public-form";
 import { orgIsUntouched } from "@/server/org-untouched";
 import { departments, getSettings } from "@/server/settings";
+import { updateTracked, updateTrackedMany } from "@/server/record-history";
 
 import type { FormState } from "@/lib/form-state";
 export type { FormState };
@@ -221,7 +222,7 @@ export async function toggleUserAction(formData: FormData) {
   if (!u) return;
   // Only a super admin may switch off another Medcity Overseas account.
   if ((HQ_ROLES as readonly string[]).includes(u.role) && !canManageUsers(actor)) return;
-  await db.update(schema.users).set({ active: !u.active }).where(eq(schema.users.id, userId));
+  await updateTracked("user", userId, { active: !u.active }, { by: actor.id, action: u.active ? "user.deactivate" : "user.activate" });
   await audit(actor.id, u.active ? "user.deactivate" : "user.activate", "user", userId, { email: u.email, role: u.role });
   revalidatePath("/admin/partners");
 }
@@ -254,7 +255,7 @@ export async function changeRoleAction(_: FormState, formData: FormData): Promis
     if (n <= 1) return { error: "Keep at least one active super admin." };
   }
 
-  await db.update(schema.users).set({ role }).where(eq(schema.users.id, userId));
+  await updateTracked("user", userId, { role }, { by: actor.id, action: "user.role_change" });
   await audit(actor.id, "user.role_change", "user", userId, { email: target.email, from: target.role, to: role });
   revalidatePath("/admin/partners");
   return { ok: `${target.name} is now ${ROLE_LABEL[role]}.` };
@@ -368,9 +369,10 @@ export async function editUserAction(_: FormState, formData: FormData): Promise<
   if (Object.keys(changes).length === 0) return { ok: "Nothing changed." };
 
   try {
-    await db
-      .update(schema.users)
-      .set({
+    await updateTracked(
+      "user",
+      target.id,
+      {
         name: d.name,
         email,
         deskLabel,
@@ -379,8 +381,9 @@ export async function editUserAction(_: FormState, formData: FormData): Promise<
         // bumps landing at once cannot write the same number and keep a
         // session alive that both meant to end.
         ...(emailChanged ? { sessionVersion: sql`${schema.users.sessionVersion} + 1` } : {}),
-      })
-      .where(eq(schema.users.id, target.id));
+      },
+      { by: actor.id, action: "user.edit" },
+    );
   } catch (e) {
     // Somebody took the address between the check above and this write. The
     // same answer as the check gives, rather than a dead screen.
@@ -465,16 +468,18 @@ export async function moveUserAction(_: FormState, formData: FormData): Promise<
   const { tasks, tasksTo } = await db.transaction(async (tx): Promise<{ tasks: number; tasksTo: { id: string; name: string } | null }> => {
     // Bumped in the database rather than from the row read earlier, so two
     // bumps landing at once cannot write the same number.
-    await tx
-      .update(schema.users)
-      .set({ orgId: to.id, sessionVersion: sql`${schema.users.sessionVersion} + 1` })
-      .where(eq(schema.users.id, target.id));
+    await updateTracked("user", target.id, { orgId: to.id, sessionVersion: sql`${schema.users.sessionVersion} + 1` }, { by: actor.id, action: "user.move", tx });
     if (plan.students > 0) {
-      const rows = await tx
-        .update(schema.students)
-        .set({ assignedToId: plan.handTo, updatedAt: new Date() })
-        .where(and(eq(schema.students.assignedToId, target.id), eq(schema.students.orgId, fromOrg.id)))
-        .returning({ id: schema.students.id, firstName: schema.students.firstName, lastName: schema.students.lastName });
+      // Each student's history and ledger line say who they went to and why,
+      // in the same transaction as the move, so a refusal part way leaves
+      // neither the files nor their record half moved.
+      const moved = await updateTrackedMany(
+        "student",
+        and(eq(schema.students.assignedToId, target.id), eq(schema.students.orgId, fromOrg.id))!,
+        { assignedToId: plan.handTo, updatedAt: new Date() },
+        { by: actor.id, action: "student.reassign", tx, ledgerDetail: `${target.name} moved to ${to.name}` },
+      );
+      const rows = moved.map((m) => ({ id: m.after.id, firstName: m.after.firstName, lastName: m.after.lastName }));
       handed.push(...rows);
       // The hand-over is written the way a reassign from the student's file
       // is, one row per student, so the file's own history reads the same.

@@ -11,6 +11,7 @@ import { isAdmin, isDocumentationTeam } from "@/lib/permissions";
 import { handedToDeskByStatus } from "@/lib/ausbildung";
 import { EARNING_CODES, accrueCommission } from "./commission";
 import { sendStatusChange } from "@/server/crm-out";
+import { updateTracked } from "@/server/record-history";
 
 export async function statusesFor(pathway: (typeof schema.pathway.enumValues)[number]) {
   return db
@@ -63,19 +64,21 @@ export async function changeStatus(
 
   await db.transaction(async (tx) => {
     const now = new Date();
-    await tx
-      .update(schema.applications)
-      .set({
+    await updateTracked(
+      "application",
+      app.id,
+      {
         statusId: to.id,
         statusChangedAt: now,
         updatedAt: now,
         officerId: app.officerId ?? user.id,
         ...(handsOver ? { handedOverAt: now, handedOverById: user.id } : {}),
-      })
-      .where(eq(schema.applications.id, app.id));
+      },
+      { by: user.id, action: "application.status", tx },
+    );
     // Once the team is actively working an application, the student's profile is locked for partners.
     if (!["NEW", "PENDING_PARTNER"].includes(to.group)) {
-      await tx.update(schema.students).set({ profileLocked: true }).where(eq(schema.students.id, app.studentId));
+      await updateTracked("student", app.studentId, { profileLocked: true }, { by: user.id, action: "student.lock", tx });
     }
     await tx.insert(schema.statusHistory).values({
       applicationId: app.id,

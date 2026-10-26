@@ -2,6 +2,7 @@ import "server-only";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { branchCodeFrom, formatStudentId, nextCodeCandidate } from "@/lib/medcity-id";
+import { updateTracked } from "@/server/record-history";
 
 /**
  * Minting the Medcity ID.
@@ -91,12 +92,8 @@ export async function ensureStudentId(studentId: string): Promise<string | null>
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const candidate = await mintStudentId(student.orgId);
     try {
-      const [saved] = await db
-        .update(schema.students)
-        .set({ medcityId: candidate })
-        .where(and(eq(schema.students.id, studentId), isNull(schema.students.medcityId)))
-        .returning({ medcityId: schema.students.medcityId });
-      if (saved?.medcityId) return saved.medcityId;
+      const saved = await updateTracked("student", studentId, { medcityId: candidate }, { by: null, action: "student.medcity_id", where: isNull(schema.students.medcityId) });
+      if (saved?.after.medcityId) return saved.after.medcityId;
       // Somebody else got there first; whatever they wrote is the answer.
       const again = await db.query.students.findFirst({ where: eq(schema.students.id, studentId) });
       if (again?.medcityId) return again.medcityId;

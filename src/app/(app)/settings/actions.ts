@@ -12,6 +12,7 @@ import { readTextSize } from "@/lib/text-size";
 import { canManageSettings, isPartner, isSuperAdmin } from "@/lib/permissions";
 import { getSettings } from "@/server/settings";
 import { UploadError, deleteUpload, saveBrandImage } from "@/server/storage";
+import { updateTracked } from "@/server/record-history";
 import { passwordProblem } from "@/lib/password";
 import { DEFAULT_DEPARTMENTS, parseDepartments } from "@/lib/departments";
 
@@ -35,16 +36,18 @@ export async function saveProfileAction(_: FormState, formData: FormData): Promi
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Check the highlighted fields." };
   const d = parsed.data;
 
-  await db
-    .update(schema.users)
-    .set({
+  await updateTracked(
+    "user",
+    user.id,
+    {
       name: d.name,
       phone: d.phone,
       // Only Medcity Overseas staff carry a desk label; a partner's is set by the team.
       ...(isPartner(user) ? {} : { deskLabel: d.deskLabel }),
       ...(isLocale(d.locale) ? { locale: d.locale } : {}),
-    })
-    .where(eq(schema.users.id, user.id));
+    },
+    { by: user.id, action: "user.profile" },
+  );
   await audit(user.id, "user.profile", "user", user.id, {});
   revalidatePath("/settings");
   return { ok: "Saved." };

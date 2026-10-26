@@ -200,6 +200,9 @@ async function ApplicationDetail({ appId, studentId, channel, canProcess, canChe
           <div>
             <p className="text-xs text-muted">{fmtDateTime(app.createdAt)}</p>
             <p className="text-lg font-semibold tabular">{app.ackNo}</p>
+            <Link href={`/students/${studentId}/applications/${app.id}/history`} className="text-xs font-medium text-brand-600 hover:underline" data-print="hide">
+              Change history
+            </Link>
             <p className="text-base">{app.program.name}</p>
             <p className="text-muted">{app.program.university.name}, {app.program.university.country.name} · {intakeLabel(app.intakeMonth, app.intakeYear)}</p>
           </div>

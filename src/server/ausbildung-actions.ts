@@ -14,6 +14,7 @@ import { currentAusbildungApplication } from "./ausbildung";
 import { changeStatus, StatusChangeError, tellDeskAusbildungArrived } from "./applications";
 import { stageGate, studentChecklist, studentContext, syncChecklist } from "./documentation";
 import { notifyUsers, partnerRecipients } from "./notify";
+import { updateTracked } from "./record-history";
 
 const text = (v: FormDataEntryValue | null, max = 120) => {
   const t = String(v ?? "").trim().slice(0, max);
@@ -162,10 +163,7 @@ export async function handOverToDeskAction(_: FormState, fd: FormData): Promise<
   if (!verdict.ready) return { error: verdict.why ?? "This cannot be handed over yet." };
 
   const now = new Date();
-  await db
-    .update(schema.applications)
-    .set({ handedOverAt: now, handedOverById: user.id, handoverNote: note, updatedAt: now })
-    .where(eq(schema.applications.id, app.id));
+  await updateTracked("application", app.id, { handedOverAt: now, handedOverById: user.id, handoverNote: note, updatedAt: now }, { by: user.id, action: "application.handover" });
   await audit(user.id, "application.handover", "application", app.id, { via: "ausbildung", note });
   await tellDeskAusbildungArrived({
     studentId,

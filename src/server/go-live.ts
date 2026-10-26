@@ -178,6 +178,11 @@ export async function clearDemoData(actorId: string): Promise<Record<string, num
       sql`delete from ai_usage where org_id in (select id from _orgs) or user_id in (select id from _users)`,
       sql`delete from interview_sessions where org_id in (select id from _orgs) or student_id in (select id from _students)`,
       sql`delete from payments where org_id in (select id from _orgs) or application_id in (select id from _apps)`,
+      // The sample files' change history goes with them. The ownership ledger
+      // does not: it is append-only, and its entries name no student.
+      sql`delete from record_versions where student_id in (select id from _students)
+            or (entity = 'application' and entity_id in (select id from _apps))
+            or (entity = 'user' and entity_id in (select id from _users))`,
       sql`delete from applications where id in (select id from _apps)`,
       sql`delete from enquiries where org_id in (select id from _orgs) or email like '%@example.com'`,
       sql`delete from tickets where org_id in (select id from _orgs)`,

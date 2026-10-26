@@ -13,6 +13,7 @@ import { getEnquiryForUser, STAGE_LABEL } from "@/server/enquiries";
 import { applyRepeat, findRepeat, routeNewEnquiry } from "@/server/enquiry-routing";
 import { mergeEnquiries } from "@/server/enquiry-merge";
 import { isOpenStage } from "@/lib/enquiry-routing";
+import { ledgerCreated, updateTracked } from "@/server/record-history";
 
 import type { FormState } from "@/lib/form-state";
 export type { FormState };
@@ -99,6 +100,8 @@ export async function createEnquiryAction(_: FormState, formData: FormData): Pro
     await db.insert(schema.enquiryNotes).values({ enquiryId: row.id, authorId: user.id, body: d.notes });
   }
   await audit(user.id, "enquiry.create", "enquiry", row.id, { source: d.source });
+  // On the ownership ledger from the start, before any routing rule moves it.
+  await ledgerCreated(db, "enquiry", [row], user.id);
   if (!row.assignedToId) {
     // Nobody named: the routing rules decide, and tell the person they pick.
     await routeNewEnquiry(row, user.id);
@@ -118,9 +121,10 @@ export async function updateEnquiryAction(_: FormState, formData: FormData): Pro
   const d = parsed.data;
   if (!(await assertAssignee(existing.orgId, d.assignedToId))) return { error: "Pick someone from that organisation." };
 
-  await db
-    .update(schema.enquiries)
-    .set({
+  await updateTracked(
+    "enquiry",
+    id,
+    {
       name: d.name,
       phone: d.phone,
       email: d.email,
@@ -135,8 +139,9 @@ export async function updateEnquiryAction(_: FormState, formData: FormData): Pro
       nextFollowUpAt: d.nextFollowUpAt,
       notes: d.notes,
       updatedAt: new Date(),
-    })
-    .where(eq(schema.enquiries.id, id));
+    },
+    { by: user.id, action: "enquiry.update" },
+  );
   await audit(user.id, "enquiry.update", "enquiry", id);
   revalidatePath(`/enquiries/${id}`);
   return { ok: "Saved." };
@@ -162,15 +167,17 @@ export async function logFollowUpAction(_: FormState, formData: FormData): Promi
 
   const stage = d.stage ?? (enquiry.stage === "NEW" ? "CONTACTED" : enquiry.stage);
   await db.insert(schema.enquiryNotes).values({ enquiryId: enquiry.id, authorId: user.id, body: d.body, stageAfter: stage });
-  await db
-    .update(schema.enquiries)
-    .set({
+  await updateTracked(
+    "enquiry",
+    enquiry.id,
+    {
       stage,
       lastContactedAt: new Date(),
       nextFollowUpAt: d.nextFollowUpAt ?? (stage === "LOST" ? null : enquiry.nextFollowUpAt),
       updatedAt: new Date(),
-    })
-    .where(eq(schema.enquiries.id, enquiry.id));
+    },
+    { by: user.id, action: "enquiry.follow_up" },
+  );
   await audit(user.id, "enquiry.follow_up", "enquiry", enquiry.id, { stage });
   revalidatePath(`/enquiries/${enquiry.id}`);
   revalidatePath("/enquiries");
@@ -186,10 +193,7 @@ export async function setEnquiryStageAction(formData: FormData) {
   if (!isOpenStage(stage)) return;
   const enquiry = await getEnquiryForUser(user, id);
   if (enquiry.stage === stage || !isOpenStage(enquiry.stage)) return;
-  await db
-    .update(schema.enquiries)
-    .set({ stage, updatedAt: new Date(), ...(stage === "LOST" ? { nextFollowUpAt: null } : {}) })
-    .where(eq(schema.enquiries.id, id));
+  await updateTracked("enquiry", id, { stage, updatedAt: new Date(), ...(stage === "LOST" ? { nextFollowUpAt: null } : {}) }, { by: user.id, action: "enquiry.stage" });
   await db.insert(schema.enquiryNotes).values({
     enquiryId: id,
     authorId: user.id,
@@ -222,10 +226,12 @@ export async function markEnquiryLostAction(_: FormState, formData: FormData): P
   });
   if (!reason) return { fieldErrors: { lostReasonId: ["Pick a reason from the list"] }, error: "That reason is no longer on the list. Pick another." };
   const detail = parsed.data.lostReason;
-  await db
-    .update(schema.enquiries)
-    .set({ stage: "LOST", lostReasonId: reason.id, lostReason: detail, lostAt: new Date(), nextFollowUpAt: null, updatedAt: new Date() })
-    .where(eq(schema.enquiries.id, enquiry.id));
+  await updateTracked(
+    "enquiry",
+    enquiry.id,
+    { stage: "LOST", lostReasonId: reason.id, lostReason: detail, lostAt: new Date(), nextFollowUpAt: null, updatedAt: new Date() },
+    { by: user.id, action: "enquiry.lost" },
+  );
   await db.insert(schema.enquiryNotes).values({
     enquiryId: enquiry.id,
     authorId: user.id,
@@ -261,10 +267,12 @@ export async function claimEnquiryAction(formData: FormData) {
   const id = String(formData.get("enquiryId"));
   const enquiry = await getEnquiryForUser(user, id);
   if (enquiry.stage === "MERGED") return;
-  await db
-    .update(schema.enquiries)
-    .set({ assignedToId: user.id, updatedAt: new Date() })
-    .where(and(eq(schema.enquiries.id, enquiry.id), or(isNull(schema.enquiries.assignedToId), eq(schema.enquiries.assignedToId, enquiry.assignedToId ?? ""))));
+  await updateTracked(
+    "enquiry",
+    enquiry.id,
+    { assignedToId: user.id, updatedAt: new Date() },
+    { by: user.id, action: "enquiry.assign", where: or(isNull(schema.enquiries.assignedToId), eq(schema.enquiries.assignedToId, enquiry.assignedToId ?? "")) },
+  );
   await audit(user.id, "enquiry.assign", "enquiry", id, { to: user.id });
   revalidatePath(`/enquiries/${id}`);
   revalidatePath("/enquiries");

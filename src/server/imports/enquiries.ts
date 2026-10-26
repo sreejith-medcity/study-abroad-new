@@ -8,6 +8,7 @@ import { EMAIL, PHONE, day, num, oneOf, text, type Problems } from "@/lib/import
 import { branchOwner, branchResolver, emptyResult, lineOf, staffByEmail, type ImportResult } from "./common";
 import { isCounsellor } from "@/lib/permissions";
 import { applyRepeat, newRouteMemo, routeNewEnquiry } from "@/server/enquiry-routing";
+import { ledgerCreated, updateTracked } from "@/server/record-history";
 
 export const ENQUIRY_COLUMNS = ["branch", "name", "phone", "email", "city", "source", "interest_country", "interest_pathway", "intake_month", "intake_year", "budget_lakhs", "next_follow_up", "counsellor_email", "notes"] as const;
 export const ENQUIRY_EXAMPLE = ["", "Rahul Nair", "+91 94460 11223", "rahul.nair@example.com", "Pala", "WALK_IN", "Germany", "AUSBILDUNG", "9", "2027", "8", "2026-10-05", "", "Plus two science, 78%. Wants nursing Ausbildung."];
@@ -157,7 +158,7 @@ export async function importEnquiries(user: SessionUser, rows: Record<string, st
     out.updated++;
     if (out.sample.length < 8) out.sample.push(`Fill in: ${current.name} · ${plan.phone} (${Object.keys(set).join(", ")})`);
     if (!commit) continue;
-    await db.update(schema.enquiries).set({ ...set, updatedAt: new Date() }).where(eq(schema.enquiries.id, current.id));
+    await updateTracked("enquiry", current.id, { ...set, updatedAt: new Date() }, { by: user.id, action: "enquiry.bulk_upload" });
     await db.insert(schema.enquiryNotes).values({ enquiryId: current.id, authorId: user.id, body: `Came in again in a bulk upload; filled in ${Object.keys(set).length} blank detail${Object.keys(set).length === 1 ? "" : "s"}. No second enquiry was made.` });
     await audit(user.id, "enquiry.update", "enquiry", current.id, { source: "bulk upload", fields: Object.keys(set) });
   }
@@ -165,6 +166,7 @@ export async function importEnquiries(user: SessionUser, rows: Record<string, st
   const given = new Map<string, number>();
   for (let i = 0; i < toCreate.length; i += 250) {
     const made = await db.insert(schema.enquiries).values(toCreate.slice(i, i + 250)).returning();
+    await ledgerCreated(db, "enquiry", made, user.id, "From a bulk upload");
     await db.insert(schema.enquiryNotes).values(made.map((m) => ({ enquiryId: m.id, authorId: user.id, body: "Added from a bulk upload." })));
     await db.insert(schema.auditLogs).values(made.map((m) => ({ actorId: user.id, action: "enquiry.create", entityType: "enquiry", entityId: m.id, meta: { source: "bulk upload" } })));
     // Rows naming nobody go by the routing rules. One notice per person for

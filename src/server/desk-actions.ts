@@ -13,6 +13,7 @@ import { changeStatus, StatusChangeError } from "@/server/applications";
 import { stageGate, studentChecklist, studentContext } from "@/server/documentation";
 import { deskIds, notifyUsers, partnerRecipients } from "@/server/notify";
 import { getApplicationForUser } from "@/server/queries";
+import { updateTracked } from "@/server/record-history";
 import type { FormState } from "@/lib/form-state";
 import type { VendorOutcome } from "@/db/schema";
 
@@ -72,10 +73,12 @@ export async function handOverAction(_: FormState, fd: FormData): Promise<FormSt
   if (!verdict.ready) return { error: verdict.why ?? "This cannot be handed over yet." };
 
   const now = new Date();
-  await db
-    .update(ap)
-    .set({ deskStage: "READY", deskStageAssumed: false, handedOverAt: now, handedOverById: user.id, handoverNote: note, returnedAt: null, returnReason: null, returnedById: null, updatedAt: now })
-    .where(eq(ap.id, id));
+  await updateTracked(
+    "application",
+    id,
+    { deskStage: "READY", deskStageAssumed: false, handedOverAt: now, handedOverById: user.id, handoverNote: note, returnedAt: null, returnReason: null, returnedById: null, updatedAt: now },
+    { by: user.id, action: "application.handover" },
+  );
   await notifyUsers(
     await deskIds(),
     `${app.student.firstName} ${app.student.lastName} is ready for the desk`,
@@ -98,10 +101,12 @@ export async function returnToBranchAction(_: FormState, fd: FormData): Promise<
   if (!app) return { error: "That application no longer exists." };
   if (app.deskStage === "SUBMITTED") return { error: "This is already lodged with the vendor. Record an update instead." };
   const now = new Date();
-  await db
-    .update(ap)
-    .set({ deskStage: "RETURNED", returnedAt: now, returnedById: user.id, returnReason: parsed.data.reason, updatedAt: now })
-    .where(eq(ap.id, app.id));
+  await updateTracked(
+    "application",
+    app.id,
+    { deskStage: "RETURNED", returnedAt: now, returnedById: user.id, returnReason: parsed.data.reason, updatedAt: now },
+    { by: user.id, action: "application.returned" },
+  );
   await notifyUsers(
     await partnerRecipients(app.student.orgId, app.student.assignedToId),
     `${app.ackNo} came back from the Overseas desk`,
@@ -144,17 +149,19 @@ export async function chooseRouteAction(_: FormState, fd: FormData): Promise<For
     return { fieldErrors: { note: ["Say why it is moving off " + (app.route?.vendor.name ?? "the road it was on")] }, error: "A road already chosen is only changed with a reason." };
   }
   const now = new Date();
-  await db
-    .update(ap)
-    .set({
+  await updateTracked(
+    "application",
+    app.id,
+    {
       routeId: route.id,
       routeChosenById: user.id,
       routeChosenAt: now,
       routeChangeReason: changing ? reason : null,
       deskStage: "CHOSEN",
       updatedAt: now,
-    })
-    .where(eq(ap.id, app.id));
+    },
+    { by: user.id, action: changing ? "application.route_changed" : "application.route_chosen" },
+  );
   await audit(user.id, changing ? "application.route_changed" : "application.route_chosen", "application", app.id, {
     vendor: route.vendor.name,
     from: app.route?.vendor.name ?? null,
@@ -190,16 +197,18 @@ export async function recordSubmissionAction(_: FormState, fd: FormData): Promis
   const when = asDate(parsed.data.submittedOn) ?? new Date();
   if (when.getTime() > Date.now() + 86_400_000) return { fieldErrors: { submittedOn: ["That day has not happened yet"] }, error: "Check the highlighted fields." };
   const now = new Date();
-  await db
-    .update(ap)
-    .set({
+  await updateTracked(
+    "application",
+    app.id,
+    {
       deskStage: "SUBMITTED",
       submittedToVendorAt: when,
       submittedById: user.id,
       vendorReference: parsed.data.vendorReference || app.vendorReference,
       updatedAt: now,
-    })
-    .where(eq(ap.id, app.id));
+    },
+    { by: user.id, action: "application.submitted" },
+  );
   // The status the team keeps for "submitted to the institution", where they
   // chose one on the form. Nothing is moved behind their back.
   if (parsed.data.statusId) {

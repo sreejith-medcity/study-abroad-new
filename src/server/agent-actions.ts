@@ -18,6 +18,7 @@ import { GSTIN_RE, PAN_RE, gstinMatchesPan } from "@/lib/billing";
 import { activeMou, mouStanding } from "@/server/agents";
 import { openReferralEarning } from "@/server/referral-earnings";
 import { routeEnquiry, routeNewEnquiry } from "@/server/enquiry-routing";
+import { ledgerCreated, updateTracked } from "@/server/record-history";
 
 import type { FormState } from "@/lib/form-state";
 export type { FormState };
@@ -508,6 +509,7 @@ export async function submitReferralAction(_: FormState, formData: FormData): Pr
     stageAfter: "NEW",
   });
   await audit(user.id, "referral.submit", "enquiry", row.id, { agent: user.orgId });
+  await ledgerCreated(db, "enquiry", [row], user.id, `Referred by ${user.orgName}`);
   // The head office's own rules may name somebody at the desk for referrals.
   await routeNewEnquiry(row, user.id);
   await notifyUsers(await adminIds(), "A sub-agent has referred somebody", `${d.name} · ${d.phone} · from ${user.orgName}`, "/admin/agents?tab=referrals");
@@ -540,10 +542,7 @@ export async function assignReferralAction(_: FormState, formData: FormData): Pr
         where: and(eq(schema.users.orgId, branch.id), eq(schema.users.role, "PARTNER"), eq(schema.users.active, true)),
       });
 
-  await db
-    .update(schema.enquiries)
-    .set({ orgId: branch.id, assignedToId: owner?.id ?? null, updatedAt: new Date() })
-    .where(eq(schema.enquiries.id, enquiryId));
+  await updateTracked("enquiry", enquiryId, { orgId: branch.id, assignedToId: owner?.id ?? null, updatedAt: new Date() }, { by: user.id, action: "referral.assign", ledgerDetail: "A sub-agent's referral given to a branch" });
   await db.insert(schema.enquiryNotes).values({
     enquiryId,
     authorId: user.id,

@@ -5,6 +5,7 @@ import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { partnerRecipients, notifyUsers } from "@/server/notify";
+import { updateTracked } from "@/server/record-history";
 
 const isoDate = z.union([z.literal(""), z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use a date")]).transform((v) => v || null);
 export const offerVisa = z
@@ -46,7 +47,7 @@ export async function saveOfferVisa(user: SessionUser, app: typeof schema.applic
     if (String(before ?? "") !== String(v ?? "")) changed[k] = { from: before, to: v };
   }
   if (!Object.keys(changed).length) return [];
-  await db.update(schema.applications).set({ ...values, updatedAt: new Date() }).where(eq(schema.applications.id, app.id));
+  await updateTracked("application", app.id, { ...values, updatedAt: new Date() }, { by: user.id, action: "application.offer_visa" });
   await audit(user.id, "application.offer_visa", "application", app.id, { changed });
   // An accept-by date is a deadline like any other, so it shows on dashboards.
   if (changed.offerAcceptBy) {
