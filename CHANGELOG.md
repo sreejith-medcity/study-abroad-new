@@ -5,6 +5,14 @@ version in package.json and adds an entry here and in src/lib/releases.ts (the
 What's new page reads that one). After applying a release, tag it with the
 version so it can be found and rolled back to.
 
+## 1.8.1 (27 October 2026)
+
+- A person can be moved to another organisation with a new role in one step: from the head office to a branch as its branch head, from a branch to the head office, or between branches and sub-agent firms. The move form offers only the roles that fit the organisation chosen, warns when the branch already has a branch head, and keeps every earlier safeguard: a branch is never left without a head, and its students and open tasks are handed to a colleague or left for the branch head. Someone leaving the head office comes off its teams, service ownership and the officer field on open files. Moving anybody into or out of the head office, or changing their role, needs the right to manage users; only a super admin moves a super admin, and the last one cannot be moved out.
+- Adding a user whose email is already in use now says who has it: their name, role, organisation and whether they are switched off, with a link to move them when you may. A branch head is told only that the email belongs to someone at another organisation, and to ask the head office to move them.
+- Adding a Medcity Overseas desk counsellor, application team leader or finance user no longer fails with an error.
+
+Nothing to run on the VPS beyond the new build: no migration and no SQL.
+
 ## 1.8.0 (27 October 2026)
 
 - FSJ and BFD are pathways of their own and follow the written FSJ & BFD process: 18 steps across the branch, documentation, interviews, the visa team and the travel desk, with the language assessment and re-assessment, the fee check before the application starts, interviews with employer feedback (including another employer when not selected or when an employer withdraws after a visa refusal), offer and contract, VFS slot, visa outcome, pre-departure and the follow-up after arrival. Each student has an FSJ / BFD tab, the FSJ / BFD tracker lists every file by step and department, and the student sees their step on their portal. The portal does not send email: each email in the guide becomes a notice to whoever sends it, with the addresses and the text to copy.
