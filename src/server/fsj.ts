@@ -4,10 +4,27 @@ import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { orgScope } from "@/lib/permissions";
 import { GERMAN_LEVELS } from "@/lib/ausbildung";
-import { FSJ_CONTACT_AREA, FSJ_STEPS, FSJ_TEAM, daysBetween, fsjStepOf, isFsjPathway, type FsjDepartment, type FsjPathway } from "@/lib/fsj";
+import {
+  FSJ_CONTACT_AREA,
+  FSJ_STEPS,
+  FSJ_TEAM,
+  crossesVisaGate,
+  daysBetween,
+  feeGate,
+  feeGateRefusal,
+  fsjStepOf,
+  isFsjPathway,
+  needsFees,
+  visaGate,
+  visaGateText,
+  type FsjDepartment,
+  type FsjPathway,
+  type VisaFacts,
+} from "@/lib/fsj";
 import { ownStudentsOnly, ownedByPerson } from "@/server/scope";
 import { effectivePayments } from "@/lib/fsj-fees";
-import { fsjPlanPaymentsFor } from "@/server/fsj-fees";
+import { fsjFeeFacts, fsjPaymentsFor, fsjPlanPaymentsFor, type MarkedColumns } from "@/server/fsj-fees";
+import { stageGate, studentChecklist, studentContext, syncChecklist } from "@/server/documentation";
 
 const { students: s, applications: a, programs: pg, statusDefinitions: sd, organizations: og, users: us, fsjEvents: fe } = schema;
 
@@ -122,13 +139,66 @@ export async function fsjEventsOf(applicationId: string) {
     .orderBy(desc(fe.createdAt), desc(fe.id));
 }
 
-/** The employers that returned "not selected" on this application, so they are not asked again. */
+/** The outcome kept on a visa decision when the employer withdrew and the file went back to interview preparation. */
+export const EMPLOYER_WITHDRAWN = "EMPLOYER_WITHDRAWN";
+
+/**
+ * The employers that returned "not selected" on this application, or withdrew
+ * after a visa refusal, so they are not asked again.
+ */
 export async function notSelectedBy(applicationId: string) {
   const rows = await db
     .select({ employer: fe.employer })
     .from(fe)
-    .where(and(eq(fe.applicationId, applicationId), eq(fe.kind, "FEEDBACK"), eq(fe.outcome, "NOT_SELECTED")));
+    .where(and(eq(fe.applicationId, applicationId), or(and(eq(fe.kind, "FEEDBACK"), eq(fe.outcome, "NOT_SELECTED")), and(eq(fe.kind, "VISA_DECISION"), eq(fe.outcome, EMPLOYER_WITHDRAWN)))));
   return rows.map((r) => r.employer).filter((e): e is string => !!e);
+}
+
+/** An application's columns the status gates read. */
+export type FsjGateApp = MarkedColumns & { studentId: string; fsjContractSignedOn: string | null };
+
+/** The gate columns of the current FSJ / BFD application, as the tab and the step actions hold it. */
+export const gateAppOf = (app: Pick<FsjApplication, "studentId" | "marked" | "contractSignedOn">): FsjGateApp => ({
+  studentId: app.studentId,
+  fsjRegistrationFeePaidOn: app.marked.registrationFeePaidOn,
+  fsjApplicationFeePaidOn: app.marked.applicationFeePaidOn,
+  fsjOfferPaymentOn: app.marked.offerPaymentOn,
+  fsjPreVisaPaymentOn: app.marked.preVisaPaymentOn,
+  fsjContractSignedOn: app.contractSignedOn,
+});
+
+/**
+ * What the visa gate reads: the pre-visa payment as the process works from it
+ * (the fee invoice where the fee plan has one, otherwise the day marked), the
+ * signed contract, and the profile documents still missing on the checklist,
+ * the same list the branch's hand-over waits on.
+ */
+export async function fsjVisaFacts(app: FsjGateApp, opts: { sync?: boolean } = {}): Promise<VisaFacts> {
+  const pay = await fsjPaymentsFor(app.studentId, app);
+  // A screen only reads the checklist; a status move brings it up to date first.
+  if (opts.sync !== false) await syncChecklist(app.studentId);
+  const rows = await studentChecklist(app.studentId);
+  const profileMissing = rows.length ? stageGate(rows, "PROFILE", (await studentContext(app.studentId)).courseStart).missing.map((m) => m.label) : [];
+  return { preVisaPaymentOn: pay.preVisaPaymentOn, preVisaSettled: pay.settled.preVisa, contractSignedOn: app.fsjContractSignedOn, profileMissing };
+}
+
+/**
+ * The gates an FSJ / BFD status move must pass, from any screen: the fee gate
+ * (step 6) for every started-application status, and the visa gate (step 12)
+ * for a move onto the VFS submission or past it from before it. Null when the
+ * move may go ahead; otherwise which gate refused it, what is missing and why.
+ */
+export async function fsjStatusGate(app: FsjGateApp, fromCode: string | null | undefined, toCode: string): Promise<{ gate: "FEES" | "VISA"; missing: string[]; why: string } | null> {
+  if (needsFees(toCode)) {
+    const g = feeGate(await fsjFeeFacts(app.studentId, app));
+    if (!g.clear) return { gate: "FEES", missing: g.missing, why: feeGateRefusal(g.missing) };
+  }
+  if (crossesVisaGate(fromCode, toCode)) {
+    const facts = await fsjVisaFacts(app);
+    const g = visaGate(facts);
+    if (!g.clear) return { gate: "VISA", missing: g.missing, why: `The visa file is not ready for VFS. ${visaGateText(facts)}` };
+  }
+  return null;
 }
 
 /** Active staff in these roles, for telling a department. */

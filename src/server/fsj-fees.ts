@@ -1,17 +1,31 @@
 import "server-only";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, like, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { FSJ_FEE_PATHWAY } from "@/lib/fee-steps";
 import { FEE_CHECK_AT, feeGate, type FeeFacts } from "@/lib/fsj";
-import { FSJ_PAYMENT_STAGES, effectivePayments, fsjPlanPayments, type FsjPayments, type FsjPlanPayments } from "@/lib/fsj-fees";
+import { FSJ_PAYMENT_STAGES, effectivePayments, fsjPlanPayments, type FsjPaymentStage, type FsjPayments, type FsjPlanPayments } from "@/lib/fsj-fees";
 import { documentationIds, notifyUsers } from "@/server/notify";
 
 const { feeInstalments: fs, feeInvoices: fi } = schema;
 
+/** The outcome kept in fsj_events when the head office marks a written-off stage settled. */
+export const SETTLED_PREFIX = "SETTLED:";
+
+/** The stages the head office has marked settled for this student, despite a written-off invoice. */
+export async function settledStagesFor(studentId: string): Promise<FsjPaymentStage[]> {
+  const rows = await db
+    .select({ outcome: schema.fsjEvents.outcome })
+    .from(schema.fsjEvents)
+    .where(and(eq(schema.fsjEvents.studentId, studentId), eq(schema.fsjEvents.kind, "FEE_CHECK"), like(schema.fsjEvents.outcome, `${SETTLED_PREFIX}%`)));
+  const keys = FSJ_PAYMENT_STAGES.map((s) => s.key);
+  return rows.map((r) => (r.outcome ?? "").slice(SETTLED_PREFIX.length) as FsjPaymentStage).filter((k) => keys.includes(k));
+}
+
 /**
  * What the student's fee plan says about the FSJ / BFD payment stages: their
- * instalments on the FSJ / BFD steps and the invoices raised for them, each
- * with the day of its last receipt.
+ * instalments on the FSJ / BFD steps (a cancelled one too, while it carries an
+ * invoice) and the invoices raised for them, each with the day of its last
+ * receipt, and the stages the head office settled.
  */
 export async function fsjPlanPaymentsFor(studentId: string): Promise<FsjPlanPayments> {
   const instalments = await db
@@ -34,11 +48,11 @@ export async function fsjPlanPaymentsFor(studentId: string): Promise<FsjPlanPaym
         .from(fi)
         .where(inArray(fi.id, ids))
     : [];
-  return fsjPlanPayments(instalments, invoices);
+  return fsjPlanPayments(instalments, invoices, await settledStagesFor(studentId));
 }
 
 /** The application's payment columns, as the FSJ / BFD tab marks them by hand. */
-type MarkedColumns = {
+export type MarkedColumns = {
   fsjRegistrationFeePaidOn: string | null;
   fsjApplicationFeePaidOn: string | null;
   fsjOfferPaymentOn?: string | null;
@@ -57,8 +71,13 @@ const markedFrom = (a: MarkedColumns): FsjPayments => ({
  * invoices where the student's fee plan has them, otherwise as marked paid.
  */
 export async function fsjFeeFacts(studentId: string, app: MarkedColumns): Promise<FeeFacts> {
-  const eff = effectivePayments(markedFrom(app), await fsjPlanPaymentsFor(studentId));
-  return { registrationFeePaidOn: eff.registrationFeePaidOn, applicationFeePaidOn: eff.applicationFeePaidOn };
+  const eff = await fsjPaymentsFor(studentId, app);
+  return { registrationFeePaidOn: eff.registrationFeePaidOn, applicationFeePaidOn: eff.applicationFeePaidOn, settled: eff.settled };
+}
+
+/** All four payment stages as the process works from them, with which count as settled. */
+export async function fsjPaymentsFor(studentId: string, app: MarkedColumns) {
+  return effectivePayments(markedFrom(app), await fsjPlanPaymentsFor(studentId));
 }
 
 /**

@@ -2,7 +2,10 @@
  * The FSJ / BFD written process as SQL that is safe to run twice: the statuses
  * both pathways need to record every step and decision, the document types and
  * requirements from the guide's Section 2, and the registration addresses for
- * the Contacts list.
+ * the Contacts list. Every document type an FSJ / BFD requirement names is
+ * inserted where missing, including those the Ausbildung and documentation
+ * files also add (birth certificate, vaccination, police clearance and the
+ * rest), so this file works on a database that has not had those run.
  *
  *   npx tsx scripts/fsj-bfd-process-sql.ts > deploy/fsj-bfd-process.sql
  *
@@ -13,7 +16,8 @@
  */
 import { createId } from "../src/lib/id";
 import { STATUS_SEED } from "../src/db/statuses";
-import { FSJ_DOCUMENT_TYPES, FSJ_REQUIREMENTS } from "../src/db/documentation-seed";
+import { DOCUMENTATION_TYPES, FSJ_DOCUMENT_TYPES, FSJ_REQUIREMENTS } from "../src/db/documentation-seed";
+import { DOCUMENT_TYPES } from "../src/db/statuses";
 import { FSJ_CONTACT_AREA, FSJ_PATHWAYS, FSJ_TEAM } from "../src/lib/fsj";
 
 const q = (v: string | null | undefined) => (v == null ? "NULL" : `'${v.replace(/'/g, "''")}'`);
@@ -48,8 +52,22 @@ for (const pathway of FSJ_PATHWAYS) {
   });
 }
 
-out.push("", "-- Document types the guide names that no other journey asked for.");
-for (const t of FSJ_DOCUMENT_TYPES) {
+// The types the requirements below name, in the order the requirements need
+// them: those only FSJ / BFD asks for, then those other files also add.
+const needed = new Set(FSJ_REQUIREMENTS.map((r) => r.typeCode));
+const shared = [...DOCUMENT_TYPES, ...DOCUMENTATION_TYPES].filter((t) => needed.has(t.code) && !FSJ_DOCUMENT_TYPES.some((f) => f.code === t.code));
+const missingDefinition = [...needed].filter((code) => ![...FSJ_DOCUMENT_TYPES, ...shared].some((t) => t.code === code));
+if (missingDefinition.length) throw new Error(`No document type definition for ${missingDefinition.join(", ")}`);
+
+out.push(
+  "",
+  "-- Document types the requirements below name. Those no other journey asks for",
+  "-- come first; the rest are also added by other files (the base types, the",
+  "-- documentation and Ausbildung files) and are inserted here only where missing,",
+  "-- so this file does not depend on those having been run. A type already there",
+  "-- is left exactly as it is.",
+);
+for (const t of [...FSJ_DOCUMENT_TYPES, ...shared]) {
   out.push(
     `INSERT INTO document_types (code, label, label_ml, uploaded_by, sort_order) VALUES (${q(t.code)}, ${q(t.label)}, ${q(t.labelMl)}, ${q(t.uploadedBy)}, ${t.sortOrder}) ON CONFLICT (code) DO NOTHING;`,
   );

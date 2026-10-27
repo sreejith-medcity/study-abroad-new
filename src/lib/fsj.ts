@@ -280,12 +280,15 @@ export type FsjOp =
   | "visaDecision"
   | "approval"
   | "checklist"
-  | "departure";
+  | "departure"
+  | "settle";
 
 /**
  * Whether a role may record one move. The hand-over belongs to whoever owns
  * the step being handed on, and a checklist to whoever owns its step, so both
- * read the step as well.
+ * read the step as well. Marking a payment by hand ("payments", and the
+ * registration fee on "registration") also needs the Collect fees right, as on
+ * the Fees tab; that is checked on the server with feeAccess.
  */
 export function mayDo(op: FsjOp, role: string, ctx: { code?: string | null; checklistStep?: number } = {}): boolean {
   const has = (roles: readonly string[]) => roles.includes(role);
@@ -315,6 +318,9 @@ export function mayDo(op: FsjOp, role: string, ctx: { code?: string | null; chec
       return has(FSJ_VISA_ROLES);
     case "departure":
       return has(FSJ_TRAVEL_ROLES);
+    case "settle":
+      // A written-off fee: whether the file goes on is the head office's call.
+      return has(ADMIN_ROLES);
     case "checklist": {
       const step = ctx.checklistStep;
       if (step === 15) return has(FSJ_VISA_ROLES);
@@ -338,11 +344,23 @@ export function needsFees(code: string | null | undefined): boolean {
   return step.step >= 7;
 }
 
-export type FeeFacts = { registrationFeePaidOn: string | null | undefined; applicationFeePaidOn: string | null | undefined };
+/**
+ * The two fees the gate reads. settled marks a fee that counts as paid with no
+ * day of payment: a waived instalment, or a written-off invoice the head
+ * office let through.
+ */
+export type FeeFacts = {
+  registrationFeePaidOn: string | null | undefined;
+  applicationFeePaidOn: string | null | undefined;
+  settled?: { registration?: boolean; application?: boolean };
+};
 
 /** Whether the registration and application fees are marked paid, and which are not. */
 export function feeGate(f: FeeFacts): { clear: boolean; missing: string[] } {
-  const missing = [!f.registrationFeePaidOn ? "registration fee" : null, !f.applicationFeePaidOn ? "application fee" : null].filter((x): x is string => !!x);
+  const missing = [
+    !f.registrationFeePaidOn && !f.settled?.registration ? "registration fee" : null,
+    !f.applicationFeePaidOn && !f.settled?.application ? "application fee" : null,
+  ].filter((x): x is string => !!x);
   return { clear: missing.length === 0, missing };
 }
 
@@ -416,7 +434,7 @@ export function interviewCheck(a: {
   if (a.code === "SECOND_ROUND" && a.currentEmployer && !sameName(a.employer, a.currentEmployer)) {
     return { ok: false, why: `The second round is with ${a.currentEmployer}, the employer that shortlisted.` };
   }
-  if (a.notSelectedBy.some((e) => sameName(e, a.employer))) return { ok: false, why: `${a.employer.trim()} did not select the candidate. Submit the profile to another employer.` };
+  if (a.notSelectedBy.some((e) => sameName(e, a.employer))) return { ok: false, why: `${a.employer.trim()} did not select the candidate, or withdrew after a visa refusal. Submit the profile to another employer.` };
   return { ok: true };
 }
 
@@ -514,25 +532,84 @@ export const VFS_AT = ["VFS_SLOT_BOOKING", "PRE_VISA_DOCUMENTS", "VISA_RESUBMISS
 export const VISA_READY_AT = ["PRE_VISA_DOCUMENTS", "VISA_RESUBMISSION"];
 export const VISA_DECISION_AT = ["VISA_FILED", "VISA_PROCESSING"];
 
-/** The guide's step 12: the pre-visa payment is verified before the file goes to VFS. */
-export function visaReadyCheck(code: string | null | undefined, preVisaPaymentOn: string | null | undefined): { ok: true } | { ok: false; why: string } {
+/**
+ * What the guide's step 12 needs before the file goes to VFS: the pre-visa
+ * payment (paid, or settled), the signed employer contract it is prepared
+ * with, and the profile documents of Section 2 (named, as the checklist has
+ * them).
+ */
+export type VisaFacts = {
+  preVisaPaymentOn: string | null | undefined;
+  preVisaSettled?: boolean;
+  contractSignedOn: string | null | undefined;
+  profileMissing: string[];
+};
+
+/** Whether the visa file may go to VFS, and what is still missing. */
+export function visaGate(f: VisaFacts): { clear: boolean; missing: string[] } {
+  const missing = [!f.preVisaPaymentOn && !f.preVisaSettled ? "pre-visa payment" : null, !f.contractSignedOn ? "signed contract" : null, ...f.profileMissing].filter((x): x is string => !!x);
+  return { clear: missing.length === 0, missing };
+}
+
+/** The visa gate's refusal, in sentences a person can act on. */
+export function visaGateText(f: VisaFacts): string {
+  const out: string[] = [];
+  if (!f.preVisaPaymentOn && !f.preVisaSettled) out.push("The pre-visa payment is not marked received. It is verified before submission.");
+  if (!f.contractSignedOn) out.push("The signed employer contract is not recorded.");
+  if (f.profileMissing.length) out.push(`Profile documents still needed: ${f.profileMissing.join(", ")}.`);
+  return out.join(" ");
+}
+
+/** The guide's step 12: the visa file goes to VFS only with the pre-visa payment, the signed contract and the profile documents in. */
+export function visaReadyCheck(code: string | null | undefined, f: VisaFacts): { ok: true } | { ok: false; why: string } {
   if (!code || !VISA_READY_AT.includes(code)) return { ok: false, why: "The visa file is made ready from visa document preparation or a correction after a refusal." };
-  if (!preVisaPaymentOn) return { ok: false, why: "The pre-visa payment is not marked received. It is verified before submission." };
+  if (!visaGate(f).clear) return { ok: false, why: visaGateText(f) };
   return { ok: true };
+}
+
+/** The visa submission at VFS (step 13): moving a file onto it or past it needs the visa gate. */
+export const FSJ_VISA_STEP = 13;
+
+/**
+ * Whether a status move takes the file past the visa gate: from before the VFS
+ * submission (or from a status the guide does not place, such as a closed or
+ * held file) onto it or any later step. Moves within the visa stage and after
+ * it are not checked again, so a document expiring after the visa is granted
+ * does not hold up the travel desk.
+ */
+export function crossesVisaGate(from: string | null | undefined, to: string | null | undefined): boolean {
+  const toStep = fsjStepOf(to)?.step;
+  if (toStep == null || toStep < FSJ_VISA_STEP) return false;
+  const fromStep = fsjStepOf(from)?.step;
+  return fromStep == null || fromStep < FSJ_VISA_STEP;
 }
 
 export type VisaOutcome = "APPROVED" | "REJECTED";
 
+/** After a refusal: the guide's correction and resubmission, another employer when this one has withdrawn, or closing the case. */
+export type AfterRefusal = "RESUBMIT" | "ANOTHER_EMPLOYER" | "CLOSE";
+export const AFTER_REFUSAL_LABEL: Record<AfterRefusal, string> = {
+  RESUBMIT: "The employer still wants the candidate: correct the file and resubmit",
+  ANOTHER_EMPLOYER: "The employer has withdrawn: back to interview preparation for another employer",
+  CLOSE: "The employer has withdrawn: close the case as visa rejected",
+};
+
 /**
  * Where the visa decision sends the file. Approved is the visa received. A
- * refusal needs its reason; if the employer still wants the candidate the
- * documentation team corrects the file and it is resubmitted, otherwise the
- * case closes as visa rejected.
+ * refusal needs its reason and what happens next: if the employer still wants
+ * the candidate the documentation team corrects the file and it is
+ * resubmitted; if the employer has withdrawn, the file goes back to interview
+ * preparation for another employer (the not-selected loop of step 9, keeping
+ * the language result, the application start and the fees), or the case is
+ * closed as visa rejected.
  */
-export function afterVisaDecision(d: { outcome: VisaOutcome; reason: string | null; employerStillWilling: boolean }): { ok: true; code: string } | { ok: false; why: string } {
+export function afterVisaDecision(d: { outcome: VisaOutcome; reason: string | null; afterRefusal: AfterRefusal | null | undefined }): { ok: true; code: string } | { ok: false; why: string; field: "reason" | "afterRefusal" } {
   if (d.outcome === "APPROVED") return { ok: true, code: "VISA_RECEIVED" };
-  if (!d.reason?.trim()) return { ok: false, why: "Give the reason for the refusal." };
-  return { ok: true, code: d.employerStillWilling ? "VISA_RESUBMISSION" : "VISA_REJECTED" };
+  if (!d.reason?.trim()) return { ok: false, why: "Give the reason for the refusal.", field: "reason" };
+  if (d.afterRefusal === "RESUBMIT") return { ok: true, code: "VISA_RESUBMISSION" };
+  if (d.afterRefusal === "ANOTHER_EMPLOYER") return { ok: true, code: "INTERVIEW_PREPARATION" };
+  if (d.afterRefusal === "CLOSE") return { ok: true, code: "VISA_REJECTED" };
+  return { ok: false, why: "Say what happens next: resubmit with this employer, another employer, or close the case.", field: "afterRefusal" };
 }
 
 /* ---------------- Checklists (steps 15 to 18) ---------------- */
@@ -604,26 +681,75 @@ export const FSJ_TEAM: { name: string; title: string; email: string; level: numb
   { name: "FSJ and BFD registrations (second address)", title: "Also receives the candidate details at registration", email: "nsg.ast@miak.in", level: 1, sortOrder: 20 },
 ];
 
-export const FSJ_EMAILS: Record<FsjTrigger, { step: number; label: string; to: Recipient[]; cc: Recipient[]; content: string }> = {
+/**
+ * One row of the email matrix. sender is the department whose step raises the
+ * trigger and so sends the email. Where tellSender is set, the notice also goes
+ * to that department, saying the email is theirs to send and to whom, since
+ * the people the email goes to are not the people who send it.
+ */
+export type FsjEmail = { step: number; label: string; to: Recipient[]; cc: Recipient[]; content: string; sender: "BRANCH" | "DOCUMENTATION" | "VISA"; tellSender: boolean };
+
+export const FSJ_EMAILS: Record<FsjTrigger, FsjEmail> = {
   REGISTERED: {
     step: 2,
     label: "Candidate registered",
     to: FSJ_TEAM.map((t) => ({ kind: "address" as const, email: t.email })),
     cc: [{ kind: "branchHead" }],
     content: "Candidate details and registration confirmation",
+    sender: "BRANCH",
+    tellSender: false,
   },
-  DOCUMENTS_MISSING: { step: 4, label: "Documents / details missing", to: [{ kind: "counsellor" }], cc: [{ kind: "branchHead" }], content: "List of pending documents or details" },
-  ASSESSMENT_DONE: { step: 5, label: "Language assessment completed", to: [{ kind: "candidate" }], cc: [{ kind: "counsellor" }, { kind: "branchHead" }], content: "Assessment report and recommendation" },
-  FEE_PENDING: { step: 6, label: "Application fee pending", to: [{ kind: "counsellor" }], cc: [{ kind: "branchHead" }], content: "Payment status; application on hold" },
+  DOCUMENTS_MISSING: { step: 4, label: "Documents / details missing", to: [{ kind: "counsellor" }], cc: [{ kind: "branchHead" }], content: "List of pending documents or details", sender: "DOCUMENTATION", tellSender: false },
+  ASSESSMENT_DONE: {
+    step: 5,
+    label: "Language assessment completed",
+    to: [{ kind: "candidate" }],
+    cc: [{ kind: "counsellor" }, { kind: "branchHead" }],
+    content: "Assessment report and recommendation",
+    sender: "DOCUMENTATION",
+    tellSender: true,
+  },
+  FEE_PENDING: { step: 6, label: "Application fee pending", to: [{ kind: "counsellor" }], cc: [{ kind: "branchHead" }], content: "Payment status; application on hold", sender: "DOCUMENTATION", tellSender: true },
   INTERVIEW_SCHEDULED: {
     step: 8,
     label: "Interview scheduled",
     to: [{ kind: "candidate" }],
     cc: [{ kind: "counsellor" }, { kind: "branchHead" }],
     content: "Interview link, organisation, employer, responsibilities, requirements",
+    sender: "DOCUMENTATION",
+    tellSender: false,
   },
-  VISA_APPROVED: { step: 15, label: "Visa approved", to: [{ kind: "candidate" }], cc: [{ kind: "counsellor" }, { kind: "branchHead" }], content: "Visa approval and next steps (joining date, pre-departure)" },
+  VISA_APPROVED: {
+    step: 15,
+    label: "Visa approved",
+    to: [{ kind: "candidate" }],
+    cc: [{ kind: "counsellor" }, { kind: "branchHead" }],
+    content: "Visa approval and next steps (joining date, pre-departure)",
+    sender: "VISA",
+    tellSender: true,
+  },
 };
+
+export const FSJ_SENDER_LABEL: Record<FsjEmail["sender"], string> = { BRANCH: "the counsellor / branch team", DOCUMENTATION: "the documentation team", VISA: "the visa team" };
+
+/**
+ * The notice to the department that sends a trigger's email: that it is
+ * theirs to send, to whom and with whom in copy, and who has no address on
+ * record. The text to copy stays on the tab.
+ */
+export function senderNoticeText(trigger: FsjTrigger, to: { emails: string[]; unknown: string[] }, cc: { emails: string[]; unknown: string[] }): string {
+  const m = FSJ_EMAILS[trigger];
+  const unknown = [...new Set([...to.unknown, ...cc.unknown])];
+  return [
+    `The "${m.label.toLowerCase()}" email is for ${FSJ_SENDER_LABEL[m.sender]} to send.`,
+    `To: ${to.emails.join("; ") || "Not recorded"}.`,
+    `Cc: ${cc.emails.join("; ") || "None"}.`,
+    unknown.length ? `No email on record for ${unknown.join(", ")}.` : "",
+    `The text to copy is on step ${m.step} of the FSJ / BFD tab. The portal does not send it.`,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
 
 export const FSJ_TRIGGERS = Object.keys(FSJ_EMAILS) as FsjTrigger[];
 

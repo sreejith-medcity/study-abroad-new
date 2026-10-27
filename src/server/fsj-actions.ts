@@ -34,22 +34,29 @@ import {
   interviewCheck,
   mayDo,
   mergeChecklist,
+  resolveRecipients,
+  senderNoticeText,
   visaReadyCheck,
+  AFTER_REFUSAL_LABEL,
+  type AfterRefusal,
   type Feedback,
   type FsjOp,
   type FsjTrigger,
   type LanguageResult,
   type VisaOutcome,
 } from "@/lib/fsj";
+import { FSJ_PAYMENT_STAGES, WRITTEN_OFF_WORDS, type FsjPaymentStage } from "@/lib/fsj-fees";
 import { getStudentForUser } from "./queries";
 import { changeStatus, StatusChangeError, tellDeskFsjArrived } from "./applications";
 import { stageGate, studentChecklist, studentContext, syncChecklist } from "./documentation";
 import { documentationIds, notifyUsers, partnerRecipients } from "./notify";
 import { updateTracked } from "./record-history";
 import { appendLedger } from "./ledger";
-import { currentFsjApplication, fsjStudentFacts, notSelectedBy, roleIds, type FsjApplication } from "./fsj";
+import { feeAccess } from "./student-fees";
+import { SETTLED_PREFIX } from "./fsj-fees";
+import { EMPLOYER_WITHDRAWN, currentFsjApplication, fsjContacts, fsjStatusGate, fsjStudentFacts, fsjVisaFacts, gateAppOf, notSelectedBy, roleIds, type FsjApplication, type FsjGateApp } from "./fsj";
 
-const OPS: FsjOp[] = ["registration", "payments", "handover", "missing", "crosscheck", "assessment", "feecheck", "interview", "attended", "feedback", "offer", "vfs", "visaReady", "visaSubmitted", "visaDecision", "approval", "checklist", "departure"];
+const OPS: FsjOp[] = ["registration", "payments", "handover", "missing", "crosscheck", "assessment", "feecheck", "interview", "attended", "feedback", "offer", "vfs", "visaReady", "visaSubmitted", "visaDecision", "approval", "checklist", "departure", "settle"];
 
 const text = (v: FormDataEntryValue | null, max = 200) => {
   const t = String(v ?? "").trim().slice(0, max);
@@ -70,12 +77,15 @@ class Refused extends Error {}
  *
  * One action, with the step in "op", because every step does the same things
  * in the same order: check the person may open the student and may record this
- * step, check the file is at a step where it can be recorded, write the fields
- * through updateTracked so the History tab has them, keep the moment in
- * fsj_events, move the status (through changeStatus, which applies the fee
- * gate), and tell the department that has the file next. The emails the guide
- * asks for are not sent: each trigger is a notice in the portal, and the tab
- * shows the addresses and the text to copy.
+ * step, check the file is at a step where it can be recorded, check the status
+ * move it leads to would be accepted (c.ready: the status exists, a reason is
+ * given where one is required, the fee and visa gates pass) before anything is
+ * written, write the fields through updateTracked so the History tab has them,
+ * keep the moment in fsj_events, move the status (through changeStatus, which
+ * applies the same gates again), and tell the department that has the file
+ * next. A refused move therefore never leaves half a step recorded. The emails
+ * the guide asks for are not sent: each trigger is a notice in the portal, and
+ * the tab shows the addresses and the text to copy.
  */
 export async function fsjStepAction(_: FormState, fd: FormData): Promise<FormState> {
   const user = await requireUser([...STUDENT_WORK_ROLES]);
@@ -91,6 +101,7 @@ export async function fsjStepAction(_: FormState, fd: FormData): Promise<FormSta
 
   const checklistStep = op === "checklist" ? Number(fd.get("step")) : undefined;
   if (!mayDo(op, user.role, { code: app.statusCode, checklistStep })) {
+    if (op === "settle") return { error: "Only the head office marks a written-off fee stage settled." };
     const owner = op === "checklist" ? fsjStepOf(FSJ_STEPS_AT[checklistStep ?? 0])?.department : (fsjStepOf(app.statusCode)?.department ?? null);
     return { error: `Your role does not record this step${owner ? `: it belongs to the ${FSJ_DEPARTMENT_LABEL[owner]}` : ""}.` };
   }
@@ -138,14 +149,39 @@ class Ctx {
     await updateTracked("application", this.app.id, { ...set, updatedAt: new Date() }, { by: this.by, action });
   }
 
-  /** Moves the status by its code, through changeStatus, which applies the fee gate and tells the branch. */
-  async move(code: string, reason?: string) {
-    if (code === this.app.statusCode) return;
+  /** The application's columns the status gates read. */
+  get gateApp(): FsjGateApp {
+    return gateAppOf(this.app);
+  }
+
+  /**
+   * Checks, before the step writes anything, that moving the file to this
+   * status would be accepted: the status is in the flow, a reason is given
+   * where the status asks for one, and the fee and visa gates pass. Throws the
+   * refusal; returns the status, or null where the file is already there.
+   */
+  async ready(code: string, reason?: string) {
+    if (code === this.app.statusCode) return null;
     const to = await db.query.statusDefinitions.findFirst({
       where: and(eq(schema.statusDefinitions.pathway, this.app.pathway), eq(schema.statusDefinitions.code, code), eq(schema.statusDefinitions.active, true)),
     });
     if (!to) throw new Refused(`The status ${code} is not in the ${this.app.pathway} status flow. Run deploy/fsj-bfd-process.sql, or add it under Status flows.`);
+    if (to.requiresReason && !reason?.trim()) throw new Refused(`A reason is required for "${to.label}".`);
+    const refusal = await fsjStatusGate(this.gateApp, this.app.statusCode, code);
+    if (refusal) throw new Refused(refusal.why);
+    return to;
+  }
+
+  /** Moves the status by its code, through changeStatus, which applies the gates again and tells the branch. */
+  async move(code: string, reason?: string) {
+    const to = await this.ready(code, reason);
+    if (!to) return;
     await changeStatus(this.user, this.app.id, to.id, reason, { viaFsj: true });
+  }
+
+  /** Whether this person may mark a payment paid by hand: the Collect fees right, as on the Fees tab. */
+  async mayMarkFees() {
+    return (await feeAccess(this.user)).act;
   }
 
   /** Keeps one moment of the process in fsj_events. */
@@ -166,34 +202,70 @@ class Ctx {
   async notice(trigger: FsjTrigger, ids: (string | null | undefined)[], title: string, body: string) {
     const m = FSJ_EMAILS[trigger];
     await notifyUsers(ids, title, `${body} Email (${m.content.toLowerCase()}): the addresses and the text to copy are on step ${m.step} of the FSJ / BFD tab. The portal does not send it.`, this.href);
+    // The department that sends the email is told it is theirs, with the addresses.
+    if (m.tellSender) {
+      const [facts, contacts] = await Promise.all([fsjStudentFacts(this.student.id), fsjContacts()]);
+      const people = {
+        candidate: this.student.email,
+        counsellor: facts?.counsellor?.email ?? null,
+        branchHeads: (facts?.heads ?? []).map((h) => h.email).filter((e): e is string => !!e),
+      };
+      const registration = contacts.rows.map((r) => r.email).filter((e): e is string => !!e);
+      const text = senderNoticeText(trigger, resolveRecipients(m.to, people, registration), resolveRecipients(m.cc, people, registration));
+      const senders = m.sender === "VISA" ? await roleIds(FSJ_VISA_ROLES) : await documentationIds();
+      await notifyUsers(senders, `${this.name}: ${m.label.toLowerCase()} email to send`, text, this.href);
+    }
     await this.log("NOTICE", m.step, { outcome: trigger, detail: title });
   }
 }
+
+/** The registration and application fee stages a written-off invoice still holds, in plain words. */
+const writtenOffNote = (c: Ctx) =>
+  FSJ_PAYMENT_STAGES.filter((s) => s.key === "registration" || s.key === "application")
+    .filter((s) => c.app.feePlan.stages[s.key]?.writtenOff && !c.app.feePlan.stages[s.key]?.settled)
+    .map((s) => `${s.label}: ${WRITTEN_OFF_WORDS}.`)
+    .join(" ");
 
 const RUN: Record<FsjOp, (c: Ctx, fd: FormData) => Promise<FormState>> = {
   /* Step 2: the registration fee and the agreement. */
   async registration(c, fd) {
     // Where the student's fee plan has the registration fee, its invoice says
-    // whether it is paid; otherwise the day is given here, as before.
+    // whether it is paid. Otherwise the day is marked here, by someone with
+    // the Collect fees right; anyone else records the agreement against a fee
+    // already marked.
     const fromInvoices = c.app.paymentSource.registration === "INVOICES";
-    const feeOn = fromInvoices ? c.app.registrationFeePaidOn : day(fd.get("registrationFeePaidOn"));
     const agreementOn = day(fd.get("agreementSignedOn"));
-    if (!feeOn) {
-      return fromInvoices
-        ? { error: "The registration fee invoice is not paid yet. Record the payment on the Fees tab, then record the registration." }
-        : bad("registrationFeePaidOn", "Give the day the registration fee was paid");
+    let markOn: string | null = null;
+    if (fromInvoices) {
+      if (!c.app.registrationFeePaidOn && !c.app.settled.registration) {
+        return {
+          error: c.app.feePlan.stages.registration?.writtenOff
+            ? `The registration fee invoice is ${WRITTEN_OFF_WORDS}.`
+            : "The registration fee invoice is not paid yet. Record the payment on the Fees tab, then record the registration.",
+        };
+      }
+    } else if (await c.mayMarkFees()) {
+      markOn = day(fd.get("registrationFeePaidOn"));
+      if (!markOn) return bad("registrationFeePaidOn", "Give the day the registration fee was paid");
+    } else if (!c.app.marked.registrationFeePaidOn) {
+      return { error: "The registration fee is not marked paid. Marking a fee paid needs the Collect fees right, as on the Fees tab: ask the counsellor or branch head who took it to mark it on the Payments card." };
     }
     if (!agreementOn) return bad("agreementSignedOn", "Give the day the agreement / declaration was signed");
-    await c.track(fromInvoices ? { fsjAgreementSignedOn: agreementOn } : { fsjRegistrationFeePaidOn: feeOn, fsjAgreementSignedOn: agreementOn }, "fsj.registration");
-    if (c.app.statusCode !== "REGISTRATION") return { ok: "Registration details saved." };
-    await c.move("DOCUMENT_COLLECTION");
+    const to = c.app.statusCode === "REGISTRATION" ? "DOCUMENT_COLLECTION" : null;
+    if (to) await c.ready(to);
+    await c.track(markOn && markOn !== c.app.marked.registrationFeePaidOn ? { fsjRegistrationFeePaidOn: markOn, fsjAgreementSignedOn: agreementOn } : { fsjAgreementSignedOn: agreementOn }, "fsj.registration");
+    if (!to) return { ok: "Registration details saved." };
+    await c.move(to);
     await c.notice("REGISTERED", await c.branch(), `${c.name}: registered for ${c.app.pathway}`, "Registration recorded. Document collection (step 3) is next.");
-    await audit(c.by, "fsj.registration", "application", c.app.id, { feeOn, agreementOn });
+    await audit(c.by, "fsj.registration", "application", c.app.id, { feeOn: markOn ?? c.app.registrationFeePaidOn, agreementOn });
     return { ok: "Registration recorded. Send the registration email from step 2 (the portal does not send it). Document collection is next." };
   },
 
   /* The payment stages the guide names: registration, application, offer letter, pre-visa. */
   async payments(c, fd) {
+    // Marking a payment paid opens the fee gate and the visa gate, so it needs
+    // the same right as taking the fee on the Fees tab.
+    if (!(await c.mayMarkFees())) return { error: "Marking a payment paid needs the Collect fees right, as on the Fees tab. Ask the counsellor or branch head who took the fee." };
     // A stage the student's fee plan covers is read from its invoices, so only
     // the other stages are marked here; the days marked earlier are kept.
     const marked = (stage: keyof FsjApplication["paymentSource"], field: string) => (c.app.paymentSource[stage] === "MARKED" ? day(fd.get(field)) : undefined);
@@ -205,10 +277,13 @@ const RUN: Record<FsjOp, (c: Ctx, fd: FormData) => Promise<FormState>> = {
     };
     const values = Object.fromEntries(Object.entries(all).filter(([, v]) => v !== undefined)) as Partial<Record<keyof typeof all, string | null>>;
     if (!Object.keys(values).length) return { error: "Every payment stage is read from the student's fee invoices. Record payments on the Fees tab." };
-    const before = feeGate({ registrationFeePaidOn: c.app.registrationFeePaidOn, applicationFeePaidOn: c.app.applicationFeePaidOn });
+    const before = feeGate(c.app);
+    const reg = all.fsjRegistrationFeePaidOn;
+    const fee = all.fsjApplicationFeePaidOn;
     const after = feeGate({
-      registrationFeePaidOn: all.fsjRegistrationFeePaidOn === undefined ? c.app.registrationFeePaidOn : all.fsjRegistrationFeePaidOn,
-      applicationFeePaidOn: all.fsjApplicationFeePaidOn === undefined ? c.app.applicationFeePaidOn : all.fsjApplicationFeePaidOn,
+      registrationFeePaidOn: reg === undefined ? c.app.registrationFeePaidOn : reg,
+      applicationFeePaidOn: fee === undefined ? c.app.applicationFeePaidOn : fee,
+      settled: { registration: reg === undefined ? c.app.settled.registration : !!reg, application: fee === undefined ? c.app.settled.application : !!fee },
     });
     await c.track(values, "fsj.payments");
     await audit(c.by, "fsj.payments", "application", c.app.id, values);
@@ -243,10 +318,11 @@ const RUN: Record<FsjOp, (c: Ctx, fd: FormData) => Promise<FormState>> = {
         gapRecorded: !!facts?.gapRecorded,
         registeredOn: c.student.createdAt,
         counsellor: c.student.assignedToId,
-        registrationFeePaidOn: c.app.registrationFeePaidOn,
+        registrationFeePaidOn: c.app.registrationFeePaidOn ?? (c.app.settled.registration ? "settled" : null),
       });
       const missing = [...gate.missing.map((m) => m.label), ...details];
       if (missing.length) return { error: `Still needed before the hand-over: ${missing.join(", ")}.` };
+      await c.ready(h.toCode);
       if (!c.app.handedOverAt) {
         const now = new Date();
         // The hand-over goes on the student's line of the ownership ledger, written by updateTracked.
@@ -306,9 +382,10 @@ const RUN: Record<FsjOp, (c: Ctx, fd: FormData) => Promise<FormState>> = {
     if (!level) return bad("level", "Give the level assessed, as the team judged it");
     if (result !== "SUFFICIENT" && result !== "NOT_SUFFICIENT") return bad("result", "Say whether the level and communication are sufficient");
     const reassessed = c.app.languageResult != null;
+    const to = afterAssessment(result, !!c.app.applicationStartedOn);
+    await c.ready(to);
     await c.track({ fsjLanguageLevel: level, fsjLanguageResult: result, fsjLanguageAssessedOn: on }, "fsj.assessment");
     await c.log("LANGUAGE_ASSESSMENT", fsjStepOf(c.app.statusCode)?.step ?? 5, { level, outcome: result, on, detail: note });
-    const to = afterAssessment(result, !!c.app.applicationStartedOn);
     await c.move(to);
     await c.notice(
       "ASSESSMENT_DONE",
@@ -329,18 +406,25 @@ const RUN: Record<FsjOp, (c: Ctx, fd: FormData) => Promise<FormState>> = {
   /* Step 6: both fees in starts the application; otherwise it is on hold and the counsellor is told. */
   async feecheck(c) {
     if (!FEE_CHECK_AT.includes(c.app.statusCode)) return { error: "The payment check is done after a sufficient language assessment." };
-    const gate = feeGate({ registrationFeePaidOn: c.app.registrationFeePaidOn, applicationFeePaidOn: c.app.applicationFeePaidOn });
+    const gate = feeGate(c.app);
     if (gate.clear) {
+      await c.ready("INTERVIEW_PREPARATION");
       await c.track({ fsjApplicationStartedOn: today() }, "fsj.application_started");
       await c.move("INTERVIEW_PREPARATION");
       await c.log("FEE_CHECK", 6, { outcome: "PAID" });
       await notifyUsers(await c.branch(), `${c.name}: application started`, "Both fees are in. Interview preparation (step 7) has begun.", c.href);
       return { ok: "Both fees are paid. The application has started: interview preparation is next." };
     }
+    const off = writtenOffNote(c);
     await c.move("APPLICATION_ON_HOLD");
     await c.log("FEE_CHECK", 6, { outcome: "PENDING", detail: gate.missing.join(", ") });
-    await c.notice("FEE_PENDING", await c.branch(), `${c.name}: application on hold, fee pending`, `Not yet marked paid: ${gate.missing.join(", ")}. The application does not start until it is received.`);
-    return { error: feeGateText(gate.missing) };
+    await c.notice(
+      "FEE_PENDING",
+      await c.branch(),
+      `${c.name}: application on hold, fee pending`,
+      `Not yet marked paid: ${gate.missing.join(", ")}. The application does not start until it is received.${off ? ` ${off}` : ""}`,
+    );
+    return { error: `${feeGateText(gate.missing)}${off ? ` ${off}` : ""}` };
   },
 
   /* Step 8: the interview, with everything the guide's email carries. */
@@ -356,7 +440,7 @@ const RUN: Record<FsjOp, (c: Ctx, fd: FormData) => Promise<FormState>> = {
     if (!at) return bad("interviewAt", "Give the date and the time");
     const check = interviewCheck({
       code: c.app.statusCode,
-      fees: { registrationFeePaidOn: c.app.registrationFeePaidOn, applicationFeePaidOn: c.app.applicationFeePaidOn },
+      fees: c.app,
       applicationStarted: !!c.app.applicationStartedOn,
       languageResult: c.app.languageResult,
       employer,
@@ -365,6 +449,7 @@ const RUN: Record<FsjOp, (c: Ctx, fd: FormData) => Promise<FormState>> = {
     });
     if (!check.ok) return { error: check.why };
     const kind = c.app.statusCode === "SECOND_ROUND" ? "SECOND_ROUND" : c.app.statusCode === "INTERVIEW_SCHEDULED" ? "RESCHEDULED" : "FIRST";
+    await c.ready("INTERVIEW_SCHEDULED");
     await c.track(
       { fsjEmployer: employer, fsjInterviewAt: at, fsjInterviewLink: link, fsjResponsibilities: responsibilities, fsjRequirements: requirements, fsjFeedback: null },
       "fsj.interview",
@@ -390,6 +475,8 @@ const RUN: Record<FsjOp, (c: Ctx, fd: FormData) => Promise<FormState>> = {
     if (!["POSITIVE", "SECOND_ROUND", "NOT_SELECTED"].includes(outcome)) return bad("outcome", "Pick the employer's feedback");
     if (outcome === "NOT_SELECTED" && !note) return bad("note", "Write the employer's feedback, to share with the counsellor and the candidate");
     const employer = c.app.employer;
+    const to = afterFeedback(outcome);
+    await c.ready(to);
     await c.track(
       outcome === "NOT_SELECTED"
         ? { fsjFeedback: outcome, fsjEmployer: null, fsjInterviewAt: null, fsjInterviewLink: null, fsjResponsibilities: null, fsjRequirements: null }
@@ -397,7 +484,7 @@ const RUN: Record<FsjOp, (c: Ctx, fd: FormData) => Promise<FormState>> = {
       "fsj.feedback",
     );
     await c.log("FEEDBACK", 9, { employer, outcome, detail: note });
-    await c.move(afterFeedback(outcome));
+    await c.move(to);
     const who = employer ?? "The employer";
     const branch = await c.branch();
     if (outcome === "NOT_SELECTED") {
@@ -419,6 +506,7 @@ const RUN: Record<FsjOp, (c: Ctx, fd: FormData) => Promise<FormState>> = {
     const contractSignedOn = day(fd.get("contractSignedOn"));
     const next = afterOffer({ offerOn, contractSignedOn });
     if (!next.ok) return { error: next.why };
+    if (next.code) await c.ready(next.code);
     await c.track({ fsjOfferOn: offerOn, fsjContractSignedOn: contractSignedOn }, "fsj.offer");
     if (offerOn && offerOn !== c.app.offerOn) await c.log("OFFER", 10, { outcome: "ISSUED", on: offerOn, employer: c.app.employer });
     if (contractSignedOn && contractSignedOn !== c.app.contractSignedOn) await c.log("OFFER", 10, { outcome: "SIGNED", on: contractSignedOn, employer: c.app.employer });
@@ -434,16 +522,18 @@ const RUN: Record<FsjOp, (c: Ctx, fd: FormData) => Promise<FormState>> = {
     if (!VFS_AT.includes(c.app.statusCode)) return { error: "The VFS slot is booked by the visa team once the file is with them." };
     const slot = day(fd.get("vfsSlotOn"));
     if (!slot) return bad("vfsSlotOn", "Give the VFS slot date");
+    const to = c.app.statusCode === "VFS_SLOT_BOOKING" ? "PRE_VISA_DOCUMENTS" : null;
+    if (to) await c.ready(to);
     await c.track({ fsjVfsSlotOn: slot }, "fsj.vfs_slot");
     await c.log("VFS_SLOT", 11, { on: slot });
-    if (c.app.statusCode === "VFS_SLOT_BOOKING") await c.move("PRE_VISA_DOCUMENTS");
+    if (to) await c.move(to);
     await notifyUsers(await c.branch(), `${c.name}: VFS slot ${slot}`, "The visa team has booked the VFS submission date.", c.href);
     return { ok: "VFS slot saved. Visa document preparation is next." };
   },
 
-  /* Step 12: the file is ready for VFS, once the pre-visa payment is in. */
+  /* Step 12: the file is ready for VFS, once the pre-visa payment, the signed contract and the profile documents are in. */
   async visaReady(c) {
-    const check = visaReadyCheck(c.app.statusCode, c.app.preVisaPaymentOn);
+    const check = visaReadyCheck(c.app.statusCode, await fsjVisaFacts(c.gateApp));
     if (!check.ok) return { error: check.why };
     await c.move("VISA_FILED");
     return { ok: "The visa file is ready. The candidate attends VFS on the slot date." };
@@ -454,25 +544,70 @@ const RUN: Record<FsjOp, (c: Ctx, fd: FormData) => Promise<FormState>> = {
     if (c.app.statusCode !== "VISA_FILED") return { error: "The submission is recorded once the file is ready for VFS." };
     const on = day(fd.get("submittedOn")) ?? today();
     const resubmission = c.app.visaDecision === "REFUSED" || !!c.app.visaReason;
+    await c.ready("VISA_PROCESSING");
     await c.track({ visaLodgedOn: on, visaDecision: null, visaDecisionOn: null }, "fsj.visa_submitted");
     await c.log("VISA_SUBMITTED", 13, { on, outcome: resubmission ? "RESUBMITTED" : "FIRST" });
     await c.move("VISA_PROCESSING");
     return { ok: `${resubmission ? "Resubmitted" : "Submitted"} at VFS. The visa is processing.` };
   },
 
-  /* Step 14's decision: approved, or refused with the reason and whether the employer still wants the candidate. */
+  /*
+   * Step 14's decision: approved, or refused with the reason and what happens
+   * next: resubmit while the employer still wants the candidate, go back to
+   * interview preparation for another employer if this one has withdrawn, or
+   * close the case.
+   */
   async visaDecision(c, fd) {
     if (!VISA_DECISION_AT.includes(c.app.statusCode)) return { error: "The visa decision is recorded after the submission." };
     const outcome = String(fd.get("outcome") ?? "") as VisaOutcome;
     if (outcome !== "APPROVED" && outcome !== "REJECTED") return bad("outcome", "Pick the visa outcome");
     const on = day(fd.get("decidedOn")) ?? today();
     const reason = text(fd.get("reason"), 600);
-    const willing = fd.get("employerStillWilling") === "yes";
-    const next = afterVisaDecision({ outcome, reason, employerStillWilling: willing });
-    if (!next.ok) return bad("reason", next.why);
+    const afterRefusal = (String(fd.get("afterRefusal") ?? "") || null) as AfterRefusal | null;
+    const next = afterVisaDecision({ outcome, reason, afterRefusal });
+    if (!next.ok) return bad(next.field, next.why);
+    const moveReason = next.code === "VISA_REJECTED" ? (reason ?? undefined) : next.code === "INTERVIEW_PREPARATION" ? `Visa refused (${reason}); the employer has withdrawn` : undefined;
+    await c.ready(next.code, moveReason);
+
+    if (next.code === "INTERVIEW_PREPARATION") {
+      // The not-selected loop of step 9: the language result, the application
+      // start and the fees stay; the withdrawn employer's interview, offer,
+      // contract and visa round are cleared (they stay in the history and in
+      // the recorded moments), and that employer is not offered again.
+      const employer = c.app.employer;
+      await c.track(
+        {
+          fsjEmployer: null,
+          fsjInterviewAt: null,
+          fsjInterviewLink: null,
+          fsjResponsibilities: null,
+          fsjRequirements: null,
+          fsjFeedback: null,
+          fsjOfferOn: null,
+          fsjContractSignedOn: null,
+          fsjVfsSlotOn: null,
+          fsjJoiningOn: null,
+          visaLodgedOn: null,
+          visaDecision: null,
+          visaDecisionOn: null,
+          fsjVisaReason: null,
+        },
+        "fsj.visa_decision",
+      );
+      await c.log("VISA_DECISION", 14, { outcome: EMPLOYER_WITHDRAWN, on, employer, detail: `${reason}. The employer has withdrawn: back to interview preparation for another employer.` });
+      await c.move(next.code, moveReason);
+      await notifyUsers(
+        [...(await documentationIds()), ...(await c.branch())],
+        `${c.name}: visa refused, another employer`,
+        `Reason: ${reason}. ${employer ?? "The employer"} has withdrawn, so the file is back at interview preparation for another employer. The language result, the application start and the fees are kept.`,
+        c.href,
+      );
+      return { ok: "Visa refused and the employer has withdrawn. The file is back at interview preparation for another employer; the language result, the application start and the fees are kept." };
+    }
+
     await c.track({ visaDecision: outcome === "APPROVED" ? "GRANTED" : "REFUSED", visaDecisionOn: on, fsjVisaReason: outcome === "APPROVED" ? c.app.visaReason : reason }, "fsj.visa_decision");
-    await c.log("VISA_DECISION", 14, { outcome, on, detail: outcome === "REJECTED" ? `${reason}. Employer still willing: ${willing ? "yes" : "no"}` : null });
-    await c.move(next.code, next.code === "VISA_REJECTED" ? (reason ?? undefined) : undefined);
+    await c.log("VISA_DECISION", 14, { outcome, on, detail: outcome === "REJECTED" && afterRefusal ? `${reason}. ${AFTER_REFUSAL_LABEL[afterRefusal]}.` : null });
+    await c.move(next.code, moveReason);
     if (next.code === "VISA_RECEIVED") {
       await c.notice("VISA_APPROVED", await c.branch(), `${c.name}: visa approved`, "Confirm the joining date; the pre-departure process follows.");
       return { ok: "Visa approved. Confirm the joining date, then hand the file to the travel desk." };
@@ -500,8 +635,9 @@ const RUN: Record<FsjOp, (c: Ctx, fd: FormData) => Promise<FormState>> = {
     if (!FSJ_CHECKLISTS[step] || step === 15) return { error: "That checklist could not be saved." };
     if (!checklistOpen(step, c.app.statusCode)) return { error: "That checklist opens when the file reaches its step." };
     const done = mergeChecklist(c.app.done ?? [], step, fd.getAll("done").map(String));
-    await c.track({ fsjDone: done }, `fsj.checklist_${step}`);
     const to = afterChecklist(step, c.app.statusCode, done);
+    if (to) await c.ready(to);
+    await c.track({ fsjDone: done }, `fsj.checklist_${step}`);
     if (to) await c.move(to);
     return { ok: to ? "Saved. The post-arrival follow-up has begun." : "Saved." };
   },
@@ -511,9 +647,45 @@ const RUN: Record<FsjOp, (c: Ctx, fd: FormData) => Promise<FormState>> = {
     if (c.app.statusCode !== "PRE_DEPARTURE") return { error: "The departure is recorded from the pre-departure process." };
     const on = day(fd.get("departedOn"));
     if (!on) return bad("departedOn", "Give the day the candidate travelled");
+    await c.ready("JOINED");
     await c.track({ fsjDepartedOn: on }, "fsj.departure");
     await c.move("JOINED");
     await notifyUsers(await c.branch(), `${c.name}: departed for Germany`, "The post-arrival follow-up (step 18) includes a happy call, a testimonial and a reference.", c.href);
     return { ok: "Departure recorded. The post-arrival follow-up is next." };
+  },
+
+  /*
+   * A fee stage held by a written-off invoice: the head office decides whether
+   * the file goes on, and if it does, marks the stage settled with its reason.
+   * Kept in fsj_events (read back by the fee gate) and in the audit log.
+   */
+  async settle(c, fd) {
+    const stage = String(fd.get("stage") ?? "") as FsjPaymentStage;
+    const def = FSJ_PAYMENT_STAGES.find((s) => s.key === stage);
+    const p = def ? c.app.feePlan.stages[def.key] : null;
+    if (!def || !p) return { error: "That payment stage is not on the student's fee plan." };
+    if (!p.writtenOff) return { error: "Only a stage whose fee invoice is written off is settled here. Record payments on the Fees tab." };
+    if (p.headOfficeSettled) return { ok: `${def.label} is already settled by the head office.` };
+    const reason = text(fd.get("reason"), 600);
+    if (!reason) return bad("reason", "Give the reason the head office lets this file go on");
+    const before = feeGate(c.app);
+    // The stage counts as paid once nothing else on it is still to pay.
+    const nowSettled = !p.waiting && p.invoices.every((i) => i.state === "WRITTEN_OFF" || i.state === "PAID");
+    const gateStage = def.key === "registration" || def.key === "application";
+    const after = gateStage ? feeGate({ ...c.app, settled: { ...c.app.settled, [def.key]: nowSettled } }) : before;
+    await c.log("FEE_CHECK", def.step, { outcome: `${SETTLED_PREFIX}${def.key}`, detail: reason });
+    await audit(c.by, "fsj.stage_settled", "application", c.app.id, { stage: def.key, reason, invoices: p.invoices.filter((i) => i.state === "WRITTEN_OFF").map((i) => i.number ?? i.id) });
+    const opened = !before.clear && after.clear && FEE_CHECK_AT.includes(c.app.statusCode);
+    await notifyUsers(
+      [...(await documentationIds()), ...(await c.branch())],
+      `${c.name}: ${def.label.toLowerCase()} settled by the head office`,
+      `The written-off invoice no longer holds the file. Reason: ${reason}.${opened ? " Both fees now count as paid: run the payment check on step 6 to start the application." : ""}`,
+      c.href,
+    );
+    return {
+      ok: nowSettled
+        ? `${def.label} marked settled. The written-off invoice no longer holds the file.`
+        : `${def.label}: the written-off invoice no longer holds the file, but another invoice of this stage is still to pay.`,
+    };
   },
 };

@@ -66,9 +66,13 @@ The student's FSJ / BFD tab places the file on the 18 steps, says who owns the
 step, and shows the form for the step in hand to the department that owns it.
 Every form posts to one action (`fsjStepAction` in `src/server/fsj-actions.ts`),
 which checks the person may open the student and may record this step
-(`mayDo`), writes the fields on the application through `updateTracked` (so
-the History tab has every change), keeps the moment in `fsj_events`, moves the
-status through `changeStatus` and tells the department that has the file next.
+(`mayDo`), checks before writing anything that the status move the step leads
+to would be accepted (the status is in the flow, a reason is given where one is
+required, the fee and visa gates pass), writes the fields on the application
+through `updateTracked` (so the History tab has every change), keeps the moment
+in `fsj_events`, moves the status through `changeStatus` and tells the
+department that has the file next. A refused move therefore never leaves half
+a step recorded.
 
 - **Language assessment (step 5).** The level and the result are recorded as
   the team enters them. The guide has not set a minimum, so the portal applies
@@ -80,8 +84,11 @@ status through `changeStatus` and tells the department that has the file next.
   status move onto a started-application status, from any screen. When the
   fees come in, the documentation team is told to start it. Where the student
   has a fee plan with instalments on the FSJ / BFD steps (see "Fees" below),
-  each fee is paid when its invoice is paid in full; otherwise the branch marks
-  the day it was paid on the tab.
+  each fee is paid when its invoice is paid in full; otherwise the day it was
+  paid is marked on the tab. Marking a payment by hand (the Payments card, and
+  the registration fee on the registration step) needs the same right as the
+  Fees tab: the Collect fees capability, never a sub-agent's people. Trainee,
+  sub-agent and desk counsellors read the days but cannot mark them.
 - **Interview (steps 8 and 9).** Scheduling needs the application started and
   the latest assessment sufficient, and records the employer, date and time,
   link, responsibilities and requirements. Feedback is positive, a second round
@@ -89,10 +96,20 @@ status through `changeStatus` and tells the department that has the file next.
   guide drafts it: the feedback is shared with the counsellor, the file goes
   back to interview preparation, and that employer is not offered again.
 - **Offer and contract (step 10)**, then the hand-over to the visa team.
-- **Visa (steps 11 to 15).** The VFS slot, the file made ready (only with the
-  pre-visa payment in), the submission, and the decision: approved, or refused
-  with its reason, corrected and resubmitted if the employer still wants the
-  candidate, closed as visa rejected if not.
+- **Visa (steps 11 to 15).** The VFS slot, the file made ready, the
+  submission, and the decision. The file goes to VFS only with the pre-visa
+  payment in, the signed contract recorded and the profile documents complete.
+  The same visa gate holds every status move onto the VFS submission or a later
+  step from before it, so the admin status picker and the bulk import cannot
+  skip it either; an admin may override it there by giving the reason, and the
+  override is written to the audit log (`fsj.visa_gate_override`). The decision
+  is approved, or refused with its reason and what happens next: corrected and
+  resubmitted if the employer still wants the candidate; if the employer has
+  withdrawn, either back to interview preparation for another employer (as the
+  not-selected loop does: the language result, the application start date and
+  the fees are kept, the withdrawn employer is not offered again, and its
+  interview, offer, contract and visa round stay in the history), or closed as
+  visa rejected.
 - **Travel desk (steps 16 to 18).** The guide's checklists, the departure date,
   and the follow-up, which starts with the happy call.
 
@@ -111,7 +128,20 @@ With such a plan, the tab's Payments card, the registration step, the fee gate
 and the pre-visa check read the student's fee invoices (`src/lib/fsj-fees.ts`):
 a stage is paid on the day its invoice is paid in full. A stage the plan has no
 instalment for, and every stage of a student without one, keeps the day marked
-paid on the tab.
+paid on the tab. Four rules keep that honest:
+
+- An instalment cancelled while it still carries an invoice stays on its stage
+  until the invoice is cancelled too: cancelling a schedule does not let a day
+  marked by hand get past an unpaid issued invoice.
+- A waived instalment is settled for the gate. No day of payment is invented:
+  the tab says it was waived.
+- A skipped instalment counts through the earlier invoice that billed it, and
+  drops out where there is none.
+- A written-off invoice keeps the gate closed. The tab says "written off: the
+  head office decides whether this file goes on", and the head office (the
+  admins) can mark the stage settled with a reason, kept in `fsj_events` and in
+  the audit log (`fsj.stage_settled`). That lets the written-off invoice
+  through, never another invoice still to pay.
 
 ## Hand-overs and the ledger
 
@@ -130,19 +160,32 @@ in the portal to the people it names who can open the student, and the tab
 shows, for each trigger, the addresses the guide says to email and copy (the
 registration addresses come from the Contacts list, area "FSJ and BFD
 (Germany)"), whether the notice was raised, and a "Copy email text" button
-with the draft. Staff send it from their own mail.
+with the draft. Staff send it from their own mail. Each row says who sends it.
+The language assessment, application fee pending and visa approved emails go
+to people other than the team that sends them, so their notices also go to
+that team (the documentation team, or the visa team), saying the email is
+theirs to send, with the To and Cc addresses and anyone who has no address on
+record.
 
 ## Reaching production
 
 `deploy/fsj-bfd-process.sql` (generated by `scripts/fsj-bfd-process-sql.ts`)
-inserts the statuses for both pathways, the three new document types, the
-requirements and the two contacts, each only where missing. Run it after the
-migration that adds the pathways. Safe to run twice.
+inserts the statuses for both pathways, every document type the requirements
+name (the three only FSJ / BFD asks for, and the birth certificate,
+vaccination, police clearance, translated certificates, motivation letter,
+experience letter and the rest that other files also add), the requirements
+and the two contacts, each only where missing. It does not depend on the
+Ausbildung file having been run. Run it after the migration that adds the
+pathways. Safe to run twice.
 
 ## Still for people, and open points
 
 - The two "points to confirm" in the guide: the minimum language level, and
-  the not-selected handling (implemented as drafted).
+  the not-selected handling (implemented as drafted, and reused for a visa
+  refusal where the employer has withdrawn).
+- When the language assessment starts: the guide says on receiving the
+  registration email; the portal opens it after the branch's hand-over and the
+  document cross-check. To confirm with the head office.
 - The experience certificate and the driving licence are on the guide's list
   but asked for without holding the file up, since not every candidate holds
   one. To confirm with the head office.

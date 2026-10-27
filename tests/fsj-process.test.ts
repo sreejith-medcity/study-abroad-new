@@ -17,6 +17,7 @@ import {
   afterOffer,
   afterVisaDecision,
   checklistOpen,
+  crossesVisaGate,
   emailDraft,
   feeGate,
   fsjDepartmentOf,
@@ -30,9 +31,12 @@ import {
   needsFees,
   pickFsjApplication,
   resolveRecipients,
+  senderNoticeText,
   stuckAtLeast,
+  visaGate,
   visaReadyCheck,
   type DraftFacts,
+  type VisaFacts,
 } from "../src/lib/fsj";
 import { DOCUMENT_TYPES, STATUS_SEED } from "../src/db/statuses";
 import { DOCUMENTATION_TYPES, FSJ_DOCUMENT_TYPES, FSJ_REQUIREMENTS, FSJ_SECTION_2, STAGE_REQUIREMENTS } from "../src/db/documentation-seed";
@@ -181,15 +185,50 @@ test("the offer comes before the contract", () => {
 });
 
 test("decision 4: the visa, with a refusal corrected and resubmitted while the employer still wants the candidate", () => {
-  assert.deepEqual(visaReadyCheck("PRE_VISA_DOCUMENTS", null), { ok: false, why: "The pre-visa payment is not marked received. It is verified before submission." });
-  assert.deepEqual(visaReadyCheck("PRE_VISA_DOCUMENTS", "2026-05-01"), { ok: true });
-  assert.deepEqual(visaReadyCheck("VISA_RESUBMISSION", "2026-05-01"), { ok: true });
-  assert.equal(visaReadyCheck("VFS_SLOT_BOOKING", "2026-05-01").ok, false);
-  assert.deepEqual(afterVisaDecision({ outcome: "APPROVED", reason: null, employerStillWilling: false }), { ok: true, code: "VISA_RECEIVED" });
-  assert.equal(afterVisaDecision({ outcome: "REJECTED", reason: " ", employerStillWilling: true }).ok, false, "a refusal needs its reason");
-  assert.deepEqual(afterVisaDecision({ outcome: "REJECTED", reason: "Funds unclear", employerStillWilling: true }), { ok: true, code: "VISA_RESUBMISSION" });
-  assert.deepEqual(afterVisaDecision({ outcome: "REJECTED", reason: "Funds unclear", employerStillWilling: false }), { ok: true, code: "VISA_REJECTED" });
+  const ready: VisaFacts = { preVisaPaymentOn: "2026-05-01", contractSignedOn: "2026-04-03", profileMissing: [] };
+  assert.deepEqual(visaReadyCheck("PRE_VISA_DOCUMENTS", { ...ready, preVisaPaymentOn: null }), { ok: false, why: "The pre-visa payment is not marked received. It is verified before submission." });
+  assert.deepEqual(visaReadyCheck("PRE_VISA_DOCUMENTS", ready), { ok: true });
+  assert.deepEqual(visaReadyCheck("VISA_RESUBMISSION", ready), { ok: true });
+  assert.deepEqual(visaReadyCheck("PRE_VISA_DOCUMENTS", { ...ready, preVisaPaymentOn: null, preVisaSettled: true }), { ok: true }, "a waived pre-visa payment is settled");
+  assert.equal(visaReadyCheck("VFS_SLOT_BOOKING", ready).ok, false);
+  assert.deepEqual(afterVisaDecision({ outcome: "APPROVED", reason: null, afterRefusal: null }), { ok: true, code: "VISA_RECEIVED" });
+  assert.equal(afterVisaDecision({ outcome: "REJECTED", reason: " ", afterRefusal: "RESUBMIT" }).ok, false, "a refusal needs its reason");
+  const unsaid = afterVisaDecision({ outcome: "REJECTED", reason: "Funds unclear", afterRefusal: null });
+  assert.ok(!unsaid.ok && unsaid.field === "afterRefusal", "a refusal needs what happens next");
+  assert.deepEqual(afterVisaDecision({ outcome: "REJECTED", reason: "Funds unclear", afterRefusal: "RESUBMIT" }), { ok: true, code: "VISA_RESUBMISSION" });
+  assert.deepEqual(afterVisaDecision({ outcome: "REJECTED", reason: "Funds unclear", afterRefusal: "CLOSE" }), { ok: true, code: "VISA_REJECTED" });
   assert.equal(fsjStepOf("VISA_RESUBMISSION")!.step, 12, "the correction is visa document preparation again");
+});
+
+test("a refusal where the employer has withdrawn can go back to interview preparation for another employer, as the not-selected loop does", () => {
+  const next = afterVisaDecision({ outcome: "REJECTED", reason: "Employer withdrew the place", afterRefusal: "ANOTHER_EMPLOYER" });
+  assert.deepEqual(next, { ok: true, code: "INTERVIEW_PREPARATION" });
+  assert.equal(next.ok && next.code, afterFeedback("NOT_SELECTED"), "the same place the not-selected loop sends the file");
+  // Back at preparation the application has started and the language is kept, so another employer can be scheduled at once.
+  const base = { code: "INTERVIEW_PREPARATION", fees: paid, applicationStarted: true, languageResult: "SUFFICIENT" as const, currentEmployer: null, notSelectedBy: ["AWO Berlin"] };
+  assert.deepEqual(interviewCheck({ ...base, employer: "Caritas Köln" }), { ok: true });
+  assert.equal(interviewCheck({ ...base, employer: "AWO Berlin" }).ok, false, "the employer that withdrew is not offered again");
+});
+
+test("the visa gate needs the pre-visa payment, the signed contract and the profile documents, and holds every route onto the VFS submission", () => {
+  const facts: VisaFacts = { preVisaPaymentOn: null, contractSignedOn: null, profileMissing: ["Birth certificate", "Police clearance certificate"] };
+  assert.deepEqual(visaGate(facts), { clear: false, missing: ["pre-visa payment", "signed contract", "Birth certificate", "Police clearance certificate"] });
+  const why = visaReadyCheck("PRE_VISA_DOCUMENTS", facts);
+  assert.ok(!why.ok && /pre-visa payment is not marked received/.test(why.why) && /signed employer contract/.test(why.why) && /Birth certificate, Police clearance certificate/.test(why.why));
+  assert.deepEqual(visaGate({ preVisaPaymentOn: "2026-05-01", contractSignedOn: "2026-04-03", profileMissing: [] }), { clear: true, missing: [] });
+  // Crossing onto step 13 or later from before it is checked, from any screen.
+  for (const from of ["PRE_VISA_DOCUMENTS", "VISA_RESUBMISSION", "VFS_SLOT_BOOKING", "INTERVIEW_PREPARATION", "ON_HOLD_INTAKE", "VISA_REJECTED", null]) {
+    assert.ok(crossesVisaGate(from, "VISA_FILED"), `${from} to VISA_FILED`);
+    assert.ok(crossesVisaGate(from, "PRE_DEPARTURE"), `${from} to PRE_DEPARTURE`);
+  }
+  // Moves within the visa stage and after it are not checked again.
+  assert.ok(!crossesVisaGate("VISA_FILED", "VISA_PROCESSING") && !crossesVisaGate("VISA_PROCESSING", "VISA_RECEIVED") && !crossesVisaGate("PRE_DEPARTURE", "JOINED"));
+  assert.ok(!crossesVisaGate("VISA_PROCESSING", "VISA_RESUBMISSION") && !crossesVisaGate("PAYMENT_CHECK", "INTERVIEW_PREPARATION") && !crossesVisaGate("VISA_PROCESSING", "VISA_REJECTED"));
+});
+
+test("a fee stage settled with no day of payment (waived, or let through by the head office) opens the fee gate", () => {
+  assert.deepEqual(feeGate({ registrationFeePaidOn: null, applicationFeePaidOn: "2026-01-05", settled: { registration: true } }), { clear: true, missing: [] });
+  assert.deepEqual(feeGate({ registrationFeePaidOn: null, applicationFeePaidOn: null, settled: { registration: true, application: false } }), { clear: false, missing: ["application fee"] });
 });
 
 test("the travel desk's checklists keep each step's ticks apart, and the happy call starts the follow-up", () => {
@@ -214,6 +253,27 @@ test("each department records its own steps and nobody else's", () => {
   assert.ok(mayDo("departure", "APPLICATION_TEAM_LEADER") && !mayDo("departure", "DOCUMENTATION") && !mayDo("departure", "COUNSELLOR"));
   assert.ok(mayDo("checklist", "COUNSELLOR", { checklistStep: 18 }) && !mayDo("checklist", "COUNSELLOR", { checklistStep: 16 }));
   assert.ok(!mayDo("visaDecision", "COUNSELLOR") && !mayDo("interview", "FINANCE") && !mayDo("registration", "STUDENT"));
+  // A written-off fee: only the head office lets the file go on.
+  assert.ok(mayDo("settle", "ADMIN") && mayDo("settle", "SUPER_ADMIN") && !mayDo("settle", "PARTNER") && !mayDo("settle", "DOCUMENTATION") && !mayDo("settle", "FINANCE") && !mayDo("settle", "DESK_COUNSELLOR"));
+});
+
+test("the assessment, fee-pending and visa-approved notices tell the team that sends the email that it is theirs, with the addresses", () => {
+  const told = (Object.keys(FSJ_EMAILS) as (keyof typeof FSJ_EMAILS)[]).filter((t) => FSJ_EMAILS[t].tellSender);
+  assert.deepEqual(told, ["ASSESSMENT_DONE", "FEE_PENDING", "VISA_APPROVED"]);
+  assert.equal(FSJ_EMAILS.ASSESSMENT_DONE.sender, "DOCUMENTATION");
+  assert.equal(FSJ_EMAILS.FEE_PENDING.sender, "DOCUMENTATION");
+  assert.equal(FSJ_EMAILS.VISA_APPROVED.sender, "VISA");
+  assert.equal(FSJ_EMAILS.REGISTERED.sender, "BRANCH");
+  const people = { candidate: "anu@example.com", counsellor: "c@branch.test", branchHeads: [] };
+  const text = senderNoticeText("VISA_APPROVED", resolveRecipients(FSJ_EMAILS.VISA_APPROVED.to, people), resolveRecipients(FSJ_EMAILS.VISA_APPROVED.cc, people));
+  assert.match(text, /for the visa team to send/);
+  assert.match(text, /To: anu@example\.com\./);
+  assert.match(text, /Cc: c@branch\.test\./);
+  assert.match(text, /No email on record for the branch head\./);
+  assert.match(text, /step 15 of the FSJ \/ BFD tab/);
+  const fee = senderNoticeText("FEE_PENDING", resolveRecipients(FSJ_EMAILS.FEE_PENDING.to, people), resolveRecipients(FSJ_EMAILS.FEE_PENDING.cc, people));
+  assert.match(fee, /for the documentation team to send\. To: c@branch\.test\./);
+  for (const t of Object.keys(FSJ_EMAILS) as (keyof typeof FSJ_EMAILS)[]) assert.ok(!senderNoticeText(t, { emails: [], unknown: [] }, { emails: [], unknown: [] }).includes("\u2014"));
 });
 
 test("the email matrix is the guide's Section 3, and its drafts invent nothing", () => {
@@ -321,12 +381,20 @@ test("the deploy SQL carries every FSJ and BFD status, requirement and address, 
   for (const pw of ["FSJ", "BFD"] as const) for (const s of STATUS_SEED[pw]) assert.ok(sqlText.includes(`'${pw}', '${s.code}'`), `${pw} ${s.code} is in the SQL`);
   for (const r of FSJ_REQUIREMENTS) assert.ok(sqlText.includes(`'${r.stage}', '${r.typeCode}', 'ALWAYS', '${r.pathway}'`), `${r.pathway} ${r.typeCode} is in the SQL`);
   for (const t of FSJ_DOCUMENT_TYPES) assert.ok(sqlText.includes(`VALUES ('${t.code}'`), `type ${t.code} is in the SQL`);
+  // Every type a requirement names is inserted where missing, before the requirements, so the file does not wait on the Ausbildung file.
+  for (const code of new Set(FSJ_REQUIREMENTS.map((r) => r.typeCode))) {
+    const at = sqlText.indexOf(`INSERT INTO document_types (code, label, label_ml, uploaded_by, sort_order) VALUES ('${code}'`);
+    assert.ok(at > 0, `type ${code} is inserted`);
+    assert.ok(at < sqlText.indexOf("INSERT INTO document_requirements"), `type ${code} comes before the requirements`);
+  }
+  for (const code of ["BIRTH_CERTIFICATE", "VACCINATION_CERTIFICATE", "POLICE_CLEARANCE", "TRANSLATED_CERTIFICATES", "MOTIVATION_LETTER", "WORK_EXPERIENCE_LETTER"]) assert.ok(sqlText.includes(`VALUES ('${code}'`), `${code} is in the SQL`);
+  assert.ok(sqlText.split("\n").filter((l) => l.startsWith("INSERT INTO document_types")).every((l) => l.endsWith("ON CONFLICT (code) DO NOTHING;")), "a type already there is left as it is");
   for (const c of FSJ_TEAM) assert.ok(sqlText.includes(`'${c.email}'`), `${c.email} is in the SQL`);
   assert.ok(!/DO UPDATE|^UPDATE|^DELETE/m.test(sqlText), "nothing is overwritten or removed");
 });
 
 test("no long dashes in what this change writes", () => {
-  for (const f of ["../src/lib/fsj.ts", "../src/server/fsj.ts", "../src/server/fsj-actions.ts", "../deploy/fsj-bfd-process.sql", "../src/app/(app)/fsj/page.tsx", "../src/app/(app)/students/[id]/fsj/page.tsx", "../src/components/fsj-journey.tsx", "../docs/fsj-bfd-process.md"]) {
+  for (const f of ["../src/lib/fsj.ts", "../src/lib/fsj-fees.ts", "../src/server/fsj.ts", "../src/server/fsj-actions.ts", "../src/server/fsj-fees.ts", "../scripts/fsj-bfd-process-sql.ts", "../deploy/fsj-bfd-process.sql", "../src/app/(app)/fsj/page.tsx", "../src/app/(app)/students/[id]/fsj/page.tsx", "../src/components/fsj-journey.tsx", "../docs/fsj-bfd-process.md"]) {
     assert.ok(!readFileSync(new URL(f, import.meta.url), "utf8").includes("\u2014"), `${f} has no em dash`);
   }
 });

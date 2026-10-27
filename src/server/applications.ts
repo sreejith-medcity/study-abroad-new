@@ -9,9 +9,9 @@ import { documentationIds, notifyUsers, partnerRecipients } from "./notify";
 import { sendWhatsApp } from "./whatsapp";
 import { isAdmin, isDocumentationTeam } from "@/lib/permissions";
 import { handedToDeskByStatus, stepOfStatus } from "@/lib/ausbildung";
-import { feeGate, feeGateRefusal, fsjPastBranch, fsjStepOf, isFsjPathway, needsFees } from "@/lib/fsj";
+import { fsjPastBranch, fsjStepOf, isFsjPathway, needsFees } from "@/lib/fsj";
 import { raiseAusbildungInstalments, raiseFsjInstalments } from "@/server/student-fees";
-import { fsjFeeFacts } from "@/server/fsj-fees";
+import { fsjStatusGate } from "@/server/fsj";
 import { EARNING_CODES, accrueCommission } from "./commission";
 import { sendStatusChange } from "@/server/crm-out";
 import { updateTracked } from "@/server/record-history";
@@ -69,13 +69,25 @@ export async function changeStatus(
   const fsj = isFsjPathway(app.program.pathway);
   const handsOver = !app.handedOverAt && ((app.program.pathway === "AUSBILDUNG" && handedToDeskByStatus(to.code)) || (fsj && fsjPastBranch(to.code)));
 
-  // The FSJ / BFD fee gate (step 6 of that guide): the application does not
-  // start, from any screen, until the registration and application fees are
-  // paid: by their fee invoices where the student has a fee plan for the
-  // process, otherwise as marked paid on the FSJ / BFD tab.
-  if (fsj && needsFees(to.code)) {
-    const gate = feeGate(await fsjFeeFacts(app.studentId, app));
-    if (!gate.clear) throw new StatusChangeError(feeGateRefusal(gate.missing));
+  // The FSJ / BFD gates, from any screen (the FSJ tab, the status picker, the
+  // bulk import). The fee gate (step 6): the application does not start until
+  // the registration and application fees are paid, by their fee invoices
+  // where the student has a fee plan for the process, otherwise as marked paid
+  // on the FSJ / BFD tab. The visa gate (step 12): the file does not go to VFS
+  // without the pre-visa payment, the signed contract and the profile
+  // documents. An admin may move a file past the visa gate from the status
+  // picker or an import by giving the reason; the override is audited.
+  let visaOverride: string[] | null = null;
+  if (fsj) {
+    const refusal = await fsjStatusGate(app, app.status.code, to.code);
+    if (refusal?.gate === "FEES") throw new StatusChangeError(refusal.why);
+    if (refusal?.gate === "VISA") {
+      const mayOverride = isAdmin(user) && !opts.viaFsj;
+      if (!mayOverride || !reason?.trim()) {
+        throw new StatusChangeError(mayOverride ? `${refusal.why} To move it anyway, give the reason for the override; it is recorded in the audit log.` : refusal.why);
+      }
+      visaOverride = refusal.missing;
+    }
   }
 
   await db.transaction(async (tx) => {
@@ -125,6 +137,7 @@ export async function changeStatus(
   const href = `/students/${app.studentId}/applications?app=${app.id}`;
   await notifyUsers(await partnerRecipients(app.orgId, app.student.assignedToId), title, fullName(app.student), href);
   await audit(user.id, "application.status", "application", app.id, { from: app.status.code, to: to.code, reason });
+  if (visaOverride) await audit(user.id, "fsj.visa_gate_override", "application", app.id, { from: app.status.code, to: to.code, missing: visaOverride, reason: reason?.trim() });
   if (handsOver) {
     await audit(user.id, "application.handover", "application", app.id, { via: "status", to: to.code });
     if (fsj) await tellDeskFsjArrived({ studentId: app.studentId, student: fullName(app.student), branch: app.orgId, because: `moved to ${to.label}` });

@@ -349,7 +349,7 @@ const at = `${day(14)}T15:30`;
   form = await step(page, "visaDecision", { outcome: "REJECTED" }, "Record the visa decision");
   check(/reason for the refusal/.test(await refusal(form)), "a refusal needs its reason");
   await go(page, tab);
-  await step(page, "visaDecision", { outcome: "REJECTED", reason: "Accommodation proof unclear", employerStillWilling: true }, "Record the visa decision");
+  await step(page, "visaDecision", { outcome: "REJECTED", reason: "Accommodation proof unclear", afterRefusal: "RESUBMIT" }, "Record the visa decision");
   check((await waitStatus("VISA_RESUBMISSION")) === "VISA_RESUBMISSION", "refused, with the employer still willing: the file is corrected to resubmit");
   check(sql(`select visa_decision || '|' || fsj_visa_reason from applications where id = '${app}'`) === "REFUSED|Accommodation proof unclear", "the refusal and its reason are on the application");
   await go(page, tab);

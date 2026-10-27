@@ -5,16 +5,19 @@ import { fmtDate, fullName, istDateTime } from "@/lib/format";
 import { APP_ROLES, STUDENT_WORK_ROLES } from "@/lib/permissions";
 import { GERMAN_LEVELS, MODULE_STATE_LABEL, toIstInput, type ModuleState } from "@/lib/ausbildung";
 import {
+  AFTER_REFUSAL_LABEL,
   FEEDBACK_LABEL,
   FSJ_CHECKLISTS,
   FSJ_DEPARTMENTS,
   FSJ_EMAILS,
   FSJ_PROGRAMMES,
+  FSJ_SENDER_LABEL,
   FSJ_STEPS,
   FSJ_STEP_COUNT,
   FSJ_TRIGGERS,
   LANGUAGE_RESULT_LABEL,
   VFS_AT,
+  VISA_READY_AT,
   checklistOpen,
   daysBetween,
   emailDraft,
@@ -26,14 +29,17 @@ import {
   mayDo,
   ownersText,
   resolveRecipients,
+  visaGate,
+  type AfterRefusal,
   type DraftFacts,
   type FsjOp,
   type FsjPathway,
   type FsjTrigger,
 } from "@/lib/fsj";
 import { getStudentForUser } from "@/server/queries";
-import { FSJ_PAYMENT_STAGES, stagePaymentWords } from "@/lib/fsj-fees";
-import { currentFsjApplication, fsjContacts, fsjEventsOf, fsjStudentFacts, germanRecord } from "@/server/fsj";
+import { FSJ_PAYMENT_STAGES, WRITTEN_OFF_WORDS, stagePaymentWords } from "@/lib/fsj-fees";
+import { EMPLOYER_WITHDRAWN, currentFsjApplication, fsjContacts, fsjEventsOf, fsjStudentFacts, fsjVisaFacts, gateAppOf, germanRecord } from "@/server/fsj";
+import { feeAccess } from "@/server/student-fees";
 import { stageGate, studentChecklist, studentContext } from "@/server/documentation";
 import { Card, CardHeader, Checkbox, Chip, Field, Input, Select, Textarea, cn } from "@/components/ui";
 import { FieldError } from "@/components/action-form";
@@ -75,8 +81,15 @@ export default async function StudentFsjPage({ params }: { params: Promise<{ id:
   const days = app?.statusSince ? daysBetween(new Date(app.statusSince), new Date()) : null;
   const may = (op: FsjOp, checklistStep?: number) => !!app && mayDo(op, user.role, { code: app.statusCode, checklistStep });
   const code = app?.statusCode ?? null;
-  const fees = app ? feeGate({ registrationFeePaidOn: app.registrationFeePaidOn, applicationFeePaidOn: app.applicationFeePaidOn }) : null;
+  const fees = app ? feeGate(app) : null;
   const handover = handoverFrom(code);
+  // Marking a payment paid by hand needs the Collect fees right, as on the Fees tab.
+  const feeRight = (await feeAccess(user)).act;
+  // The registration and application fee stages a written-off invoice still holds.
+  const writtenOff = app ? FSJ_PAYMENT_STAGES.filter((s) => (s.key === "registration" || s.key === "application") && app.feePlan.stages[s.key]?.writtenOff && !app.feePlan.stages[s.key]?.settled) : [];
+  // What the visa file still needs before VFS, read without changing the checklist.
+  const visaFacts = app && code && VISA_READY_AT.includes(code) && may("visaReady") ? await fsjVisaFacts(gateAppOf(app), { sync: false }) : null;
+  const visaMissing = visaFacts ? visaGate(visaFacts).missing : [];
 
   // What the branch's hand-over still waits on: the profile documents and the details, named.
   let handoverMissing: string[] = [];
@@ -94,7 +107,7 @@ export default async function StudentFsjPage({ params }: { params: Promise<{ id:
         gapRecorded: !!facts?.gapRecorded,
         registeredOn: student.createdAt,
         counsellor: student.assignedToId,
-        registrationFeePaidOn: app.registrationFeePaidOn,
+        registrationFeePaidOn: app.registrationFeePaidOn ?? (app.settled.registration ? "settled" : null),
       }),
     ];
   }
@@ -221,11 +234,19 @@ export default async function StudentFsjPage({ params }: { params: Promise<{ id:
                       </p>
                       <p className="text-xs text-muted">From the student&rsquo;s fee invoices, on the Fees tab.</p>
                     </div>
-                  ) : (
+                  ) : feeRight ? (
                     <Field label="Registration fee paid on" htmlFor="fsj-regfee">
                       <Input id="fsj-regfee" name="registrationFeePaidOn" type="date" defaultValue={app.registrationFeePaidOn ?? ""} />
                       <FieldError name="registrationFeePaidOn" />
                     </Field>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <p className="block text-2xs font-semibold uppercase tracking-wider text-muted">Registration fee</p>
+                      <p className="text-sm" data-registration-fee={app.registrationFeePaidOn ? "paid" : "pending"}>
+                        {app.registrationFeePaidOn ? `Marked paid on ${fmtDate(app.registrationFeePaidOn)}.` : "Not marked paid yet."}
+                      </p>
+                      <p className="text-xs text-muted">Marked by someone with the Collect fees right, as on the Fees tab.</p>
+                    </div>
                   )}
                   <Field label="Consultancy agreement / declaration signed on" htmlFor="fsj-agreement">
                     <Input id="fsj-agreement" name="agreementSignedOn" type="date" defaultValue={app.agreementSignedOn ?? ""} />
@@ -292,6 +313,11 @@ export default async function StudentFsjPage({ params }: { params: Promise<{ id:
                   <p className="text-sm" data-fee-gate={fees?.clear ? "clear" : "blocked"}>
                     {fees?.clear ? "Both fees are marked paid." : `Not yet marked paid: ${fees?.missing.join(", ")}. The application does not start until both are in.`}
                   </p>
+                  {writtenOff.map((s) => (
+                    <p key={s.key} className="text-sm text-warn-700" data-written-off={s.key}>
+                      {s.label}: {WRITTEN_OFF_WORDS}.
+                    </p>
+                  ))}
                   <StepForm op="feecheck" {...f} submitLabel={fees?.clear ? "Start the application" : "Run the payment check"} />
                 </div>
               )}
@@ -378,6 +404,11 @@ export default async function StudentFsjPage({ params }: { params: Promise<{ id:
                         : "The pre-visa payment is not marked received. It is verified before submission."}
                     {code === "VISA_RESUBMISSION" && app.visaReason ? ` Refused for: ${app.visaReason}.` : ""}
                   </p>
+                  <p className={cn("text-sm", visaMissing.length ? "text-warn-700" : "text-muted")} data-visa-gate={visaMissing.length ? "blocked" : "clear"}>
+                    {visaMissing.length
+                      ? `Still needed before VFS: ${visaMissing.join(", ")}.`
+                      : "The pre-visa payment, the signed contract and the profile documents are in."}
+                  </p>
                   <StepForm op="visaReady" {...f} submitLabel="Visa file ready for VFS" secondary />
                 </div>
               )}
@@ -407,9 +438,17 @@ export default async function StudentFsjPage({ params }: { params: Promise<{ id:
                     <Textarea id="fsj-reason" name="reason" rows={2} />
                     <FieldError name="reason" />
                   </Field>
-                  <div className="self-center">
-                    <Checkbox name="employerStillWilling" value="yes" label="The employer still wants the candidate (correct the file and resubmit)" />
-                  </div>
+                  <Field label="When rejected, what happens next" htmlFor="fsj-after" hint="Another employer keeps the language result, the application start and the fees.">
+                    <Select id="fsj-after" name="afterRefusal" defaultValue="">
+                      <option value="">Pick one (when rejected)</option>
+                      {(Object.keys(AFTER_REFUSAL_LABEL) as AfterRefusal[]).map((k) => (
+                        <option key={k} value={k}>
+                          {AFTER_REFUSAL_LABEL[k]}
+                        </option>
+                      ))}
+                    </Select>
+                    <FieldError name="afterRefusal" />
+                  </Field>
                 </StepForm>
               )}
 
@@ -509,9 +548,9 @@ export default async function StudentFsjPage({ params }: { params: Promise<{ id:
               {app.feePlan.planned && (
                 <dl className="grid gap-3 text-sm sm:grid-cols-4">
                   {FSJ_PAYMENT_STAGES.filter((s) => app.feePlan.stages[s.key]).map((s) => (
-                    <div key={s.key} data-payment-stage={s.key} data-payment-source="invoices" data-paid={app[s.field] ? "yes" : "no"}>
+                    <div key={s.key} data-payment-stage={s.key} data-payment-source="invoices" data-paid={app.settled[s.key] ? "yes" : "no"}>
                       <dt className="text-2xs font-semibold uppercase tracking-wide text-muted">{s.label}</dt>
-                      <dd className="text-ink">{stagePaymentWords(app.feePlan.stages[s.key]!, fmtDate)}</dd>
+                      <dd className={cn(app.feePlan.stages[s.key]!.writtenOff && !app.feePlan.stages[s.key]!.settled ? "text-warn-700" : "text-ink")}>{stagePaymentWords(app.feePlan.stages[s.key]!, fmtDate)}</dd>
                     </div>
                   ))}
                   <div>
@@ -524,8 +563,21 @@ export default async function StudentFsjPage({ params }: { params: Promise<{ id:
                   </div>
                 </dl>
               )}
+              {may("settle") &&
+                FSJ_PAYMENT_STAGES.filter((s) => app.feePlan.stages[s.key]?.writtenOff && !app.feePlan.stages[s.key]?.headOfficeSettled).map((s) => (
+                  <StepForm key={s.key} op="settle" {...f} submitLabel={`Mark the ${s.label.toLowerCase()} settled`} secondary className="space-y-2">
+                    <input type="hidden" name="stage" value={s.key} />
+                    <p className="text-sm text-ink">
+                      {s.label}: the invoice is written off. If the head office decides this file goes on, mark the stage settled; the reason is recorded in the audit log.
+                    </p>
+                    <Field label="Why the file goes on" htmlFor={`fsj-settle-${s.key}`}>
+                      <Textarea id={`fsj-settle-${s.key}`} name="reason" rows={2} />
+                      <FieldError name="reason" />
+                    </Field>
+                  </StepForm>
+                ))}
               {FSJ_PAYMENT_STAGES.some((s) => app.paymentSource[s.key] === "MARKED") &&
-                (may("payments") ? (
+                (may("payments") && feeRight ? (
                   <StepForm op="payments" {...f} submitLabel="Save payments" secondary className="grid gap-3 sm:grid-cols-4">
                     {app.paymentSource.registration === "MARKED" && (
                       <Field label="Registration fee paid on" htmlFor="fsj-p-reg">
@@ -654,11 +706,16 @@ function outcomeText(kind: string, outcome: string) {
     RESUBMITTED: "resubmitted",
     APPROVED: "approved",
     REJECTED: "rejected",
+    [EMPLOYER_WITHDRAWN]: "rejected; the employer withdrew, back to interview preparation for another employer",
     DOCUMENTATION: "to the Documentation Department",
     VISA: "to the Visa Team",
     TRAVEL: "to the Travel Desk",
   };
   if (kind === "NOTICE") return FSJ_EMAILS[outcome as FsjTrigger]?.label ?? outcome;
+  if (kind === "FEE_CHECK" && outcome.startsWith("SETTLED:")) {
+    const stage = FSJ_PAYMENT_STAGES.find((s) => `SETTLED:${s.key}` === outcome);
+    return `${stage?.label ?? "Fee stage"} settled by the head office`;
+  }
   return map[outcome] ?? outcome;
 }
 
@@ -702,6 +759,10 @@ function EmailMatrix({
                 <p>
                   <span className="font-medium text-ink">Step {m.step}: {m.label}</span>
                   <span className="text-muted"> · {m.content}</span>
+                  <span className="text-muted" data-email-sender={m.sender}>
+                    {" "}
+                    · Sent by {FSJ_SENDER_LABEL[m.sender]}
+                  </span>
                 </p>
                 <span className="flex items-center gap-2">
                   {raised ? <Chip tone="info">Notice raised {fmtDate(raised.createdAt)}</Chip> : <Chip tone="neutral">{reached ? "No notice yet" : "Later step"}</Chip>}
