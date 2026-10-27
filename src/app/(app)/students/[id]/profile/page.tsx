@@ -18,6 +18,10 @@ import { AutofillPanel } from "./autofill";
 import { livingTeams, peopleOnFile, peopleToAdd, teamToLead } from "@/server/teams";
 import { removePersonFromFileAction, setStudentTeamAction } from "./team-actions";
 import { AddPersonForm, GiveToTeamMemberForm } from "./team-panel";
+import { moveStudentAction } from "./move-actions";
+import { StudentMoveForm } from "@/components/student-move-form";
+import { MOVE_KEEPS } from "@/lib/student-move";
+import { moveBranchOptions } from "@/server/student-move";
 
 export const metadata = { title: "Student profile" };
 
@@ -96,6 +100,10 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
     teamToLead(user.id, student.teamId),
   ]);
   const leadsTeam = teamMembers.length > 0 && !!student.team;
+  // Which branch the student belongs to is the head office admins' call, and
+  // only for a file still in use: an archived one is brought back first.
+  const mayMoveBranch = isAdmin(user) && !student.archived;
+  const moveTargets = mayMoveBranch ? await moveBranchOptions(student.orgId) : [];
 
   // One source for the row at the top and for whether each part opens folded.
   // A part that is done folds away; a part still wanting something stays open,
@@ -315,6 +323,23 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
               Nothing was written down on the enquiry beyond what it asked for.
             </p>
           )}
+        </Section>
+      )}
+
+      {mayMoveBranch && (
+        <Section id="branch" title="Branch" meta={`${student.org.name} · Move to another branch`} defaultOpen={false}>
+          <p className="mb-3 text-sm text-muted">
+            For a student registered at the wrong branch. They move with their applications and enquiries, and the counsellor is somebody at the new branch
+            or nobody, for its branch head to hand out.
+          </p>
+          <StudentMoveForm
+            action={moveStudentAction}
+            hidden={{ studentId: id }}
+            branches={moveTargets}
+            keeps={MOVE_KEEPS(student.org.name)}
+            submitLabel="Move to this branch"
+            what={student.firstName}
+          />
         </Section>
       )}
 

@@ -17,6 +17,7 @@ import { makeSlug } from "@/server/public-form";
 import { orgIsUntouched } from "@/server/org-untouched";
 import { departments, getSettings } from "@/server/settings";
 import { updateTracked, updateTrackedMany } from "@/server/record-history";
+import { moveStudents } from "@/server/student-move";
 
 import type { FormState } from "@/lib/form-state";
 export type { FormState };
@@ -647,4 +648,29 @@ export async function moveUserAction(_: FormState, formData: FormData): Promise<
   revalidatePath("/admin/partners");
   revalidatePath("/students");
   return { ok: said.forDesk };
+}
+
+/**
+ * Moves every active student of a branch to another one, with one choice of
+ * counsellor for all of them: a named person there, or nobody, for its
+ * branch head to hand out. Made for clearing a branch that should never have
+ * been one (a department set up as a branch by mistake) before it is closed.
+ * The rules and what moves are the same as moving one student from the file;
+ * archived students stay where they are and are counted in the answer.
+ */
+export async function moveBranchStudentsAction(_: FormState, formData: FormData): Promise<FormState> {
+  const actor = await requireUser([...ADMIN_ROLES]);
+  const clean = (k: string) => String(formData.get(k) ?? "").trim().slice(0, 40);
+  const said = await moveStudents(actor, {
+    fromOrgId: clean("fromOrgId"),
+    toOrgId: clean("toOrgId"),
+    choice: clean("choice"),
+    counsellorId: clean("counsellorId") || null,
+  });
+  if ("error" in said) return { error: said.error };
+  revalidatePath("/admin/partners");
+  revalidatePath("/students");
+  // A toast rather than a panel: with every active student gone, the fold
+  // holding this form is no longer drawn, and a panel would go with it.
+  return { ok: said.ok };
 }

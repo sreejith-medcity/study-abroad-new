@@ -6,12 +6,15 @@ import { roleFitsOrg } from "@/lib/people";
 import { ADMIN_ROLES, HQ_ROLES, PARTNER_ROLES, ROLE_BLURB, ROLE_LABEL, STUDENT_WORK_ROLES, canManageSuperAdmins, canManageUsers, canResetPasswords } from "@/lib/permissions";
 import { Button, Card, Chip, Input, PageHeader, Select, Alert } from "@/components/ui";
 import { IconPartners } from "@/components/icons";
-import { deleteOrgAction, toggleOrgActiveAction, toggleUserAction, updateOrgAction } from "./actions";
+import { deleteOrgAction, moveBranchStudentsAction, toggleOrgActiveAction, toggleUserAction, updateOrgAction } from "./actions";
 import { untouchedOrgs } from "@/server/org-untouched";
 import { departments as departmentList, getSettings } from "@/server/settings";
 import { AddUserForm, EditPersonForm, InvitePartnerForm, MovePersonForm, ResetPasswordForm, RoleForm } from "./forms";
 import { OrgFold, OrgList } from "./org-list";
 import { PublicFormPanel } from "./public-form-panel";
+import { StudentMoveForm } from "@/components/student-move-form";
+import { MOVE_KEEPS } from "@/lib/student-move";
+import { moveBranchOptions } from "@/server/student-move";
 
 export const metadata = { title: "Partners and people" };
 
@@ -121,6 +124,15 @@ export default async function PartnersPage({ searchParams }: { searchParams: Pro
       (select count(*)::int from enquiries e where e.org_id = o.id and e.source = 'WEBSITE') as web_enquiries
     from organizations o`);
   const statFor = (id: string) => stats.find((s) => s.org_id === id);
+  // The students a branch could hand on in one go: the ones still in use.
+  // Archived files stay where they are, and the answer says how many.
+  const activeRows = await db
+    .select({ orgId: schema.students.orgId, n: sql<number>`count(*)::int` })
+    .from(schema.students)
+    .where(eq(schema.students.archived, false))
+    .groupBy(schema.students.orgId);
+  const activeStudents = Object.fromEntries(activeRows.map((r) => [r.orgId, Number(r.n)])) as Record<string, number>;
+  const moveTargets = await moveBranchOptions("");
 
   return (
     <>
@@ -358,6 +370,27 @@ export default async function PartnersPage({ searchParams }: { searchParams: Pro
                     />
                   </div>
                 </details>
+                {!hq && (activeStudents[o.id] ?? 0) > 0 && (
+                  <details className="border-t border-line px-4 py-3" data-move-branch-students>
+                    <summary className="cursor-pointer text-sm font-medium text-brand-600">
+                      Move this branch&rsquo;s students ({activeStudents[o.id]})
+                    </summary>
+                    <div className="mt-3 max-w-xl">
+                      <p className="mb-3 text-sm text-muted">
+                        Moves all {activeStudents[o.id]} active {activeStudents[o.id] === 1 ? "student" : "students"} of {o.name} to another branch at once, for
+                        a branch that should not be one. Close it afterwards; archived students stay with it.
+                      </p>
+                      <StudentMoveForm
+                        action={moveBranchStudentsAction}
+                        hidden={{ fromOrgId: o.id }}
+                        branches={moveTargets.filter((t) => t.id !== o.id)}
+                        keeps={MOVE_KEEPS(o.name)}
+                        submitLabel="Move all of them"
+                        what="these students"
+                      />
+                    </div>
+                  </details>
+                )}
                 {/* A branch added by mistake goes; one that has done anything
                     at all is closed, which keeps every student, application
                     and rupee exactly where they are. */}
