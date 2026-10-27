@@ -61,9 +61,9 @@ export async function handOverAction(_: FormState, fd: FormData): Promise<FormSt
   await getApplicationForUser(user, id);
   const app = await loadApplication(id);
   if (!app) return { error: "That application no longer exists." };
-  // Ausbildung, FSJ and BFD files go to the documentation desk from their own
-  // tab, by their written process; the vendor desk is not where they belong.
-  if (app.program.pathway === "AUSBILDUNG" || isFsjPathway(app.program.pathway)) {
+  // Ausbildung, FSJ, BFD and Au pair files go to the documentation desk from
+  // their own tab, by their written process; the vendor desk is not where they belong.
+  if (app.program.pathway === "AUSBILDUNG" || isFsjPathway(app.program.pathway) || app.program.pathway === "AU_PAIR") {
     return { error: "This file is handed to the documentation desk from its own tab, not to the vendor desk." };
   }
 

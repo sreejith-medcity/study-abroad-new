@@ -15,6 +15,7 @@ import { assignStudentIdAction } from "@/server/id-actions";
 import { aimLabel } from "@/lib/aims";
 import { showsAusbildungTab } from "@/server/ausbildung";
 import { showsFsjTab } from "@/server/fsj";
+import { showsAuPairTab } from "@/server/au-pair";
 import { feeAccess } from "@/server/student-fees";
 import { ReadOnlyGate } from "@/components/read-only-gate";
 
@@ -51,6 +52,8 @@ export default async function StudentLayout({ children, params }: { children: Re
   const extra = await showsAusbildungTab(id);
   // FSJ or BFD: the file gets a tab for that written process.
   const fsjTab = await showsFsjTab(id);
+  // Au pair: the file gets a tab for its written process.
+  const auPairTab = await showsAuPairTab(id);
   // The student's own fees: what they owe and what they paid, read by whoever may open them.
   const fees = await feeAccess(user);
   // The student's preferred destination is stored by name; search filters by code.
@@ -122,6 +125,7 @@ export default async function StudentLayout({ children, params }: { children: Re
                   ? [{ href: `/students/${id}/ausbildung`, label: extra.ausbildung ? "Ausbildung" : extra.nursing ? "NCLEX-RN" : "Service charge", done: true }]
                   : []),
                 ...(fsjTab ? [{ href: `/students/${id}/fsj`, label: "FSJ / BFD", done: true }] : []),
+                ...(auPairTab ? [{ href: `/students/${id}/au-pair`, label: "Au pair", done: true }] : []),
               ]}
             />
           </div>

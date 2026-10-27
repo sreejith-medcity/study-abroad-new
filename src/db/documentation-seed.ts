@@ -287,16 +287,61 @@ export const NEW_PATHWAY_REQUIREMENTS: SeedRequirement[] = [
   { stage: "PROFILE", typeCode: "DEGREE_CERTIFICATE", pathway: "CCM", required: false, guidance: "The highest qualification, where the student holds one." },
 ];
 
-/**
- * PROVISIONAL for Au pair, until the department's process guide arrives: only
- * what every au pair file plainly needs. The passport and the photographs
- * already reach every pathway from the stage lists; a CV goes to the agency
- * and the host families, and a language certificate (German, mostly) helps
- * where the student has one.
+/** The document types the Au pair guide names that no other journey asked for. */
+export const AU_PAIR_DOCUMENT_TYPES = [
+  { code: "CHILDCARE_EXPERIENCE", label: "Childcare experience certificate", labelMl: null, uploadedBy: "partner", sortOrder: 92 },
+  { code: "AU_PAIR_CONTRACT", label: "Au pair contract and questionnaire", labelMl: null, uploadedBy: "team", sortOrder: 196 },
+  { code: "HOST_FAMILY_INVITATION", label: "Informal invitation letter from the host family", labelMl: null, uploadedBy: "team", sortOrder: 195 },
+  { code: "VISA_DECLARATION", label: "Declaration form for the visa file", labelMl: null, uploadedBy: "partner", sortOrder: 224 },
+  { code: "CONTACT_INFORMATION_FORM", label: "Contact information form", labelMl: null, uploadedBy: "partner", sortOrder: 225 },
+  { code: "HOST_FAMILY_ID", label: "Host family identification documents", labelMl: null, uploadedBy: "team", sortOrder: 226 },
+];
+
+/*
+ * Au pair, from the written Au pair process (src/lib/au-pair.ts). What the
+ * counsellor collects (steps 2 and 3) lands on Profile, so the hand-over to
+ * the documentation department waits on it; the passport, the photographs
+ * and the 10th and 12th marksheets already reach every journey from the
+ * stage lists. The pre-visa list (step 9) lands on Visa: what the host family
+ * sends (the contract, the invitation, the accommodation proof, their
+ * identification) and what the visa team prepares is owed by Medcity, since
+ * the visa team is who the portal waits on for it. A type already asked for
+ * on Profile (passport, German certificate, CV, birth certificate, the
+ * school certificates) is not asked twice: the step 9 checklist on the tab
+ * reads it from there. Optional where the guide says "if applicable", "if
+ * available" or "if required".
  */
 export const AU_PAIR_REQUIREMENTS: SeedRequirement[] = [
-  { stage: "PROFILE", typeCode: "CV", pathway: "AU_PAIR", guidance: "Childcare experience first: babysitting, siblings, teaching, volunteering." },
-  { stage: "PROFILE", typeCode: "GERMAN_CERTIFICATE", pathway: "AU_PAIR", required: false, guidance: "German or another language certificate, where the student has one." },
+  { stage: "PROFILE", typeCode: "CONSULTANCY_AGREEMENT", pathway: "AU_PAIR", guidance: "The signed consultancy agreement and declaration form, from registration, with the refund policy and the compensation terms explained." },
+  { stage: "PROFILE", typeCode: "CV", pathway: "AU_PAIR", guidance: "Resume / CV. Childcare experience first: babysitting, siblings, teaching, volunteering." },
+  { stage: "PROFILE", typeCode: "GERMAN_CERTIFICATE", pathway: "AU_PAIR", guidance: "German language certificates, module-wise where the candidate has them, with the level and the year of completion." },
+  { stage: "PROFILE", typeCode: "BIRTH_CERTIFICATE", pathway: "AU_PAIR" },
+  { stage: "PROFILE", typeCode: "DEGREE_CERTIFICATE", pathway: "AU_PAIR", required: false, guidance: "Degree certificates, if applicable." },
+  { stage: "PROFILE", typeCode: "DIPLOMA_CERTIFICATE", pathway: "AU_PAIR", required: false, guidance: "Diploma certificates, if applicable." },
+  { stage: "PROFILE", typeCode: "CHILDCARE_EXPERIENCE", pathway: "AU_PAIR", required: false, guidance: "Childcare experience certificates, if available." },
+  { stage: "VISA", typeCode: "AU_PAIR_CONTRACT", pathway: "AU_PAIR", owedBy: "MEDCITY", guidance: "The signed Au pair contract and the questionnaire, from the host family through the placement team." },
+  { stage: "VISA", typeCode: "HOST_FAMILY_INVITATION", pathway: "AU_PAIR", owedBy: "MEDCITY", guidance: "The informal invitation letter from the host family." },
+  { stage: "VISA", typeCode: "MOTIVATION_LETTER", pathway: "AU_PAIR", guidance: "Why the candidate wants to be an au pair, in their own words." },
+  { stage: "VISA", typeCode: "ACCOMMODATION", pathway: "AU_PAIR", owedBy: "MEDCITY", guidance: "Accommodation proof: the host family's confirmation of where the candidate will live." },
+  { stage: "VISA", typeCode: "INSURANCE", pathway: "AU_PAIR", guidance: "Health insurance and travel insurance covering the stay." },
+  { stage: "VISA", typeCode: "BIOMETRIC_PHOTO", pathway: "AU_PAIR", guidance: "35 by 45 mm for the Au pair visa, according to the current requirements. Not the passport-size photograph." },
+  { stage: "VISA", typeCode: "VISA_DECLARATION", pathway: "AU_PAIR" },
+  { stage: "VISA", typeCode: "COVER_LETTER", pathway: "AU_PAIR", owedBy: "MEDCITY", guidance: "Prepared by the visa team, listing what is in the file." },
+  { stage: "VISA", typeCode: "ANNEX_EMPLOYMENT_DATA", pathway: "AU_PAIR", owedBy: "MEDCITY", required: false, guidance: "The annex for employment data, if applicable." },
+  { stage: "VISA", typeCode: "AADHAAR_PAN", pathway: "AU_PAIR", required: false, guidance: "Aadhaar and PAN cards, if required." },
+  { stage: "VISA", typeCode: "CONTACT_INFORMATION_FORM", pathway: "AU_PAIR" },
+  { stage: "VISA", typeCode: "HOST_FAMILY_ID", pathway: "AU_PAIR", owedBy: "MEDCITY", guidance: "The host family's identification documents, from the family." },
+];
+
+/**
+ * The two rows 1.8.7 loaded for Au pair before the guide arrived, as they
+ * were written. The deploy SQL brings each to the guide's wording only while
+ * it still reads exactly like this, so a row the team has edited since is
+ * left alone.
+ */
+export const AU_PAIR_PROVISIONAL_REQUIREMENTS: { typeCode: string; required: boolean; guidance: string }[] = [
+  { typeCode: "CV", required: true, guidance: "Childcare experience first: babysitting, siblings, teaching, volunteering." },
+  { typeCode: "GERMAN_CERTIFICATE", required: false, guidance: "German or another language certificate, where the student has one." },
 ];
 
 /** The reasons a document goes back. The words here are the words the student reads. */

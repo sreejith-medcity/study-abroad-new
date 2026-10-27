@@ -48,6 +48,9 @@ export default async function FsjTrackerPage({ searchParams }: { searchParams: P
         <span className="rounded-full border border-brand-600 bg-brand-600 px-3.5 py-1.5 font-medium text-white" aria-current="page">
           FSJ / BFD
         </span>
+        <Link href="/au-pair" className="rounded-full border border-line-strong px-3.5 py-1.5 font-medium text-ink-soft hover:bg-surface-2">
+          Au pair
+        </Link>
         {filters.hold && <span className="text-xs text-muted">Showing applications on hold for the fee.</span>}
       </div>
 

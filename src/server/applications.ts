@@ -12,6 +12,8 @@ import { handedToDeskByStatus, stepOfStatus } from "@/lib/ausbildung";
 import { fsjPastBranch, fsjStepOf, isFsjPathway, needsFees } from "@/lib/fsj";
 import { raiseAusbildungInstalments, raiseFsjInstalments } from "@/server/student-fees";
 import { fsjStatusGate } from "@/server/fsj";
+import { auPairPastBranch } from "@/lib/au-pair";
+import { auPairStatusGate } from "@/server/au-pair";
 import { EARNING_CODES, accrueCommission } from "./commission";
 import { sendStatusChange } from "@/server/crm-out";
 import { updateTracked } from "@/server/record-history";
@@ -40,15 +42,16 @@ export async function changeStatus(
   applicationId: string,
   toStatusId: string,
   reason?: string,
-  opts: { viaVendorUpdate?: boolean; viaMentor?: boolean; viaFsj?: boolean } = {},
+  opts: { viaVendorUpdate?: boolean; viaMentor?: boolean; viaFsj?: boolean; viaAuPair?: boolean } = {},
 ) {
   // The documentation desk also moves an Ausbildung file to "Mentor assigned"
   // when it names the mentor: the guide gives that step to the desk, and the
   // mentor field is the one place it is recorded.
   // An FSJ / BFD step recorded on the student's FSJ tab moves the status as
   // part of it, by whichever department owns that step; the step's own action
-  // has already checked who may record it (mayDo in src/lib/fsj.ts).
-  const allowed = isAdmin(user) || (isDocumentationTeam(user) && (opts.viaVendorUpdate === true || opts.viaMentor === true)) || opts.viaFsj === true;
+  // has already checked who may record it (mayDo in src/lib/fsj.ts). The same
+  // for an Au pair step on the Au pair tab (mayDoAuPair in src/lib/au-pair.ts).
+  const allowed = isAdmin(user) || (isDocumentationTeam(user) && (opts.viaVendorUpdate === true || opts.viaMentor === true)) || opts.viaFsj === true || opts.viaAuPair === true;
   if (!allowed) throw new StatusChangeError("Only the Medcity Overseas team can change status.");
 
   const app = await db.query.applications.findFirst({
@@ -67,7 +70,9 @@ export async function changeStatus(
   // documentation desk, whoever moved it, so it is handed over here if the
   // branch never pressed the button: the desk can only open a handed-over file.
   const fsj = isFsjPathway(app.program.pathway);
-  const handsOver = !app.handedOverAt && ((app.program.pathway === "AUSBILDUNG" && handedToDeskByStatus(to.code)) || (fsj && fsjPastBranch(to.code)));
+  const auPair = app.program.pathway === "AU_PAIR";
+  const handsOver =
+    !app.handedOverAt && ((app.program.pathway === "AUSBILDUNG" && handedToDeskByStatus(to.code)) || (fsj && fsjPastBranch(to.code)) || (auPair && auPairPastBranch(to.code)));
 
   // The FSJ / BFD gates, from any screen (the FSJ tab, the status picker, the
   // bulk import). The fee gate (step 6): the application does not start until
@@ -87,6 +92,21 @@ export async function changeStatus(
         throw new StatusChangeError(mayOverride ? `${refusal.why} To move it anyway, give the reason for the override; it is recorded in the audit log.` : refusal.why);
       }
       visaOverride = refusal.missing;
+    }
+  }
+  // The Au pair gate before the visa appointment (step 10): the payments
+  // verified, the signed host family contract and the required pre-visa
+  // documents. An admin may override it from the status picker or an import
+  // with a reason, as for FSJ / BFD; the override is audited.
+  let auPairOverride: string[] | null = null;
+  if (auPair) {
+    const refusal = await auPairStatusGate({ studentId: app.studentId, fsjPreVisaPaymentOn: app.fsjPreVisaPaymentOn, fsjContractSignedOn: app.fsjContractSignedOn }, app.status.code, to.code);
+    if (refusal) {
+      const mayOverride = isAdmin(user) && !opts.viaAuPair;
+      if (!mayOverride || !reason?.trim()) {
+        throw new StatusChangeError(mayOverride ? `${refusal.why} To move it anyway, give the reason for the override; it is recorded in the audit log.` : refusal.why);
+      }
+      auPairOverride = refusal.missing;
     }
   }
 
@@ -138,9 +158,11 @@ export async function changeStatus(
   await notifyUsers(await partnerRecipients(app.orgId, app.student.assignedToId), title, fullName(app.student), href);
   await audit(user.id, "application.status", "application", app.id, { from: app.status.code, to: to.code, reason });
   if (visaOverride) await audit(user.id, "fsj.visa_gate_override", "application", app.id, { from: app.status.code, to: to.code, missing: visaOverride, reason: reason?.trim() });
+  if (auPairOverride) await audit(user.id, "au_pair.visa_gate_override", "application", app.id, { from: app.status.code, to: to.code, missing: auPairOverride, reason: reason?.trim() });
   if (handsOver) {
     await audit(user.id, "application.handover", "application", app.id, { via: "status", to: to.code });
     if (fsj) await tellDeskFsjArrived({ studentId: app.studentId, student: fullName(app.student), branch: app.orgId, because: `moved to ${to.label}` });
+    else if (auPair) await tellDeskAuPairArrived({ studentId: app.studentId, student: fullName(app.student), branch: app.orgId, because: `moved to ${to.label}` });
     else await tellDeskAusbildungArrived({ studentId: app.studentId, student: fullName(app.student), branch: app.orgId, because: `moved to ${to.label}` });
   }
   await sendStatusChange(app.id, {
@@ -216,6 +238,22 @@ export async function tellDeskFsjArrived(args: { studentId: string; student: str
     `${args.student}: FSJ / BFD file handed to the documentation team`,
     `From ${org?.name ?? "the branch"}, ${args.because}. The document cross-check (step 4) is next.`,
     `/students/${args.studentId}/fsj`,
+  );
+}
+
+/**
+ * Tells the documentation department that an Au pair file has reached it: the
+ * branch's hand-over at the end of document collection (step 3), or a status
+ * moved to the mentor's step or later. The link goes to the Au pair tab, where
+ * the mentor is assigned.
+ */
+export async function tellDeskAuPairArrived(args: { studentId: string; student: string; branch: string; because: string }) {
+  const org = await db.query.organizations.findFirst({ where: eq(schema.organizations.id, args.branch), columns: { name: true } });
+  await notifyUsers(
+    await documentationIds(),
+    `${args.student}: Au pair file handed to the documentation department`,
+    `From ${org?.name ?? "the branch"}, ${args.because}. Assign the mentor (step 4) on the Au pair tab.`,
+    `/students/${args.studentId}/au-pair`,
   );
 }
 

@@ -193,32 +193,44 @@ const WEITERBILDUNG = provisionalChain("WEITERBILDUNG");
 const CCM = provisionalChain("CCM");
 
 /*
- * PROVISIONAL. Au pair: a year living with a host family abroad (mostly
- * Germany), looking after the children for board, lodging and pocket money.
- * The Au pair department's written process has not arrived yet, so this is a
- * generic chain in the order such a file plainly runs: the enquiry and a first
- * check, the documents, the au pair profile the agency puts out, matching with
- * a host family, the interview with the family, their offer and the contract,
- * the visa, travel, and arrival. The closing statuses come from COMMON. When
- * the guide arrives its own chain replaces this one the way the Ausbildung and
- * FSJ / BFD chains were written, keeping the codes here that it keeps. Codes
- * shared with the other lists (ASSESSMENT, DOCUMENT_COLLECTION, OFFER_RECEIVED,
- * CONTRACT_SIGNED, VISA_FILED, VISA_RECEIVED, PRE_DEPARTURE, JOINED) are reused
- * so the dashboards count them the same way.
+ * Au pair follows Medcity's written Au pair process (src/lib/au-pair.ts): 15
+ * steps from the enquiry to the happy call in Germany, one status per step
+ * and two where a step has a decision inside it (the profile out and a family
+ * interested at step 6, selected and signed at step 8). It replaced the
+ * provisional list of 1.8.7: the codes that list had and the guide keeps with
+ * the same meaning stay (ASSESSMENT, DOCUMENT_COLLECTION, FAMILY_INTERVIEW,
+ * OFFER_RECEIVED, CONTRACT_SIGNED, VISA_PROCESSING, VISA_RECEIVED,
+ * PRE_DEPARTURE), JOINED now means departed as it does for FSJ / BFD, and
+ * deploy/au-pair-pathway.sql moves files off the codes the guide drops. Codes
+ * the dashboards count (VISA_RECEIVED, PRE_DEPARTURE, JOINED, HAPPY_CALL) are
+ * reused. Malayalam only where the same student words already have it.
+ * The numbers stay below 140, where the closing statuses sit on a database
+ * that loaded the provisional list.
  */
 const AU_PAIR: StatusSeed[] = [
-  { code: "ASSESSMENT", label: "Enquiry: eligibility check pending", studentLabel: "Application received", studentLabelMl: "അപേക്ഷ ലഭിച്ചു", group: "NEW", sortOrder: 10 },
-  { code: "DOCUMENT_COLLECTION", label: "Document collection", studentLabel: "Send us your documents", group: "NEW", sortOrder: 22 },
-  { code: "AGENCY_PROFILE", label: "Au pair profile prepared and sent to the agency", studentLabel: "Your au pair profile is being prepared", group: "IN_PROGRESS", isMilestone: true, sortOrder: 30 },
-  { code: "FAMILY_MATCHING", label: "Host family matching", studentLabel: "We are looking for a host family for you", group: "IN_PROGRESS", sortOrder: 35 },
-  { code: "FAMILY_INTERVIEW", label: "Interview with a host family", studentLabel: "Your interview with a host family", group: "IN_PROGRESS", isMilestone: true, sortOrder: 40 },
-  { code: "OFFER_RECEIVED", label: "Host family offer received", studentLabel: "A host family has chosen you", group: "OFFER", isMilestone: true, sortOrder: 45 },
-  { code: "CONTRACT_SIGNED", label: "Au pair contract signed with the host family", studentLabel: "Contract signed", studentLabelMl: "കരാർ ഒപ്പിട്ടു", group: "OFFER", isMilestone: true, sortOrder: 50 },
-  { code: "VISA_FILED", label: "Visa filed", studentLabel: "Visa applied", studentLabelMl: "വിസയ്ക്ക് അപേക്ഷിച്ചു", group: "IN_PROGRESS", isMilestone: true, sortOrder: 55 },
-  { code: "VISA_PROCESSING", label: "Visa processing", studentLabel: "Your visa is being processed", group: "IN_PROGRESS", sortOrder: 60 },
-  { code: "VISA_RECEIVED", label: "Visa received", studentLabel: "Visa approved", studentLabelMl: "വിസ ലഭിച്ചു", group: "SUCCESS", isMilestone: true, sortOrder: 65 },
-  { code: "PRE_DEPARTURE", label: "Travel arrangements", studentLabel: "Getting you ready to travel", group: "SUCCESS", isMilestone: true, sortOrder: 70 },
-  { code: "JOINED", label: "Arrived: living with the host family", studentLabel: "Arrived and started", group: "SUCCESS", isMilestone: true, sortOrder: 75 },
+  // Counsellor / branch team: steps 1 to 3.
+  { code: "ASSESSMENT", label: "Enquiry and initial counselling", studentLabel: "Talking through the Au pair programme with your counsellor", group: "NEW", sortOrder: 10 },
+  { code: "REGISTRATION", label: "Registration and agreement", studentLabel: "Registering with us", group: "NEW", sortOrder: 14 },
+  { code: "DOCUMENT_COLLECTION", label: "Document collection by the counsellor", studentLabel: "Send us your documents", group: "NEW", sortOrder: 22 },
+  // Documentation department: step 4.
+  { code: "MENTOR_ASSIGNMENT", label: "With the documentation department: mentor to be assigned", studentLabel: "Our documentation team is choosing your mentor", group: "IN_PROGRESS", isMilestone: true, sortOrder: 24 },
+  // Student mentor: steps 5 and 6.
+  { code: "INTERVIEW_PREPARATION", label: "Interview preparation with the mentor", studentLabel: "Practising for your host family interviews", group: "IN_PROGRESS", sortOrder: 30 },
+  { code: "PROFILE_SUBMITTED", label: "Profile submitted with consent: looking for a host family", studentLabel: "We are looking for a host family for you", group: "IN_PROGRESS", isMilestone: true, sortOrder: 35 },
+  { code: "HOST_FAMILY_FOUND", label: "Host family interested: to hand to the placement team", studentLabel: "A host family is interested in you", group: "IN_PROGRESS", isMilestone: true, sortOrder: 38 },
+  // Placement team: steps 7 and 8.
+  { code: "FAMILY_INTERVIEW", label: "Placement team: host family interview", studentLabel: "Your interview with a host family", group: "IN_PROGRESS", isMilestone: true, sortOrder: 40 },
+  { code: "OFFER_RECEIVED", label: "Selected by the host family: contract in hand", studentLabel: "A host family has chosen you", group: "OFFER", isMilestone: true, sortOrder: 45 },
+  { code: "CONTRACT_SIGNED", label: "Host family contract signed", studentLabel: "Contract signed", studentLabelMl: "കരാർ ഒപ്പിട്ടു", group: "OFFER", isMilestone: true, sortOrder: 50 },
+  // Visa team: steps 9 to 12.
+  { code: "PRE_VISA_DOCUMENTS", label: "Visa team: pre-visa documentation and payment verification", studentLabel: "Preparing your visa file", group: "IN_PROGRESS", sortOrder: 55 },
+  { code: "VISA_APPOINTMENT", label: "Visa appointment booked", studentLabel: "Your visa appointment is booked", group: "IN_PROGRESS", isMilestone: true, sortOrder: 58 },
+  { code: "VISA_PROCESSING", label: "Visa processing and follow-up", studentLabel: "Your visa is being processed", group: "IN_PROGRESS", sortOrder: 60 },
+  { code: "VISA_RECEIVED", label: "Visa approved", studentLabel: "Visa approved", studentLabelMl: "വിസ ലഭിച്ചു", group: "SUCCESS", isMilestone: true, sortOrder: 65 },
+  // Travel desk: steps 13 to 15.
+  { code: "PRE_DEPARTURE", label: "Travel desk: pre-departure preparation", studentLabel: "Getting you ready to travel", group: "SUCCESS", isMilestone: true, sortOrder: 70 },
+  { code: "JOINED", label: "Departed for Germany", studentLabel: "On your way to your host family", group: "SUCCESS", isMilestone: true, sortOrder: 75 },
+  { code: "HAPPY_CALL", label: "Arrived in Germany: post-arrival follow-up", studentLabel: "Settling in with your host family: we stay in touch", group: "SUCCESS", sortOrder: 80 },
 ];
 
 export const STATUS_SEED: Record<Pathway, StatusSeed[]> = {

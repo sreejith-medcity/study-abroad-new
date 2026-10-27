@@ -52,6 +52,7 @@ const WHY = {
   merge: "A merge moves the duplicate's history across and closes it, so it is not undone from here.",
   repeat: "This counts the times the person came again, and is kept by the portal as they arrive.",
   fsj: "FSJ / BFD steps are recorded on the FSJ / BFD tab, which moves the status and tells the next department, so correct it there.",
+  auPair: "Au pair steps are recorded on the Au pair tab, which moves the status and tells the next team, so correct it there.",
 } as const;
 
 const PATHWAY = PATHWAY_LABEL;
@@ -206,6 +207,13 @@ export const HISTORY_FIELDS: Record<HistoryEntity, Record<string, FieldDef>> = {
     fsjJoiningOn: { label: "Joining date", kind: "day", noRestore: WHY.fsj },
     fsjDepartedOn: { label: "Departed on", kind: "day", noRestore: WHY.fsj },
     fsjDone: { label: "FSJ / BFD checklist ticks", kind: "list", noRestore: WHY.fsj },
+    auPairConsentOn: { label: "Au pair profile consent given on", kind: "day", noRestore: WHY.auPair },
+    auPairPlatform: { label: "Host family found on", kind: "text", noRestore: WHY.auPair },
+    auPairPocketMoney: { label: "Au pair pocket money (euros a month)", kind: "number", noRestore: WHY.auPair },
+    auPairWeeklyHours: { label: "Au pair working hours a week", kind: "number", noRestore: WHY.auPair },
+    auPairDurationMonths: { label: "Au pair contract duration (months)", kind: "number", noRestore: WHY.auPair },
+    auPairAppointmentAt: { label: "Visa appointment at", kind: "time", noRestore: WHY.auPair },
+    auPairAppointmentPlace: { label: "Visa appointment location", kind: "text", noRestore: WHY.auPair },
   },
   user: {
     name: { label: "Name", kind: "text" },

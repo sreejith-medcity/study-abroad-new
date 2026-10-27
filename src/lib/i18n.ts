@@ -202,6 +202,10 @@ const en = {
   fsjJourney: "Your FSJ / BFD journey",
   fsjJourneyNote: "Volunteer service in Germany, step by step. Your counsellor and our teams move this along with you.",
   fsjStepOf: "Step",
+  // The Au pair journey card on the portal home. The step lines are in
+  // src/lib/au-pair.ts (AU_PAIR_STUDENT_STEP), in English until translated.
+  auPairJourney: "Your Au pair journey",
+  auPairJourneyNote: "A year with a host family in Germany, step by step. Your counsellor, your mentor and our teams move this along with you.",
   fees: "Fees",
   feesTitle: "Your fees",
   feesNone: "No fee invoices yet. When your branch raises one, it appears here.",
@@ -296,7 +300,10 @@ type Untranslated =
   // The FSJ / BFD journey card, shown in English until translated.
   | "fsjJourney"
   | "fsjJourneyNote"
-  | "fsjStepOf";
+  | "fsjStepOf"
+  // The Au pair journey card, shown in English until translated.
+  | "auPairJourney"
+  | "auPairJourneyNote";
 
 const ml: Record<Exclude<keyof typeof en, Untranslated>, string> = {
   portal: "വിദ്യാർഥി പോർട്ടൽ",

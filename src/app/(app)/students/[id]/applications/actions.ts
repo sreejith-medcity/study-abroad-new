@@ -89,8 +89,10 @@ export async function createApplicationAction(_: FormState, formData: FormData):
   // FSJ and BFD are the exception: their written process opens the application
   // at registration (step 2) and collects the documents after it (step 3), and
   // the hand-over to the documentation team is gated on the same profile
-  // documents instead (see src/server/fsj-actions.ts).
-  const checklist = settings.holdApplicationsOnDocuments && !isFsjPathway(program.pathway) ? await studentChecklist(student.id) : [];
+  // documents instead (see src/server/fsj-actions.ts). Au pair is the same:
+  // its application opens at the enquiry (step 1) and the documents are
+  // collected at step 3, before the hand-over (src/server/au-pair-actions.ts).
+  const checklist = settings.holdApplicationsOnDocuments && !isFsjPathway(program.pathway) && program.pathway !== "AU_PAIR" ? await studentChecklist(student.id) : [];
   if (checklist.length) {
     const ctx = await studentContext(student.id);
     const profile = stageGate(checklist, "PROFILE", ctx.courseStart);

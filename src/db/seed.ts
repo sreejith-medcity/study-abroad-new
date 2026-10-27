@@ -15,7 +15,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
 import { DOCUMENT_TYPES, STATUS_SEED } from "./statuses";
-import { AU_PAIR_REQUIREMENTS, DOCUMENTATION_TYPES, FSJ_DOCUMENT_TYPES, FSJ_REQUIREMENTS, NEW_PATHWAY_REQUIREMENTS, REJECTION_REASONS, STAGE_REQUIREMENTS } from "./documentation-seed";
+import { AU_PAIR_DOCUMENT_TYPES, AU_PAIR_REQUIREMENTS, DOCUMENTATION_TYPES, FSJ_DOCUMENT_TYPES, FSJ_REQUIREMENTS, NEW_PATHWAY_REQUIREMENTS, REJECTION_REASONS, STAGE_REQUIREMENTS } from "./documentation-seed";
 import { syncChecklist } from "./documentation-sync";
 import { PARTNER_ROLES } from "@/lib/permissions";
 
@@ -90,7 +90,7 @@ async function main() {
       .returning();
     for (const r of rows) statusIds[`${pw}.${r.code}`] = r.id;
   }
-  await db.insert(schema.documentTypes).values([...DOCUMENT_TYPES, ...DOCUMENTATION_TYPES, ...FSJ_DOCUMENT_TYPES]);
+  await db.insert(schema.documentTypes).values([...DOCUMENT_TYPES, ...DOCUMENTATION_TYPES, ...FSJ_DOCUMENT_TYPES, ...AU_PAIR_DOCUMENT_TYPES]);
   await db.insert(schema.rejectionReasons).values(REJECTION_REASONS.map((r, i) => ({ ...r, sortOrder: (i + 1) * 10 })));
 
   // Catalogue

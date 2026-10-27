@@ -77,7 +77,14 @@ export const pathway = pgEnum("pathway", ["DEGREE", "AUSBILDUNG", "NURSING", "FS
 export const fsjLanguageResult = pgEnum("fsj_language_result", ["SUFFICIENT", "NOT_SUFFICIENT"]);
 /** What the employer said after an FSJ / BFD interview. */
 export const fsjFeedback = pgEnum("fsj_feedback", ["POSITIVE", "SECOND_ROUND", "NOT_SELECTED"]);
-/** One recorded moment on an FSJ / BFD file, kept so every round can be read back. */
+/**
+ * One recorded moment on an FSJ / BFD or Au pair file, kept so every round can
+ * be read back. The last seven are the Au pair process's own (src/lib/au-pair.ts):
+ * the mentor named, a mock interview, the profile submitted with consent, a
+ * host family found, the contract's terms, the visa appointment and a visa
+ * follow-up; it shares the others (interview, feedback, payment check, visa,
+ * hand-over, notice) with FSJ / BFD.
+ */
 export const fsjEventKind = pgEnum("fsj_event_kind", [
   "LANGUAGE_ASSESSMENT",
   "DOCUMENTS_MISSING",
@@ -90,6 +97,13 @@ export const fsjEventKind = pgEnum("fsj_event_kind", [
   "VISA_DECISION",
   "HANDOVER",
   "NOTICE",
+  "MENTOR",
+  "MOCK_INTERVIEW",
+  "PROFILE_SUBMITTED",
+  "HOST_FAMILY",
+  "CONTRACT",
+  "APPOINTMENT",
+  "FOLLOW_UP",
 ]);
 export const studyLevel = pgEnum("study_level", [
   "SCHOOL",
@@ -1029,6 +1043,26 @@ export const applications = pgTable(
     fsjDepartedOn: date("fsj_departed_on"),
     /** The checklist items ticked on the visa approval, pre-departure, departure and follow-up steps. */
     fsjDone: text("fsj_done").array().notNull().default(sql`'{}'::text[]`),
+    /*
+     * The Au pair written process (src/lib/au-pair.ts) keeps its facts in the
+     * fsj_ columns above where the meaning is the same: the registration fee
+     * and the agreement, the host family in fsj_employer, the interview's time
+     * and link, the outcome in fsj_feedback (POSITIVE for selected), the day
+     * the contract was signed, the payments verified in fsj_pre_visa_payment_on,
+     * the visa refusal reason, the joining and departure days and the ticks.
+     * These are the facts only its guide asks for.
+     */
+    /** The day the candidate consented to the profile going to host families (step 6). */
+    auPairConsentOn: date("au_pair_consent_on"),
+    /** Where the host family was found: AuPair.com, Au-pair Vermittlung, or "Other: <name>". */
+    auPairPlatform: text("au_pair_platform"),
+    /** The contract's terms as the placement team verified them (step 8): euros a month, hours a week, months. */
+    auPairPocketMoney: integer("au_pair_pocket_money"),
+    auPairWeeklyHours: integer("au_pair_weekly_hours"),
+    auPairDurationMonths: integer("au_pair_duration_months"),
+    /** The visa appointment (step 10): when, and where (the visa application centre). */
+    auPairAppointmentAt: timestamp("au_pair_appointment_at", { withTimezone: true }),
+    auPairAppointmentPlace: text("au_pair_appointment_place"),
     createdAt: createdAt(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

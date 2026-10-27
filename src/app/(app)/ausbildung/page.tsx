@@ -100,6 +100,10 @@ export default async function AusbildungTrackerPage({ searchParams }: { searchPa
         <Link href="/fsj" className="rounded-full border border-line-strong px-3.5 py-1.5 text-sm font-medium text-ink-soft hover:bg-surface-2" data-fsj-tracker-link>
           FSJ / BFD
         </Link>
+        {/* Au pair too. */}
+        <Link href="/au-pair" className="rounded-full border border-line-strong px-3.5 py-1.5 text-sm font-medium text-ink-soft hover:bg-surface-2" data-au-pair-tracker-link>
+          Au pair
+        </Link>
         {tab === "service" && (
           <span className="text-xs text-muted">
             {charging.length

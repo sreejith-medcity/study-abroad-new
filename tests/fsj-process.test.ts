@@ -40,6 +40,8 @@ import {
 } from "../src/lib/fsj";
 import { DOCUMENT_TYPES, STATUS_SEED } from "../src/db/statuses";
 import { DOCUMENTATION_TYPES, FSJ_DOCUMENT_TYPES, FSJ_REQUIREMENTS, FSJ_SECTION_2, STAGE_REQUIREMENTS } from "../src/db/documentation-seed";
+import { fsjEventKind } from "../src/db/schema";
+import { AU_PAIR_STEPS, auPairStepOf, crossesAuPairVisaGate } from "../src/lib/au-pair";
 
 const COMMON = ["PENDING_PARTNER", "ON_HOLD_INTAKE", "DEFERRED", "CLOSED_NOT_QUALIFIED", "VISA_REJECTED", "WITHDRAWN", "CASE_CLOSED"];
 const paid = { registrationFeePaidOn: "2026-01-01", applicationFeePaidOn: "2026-01-05" };
@@ -393,8 +395,34 @@ test("the deploy SQL carries every FSJ and BFD status, requirement and address, 
   assert.ok(!/DO UPDATE|^UPDATE|^DELETE/m.test(sqlText), "nothing is overwritten or removed");
 });
 
+test("the Au pair process shares FSJ / BFD's storage but none of its steps or gates", () => {
+  // The written Au pair process (src/lib/au-pair.ts) keeps its rounds in
+  // fsj_events and its facts in the fsj_ columns with the same meaning. The
+  // FSJ / BFD steps, codes and gates are exactly as they were.
+  assert.equal(FSJ_STEPS.length, 18);
+  for (const k of ["LANGUAGE_ASSESSMENT", "DOCUMENTS_MISSING", "FEE_CHECK", "INTERVIEW", "FEEDBACK", "OFFER", "VFS_SLOT", "VISA_SUBMITTED", "VISA_DECISION", "HANDOVER", "NOTICE"]) {
+    assert.ok((fsjEventKind.enumValues as readonly string[]).includes(k), `${k} is still an event kind`);
+  }
+  const fsjCodes = new Set(STATUS_SEED.FSJ.map((s) => s.code));
+  for (const s of AU_PAIR_STEPS) for (const c of s.statusCodes) if (!fsjCodes.has(c)) assert.equal(fsjStepOf(c), null, `${c} is not an FSJ / BFD step`);
+  // A code both lists carry keeps each process's own step.
+  assert.equal(fsjStepOf("JOINED")?.step, 17);
+  assert.equal(auPairStepOf("JOINED")?.step, 14);
+  assert.equal(fsjStepOf("INTERVIEW_PREPARATION")?.step, 7);
+  assert.equal(auPairStepOf("INTERVIEW_PREPARATION")?.step, 5);
+  // FSJ / BFD's gates read only FSJ / BFD steps; the Au pair gate only Au pair ones.
+  assert.equal(crossesVisaGate("PRE_VISA_DOCUMENTS", "VISA_FILED"), true);
+  assert.equal(crossesAuPairVisaGate("PRE_VISA_DOCUMENTS", "VISA_FILED"), false, "VISA_FILED is not an Au pair step");
+  assert.equal(needsFees("PROFILE_SUBMITTED"), false);
+  // The portal card draws through the shared journey card, with its own marker and steps.
+  const card = readFileSync(new URL("../src/components/fsj-journey.tsx", import.meta.url), "utf8");
+  assert.match(card, /<StepJourney/);
+  assert.match(card, /"data-fsj-journey": "true", "data-programme": programme/);
+  assert.match(card, /steps=\{FSJ_STEPS\}[\s\S]*studentLine=\{FSJ_STUDENT_STEP\}[\s\S]*stepOf=\{fsjStepOf\}/);
+});
+
 test("no long dashes in what this change writes", () => {
-  for (const f of ["../src/lib/fsj.ts", "../src/lib/fsj-fees.ts", "../src/server/fsj.ts", "../src/server/fsj-actions.ts", "../src/server/fsj-fees.ts", "../scripts/fsj-bfd-process-sql.ts", "../deploy/fsj-bfd-process.sql", "../src/app/(app)/fsj/page.tsx", "../src/app/(app)/students/[id]/fsj/page.tsx", "../src/components/fsj-journey.tsx", "../docs/fsj-bfd-process.md"]) {
+  for (const f of ["../src/components/step-journey.tsx", "../src/lib/fsj.ts", "../src/lib/fsj-fees.ts", "../src/server/fsj.ts", "../src/server/fsj-actions.ts", "../src/server/fsj-fees.ts", "../scripts/fsj-bfd-process-sql.ts", "../deploy/fsj-bfd-process.sql", "../src/app/(app)/fsj/page.tsx", "../src/app/(app)/students/[id]/fsj/page.tsx", "../src/components/fsj-journey.tsx", "../docs/fsj-bfd-process.md"]) {
     assert.ok(!readFileSync(new URL(f, import.meta.url), "utf8").includes("\u2014"), `${f} has no em dash`);
   }
 });
