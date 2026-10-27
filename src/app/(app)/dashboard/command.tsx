@@ -1,4 +1,5 @@
 import { isStaff } from "@/lib/permissions";
+import { MyStudents } from "./my-students";
 import { inrShort } from "@/lib/money";
 import { dashboardTiles, type Flow } from "@/server/dashboard-tiles";
 import { activity, branchesCompared, journey, monthly, stages } from "@/server/dashboard-charts";
@@ -170,6 +171,8 @@ export default async function CommandCentre({ lens }: { lens: Lens }) {
       </div>
 
       <StatTiles tiles={tiles} />
+
+      <MyStudents lens={lens} className="mt-6" />
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
         <Card className="min-w-0">

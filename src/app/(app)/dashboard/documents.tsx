@@ -5,6 +5,7 @@ import { deskPool, deskStanding } from "@/server/documentation";
 import { documentBoard, documentFigures, documentsToCome } from "@/server/dashboard-work";
 import type { Lens } from "@/server/dashboard-lens";
 import { deskStudentScope } from "@/server/scope";
+import { MyStudents } from "./my-students";
 import { Card, CardHeader, LinkButton } from "@/components/ui";
 import { FigureStrip, Leaderboard, PipelineColumns, ProgressList, ageText } from "@/components/dashboard/role-pieces";
 import { IconDoc } from "@/components/icons";
@@ -59,6 +60,8 @@ export default async function Documents({ lens }: { lens: Lens }) {
           </LinkButton>
         </div>
       </div>
+
+      <MyStudents lens={lens} className="mb-6" />
 
       <FigureStrip
         figures={[
