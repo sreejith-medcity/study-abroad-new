@@ -5,7 +5,7 @@ import { cn } from "@/components/ui";
 import { OrgBrandLogo, OrgBrandStyle } from "@/components/brand";
 import { ToastHost } from "@/components/toast";
 import { getSettings } from "@/server/settings";
-import { IconApplications, IconChat, IconDoc, IconLogout, IconStudents } from "@/components/icons";
+import { IconApplications, IconChat, IconDoc, IconLogout, IconStudents, IconWallet } from "@/components/icons";
 import { logoutAction } from "@/app/login/actions";
 import { setLocaleAction } from "./actions";
 
@@ -15,6 +15,7 @@ const NAV = [
   { href: "/portal", key: "home", icon: IconApplications },
   { href: "/portal/documents", key: "documents", icon: IconDoc },
   { href: "/portal/messages", key: "messages", icon: IconChat },
+  { href: "/portal/fees", key: "fees", icon: IconWallet },
   { href: "/portal/profile", key: "profile", icon: IconStudents },
 ] as const;
 

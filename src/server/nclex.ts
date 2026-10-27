@@ -2,6 +2,7 @@ import "server-only";
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { NclexStepKey } from "@/lib/nclex";
+import { raiseNclexInstalments } from "@/server/student-fees";
 
 /*
  * Writing NCLEX-RN steps, for the actions and the upload route. Kept out of
@@ -23,5 +24,7 @@ export async function recordNclexStep(studentId: string, step: NclexStepKey, use
   const next = { ...values, updatedById: userId, updatedAt: new Date() };
   if (held) await db.update(ns).set(next).where(eq(ns.id, held.id));
   else await db.insert(ns).values({ studentId, step, completed: false, ...next });
+  // A step newly completed: fee instalments tied to it fall due now.
+  if (values.completed === true && !held?.completed) await raiseNclexInstalments(studentId, step, userId);
 }
 

@@ -8,8 +8,9 @@ import { audit } from "@/lib/audit";
 import { documentationIds, notifyUsers, partnerRecipients } from "./notify";
 import { sendWhatsApp } from "./whatsapp";
 import { isAdmin, isDocumentationTeam, isStaff } from "@/lib/permissions";
-import { handedToDeskByStatus } from "@/lib/ausbildung";
+import { handedToDeskByStatus, stepOfStatus } from "@/lib/ausbildung";
 import { feeGate, feeGateRefusal, fsjPastBranch, isFsjPathway, needsFees } from "@/lib/fsj";
+import { raiseAusbildungInstalments } from "@/server/student-fees";
 import { EARNING_CODES, accrueCommission } from "./commission";
 import { sendStatusChange } from "@/server/crm-out";
 import { updateTracked } from "@/server/record-history";
@@ -132,6 +133,11 @@ export async function changeStatus(
     group: to.group,
     reason: reason ?? null,
   });
+
+  // An Ausbildung file at a step of the guide: fee instalments tied to that
+  // step, or to one before it, fall due now.
+  const guideStep = app.program.pathway === "AUSBILDUNG" ? stepOfStatus(to.code) : null;
+  if (guideStep) await raiseAusbildungInstalments(app.studentId, guideStep.step, user.id);
 
   // A placement that reached a paying milestone accrues its commission once.
   if (EARNING_CODES.includes(to.code)) {

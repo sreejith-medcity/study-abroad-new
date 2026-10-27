@@ -15,6 +15,8 @@ import { assignStudentIdAction } from "@/server/id-actions";
 import { aimLabel } from "@/lib/aims";
 import { showsAusbildungTab } from "@/server/ausbildung";
 import { showsFsjTab } from "@/server/fsj";
+import { feeAccess } from "@/server/student-fees";
+import { ReadOnlyGate } from "@/components/read-only-gate";
 
 
 export default async function StudentLayout({ children, params }: { children: React.ReactNode; params: Promise<{ id: string }> }) {
@@ -49,6 +51,8 @@ export default async function StudentLayout({ children, params }: { children: Re
   const extra = await showsAusbildungTab(id);
   // FSJ or BFD: the file gets a tab for that written process.
   const fsjTab = await showsFsjTab(id);
+  // The student's own fees: what they owe and what they paid, read by whoever may open them.
+  const fees = await feeAccess(user);
   // The student's preferred destination is stored by name; search filters by code.
   const preferred = student.preferredCountry
     ? await db.query.countries.findFirst({ where: ilike(schema.countries.name, student.preferredCountry.trim()) })
@@ -109,6 +113,7 @@ export default async function StudentLayout({ children, params }: { children: Re
                 { href: `/students/${id}/timeline`, label: "Timeline", done: true },
                 { href: `/students/${id}/history`, label: "History", done: true },
                 ...(money ? [{ href: `/students/${id}/income`, label: "Income", done: true }] : []),
+                ...(fees.read ? [{ href: `/students/${id}/fees`, label: "Fees", done: true }] : []),
                 { href: `/students/${id}/services`, label: `Services (${services})`, done: services > 0 },
                 ...(extra.ausbildung || extra.charging || extra.nursing
                   ? [{ href: `/students/${id}/ausbildung`, label: extra.ausbildung ? "Ausbildung" : extra.nursing ? "NCLEX-RN" : "Service charge", done: true }]
@@ -122,17 +127,20 @@ export default async function StudentLayout({ children, params }: { children: Re
       {canWork ? (
         children
       ) : (
-        <>
-          <Alert tone="info" title="You are reading this file, not working on it">
-            Your role opens a student so the figures, the stage and the history can be checked. Changing what is on the file belongs to the branch counsellor
-            and the documentation desk, so the controls below are shown as they stand and cannot be used.
-          </Alert>
-          {/* Disabled at the top rather than screen by screen: a control the
-              server will refuse should never be pressable. */}
-          <fieldset disabled className="mt-4 w-full min-w-0 border-0 p-0">
-            {children}
-          </fieldset>
-        </>
+        // Disabled at the top rather than screen by screen: a control the
+        // server will refuse should never be pressable. The fees tab stays
+        // open to whoever takes fees, which is finance's work on the file.
+        <ReadOnlyGate
+          writable={fees.act ? ["fees"] : []}
+          notice={
+            <Alert tone="info" title="You are reading this file, not working on it">
+              Your role opens a student so the figures, the stage and the history can be checked. Changing what is on the file belongs to the branch counsellor
+              and the documentation desk, so the controls below are shown as they stand and cannot be used.
+            </Alert>
+          }
+        >
+          {children}
+        </ReadOnlyGate>
       )}
     </div>
   );

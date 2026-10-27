@@ -202,6 +202,26 @@ const en = {
   fsjJourney: "Your FSJ / BFD journey",
   fsjJourneyNote: "Volunteer service in Germany, step by step. Your counsellor and our teams move this along with you.",
   fsjStepOf: "Step",
+  fees: "Fees",
+  feesTitle: "Your fees",
+  feesNone: "No fee invoices yet. When your branch raises one, it appears here.",
+  feesInvoice: "Invoice",
+  feesDue: "Due by",
+  feesTotal: "Total",
+  feesPaid: "Paid",
+  feesBalance: "Still to pay",
+  feesPayOnline: "Pay online",
+  feesPrintInvoice: "Invoice to print",
+  feesReceipts: "Your receipts",
+  feesNoReceipts: "No payments recorded yet.",
+  feesPrintReceipt: "Receipt to print",
+  feesComingUp: "Coming up",
+  feesComingUpNote: "These are on your fee plan and are invoiced on their day or when your file reaches the stage.",
+  feesStateISSUED: "To pay",
+  feesStatePART_PAID: "Part paid",
+  feesStatePAID: "Paid",
+  feesStateWRITTEN_OFF: "Closed",
+  feesRefunded: "Refunded",
 } as const;
 
 /**
@@ -210,6 +230,25 @@ const en = {
  * here keeps every other phrase checked for a translation.
  */
 type Untranslated =
+  | "feesTitle"
+  | "feesNone"
+  | "feesInvoice"
+  | "feesDue"
+  | "feesTotal"
+  | "feesPaid"
+  | "feesBalance"
+  | "feesPayOnline"
+  | "feesPrintInvoice"
+  | "feesReceipts"
+  | "feesNoReceipts"
+  | "feesPrintReceipt"
+  | "feesComingUp"
+  | "feesComingUpNote"
+  | "feesStateISSUED"
+  | "feesStatePART_PAID"
+  | "feesStatePAID"
+  | "feesStateWRITTEN_OFF"
+  | "feesRefunded"
   | "replaceFile"
   | "replaceWith"
   | "earlierVersions"
@@ -267,6 +306,7 @@ const ml: Record<Exclude<keyof typeof en, Untranslated>, string> = {
   home: "എന്റെ അപേക്ഷ",
   documents: "രേഖകൾ",
   messages: "സന്ദേശങ്ങൾ",
+  fees: "ഫീസ്",
   profile: "എന്റെ വിവരങ്ങൾ",
   changePassword: "പാസ്‌വേഡ് മാറ്റുക",
 

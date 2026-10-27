@@ -30,6 +30,7 @@ export const CAPABILITIES = [
   "SET_DOCUMENT_RULES",
   "OVERRIDE_GATE",
   "REGISTER_STUDENT",
+  "COLLECT_FEES",
 ] as const;
 
 export type Capability = (typeof CAPABILITIES)[number];
@@ -72,9 +73,12 @@ export const CAPABILITY_LABEL: Record<Capability, string> = {
   SET_DOCUMENT_RULES: "Set what the desk chases",
   OVERRIDE_GATE: "Let a stage through with a reason",
   REGISTER_STUDENT: "Register a student",
+  COLLECT_FEES: "Bill a student and take their fees",
 };
 
 export const CAPABILITY_MEANS: Record<Capability, string> = {
+  COLLECT_FEES:
+    "Putting a fee plan on a student, raising and issuing their invoices, recording what they paid and sending a payment link. Always inside the students the person may open; cancelling, writing off and approving a refund stay with finance and the head office.",
   SEE_MONEY: "Commission figures in search and on a course, the student's income sheet, the wallet and the Monday read.",
   DECIDE_DOCUMENTS:
     "Checking what a student sent in. A branch also needs its own first pass switched on, on the Partners screen, and nobody ever passes a document they uploaded themselves.",
@@ -133,6 +137,10 @@ export const DEFAULTS: Record<Capability, AppRole[]> = {
   // everything and changes nothing, and finance, which holds the money and not
   // the files. Asked for in exactly those words.
   REGISTER_STUDENT: APP_ROLES.filter((r) => !["MANAGEMENT", "FINANCE", "SUPER_ADMIN"].includes(r)),
+  // New with student fees, so nobody had it before: the head office and
+  // finance, and at a branch whoever takes the money at the counter. A trainee
+  // and a sub-agent's counsellor read a student's fees and take none.
+  COLLECT_FEES: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "FINANCE", "PARTNER", "SENIOR_COUNSELLOR", "COUNSELLOR"],
 };
 
 /** A capability nobody may take off a super admin, whatever the matrix says. */

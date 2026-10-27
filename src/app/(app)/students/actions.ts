@@ -309,7 +309,10 @@ export async function archiveStudentAction(formData: FormData) {
   const studentId = String(formData.get("studentId"));
   const student = await getStudentForUser(user, studentId);
   const [{ n }] = await db.select({ n: count() }).from(schema.applications).where(eq(schema.applications.studentId, studentId));
-  if (n > 0) {
+  // A student with a fee invoice, a receipt or a refund on record is archived
+  // rather than deleted: those documents are numbered and stay in the books.
+  const [{ billed }] = await db.select({ billed: count() }).from(schema.feeInvoices).where(eq(schema.feeInvoices.studentId, studentId));
+  if (n > 0 || billed > 0) {
     await updateTracked("student", studentId, { archived: !student.archived }, { by: user.id, action: student.archived ? "student.unarchive" : "student.archive" });
     await audit(user.id, student.archived ? "student.unarchive" : "student.archive", "student", studentId);
   } else {

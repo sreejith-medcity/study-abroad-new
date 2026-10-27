@@ -17,6 +17,7 @@ import { packContents, packFits } from "@/server/pack";
 import type { FormState } from "@/lib/form-state";
 import type { JourneyStage } from "@/db/schema";
 import { sendDocumentDecision, sendStageChange } from "@/server/crm-out";
+import { raiseStageInstalments } from "@/server/student-fees";
 
 const { checklistItems: ci, checklistFiles: cf } = schema;
 
@@ -377,8 +378,11 @@ export async function setStageAction(_: FormState, fd: FormData): Promise<FormSt
     movedBy: user.name,
   });
   await syncChecklist(studentId);
+  // Fee instalments tied to this stage, or one before it, fall due now.
+  const invoiced = await raiseStageInstalments(studentId, stage, user.id);
   refresh(studentId);
-  return { ok: `Moved to ${stageLabel(stage)}.` };
+  if (invoiced) revalidatePath(`/students/${studentId}/fees`);
+  return { ok: `Moved to ${stageLabel(stage)}.${invoiced ? ` ${invoiced} fee invoice${invoiced === 1 ? "" : "s"} raised for this stage.` : ""}` };
 }
 
 const stageRankOf = (stage: JourneyStage) => schema.journeyStage.enumValues.indexOf(stage);

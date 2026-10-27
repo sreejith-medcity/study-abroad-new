@@ -62,6 +62,7 @@ const partnerNav = (home: string): NavGroup[] => [
       { href: "/wallet", label: "Wallet", icon: "wallet" },
       { href: "/commission", label: "Commission", icon: "commission" },
       { href: "/admin/income", label: "Income", icon: "insights" },
+      { href: "/fees", label: "Student fees", icon: "wallet" },
       { href: "/promotions", label: "Schemes", icon: "spark" },
     ],
   },
@@ -177,7 +178,10 @@ const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/commission", label: "Commission", icon: "commission" },
       { href: "/admin/income", label: "Income and rate cards", icon: "insights" },
       { href: "/admin/invoices", label: "Invoices", icon: "commission" },
-      { href: "/admin/payments", label: "Online payments", icon: "wallet" },
+      // Students' fees: plans, invoices, receipts, ageing, the day book and
+      // refunds. Online payments (application fees) open from its tabs, which
+      // keeps this group at five.
+      { href: "/fees", label: "Student fees", icon: "wallet" },
       // Targets are set in rupees and registrations against the money above,
       // which keeps Reports short enough to read at a glance.
       { href: "/targets", label: "Targets", icon: "insights" },
@@ -327,6 +331,15 @@ const FINANCE_NAV: NavGroup[] = [
       { href: "/admin/income", label: "Income", icon: "insights" },
       { href: "/admin/commission", label: "Commission", icon: "commission" },
       { href: "/admin/payments", label: "Online payments", icon: "wallet" },
+    ],
+  },
+  {
+    // Students' own fees: invoices raised to them, what is late, what went back.
+    title: "Student fees",
+    items: [
+      { href: "/fees", label: "Student fees", icon: "wallet" },
+      { href: "/fees/ageing", label: "Fee ageing", icon: "deadlines" },
+      { href: "/fees/refunds", label: "Refunds", icon: "commission" },
     ],
   },
   {
