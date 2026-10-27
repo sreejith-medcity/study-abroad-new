@@ -5,6 +5,13 @@ version in package.json and adds an entry here and in src/lib/releases.ts (the
 What's new page reads that one). After applying a release, tag it with the
 version so it can be found and rolled back to.
 
+## 1.8.8 (27 October 2026)
+
+- A head office admin can send a student to a team or another branch from the same Assign list on the students list and the student's file. Each team (Ausbildung, NCLEX-RN, Study abroad and the rest) has its own group with its members and a Whole team choice: picking one puts the student on that team and names the member on the file, while the student keeps their branch and counsellor, and the row shows the team. Each other branch has a Move to group with its people: picking one asks once to confirm, then moves the student to that branch with that counsellor, keeping their Medcity ID, documents and invoices.
+- Branch heads and counsellors see the same Assign list as before.
+
+Nothing to run on the VPS beyond the new build: no migration and no SQL.
+
 ## 1.8.7 (27 October 2026)
 
 - The Degree pathway is now called Study abroad wherever it is shown: filters, the student file, the Teams and Status flows screens, programmes, reports and the applications and programme exports. It covers every level, from diploma and post-basic to Master's and PhD. Stored files and imports are unchanged, and "degree" still works in a bulk upload.

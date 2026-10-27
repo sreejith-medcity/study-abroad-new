@@ -12,6 +12,14 @@ export type Release = { version: string; date: string; changes: string[] };
 
 export const RELEASES: Release[] = [
   {
+    version: "1.8.8",
+    date: "2026-10-27",
+    changes: [
+      "A head office admin can send a student to a team or another branch from the same Assign list on the students list and the student's file. Each team (Ausbildung, NCLEX-RN, Study abroad and the rest) has its own group with its members and a Whole team choice: picking one puts the student on that team and names the member on the file, while the student keeps their branch and counsellor, and the row shows the team. Each other branch has a Move to group with its people: picking one asks once to confirm, then moves the student to that branch with that counsellor, keeping their Medcity ID, documents and invoices.",
+      "Branch heads and counsellors see the same Assign list as before.",
+    ],
+  },
+  {
     version: "1.8.7",
     date: "2026-10-27",
     changes: [
