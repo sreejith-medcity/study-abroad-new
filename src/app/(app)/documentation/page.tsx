@@ -8,7 +8,9 @@ import { viewsWithPins } from "@/server/views";
 import { fmtDate } from "@/lib/format";
 import { isAdmin, PROCESSING_ROLES } from "@/lib/permissions";
 import { activeRejectionReasons, branchChecked, deskOfficers, documentationQueue, queueCounts } from "@/server/documentation";
-import { can } from "@/server/capabilities";
+import { can, overrides } from "@/server/capabilities";
+import { deskStudentScope } from "@/server/scope";
+import { deskReach, queueReachText } from "@/lib/desk-scope";
 import { claimHeld, CLAIM_MINUTES, STAGES, stageLabel } from "@/lib/journey";
 import { documentCount, groupQueue, holdersText, QUEUE_PAGE, queuePageNumber, queuePaging } from "@/lib/documentation-queue";
 import { Card, CardHeader, Chip, EmptyState, LinkButton, PageHeader, Table, Td, Th } from "@/components/ui";
@@ -45,13 +47,17 @@ export default async function DocumentationQueuePage({
   const branchView = sp.view === "branch";
   const page = queuePageNumber(sp.page);
   const canReassign = await can(user, "REASSIGN_DOCUMENTS");
+  // The whole desk for whoever runs it; their own files for an officer, so
+  // the queue, its counts and the branch's own checks all hold the same students.
+  const reach = deskReach(user.role, await overrides());
+  const scope = await deskStudentScope(user);
   const [queue, counts, reasons, branches, vendors, checkedByBranches, officers] = await Promise.all([
-    documentationQueue({ branch: sp.branch, stage: sp.stage as JourneyStage | undefined, vendor: sp.vendor, sort, mine: sp.mine, page }, user.id),
-    queueCounts(user.id),
+    documentationQueue({ branch: sp.branch, stage: sp.stage as JourneyStage | undefined, vendor: sp.vendor, sort, mine: sp.mine, page }, user.id, scope),
+    queueCounts(user.id, scope),
     activeRejectionReasons(),
     db.select({ id: schema.organizations.id, name: schema.organizations.name }).from(schema.organizations).orderBy(asc(schema.organizations.name)),
     db.select({ id: schema.vendors.id, name: schema.vendors.name, code: schema.vendors.code, colour: schema.vendors.colour }).from(schema.vendors).where(eq(schema.vendors.active, true)).orderBy(asc(schema.vendors.name)),
-    branchChecked(),
+    branchChecked(60, scope),
     canReassign ? deskOfficers() : Promise.resolve([]),
   ]);
 
@@ -79,7 +85,7 @@ export default async function DocumentationQueuePage({
     <>
       <PageHeader
         title="Documentation queue"
-        subtitle={`${counts.waiting} ${counts.waiting === 1 ? "document" : "documents"} from ${counts.students} ${counts.students === 1 ? "student" : "students"} waiting · ${counts.mine} claimed by you. One row per student, oldest first; open a row for the documents. A document is claimed while somebody checks it so two people never check the same one.`}
+        subtitle={`${counts.waiting} ${counts.waiting === 1 ? "document" : "documents"} from ${counts.students} ${counts.students === 1 ? "student" : "students"} waiting · ${counts.mine} claimed by you. ${queueReachText(reach)}`}
         actions={isAdmin(user) ? <RunReminders /> : undefined}
       />
 
@@ -157,6 +163,8 @@ export default async function DocumentationQueuePage({
           </EmptyState>
         ) : mine ? (
           <EmptyState title="Nothing with you">Claim a document from the queue and that student appears here, with everything else of theirs that is waiting.</EmptyState>
+        ) : reach === "OWN_FILES" ? (
+          <EmptyState title="Nothing to check on your files">Nothing on the files you have been given is waiting for a check. When the team leader gives you a file or a document, it appears here.</EmptyState>
         ) : (
           <EmptyState title="Nothing to check">Every document that has been sent in has been decided. A student appears here as soon as one of their uploads lands.</EmptyState>
         )
@@ -225,9 +233,12 @@ export default async function DocumentationQueuePage({
                         <span className="text-muted">Unclaimed</span>
                       )}
                       {/* Somebody opened it and went home: whoever runs the desk
-                          can move it rather than wait for the claim to lapse. */}
-                      {canReassign && r.claimedById && r.claimedById !== user.id && (
-                        <Reassign itemId={r.id} holder={r.claimedByName ?? null} officers={officers.filter((o) => o.id !== r.claimedById)} />
+                          can move it rather than wait for the claim to lapse.
+                          An unclaimed document is handed out the same way,
+                          because an officer working their own files no longer
+                          picks from the pool. */}
+                      {canReassign && r.claimedById !== user.id && (
+                        <Reassign itemId={r.id} holder={r.claimedById ? (r.claimedByName ?? null) : null} officers={officers.filter((o) => o.id !== r.claimedById)} />
                       )}
                     </Td>
                     <Td>

@@ -4,6 +4,7 @@ import { fsjTrackerRows } from "@/server/fsj";
 import { deskPool, deskStanding } from "@/server/documentation";
 import { documentBoard, documentFigures, documentsToCome } from "@/server/dashboard-work";
 import type { Lens } from "@/server/dashboard-lens";
+import { deskStudentScope } from "@/server/scope";
 import { Card, CardHeader, LinkButton } from "@/components/ui";
 import { FigureStrip, Leaderboard, PipelineColumns, ProgressList, ageText } from "@/components/dashboard/role-pieces";
 import { IconDoc } from "@/components/icons";
@@ -20,15 +21,22 @@ import { Controls, ViewingAsNote, firstName, partOfDay } from "./controls";
  *
  * Money is never on this screen. The people checking a bank statement have no
  * business knowing what the placement pays.
+ *
+ * A documentation officer working their own files sees their own: every
+ * figure and card is counted over the students the queue shows them, and the
+ * whole desk's standing and pool are left off. Somebody viewing the board as
+ * this dashboard sees the desk.
  */
 export default async function Documents({ lens }: { lens: Lens }) {
   const { user } = lens;
+  const scope = lens.viewingAs ? undefined : await deskStudentScope(user);
+  const own = scope !== undefined;
   const [f, board, owed, standing, pool, overTat, fsjDesk] = await Promise.all([
-    documentFigures(lens),
-    documentBoard(lens),
-    documentsToCome(lens),
-    deskStanding(),
-    deskPool(),
+    documentFigures(lens, scope),
+    documentBoard(lens, 4, scope),
+    documentsToCome(lens, 5, scope),
+    own ? Promise.resolve([]) : deskStanding(),
+    own ? Promise.resolve({ waiting: 0, overdue: 0, oldestHours: null }) : deskPool(),
     overTurnaroundCount(user),
     // The FSJ / BFD files whose current step the documentation department owns.
     fsjTrackerRows(user, { dept: "DOCUMENTATION" }, 1000).then((rows) => rows.length),
@@ -41,7 +49,7 @@ export default async function Documents({ lens }: { lens: Lens }) {
         <div className="min-w-0">
           <h1 className="font-display text-2xl font-semibold text-ink">Documents</h1>
           <p className="mt-0.5 text-muted">
-            {partOfDay()}, {firstName(user.name)}. What is waiting, who has it, and who still owes what, right now.
+            {partOfDay()}, {firstName(user.name)}. {own ? "What is waiting on your own files, and who still owes what, right now." : "What is waiting, who has it, and who still owes what, right now."}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -98,7 +106,7 @@ export default async function Documents({ lens }: { lens: Lens }) {
         />
       </Card>
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-2">
+      <div className={own ? "mt-5" : "mt-5 grid gap-5 lg:grid-cols-2"}>
         <Card className="min-w-0">
           <CardHeader title="Students who owe the most" subtitle="Of what was asked, how much has come in, least complete first" />
           <ProgressList
@@ -106,6 +114,7 @@ export default async function Documents({ lens }: { lens: Lens }) {
             footer={owed.students > 0 ? <span className="text-muted">{owed.owed} items owed across {owed.students} students</span> : undefined}
           />
         </Card>
+        {!own && (
         <Card className="min-w-0">
           <CardHeader title="Who has what" subtitle="Documents in hand now, and decided in the last seven days" />
           <Leaderboard
@@ -114,6 +123,7 @@ export default async function Documents({ lens }: { lens: Lens }) {
             rows={standing.map((o) => ({ id: o.id, name: o.name, sub: o.deskLabel ?? undefined, cells: [o.carrying, o.decidedWeek, o.sentBackWeek] }))}
           />
         </Card>
+        )}
       </div>
     </>
   );

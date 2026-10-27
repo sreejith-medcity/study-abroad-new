@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { fmtDate, intakeLabel } from "@/lib/format";
 import { PROCESSING_ROLES } from "@/lib/permissions";
 import { deskCounts, deskQueue, vendorTurnaroundReport } from "@/server/desk";
+import { ownApplicationsOnly } from "@/server/scope";
 import { DESK_STAGE_LABEL, OUTCOME_LABEL, turnaroundText } from "@/lib/desk";
 import { Card, CardHeader, Chip, EmptyState, PageHeader, Table, Td, Th } from "@/components/ui";
 import type { DeskStage } from "@/db/schema";
@@ -24,12 +25,15 @@ function waited(since: Date | null) {
 }
 
 export default async function DeskPage({ searchParams }: { searchParams: Promise<{ stage?: string; branch?: string; vendor?: string; pathway?: string; quiet?: string }> }) {
-  await requireUser([...PROCESSING_ROLES]);
+  const user = await requireUser([...PROCESSING_ROLES]);
   const sp = await searchParams;
   const stage = STAGES.includes(sp.stage as DeskStage) ? (sp.stage as DeskStage) : undefined;
+  // The files this person may see, as the applications list gives them: the
+  // whole desk for whoever sees every student, their own for an officer.
+  const scope = await ownApplicationsOnly(user);
   const [rows, counts, branches, vendors, turnaround] = await Promise.all([
-    deskQueue({ stage, branch: sp.branch, vendor: sp.vendor, pathway: sp.pathway, quiet: sp.quiet }),
-    deskCounts(),
+    deskQueue({ stage, branch: sp.branch, vendor: sp.vendor, pathway: sp.pathway, quiet: sp.quiet }, new Date(), scope),
+    deskCounts(scope),
     db.select({ id: schema.organizations.id, name: schema.organizations.name }).from(schema.organizations).orderBy(asc(schema.organizations.name)),
     db.select({ id: schema.vendors.id, code: schema.vendors.code, name: schema.vendors.name }).from(schema.vendors).where(eq(schema.vendors.active, true)).orderBy(asc(schema.vendors.name)),
     vendorTurnaroundReport(),

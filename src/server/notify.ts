@@ -3,6 +3,8 @@ import { and, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { studentIdFromHref } from "@/lib/notification-links";
 import { DOCUMENTATION_ROLES } from "@/lib/permissions";
+import { hearsOfHandovers } from "@/lib/desk-scope";
+import { overrides } from "@/server/capabilities";
 import { whoMayOpenStudent } from "@/server/scope";
 
 /**
@@ -63,8 +65,14 @@ export async function partnerRecipients(orgId: string, assignedToId?: string | n
 
 /**
  * The documentation desk alone: the documentation officers and the team leader
- * who runs them. What reaches them here is the Ausbildung file the branch has
- * just handed over, which is theirs to pick up and name a mentor for.
+ * who runs them. What reaches them here is the Ausbildung, FSJ or Au pair file
+ * the branch has just handed over, which is the desk's to pick up and name a
+ * mentor for.
+ *
+ * Every notice sent to these people links to the student, and notifyUsers
+ * writes it only to those who can open that student. An officer working their
+ * own files cannot open a file nobody has given them, so a hand-over reaches
+ * the team leader, and the officer once they are on it.
  */
 export async function documentationIds() {
   const rows = await db
@@ -75,14 +83,27 @@ export async function documentationIds() {
 }
 
 /**
- * The Overseas desk: the admins and the documentation team together. Everything
- * about an application between the branch handing it over and the vendor
- * answering is theirs, so they are told about it together.
+ * The Overseas desk: the admins and whoever runs the documentation desk.
+ * Everything about an application between the branch handing it over and the
+ * vendor answering is theirs, so they are told about it together.
+ *
+ * Only the people who run the desk or hand its files out (RUN_DOCUMENTATION_DESK
+ * or SEE_UNASSIGNED_FILES). Every documentation officer used to be told of
+ * every hand-over, with a link to the desk rather than the student, so no
+ * check on the file stopped it. Medcity chose own only: an officer is told
+ * when a file or a document is given to them.
  */
 export async function deskIds() {
   const rows = await db
-    .select({ id: schema.users.id })
+    .select({ id: schema.users.id, role: schema.users.role })
     .from(schema.users)
-    .where(and(inArray(schema.users.role, ["ADMIN", "SUPER_ADMIN", "OPS_MANAGER", "DOCUMENTATION"]), eq(schema.users.active, true)));
-  return rows.map((r) => r.id);
+    .where(and(inArray(schema.users.role, ["ADMIN", "SUPER_ADMIN", "OPS_MANAGER", ...DOCUMENTATION_ROLES]), eq(schema.users.active, true)));
+  const set = await overrides();
+  return rows.filter((r) => hearsOfHandovers(r.role, set)).map((r) => r.id);
+}
+
+/** Of these people, the ones who run the documentation desk or hand its files out. */
+export async function deskRunners(ids: { id: string; role: string }[]): Promise<string[]> {
+  const set = await overrides();
+  return ids.filter((p) => hearsOfHandovers(p.role, set)).map((p) => p.id);
 }

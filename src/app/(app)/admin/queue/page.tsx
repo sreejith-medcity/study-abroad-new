@@ -13,8 +13,9 @@ import { getSlaDays } from "@/server/dashboard";
 import { deskOfficers } from "@/server/documentation";
 import { InlineSelect } from "@/components/inline-select";
 import { assignOfficerAction } from "./actions";
-import { can } from "@/server/capabilities";
-import { unassignedFile } from "@/server/scope";
+import { can, overrides } from "@/server/capabilities";
+import { worksOwnFilesOnly } from "@/lib/desk-scope";
+import { ownApplicationsOnly, unassignedFile } from "@/server/scope";
 import { unassignedFileCount } from "@/server/unassigned-files";
 import { UNASSIGNED, unassignedText } from "@/lib/unassigned-files";
 
@@ -50,7 +51,16 @@ export default async function QueuePage({ searchParams }: { searchParams: Promis
   const handsOut = await can(user, "SEE_UNASSIGNED_FILES");
   const waiting = handsOut && f.officer === UNASSIGNED;
   const mine = f.officer !== "all" && !waiting;
-  const officerWhere = waiting ? unassignedFile() : mine ? sql`(${schema.applications.officerId} = ${user.id} or ${schema.applications.officerId} is null)` : undefined;
+  // Whose files this person may see at all, the same as the applications
+  // list: nothing for whoever sees every student, their own files for a
+  // documentation officer. "Everyone" and "Mine + unassigned" both stay inside
+  // it, so an officer is never shown another officer's file or the pool.
+  const scope = await ownApplicationsOnly(user);
+  const ownOnly = worksOwnFilesOnly(user.role, await overrides());
+  const officerWhere = and(
+    scope,
+    waiting ? unassignedFile() : mine ? sql`(${schema.applications.officerId} = ${user.id} or ${schema.applications.officerId} is null)` : undefined,
+  );
 
   const { applications: a, statusDefinitions: sd, countries: c } = schema;
   const rows = await applicationsBase()
@@ -94,7 +104,9 @@ export default async function QueuePage({ searchParams }: { searchParams: Promis
         subtitle={
           waiting
             ? `${unassignedText(unassigned)}, from every branch. Each one has been handed to the desk and nobody is carrying it yet: choose the officer on the card and it is theirs, with a notice to say so.`
-            : "Oldest first within each lane. Unassigned applications show in everyone's queue."
+            : ownOnly
+              ? "Oldest first within each lane. Only your own files: the applications you are the officer on and the students you have been given. The team leader hands out the rest."
+              : "Oldest first within each lane. Unassigned applications show in everyone's queue."
         }
         actions={breaches > 0 ? <Chip tone="bad" className="px-3 py-1 text-md">{breaches} past SLA</Chip> : <Chip tone="ok" className="px-3 py-1 text-md">All within SLA</Chip>}
       />

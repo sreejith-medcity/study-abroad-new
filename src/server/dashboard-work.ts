@@ -215,7 +215,7 @@ const IN = ["UPLOADED", "IN_REVIEW", "ACCEPTED"] as const;
  * been asked of them, how much has come in. Only students with something
  * still to come, because a full file needs nobody's attention.
  */
-export async function documentsToCome(lens: Lens, limit = 5) {
+export async function documentsToCome(lens: Lens, limit = 5, scope?: SQL) {
   const asked = notInArray(ci.state, ["NOT_NEEDED", "NOT_ASKED"]);
   const rows = await db
     .select({
@@ -227,7 +227,7 @@ export async function documentsToCome(lens: Lens, limit = 5) {
     })
     .from(ci)
     .innerJoin(s, eq(ci.studentId, s.id))
-    .where(and(lensStudents(lens), eq(s.archived, false), asked))
+    .where(and(lensStudents(lens), eq(s.archived, false), asked, scope))
     .groupBy(s.id, s.firstName, s.lastName)
     .having(sql`count(*) filter (where ${inArray(ci.state, [...OUTSTANDING])}) > 0`)
     .orderBy(sql`count(*) filter (where ${inArray(ci.state, [...IN])})::float / count(*) asc`, asc(s.firstName));
@@ -302,14 +302,19 @@ export async function followUps(lens: Lens, limit = 6) {
 
 /* ---------------- The documentation desk ---------------- */
 
-/** The organisation filter for checklist rows, through their student. */
-const docScope = (lens: Lens) => and(lensOrg(lens, s.orgId), eq(s.archived, false));
+/**
+ * The organisation filter for checklist rows, through their student, and the
+ * desk scope where there is one: deskStudentScope in server/scope.ts, which
+ * is nothing for whoever runs the whole desk and their own files for a
+ * documentation officer, the same students the queue shows them.
+ */
+const docScope = (lens: Lens, scope?: SQL) => and(lensOrg(lens, s.orgId), eq(s.archived, false), scope);
 
 /**
  * The documentation desk's figures. All of them are the state of things now:
  * a document is waiting or it is not, and "this month" does not change that.
  */
-export async function documentFigures(lens: Lens) {
+export async function documentFigures(lens: Lens, scope?: SQL) {
   const mine = lens.viewingAs ? null : lens.user.id;
   const [row] = await db
     .select({
@@ -326,7 +331,7 @@ export async function documentFigures(lens: Lens) {
     })
     .from(ci)
     .innerJoin(s, eq(ci.studentId, s.id))
-    .where(docScope(lens));
+    .where(docScope(lens, scope));
   return { ...(row ?? { waiting: 0, claimed: 0, asked: 0, sentBack: 0, overdue: 0, acceptedWeek: 0, expiring: 0, students: 0 }), mine: mine !== null };
 }
 
@@ -346,7 +351,7 @@ export type DocCard = { id: string; studentId: string; student: string; document
  * that has been uploaded and claimed counts as being checked, whatever its
  * stored state, because that is what is happening to it.
  */
-export async function documentBoard(lens: Lens, perColumn = 4) {
+export async function documentBoard(lens: Lens, perColumn = 4, scope?: SQL) {
   // One small query per column, each taking its oldest few, rather than one
   // that numbers every live document on the portal to keep four of each: on a
   // portal with tens of thousands of items in play the second was most of the
@@ -364,7 +369,7 @@ export async function documentBoard(lens: Lens, perColumn = 4) {
   const columns = await Promise.all(
     DOC_COLUMNS.map(async (c) => {
       const [[total], rows] = await Promise.all([
-        db.select({ n: count() }).from(ci).innerJoin(s, eq(ci.studentId, s.id)).where(and(docScope(lens), where[c.key])),
+        db.select({ n: count() }).from(ci).innerJoin(s, eq(ci.studentId, s.id)).where(and(docScope(lens, scope), where[c.key])),
         db
           .select({
             id: ci.id,
@@ -381,7 +386,7 @@ export async function documentBoard(lens: Lens, perColumn = 4) {
           .innerJoin(dt, eq(ci.typeCode, dt.code))
           .innerJoin(og, eq(s.orgId, og.id))
           .leftJoin(claimer, eq(ci.claimedById, claimer.id))
-          .where(and(docScope(lens), where[c.key]))
+          .where(and(docScope(lens, scope), where[c.key]))
           .orderBy(asc(since))
           .limit(perColumn),
       ]);

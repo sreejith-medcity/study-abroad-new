@@ -1,10 +1,11 @@
 import "server-only";
-import { sql } from "drizzle-orm";
-import { db } from "@/db";
+import { and, eq, exists, inArray, sql } from "drizzle-orm";
+import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { isStaff, PARTNER_ROLES, PROCESSING_ROLES } from "@/lib/permissions";
 import { can } from "@/server/capabilities";
 import { unassignedWhere } from "@/server/unassigned-files";
+import { deskStudentScope, ownApplicationsOnly } from "@/server/scope";
 
 /**
  * The numbers that belong on the menu.
@@ -35,10 +36,18 @@ export async function navCounts(user: SessionUser): Promise<NavCounts> {
   if (processing) {
     // Students with a document waiting, not documents: one student's seven
     // uploads are one file to pick up, and 139 items read as 139 people.
+    // Inside the same scope as the queue it opens: the whole desk for whoever
+    // runs it, their own files for an officer, so an officer's badge is not
+    // the whole desk's number.
+    const ci = schema.checklistItems;
+    const desk = await deskStudentScope(user);
+    const inScope = desk
+      ? exists(db.select({ one: sql`1` }).from(schema.students).where(and(eq(schema.students.id, ci.studentId), desk)))
+      : undefined;
     wanted.push({
       href: "/documentation",
       tone: "warn",
-      sql: sql`(select count(distinct student_id) from checklist_items where state in ('UPLOADED','IN_REVIEW'))`,
+      sql: sql`(select count(distinct ${ci.studentId}) from ${ci} where ${and(inArray(ci.state, ["UPLOADED", "IN_REVIEW"]), inScope)})`,
     });
     wanted.push({
       href: "/program-options",
@@ -60,10 +69,15 @@ export async function navCounts(user: SessionUser): Promise<NavCounts> {
   }
 
   if (staff) {
+    // Inside the applications list's own scope, which is nothing for whoever
+    // sees every student and their own files for a documentation officer.
+    const mine = await ownApplicationsOnly(user);
     wanted.push({
       href: "/applications",
       tone: "warn",
-      sql: sql`(select count(*) from applications a join status_definitions sd on sd.id = a.status_id where sd."group" = 'PENDING_PARTNER')`,
+      sql: mine
+        ? sql`(select count(*) from applications join status_definitions sd on sd.id = applications.status_id where sd."group" = 'PENDING_PARTNER' and ${mine})`
+        : sql`(select count(*) from applications a join status_definitions sd on sd.id = a.status_id where sd."group" = 'PENDING_PARTNER')`,
     });
   } else {
     // A branch sees only its own, which is the whole point of the number.

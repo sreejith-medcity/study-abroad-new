@@ -95,7 +95,7 @@ export const CAPABILITY_MEANS: Record<Capability, string> = {
   SEE_EVERY_STUDENT:
     "Without this, somebody sees only the students assigned to them: the ones they counsel, or the applications they are the officer on. The branch or the desk they belong to still bounds it either way.",
   RUN_DOCUMENTATION_DESK:
-    "Every officer's queue rather than their own and the unclaimed pool, and the standing beside it: who is carrying how much, what is oldest, what is overdue.",
+    "Every file the branches have handed to the desk, every officer's documents and the unclaimed pool, the whole desk's counts on the menu and the dashboard, and the standing beside it: who is carrying how much, what is oldest, what is overdue. Without it a documentation officer sees only their own files (the applications they are the officer on, the documents they have claimed or checked, the students they have been put on) and is told of a hand-over only once the file is theirs.",
   REASSIGN_DOCUMENTS: "Taking a document off the officer who claimed it and giving it to another, with the move recorded on the file.",
   SET_DOCUMENT_RULES: "Which documents are required at which stage, per destination, and how long each stays acceptable.",
   OVERRIDE_GATE:

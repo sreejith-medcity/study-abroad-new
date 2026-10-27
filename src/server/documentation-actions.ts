@@ -7,7 +7,9 @@ import { db, schema } from "@/db";
 import { requireUser, type SessionUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { ADMIN_ROLES, DECIDE_REFUSAL, OWN_UPLOAD_REFUSAL, PROCESSING_ROLES, isStaff, mayAcceptUpload, mayDecideDocuments, STUDENT_WORK_ROLES } from "@/lib/permissions";
-import { can } from "@/server/capabilities";
+import { can, overrides } from "@/server/capabilities";
+import { deskReach, mayClaimDocument, worksOwnFilesOnly } from "@/lib/desk-scope";
+import { mayOpenStudent } from "@/server/scope";
 import { claimHeld, CLAIM_MINUTES, stageLabel, validUntil, waiveRefusal } from "@/lib/journey";
 import { getStudentForUser } from "@/server/queries";
 import { updateTracked } from "@/server/record-history";
@@ -18,6 +20,7 @@ import type { FormState } from "@/lib/form-state";
 import type { JourneyStage } from "@/db/schema";
 import { sendDocumentDecision, sendStageChange } from "@/server/crm-out";
 import { raiseStageInstalments } from "@/server/student-fees";
+import { notifyUsers } from "@/server/notify";
 
 const { checklistItems: ci, checklistFiles: cf } = schema;
 
@@ -54,17 +57,26 @@ async function mayDecide(user: SessionUser, studentId: string) {
 /**
  * The item, if this person may work on it.
  *
- * Deliberately an organisation check rather than the narrower "is this student
- * yours": the documentation queue is a pool, and somebody has to be able to
- * claim a file before it becomes theirs. What they may then do with it is the
- * DECIDE_DOCUMENTS question, asked separately by each action.
+ * For whoever runs the whole desk, and for a branch, an organisation check
+ * rather than the narrower "is this student yours": the documentation queue
+ * is a pool to them, and somebody has to be able to claim a file before it
+ * becomes theirs. A documentation officer working their own files has no
+ * pool: Medcity chose own only, and the team leader hands the rest out. So
+ * for them the student has to be one they may open, the same answer the
+ * file itself gives, and a document on anybody else's file is refused here,
+ * whether it is claimed, checked or sent back. What they may then do with it
+ * is the DECIDE_DOCUMENTS question, asked separately by each action.
  */
 async function itemForUser(user: SessionUser, itemId: string) {
   const item = await db.query.checklistItems.findFirst({ where: eq(ci.id, itemId), with: { type: { columns: { label: true } } } });
   if (!item) return null;
-  const student = await db.query.students.findFirst({ where: eq(schema.students.id, item.studentId), columns: { orgId: true } });
+  const student = await db.query.students.findFirst({
+    where: eq(schema.students.id, item.studentId),
+    columns: { id: true, orgId: true, assignedToId: true, createdById: true },
+  });
   if (!student) return null;
   if (!isStaff(user) && student.orgId !== user.orgId) return null;
+  if (worksOwnFilesOnly(user.role, await overrides()) && !(await mayOpenStudent(user, student))) return null;
   return item;
 }
 
@@ -131,7 +143,18 @@ export async function claimItemAction(fd: FormData): Promise<void> {
   const user = await requireUser([...STUDENT_WORK_ROLES]);
   const item = await itemForUser(user, String(fd.get("itemId") ?? ""));
   if (!item || !(await mayDecide(user, item.studentId))) return;
-  if (item.claimedById && item.claimedById !== user.id && claimHeld(item.claimedAt)) return;
+  // The pool is the team leader's to hand out: somebody without the whole
+  // desk claims only on a file that is already theirs. The rule is in
+  // lib/desk-scope.ts; itemForUser has already refused a documentation
+  // officer anybody else's file, and this says the same for the claim itself.
+  const reach = deskReach(user.role, await overrides());
+  const student = await db.query.students.findFirst({ where: eq(schema.students.id, item.studentId), columns: { id: true, orgId: true, assignedToId: true, createdById: true } });
+  const claimable = mayClaimDocument({
+    reach,
+    studentIsTheirs: reach === "WHOLE_DESK" || (!!student && (await mayOpenStudent(user, student))),
+    heldByOther: !!item.claimedById && item.claimedById !== user.id && claimHeld(item.claimedAt),
+  });
+  if (!claimable) return;
   await db.update(ci).set({ state: item.state === "UPLOADED" ? "IN_REVIEW" : item.state, claimedById: user.id, claimedAt: new Date(), updatedAt: new Date() }).where(eq(ci.id, item.id));
   await audit(user.id, "checklist.claim", "student", item.studentId, { typeCode: item.typeCode, minutes: CLAIM_MINUTES });
   refresh(item.studentId);
@@ -688,7 +711,7 @@ export async function reassignItemAction(_: FormState, fd: FormData): Promise<Fo
     await db.update(ci).set({ claimedById: null, claimedAt: null, updatedAt: new Date() }).where(eq(ci.id, itemId));
     await audit(user.id, "checklist.reassign", "student", item.studentId, { item: itemId, from: item.claimedBy?.name ?? null, to: null });
     revalidatePath("/documentation");
-    return { ok: `Back in the pool for anyone to pick up${item.claimedBy ? `, off ${item.claimedBy.deskLabel ?? item.claimedBy.name}` : ""}.` };
+    return { ok: `Back in the pool${item.claimedBy ? `, off ${item.claimedBy.deskLabel ?? item.claimedBy.name}` : ""}.` };
   }
 
   const to = await db.query.users.findFirst({ where: and(eq(schema.users.id, toId), eq(schema.users.active, true)), columns: { id: true, name: true, deskLabel: true, role: true } });
@@ -701,6 +724,12 @@ export async function reassignItemAction(_: FormState, fd: FormData): Promise<Fo
     from: item.claimedBy?.name ?? null,
     to: to.name,
   });
+  // An officer working their own files learns of a document from this, not
+  // from the queue: the claim is what opens the student to them, so the
+  // notice is written after it.
+  if (to.id !== user.id) {
+    await notifyUsers([to.id], "A document is on your desk", `${item.type?.label ?? "A document"} to check.`, `/students/${item.studentId}/documentation`);
+  }
   revalidatePath("/documentation");
   return { ok: `${item.type?.label ?? "That document"} is now ${to.deskLabel ?? to.name}'s.` };
 }

@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { CLAIM_MINUTES, gate, standing, STAGES, stageRank, URGENT_DAYS, validUntil, type Gate, type GateItem, visaFirstOrder, visaFirstRank } from "@/lib/journey";
 import { QUEUE_PAGE, QUEUE_PAGE_MAX } from "@/lib/documentation-queue";
@@ -136,11 +136,17 @@ export type QueueFilters = { branch?: string; stage?: JourneyStage; vendor?: str
  * students past it were not there at all. So the students on a page are
  * chosen first, in the queue's own order, and then every waiting document of
  * theirs is read, with no cap, so a student is never shown half.
+ *
+ * `scope` is the students this person works, from deskStudentScope in
+ * server/scope.ts: nothing for whoever runs the whole desk, and their own
+ * files for an officer, so the pool of everybody else's documents is not on
+ * their queue at all.
  */
-export async function documentationQueue(filters: QueueFilters, userId: string): Promise<{ rows: QueueRow[]; hasNext: boolean }> {
+export async function documentationQueue(filters: QueueFilters, userId: string, scope?: SQL): Promise<{ rows: QueueRow[]; hasNext: boolean }> {
   const claimant = schema.users;
   const where = [
     inArray(ci.state, ["UPLOADED", "IN_REVIEW"] as const),
+    scope,
     filters.branch ? eq(st.orgId, filters.branch) : undefined,
     filters.stage ? eq(ci.stage, filters.stage) : undefined,
     filters.vendor ? eq(pr.vendorId, filters.vendor) : undefined,
@@ -277,8 +283,8 @@ export async function documentationQueue(filters: QueueFilters, userId: string):
   return { rows: mapped, hasNext };
 }
 
-/** How many are waiting, and how many this person has claimed. */
-export async function queueCounts(userId: string) {
+/** How many are waiting, and how many this person has claimed, inside the same scope as the queue. */
+export async function queueCounts(userId: string, scope?: SQL) {
   const [row] = await db
     .select({
       waiting: sql<number>`count(*)`.mapWith(Number),
@@ -287,7 +293,8 @@ export async function queueCounts(userId: string) {
       mine: sql<number>`count(*) filter (where ${ci.claimedById} = ${userId})`.mapWith(Number),
     })
     .from(ci)
-    .where(inArray(ci.state, ["UPLOADED", "IN_REVIEW"] as const));
+    .innerJoin(st, eq(st.id, ci.studentId))
+    .where(and(inArray(ci.state, ["UPLOADED", "IN_REVIEW"] as const), scope));
   return row ?? { waiting: 0, students: 0, mine: 0 };
 }
 
@@ -467,7 +474,7 @@ export type BranchChecked = {
  * rather than re-check all of it. The desk can still send any of them back from
  * the student's file.
  */
-export async function branchChecked(limit = 60): Promise<BranchChecked[]> {
+export async function branchChecked(limit = 60, scope?: SQL): Promise<BranchChecked[]> {
   const decider = schema.users;
   return db
     .select({
@@ -487,7 +494,7 @@ export async function branchChecked(limit = 60): Promise<BranchChecked[]> {
     .innerJoin(og, eq(og.id, st.orgId))
     .innerJoin(dt, eq(dt.code, ci.typeCode))
     .innerJoin(decider, eq(decider.id, ci.decidedById))
-    .where(and(inArray(decider.role, [...PARTNER_ROLES]), isNotNull(ci.decidedAt)))
+    .where(and(inArray(decider.role, [...PARTNER_ROLES]), isNotNull(ci.decidedAt), scope))
     .orderBy(desc(ci.decidedAt))
     .limit(limit);
 }

@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, sql, type SQL } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { OUTCOME_GROUP, SETTLES_IT, vendorSilence, vendorTurnaround } from "@/lib/desk";
 import { fmtMoney } from "@/lib/format";
@@ -68,8 +68,13 @@ export type DeskFilters = { stage?: DeskStage; branch?: string; vendor?: string;
  * The desk's own queue: every application the branch has handed over and the
  * desk has not finished with, oldest first, because the file that has waited
  * longest is the one a branch is asking about.
+ *
+ * `scope` narrows it to the applications this person may see, from
+ * ownApplicationsOnly in server/scope.ts: nothing for whoever sees every
+ * student, and their own files for a documentation officer, so the vendor
+ * desk does not show an officer everybody else's work.
  */
-export async function deskQueue(filters: DeskFilters = {}, today = new Date()): Promise<DeskRow[]> {
+export async function deskQueue(filters: DeskFilters = {}, today = new Date(), scope?: SQL): Promise<DeskRow[]> {
   const last = db
     .select({
       applicationId: vu.applicationId,
@@ -121,6 +126,7 @@ export async function deskQueue(filters: DeskFilters = {}, today = new Date()): 
         filters.branch ? eq(st.orgId, filters.branch) : undefined,
         filters.vendor ? eq(pr.vendorId, filters.vendor) : undefined,
         filters.pathway ? eq(pg.pathway, filters.pathway as "DEGREE") : undefined,
+        scope,
       ),
     )
     .orderBy(asc(ap.handedOverAt), asc(ap.createdAt))
@@ -172,11 +178,12 @@ export async function deskQueue(filters: DeskFilters = {}, today = new Date()): 
   return filters.quiet === "1" ? mapped.filter((r) => r.quiet) : mapped;
 }
 
-/** How many are at each step, for the tabs across the top of the queue. */
-export async function deskCounts() {
+/** How many are at each step, for the tabs across the top of the queue, inside the same scope. */
+export async function deskCounts(scope?: SQL) {
   const rows = await db
     .select({ stage: ap.deskStage, n: sql<number>`count(*)`.mapWith(Number) })
     .from(ap)
+    .where(scope)
     .groupBy(ap.deskStage);
   const by = Object.fromEntries(rows.map((r) => [r.stage, r.n])) as Record<DeskStage, number | undefined>;
   return {

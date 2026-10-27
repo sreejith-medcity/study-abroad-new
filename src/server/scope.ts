@@ -3,7 +3,8 @@ import { and, eq, exists, inArray, or, sql, type SQL } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { roleCan } from "@/lib/capabilities";
-import { APP_ROLES, isDocumentationTeam, isStaff } from "@/lib/permissions";
+import { opensHandedOverFiles } from "@/lib/desk-scope";
+import { APP_ROLES, isStaff } from "@/lib/permissions";
 import { can, overrides } from "@/server/capabilities";
 
 /** What the rules below read about a person: who they are, their role, their organisation. */
@@ -24,7 +25,38 @@ export type Viewer = Pick<SessionUser, "id" | "role" | "orgId">;
  */
 export async function studentWhere(user: SessionUser): Promise<SQL | undefined> {
   if (await can(user, "SEE_EVERY_STUDENT")) return orgOf(user);
-  return and(orgOf(user), theirs(user, await can(user, "SEE_UNASSIGNED_FILES")))!;
+  return and(orgOf(user), theirs(user, await reach(user)))!;
+}
+
+/**
+ * The two widenings of `theirs` that come from a capability rather than from
+ * the file: the files a branch has handed to the desk, for somebody on the
+ * documentation desk who runs the whole of it, and the files waiting for an
+ * officer, for whoever hands them out. Read once from the matrix Medcity has
+ * set, so the lists, the counts and the opens ask the same question.
+ */
+type Reach = { wholeDesk: boolean; seesUnassigned: boolean };
+
+async function reach(user: Pick<SessionUser, "role">): Promise<Reach> {
+  const set = await overrides();
+  return { wholeDesk: opensHandedOverFiles(user.role, set), seesUnassigned: roleCan(user.role, "SEE_UNASSIGNED_FILES", set) };
+}
+
+/**
+ * The students whose documents and files the desk's own screens show this
+ * person: the documentation queue, the vendor desk, and the counts on the
+ * menu and the dashboard beside them.
+ *
+ * Nothing for whoever may "See the whole desk, not only their own files"
+ * (RUN_DOCUMENTATION_DESK): the team leader, the admins and operations see
+ * the desk as it is. Anybody else sees the students they may open, by the
+ * same rule as their students list, which for a documentation officer is
+ * their own files and not the rest of the desk. Medcity chose own only: the
+ * team leader hands out everything else from the Unassigned tab.
+ */
+export async function deskStudentScope(user: SessionUser): Promise<SQL | undefined> {
+  if (await can(user, "RUN_DOCUMENTATION_DESK")) return undefined;
+  return studentWhere(user);
 }
 
 /**
@@ -32,24 +64,27 @@ export async function studentWhere(user: SessionUser): Promise<SQL | undefined> 
  * that opening would refuse. Nothing where the role sees every student.
  *
  * An application is theirs when they are the officer on it, when the branch
- * has handed it to the desk they sit on, or when its student is theirs by the
+ * has handed it to a desk they run the whole of, or when its student is theirs by the
  * same rule the students list applies. The last one is what keeps the
  * applications list, the students list and the dashboard counting the same
  * files.
  */
 export async function ownApplicationsOnly(user: SessionUser): Promise<SQL | undefined> {
   if (await can(user, "SEE_EVERY_STUDENT")) return undefined;
+  const r = await reach(user);
   return or(
-    // The desk works what the branches have handed it, which is the only thing
-    // the portal records as giving a file to the desk.
-    isDocumentationTeam(user) ? sql`${schema.applications.handedOverAt} is not null` : undefined,
-    (await can(user, "SEE_UNASSIGNED_FILES")) ? unassignedFile() : undefined,
+    // Somebody running the whole documentation desk works what the branches
+    // have handed it. An officer working their own files does not: a file
+    // handed over is the team leader's to give out, and it is theirs once
+    // they are the officer on it.
+    r.wholeDesk ? sql`${schema.applications.handedOverAt} is not null` : undefined,
+    r.seesUnassigned ? unassignedFile() : undefined,
     eq(schema.applications.officerId, user.id),
     exists(
       db
         .select({ one: sql`1` })
         .from(schema.students)
-        .where(and(eq(schema.students.id, schema.applications.studentId), theirs(user))),
+        .where(and(eq(schema.students.id, schema.applications.studentId), theirs(user, { wholeDesk: r.wholeDesk, seesUnassigned: false }))),
     ),
   );
 }
@@ -57,11 +92,14 @@ export async function ownApplicationsOnly(user: SessionUser): Promise<SQL | unde
 /**
  * A file the branch has handed to the Overseas desk.
  *
- * This is what "assigned" means for the documentation desk, because nothing
- * assigns a student to a documentation officer: there is no such field and no
- * screen that sets one. What there is, is the moment a branch hands a file
- * over, and from that moment the desk works it. A student the branch has never
- * handed over is still the branch's own business and stays out.
+ * Opens the file to somebody on the documentation desk who runs the whole of
+ * it (RUN_DOCUMENTATION_DESK, given to a documentation officer only where
+ * Medcity has set it). It used to open every handed-over file to every
+ * documentation officer, which put the whole desk's work in each officer's
+ * lists. Medcity chose own only: an officer is given a file by name, as the
+ * officer on the application, the mentor, or a person on the file, and the
+ * team leader hands out the rest. A student the branch has never handed over
+ * is still the branch's own business and stays out either way.
  */
 const handedToTheDesk = () =>
   exists(
@@ -97,12 +135,14 @@ const hasUnassignedFile = () =>
 
 /**
  * A student is theirs if they registered them, if they counsel them, if they
- * are the officer on their file, if they have checked a document on it, if
- * they have been put on the file by name, if they are in the team carrying
- * it, or, for the documentation desk, if the branch has handed the file to
- * the desk. Whoever hands out the desk's files also has the students with a
- * file waiting for an officer (`seesUnassigned`, from the capability of that
- * name).
+ * are the officer on their file, if they have claimed or checked a document
+ * on it, if they have been put on the file by name (the mentor too), if they
+ * are in the team carrying it, or, for somebody on the documentation desk who
+ * runs the whole of it, if the branch has handed the file to the desk
+ * (`wholeDesk`). Whoever hands out the desk's files also has the students
+ * with a file waiting for an officer (`seesUnassigned`, from the capability
+ * of that name). A documentation officer working their own files has
+ * neither: the files handed over and not yet given to anybody are not theirs.
  *
  * A student nobody has been given to is not, by that alone, anybody's. The
  * rule used to open every unassigned student of a branch to every counsellor
@@ -116,20 +156,21 @@ const hasUnassignedFile = () =>
  * file, and the officer is told so in a notice; a file they then could not
  * open was a notice that ended in "page not found".
  *
- * The document one is what makes the documentation queue work: somebody claims
- * a document from the pool and the file opens to them, rather than the queue
- * showing work nobody can reach.
+ * The document one is what makes the documentation queue work: a document
+ * the team leader gives an officer, or one they claim on their own file,
+ * opens the file to them, rather than the queue showing work nobody can
+ * reach.
  *
  * The first is what stops the desk losing a walk-in the moment it is saved.
  * Somebody at the head office registers a student into a branch, cannot assign
  * themselves because the counsellor has to belong to that branch, and would
  * otherwise watch the student they just typed in turn into a 404.
  */
-function theirs(user: Viewer, seesUnassigned = false): SQL {
+function theirs(user: Viewer, widened: Reach = { wholeDesk: false, seesUnassigned: false }): SQL {
   return or(
     onTheirTeam(user),
-    isDocumentationTeam(user) ? handedToTheDesk() : undefined,
-    seesUnassigned ? hasUnassignedFile() : undefined,
+    widened.wholeDesk ? handedToTheDesk() : undefined,
+    widened.seesUnassigned ? hasUnassignedFile() : undefined,
     eq(schema.students.createdById, user.id),
     eq(schema.students.assignedToId, user.id),
     exists(
@@ -217,7 +258,8 @@ export const studentOrgScope = (user: Viewer): SQL | undefined => orgOf(user);
  * One person's own students, exactly as their students list shows them when
  * they do not see every student: inside their organisation, and theirs by the
  * rule above. The counsellor dashboard counts with this, so "My students" on
- * the board and the total under the list are the same number.
+ * the board and the total under the list are the same number. Own means own:
+ * neither the whole desk nor the files waiting for an officer are counted in.
  */
 export function ownedBy(user: Viewer): SQL {
   return and(orgOf(user), theirs(user))!;
@@ -244,7 +286,7 @@ export async function ownedByPerson(id: string): Promise<SQL> {
  * organisation filter, and two of them would be one too many.
  */
 export async function ownStudentsOnly(user: SessionUser): Promise<SQL | undefined> {
-  return (await can(user, "SEE_EVERY_STUDENT")) ? undefined : theirs(user, await can(user, "SEE_UNASSIGNED_FILES"));
+  return (await can(user, "SEE_EVERY_STUDENT")) ? undefined : theirs(user, await reach(user));
 }
 
 /**
@@ -260,14 +302,15 @@ export async function mayOpenStudent(user: Viewer, student: { orgId: string; ass
   if (await can(user, "SEE_EVERY_STUDENT")) return true;
   if (student.createdById === user.id) return true;
   if (student.assignedToId === user.id) return true;
-  if (isDocumentationTeam(user)) {
+  const r = await reach(user);
+  if (r.wholeDesk) {
     const handed = await db.query.applications.findFirst({
       where: and(eq(schema.applications.studentId, student.id), sql`${schema.applications.handedOverAt} is not null`),
       columns: { id: true },
     });
     if (handed) return true;
   }
-  if (await can(user, "SEE_UNASSIGNED_FILES")) {
+  if (r.seesUnassigned) {
     const waiting = await db.query.applications.findFirst({ where: and(eq(schema.applications.studentId, student.id), unassignedFile()), columns: { id: true } });
     if (waiting) return true;
   }
@@ -352,14 +395,17 @@ export async function whoMayOpenStudent(studentId: string, userIds: string[]): P
   }
   if (!undecided.length) return people.filter((p) => open.has(p.id)).map((p) => p.id);
 
-  // Handed to the desk opens the file to every documentation officer, so it is
-  // asked once, and only when one of them is still undecided.
-  if (undecided.some(isDocumentationTeam)) {
+  // Handed to the desk opens the file to whoever on the documentation desk
+  // runs the whole of it, so it is asked once, and only when one of them is
+  // still undecided. An officer working their own files is not among them: a
+  // hand-over tells the team leader, and the officer hears once it is theirs.
+  const wholeDesk = (p: { role: string }) => opensHandedOverFiles(p.role, set);
+  if (undecided.some(wholeDesk)) {
     const handed = await db.query.applications.findFirst({
       where: and(eq(schema.applications.studentId, student.id), sql`${schema.applications.handedOverAt} is not null`),
       columns: { id: true },
     });
-    if (handed) for (const p of undecided) if (isDocumentationTeam(p)) open.add(p.id);
+    if (handed) for (const p of undecided) if (wholeDesk(p)) open.add(p.id);
   }
 
   // The same for a file nobody carries yet, opened to whoever may hand it out.

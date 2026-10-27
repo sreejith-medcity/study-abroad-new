@@ -4,7 +4,7 @@ import { db, schema } from "@/db";
 import { audit } from "@/lib/audit";
 import { DOCUMENTATION_ROLES } from "@/lib/permissions";
 import { syncChecklist } from "@/db/documentation-sync";
-import { notifyUsers } from "@/server/notify";
+import { deskRunners, notifyUsers } from "@/server/notify";
 import { appendLedger } from "@/server/ledger";
 
 /** What a desk person is doing on a file handed over at registration. */
@@ -77,18 +77,18 @@ export async function handEnquiryToDocumentation(studentId: string, byId: string
     }
   }
 
-  // Everybody on the desk hears about it, not only the one it landed on: the
-  // team leader is who notices when a registration is not being worked. The
-  // officer it landed on is sent to the file. The rest of the desk cannot open
-  // a file nobody has handed them, so they are sent to the desk's queue, where
-  // it shows, rather than to a file that would refuse them.
+  // The officer it landed on is sent to the file. The team leader hears about
+  // it too, not only the one it landed on: they are who notices when a
+  // registration is not being worked. The other officers do not: each works
+  // only their own files, so a registration given to somebody else is not
+  // theirs to hear about. Whoever is told is sent to the desk's queue.
   const desk = await db
-    .select({ id: schema.users.id })
+    .select({ id: schema.users.id, role: schema.users.role })
     .from(schema.users)
     .where(and(eq(schema.users.active, true), inArray(schema.users.role, [...DOCUMENTATION_ROLES])));
   const body = added > 0 ? `${studentName}: ${added} document${added === 1 ? "" : "s"} to collect.` : studentName;
   if (officerId) await notifyUsers([officerId], "A registered student is ready for documents", body, `/students/${studentId}/documentation`);
-  const rest = desk.map((d) => d.id).filter((id) => id !== officerId);
+  const rest = (await deskRunners(desk)).filter((id) => id !== officerId);
   if (rest.length) await notifyUsers(rest, "A registered student is ready for documents", body, "/documentation");
   return { added, officerId };
 }
