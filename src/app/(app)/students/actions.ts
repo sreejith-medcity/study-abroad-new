@@ -18,6 +18,7 @@ import { getStudentForUser } from "@/server/queries";
 import { tryMintStudentId } from "@/server/medcity-id";
 import { openEarningForStudent } from "@/server/agent-actions";
 import { handEnquiryToDocumentation } from "@/server/enquiry-handover";
+import { syncEnquiryFollowUp } from "@/server/enquiry-tasks";
 import { BACKGROUND_QUESTIONS, CONTACT_RELATIONS } from "@/lib/background";
 import { ledgerCreated, updateTracked } from "@/server/record-history";
 import { appendLedger } from "@/server/ledger";
@@ -243,6 +244,8 @@ export async function createStudentAction(_: FormState, formData: FormData): Pro
   }
 
   if (convert && enquiry) {
+    // Registered: the enquiry's open follow-up goes from its owner's desk.
+    await syncEnquiryFollowUp(enquiry.id);
     await audit(user.id, "enquiry.convert", "enquiry", enquiry.id, { studentId: student.id });
 
     // The desk used to learn a student existed when an application turned

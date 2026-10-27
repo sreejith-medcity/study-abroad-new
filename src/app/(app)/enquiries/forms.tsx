@@ -4,6 +4,7 @@ import { utcYear } from "@/lib/now";
 import { ActionForm } from "@/components/action-form";
 import { SelectField, TextField, TextareaField } from "@/components/fields";
 import { Button, Input, Select, Textarea } from "@/components/ui";
+import { CHANNEL_LABEL, OUTCOME_LABEL } from "@/lib/crm";
 import { createEnquiryAction, logFollowUpAction, markEnquiryLostAction, mergeEnquiryAction, updateEnquiryAction } from "./actions";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -137,6 +138,24 @@ export function FollowUpForm({ enquiryId, stage }: { enquiryId: string; stage: s
       <input type="hidden" name="enquiryId" value={enquiryId} />
       <Textarea name="body" rows={3} placeholder="Called, asked about Germany intakes, sending the fee structure." aria-label="What happened" />
       <div className="grid gap-2 sm:grid-cols-2">
+        <label className="text-2xs font-semibold uppercase tracking-wider text-muted">
+          How you spoke
+          <Select name="channel" defaultValue="" className="mt-1">
+            <option value="">Just a note, no contact</option>
+            {Object.entries(CHANNEL_LABEL).map(([v, l]) => (
+              <option key={v} value={v}>{l}</option>
+            ))}
+          </Select>
+        </label>
+        <label className="text-2xs font-semibold uppercase tracking-wider text-muted">
+          What came of it
+          <Select name="outcome" defaultValue="" className="mt-1">
+            <option value="">Choose, for a call or message</option>
+            {Object.entries(OUTCOME_LABEL).map(([v, l]) => (
+              <option key={v} value={v}>{l}</option>
+            ))}
+          </Select>
+        </label>
         <label className="text-2xs font-semibold uppercase tracking-wider text-muted">
           Stage after this
           <Select name="stage" defaultValue={stage} className="mt-1">

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { asc } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fmtDate, fmtDateTime, intakeLabel } from "@/lib/format";
@@ -8,6 +8,7 @@ import { orgUsers } from "@/server/queries";
 import { SOURCE_LABEL, STAGE_LABEL, STAGE_TONE, getEnquiryForUser } from "@/server/enquiries";
 import { Alert, Button, Card, CardHeader, Chip, DataList, LinkButton, PageHeader, Select } from "@/components/ui";
 import { IconChat, IconCheck, IconPlus } from "@/components/icons";
+import { CHANNEL_LABEL, OUTCOME_LABEL } from "@/lib/crm";
 import { EnquiryForm, FollowUpForm, LostForm, MergeForm } from "../forms";
 import { possibleDuplicates } from "@/server/enquiry-routing";
 import { mergedInto } from "@/server/enquiry-merge";
@@ -29,16 +30,35 @@ export default async function EnquiryPage({ params, searchParams }: { params: Pr
   const sp = await searchParams;
   const enquiry = await getEnquiryForUser(user, id);
   const merged = enquiry.stage === "MERGED";
-  const [people, countries, reasons, duplicates, folded, ownership] = await Promise.all([
+  const [people, countries, reasons, duplicates, folded, ownership, contacts] = await Promise.all([
     orgUsers(enquiry.orgId),
     db.select({ name: schema.countries.name }).from(schema.countries).orderBy(asc(schema.countries.name)),
     lostReasonList({ activeOnly: true }),
     merged ? Promise.resolve({ visible: [], elsewhere: 0 }) : possibleDuplicates(user, enquiry),
     mergedInto(enquiry.id),
     ledgerFor("enquiry", enquiry.id),
+    db.query.contactLog.findMany({
+      where: eq(schema.contactLog.enquiryId, enquiry.id),
+      with: { by: { columns: { name: true } } },
+      orderBy: desc(schema.contactLog.happenedAt),
+      limit: 100,
+    }),
   ]);
 
   const notes = [...enquiry.notes].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  // The notes and the contact history on one feed, newest first: a call
+  // logged in calling mode is part of the story as much as a note is.
+  const feed = [
+    ...notes.map((n) => ({ id: n.id, at: n.createdAt, who: n.author?.name ?? "System", stage: n.stageAfter, contact: null as string | null, body: n.body })),
+    ...contacts.map((c) => ({
+      id: c.id,
+      at: c.happenedAt,
+      who: c.by?.name ?? "System",
+      stage: null,
+      contact: `${CHANNEL_LABEL[c.channel]}: ${OUTCOME_LABEL[c.outcome]}`,
+      body: c.note ?? "",
+    })),
+  ].sort((a, b) => b.at.getTime() - a.at.getTime());
   const open = OPEN_STAGES.includes(enquiry.stage);
   const overdue = enquiry.nextFollowUpAt && enquiry.nextFollowUpAt.getTime() < Date.now() && open;
   const [firstName, ...rest] = enquiry.name.trim().split(/\s+/);
@@ -138,21 +158,22 @@ export default async function EnquiryPage({ params, searchParams }: { params: Pr
           )}
 
           <Card>
-            <CardHeader title="History" subtitle={`${notes.length} entr${notes.length === 1 ? "y" : "ies"}`} />
-            {notes.length === 0 ? (
+            <CardHeader title="History" subtitle={`${feed.length} entr${feed.length === 1 ? "y" : "ies"}`} />
+            {feed.length === 0 ? (
               <p className="px-4 py-8 text-center text-sm text-muted">Nothing logged yet.</p>
             ) : (
               <ol className="relative px-4 py-3">
-                {notes.map((n) => (
-                  <li key={n.id} className="relative flex gap-3 border-l border-line pb-4 pl-4 last:pb-0">
+                {feed.map((n) => (
+                  <li key={n.id} className="relative flex gap-3 border-l border-line pb-4 pl-4 last:pb-0" data-history={n.contact ? "contact" : "note"}>
                     <span className="absolute -left-[5px] top-1.5 size-2.5 rounded-full bg-brand-600 ring-4 ring-surface" />
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-baseline gap-2">
-                        <span className="text-sm font-medium">{n.author?.name ?? "System"}</span>
-                        {n.stageAfter && <Chip tone={STAGE_TONE[n.stageAfter]}>{STAGE_LABEL[n.stageAfter]}</Chip>}
-                        <span className="ml-auto text-xs text-muted">{fmtDateTime(n.createdAt)}</span>
+                        <span className="text-sm font-medium">{n.who}</span>
+                        {n.contact && <Chip tone="info">{n.contact}</Chip>}
+                        {n.stage && <Chip tone={STAGE_TONE[n.stage]}>{STAGE_LABEL[n.stage]}</Chip>}
+                        <span className="ml-auto text-xs text-muted">{fmtDateTime(n.at)}</span>
                       </div>
-                      <p className="mt-0.5 whitespace-pre-wrap text-sm leading-relaxed text-ink-soft">{n.body}</p>
+                      {n.body && <p className="mt-0.5 whitespace-pre-wrap text-sm leading-relaxed text-ink-soft">{n.body}</p>}
                     </div>
                   </li>
                 ))}

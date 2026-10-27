@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { fmtDate } from "@/lib/format";
 import { APP_ROLES, isStaff } from "@/lib/permissions";
 import { assignableUsers, taskList } from "@/server/tasks";
+import { syncFollowUpsOwnedBy } from "@/server/enquiry-tasks";
 import { TASK_KIND_LABEL, WHEN_LABEL, WHEN_ORDER, type When } from "@/lib/crm";
 import { Card, Chip, EmptyState, PageHeader, Stat } from "@/components/ui";
 import { AddTask, TaskRowActions } from "@/components/crm-forms";
@@ -19,6 +20,8 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
   const user = await requireUser([...APP_ROLES]);
   const sp = await searchParams;
   const mine = !sp.who || sp.who === user.id;
+  // An enquiry's follow-up date set before enquiries kept tasks still lands here.
+  if (user.role !== "MANAGEMENT") await syncFollowUpsOwnedBy([user.id]);
   const [rows, people] = await Promise.all([
     taskList(isStaff(user) ? { viewer: user } : { orgId: user.orgId, viewer: user }, { assignedTo: sp.who ?? user.id, done: sp.done, kind: sp.kind }),
     assignableUsers(user),
@@ -90,6 +93,12 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
                             <Link href={`/students/${t.studentId}`} className="text-brand-600 hover:underline">{t.studentName}</Link>
                           </>
                         )}
+                        {t.enquiryId && (
+                          <>
+                            {" · enquiry "}
+                            <Link href={`/enquiries/${t.enquiryId}`} className="text-brand-600 hover:underline" data-task-enquiry={t.enquiryId}>{t.enquiryName}</Link>
+                          </>
+                        )}
                         {t.ackNo ? ` · ${t.ackNo}` : ""}
                         {isStaff(user) ? ` · ${t.branch}` : ""}
                         {t.source !== "by hand" ? ` · raised by ${t.source}` : ""}
@@ -115,7 +124,7 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
             {done.slice(0, 50).map((t) => (
               <li key={t.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5 text-sm">
                 <span className="text-muted line-through">{t.title}</span>
-                {t.studentName && <span className="text-xs text-muted">{t.studentName}</span>}
+                {(t.studentName ?? t.enquiryName) && <span className="text-xs text-muted">{t.studentName ?? t.enquiryName}</span>}
                 <span className="ml-auto text-xs text-muted">{t.doneAt ? fmtDate(t.doneAt) : ""}</span>
                 {user.role !== "MANAGEMENT" && <TaskRowActions task={{ id: t.id }} done />}
               </li>

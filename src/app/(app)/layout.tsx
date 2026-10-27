@@ -33,6 +33,8 @@ const partnerNav = (home: string): NavGroup[] => [
       { href: "/dashboard", label: home, icon: "dashboard" },
       { href: "/my-day", label: "My day", icon: "queue" },
       { href: "/enquiries", label: "Enquiries", icon: "enquiry" },
+      // Calling mode: the enquiries and students waiting for a call, one at a time.
+      { href: "/calls", label: "Calling mode", icon: "enquiry" },
     ],
   },
   {
@@ -187,8 +189,16 @@ const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/insights", label: "Insights", icon: "insights" },
       { href: "/journal/report", label: "Day end reports", icon: "deadlines" },
       { href: "/reports/lost-reasons", label: "Lost reasons", icon: "enquiry" },
-      { href: "/learning", label: "Learning resources", icon: "learning" },
+      { href: "/reports/leaderboard", label: "Counsellor leaderboard", icon: "insights" },
+    ],
+  },
+  {
+    // The branches' questions and what they read, as the branch menu has its
+    // Help group, which keeps Reports to the reports.
+    title: "Help",
+    items: [
       { href: "/support", label: "Help desk", icon: "support" },
+      { href: "/learning", label: "Learning resources", icon: "learning" },
     ],
   },
   {
@@ -299,7 +309,7 @@ const TEAM_LEAD_NAV: NavGroup[] = [
  */
 const DESK_COUNSELLOR_NAV: NavGroup[] = partnerNav("My desk")
   .filter((g) => !MONEY(g))
-  .map((g) => ({ ...g, items: g.items.filter((i) => !["/enquiries", "/program-options"].includes(i.href)) }));
+  .map((g) => ({ ...g, items: g.items.filter((i) => !["/enquiries", "/program-options", "/calls"].includes(i.href)) }));
 
 /**
  * Finance: the money, and nothing that is not the money.
@@ -342,6 +352,7 @@ const MANAGEMENT_NAV: NavGroup[] = [
       { href: "/admin/insights", label: "Insights", icon: "insights" },
       { href: "/journal/report", label: "Day end reports", icon: "deadlines" },
       { href: "/reports/lost-reasons", label: "Lost reasons", icon: "enquiry" },
+      { href: "/reports/leaderboard", label: "Counsellor leaderboard", icon: "insights" },
       { href: "/learning", label: "Learning resources", icon: "learning" },
       { href: "/admin/history", label: "Change history", icon: "shield" },
       { href: "/admin/ledger", label: "Ownership ledger", icon: "shield" },
@@ -396,6 +407,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // agreement. Both screens are theirs alone: a branch has no referrals of its
   // own and nothing to accept.
   const subAgent = user.orgType === "SUB_AGENT" && (PARTNER_ROLES as readonly string[]).includes(user.role);
+  const branchHead = user.role === "PARTNER" && user.orgType === "BRANCH";
+  const ownReports: NavGroup["items"] = [
+    // A branch head sets their people's monthly targets, and reads the
+    // month of their own branch's day end figures.
+    ...(user.role === "PARTNER" ? [{ href: "/targets", label: "Targets", icon: "insights" as const }] : []),
+    ...(user.role === "PARTNER" && journalIssued(user.role, user.orgType) ? [{ href: "/journal/report", label: "Day end figures", icon: "deadlines" as const }] : []),
+    // Why the branch's enquiries were lost.
+    ...(branchHead ? [{ href: "/reports/lost-reasons", label: "Lost reasons", icon: "enquiry" as const }] : []),
+    // How each of their people is doing on calls, follow-ups and conversions.
+    ...(branchHead ? [{ href: "/reports/leaderboard", label: "Counsellor leaderboard", icon: "insights" as const }] : []),
+  ];
   const menu: NavGroup[] = [
     ...withImports,
     ...(subAgent
@@ -409,17 +431,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           },
         ]
       : []),
+    // A branch head's reports on their own branch, in a group of their own so
+    // neither it nor Account runs past five.
+    ...(ownReports.length ? [{ title: "Reports", items: ownReports }] : []),
     {
       title: "Account",
       items: [
         // The day end report, for everybody who is issued one.
         ...(journalIssued(user.role, user.orgType) ? [{ href: "/journal", label: "Day end report", icon: "deadlines" as const }] : []),
-        // A branch head sets their people's monthly targets, and reads the
-        // month of their own branch's day end figures.
-        ...(user.role === "PARTNER" ? [{ href: "/targets", label: "Targets", icon: "insights" as const }] : []),
-        ...(user.role === "PARTNER" && journalIssued(user.role, user.orgType) ? [{ href: "/journal/report", label: "Day end figures", icon: "deadlines" as const }] : []),
-        // Why the branch's enquiries were lost.
-        ...(user.role === "PARTNER" && user.orgType === "BRANCH" ? [{ href: "/reports/lost-reasons", label: "Lost reasons", icon: "enquiry" as const }] : []),
         { href: "/settings", label: "Settings", icon: "settings" },
       ],
     },

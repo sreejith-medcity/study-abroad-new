@@ -12,6 +12,8 @@ import {
   KIND_LABEL,
   NOT_ISSUED,
   branchDayNotices,
+  callFigures,
+  contactLine,
   dayText,
   figuresByBranch,
   flagNotice,
@@ -35,7 +37,6 @@ import {
   type MonthPerson,
 } from "@/lib/journal";
 import { monthDays } from "@/lib/month";
-import { CONNECTED_OUTCOMES } from "@/lib/crm";
 
 /*
  * The day end report, called the journal throughout the code: what each
@@ -135,6 +136,7 @@ const COVERED = [
   "passport.reveal",
   // A merge writes one entry for each enquiry; the line is "enquiry.merge".
   "enquiry.merged",
+  "leaderboard.export",
 ];
 
 /** "student.reassign" said as a person would say it. */
@@ -264,18 +266,21 @@ export async function dayEntries(day: string, userIds: string[]): Promise<Map<st
       .innerJoin(s, eq(ci.studentId, s.id))
       .innerJoin(dt, eq(ci.typeCode, dt.code))
       .where(and(inArray(ci.askedById, ids), within(ci.askedAt))),
+    // A conversation with a student or with an enquiry: the contact history
+    // holds both, and the day's lines should too.
     db
-      .select({ who: cl.byId, at: cl.createdAt, channel: cl.channel, outcome: cl.outcome, studentId: s.id, name: studentName })
+      .select({ who: cl.byId, at: cl.createdAt, channel: cl.channel, outcome: cl.outcome, studentId: s.id, enquiryId: en.id, name: sql<string | null>`coalesce(${s.firstName} || ' ' || ${s.lastName}, ${en.name})` })
       .from(cl)
-      .innerJoin(s, eq(cl.studentId, s.id))
+      .leftJoin(s, eq(cl.studentId, s.id))
+      .leftJoin(en, eq(cl.enquiryId, en.id))
       .where(and(inArray(cl.byId, ids), within(cl.createdAt))),
     db
-      .select({ who: tk.doneById, at: tk.doneAt, title: tk.title, studentId: tk.studentId, name: sql<string | null>`${s.firstName} || ' ' || ${s.lastName}` })
+      .select({ who: tk.doneById, at: tk.doneAt, title: tk.title, studentId: tk.studentId, enquiryId: tk.enquiryId, name: sql<string | null>`${s.firstName} || ' ' || ${s.lastName}` })
       .from(tk)
       .leftJoin(s, eq(tk.studentId, s.id))
       .where(and(inArray(tk.doneById, ids), within(tk.doneAt))),
     db
-      .select({ who: tk.createdById, at: tk.createdAt, title: tk.title, due: tk.dueOn, studentId: tk.studentId, name: sql<string | null>`${s.firstName} || ' ' || ${s.lastName}` })
+      .select({ who: tk.createdById, at: tk.createdAt, title: tk.title, due: tk.dueOn, studentId: tk.studentId, enquiryId: tk.enquiryId, name: sql<string | null>`${s.firstName} || ' ' || ${s.lastName}` })
       .from(tk)
       .leftJoin(s, eq(tk.studentId, s.id))
       .where(and(inArray(tk.createdById, ids), within(tk.createdAt))),
@@ -310,6 +315,7 @@ export async function dayEntries(day: string, userIds: string[]): Promise<Map<st
     out.get(who)?.push({ at: at.toISOString(), kind, text, href: href ?? null, outOfHours: at >= late });
   };
   const studentHref = (id: string | null) => (id ? `/students/${id}` : null);
+  const recordHref = (r: { studentId: string | null; enquiryId: string | null }) => studentHref(r.studentId) ?? (r.enquiryId ? `/enquiries/${r.enquiryId}` : null);
 
   for (const r of signins) put(r.who, r.at, "signin", "Signed in");
   for (const r of registered) put(r.who, r.at, "student", `Registered ${r.name}`, `/students/${r.id}/profile`);
@@ -319,10 +325,9 @@ export async function dayEntries(day: string, userIds: string[]): Promise<Map<st
   for (const r of checked)
     put(r.who, r.at, "check", `${r.outcome === "REJECTED" ? "Sent back" : r.outcome === "ACCEPTED" ? "Accepted" : "Checked"} ${r.what} for ${r.name}`, `/students/${r.studentId}/documentation`);
   for (const r of asked) put(r.who, r.at, "ask", `Asked ${r.name} for ${r.what}`, `/students/${r.studentId}/documentation`);
-  for (const r of contacts)
-    put(r.who, r.at, "contact", `${r.channel === "CALL" ? "Call" : r.channel === "WHATSAPP" ? "WhatsApp" : r.channel === "VISIT" ? "Visit" : r.channel === "EMAIL" ? "Email" : "SMS"} with ${r.name}: ${r.outcome.toLowerCase().replace(/_/g, " ")}`, studentHref(r.studentId));
-  for (const r of done) put(r.who, r.at, "followup_done", `Follow-up done: ${r.title}${r.name ? ` (${r.name})` : ""}`, studentHref(r.studentId));
-  for (const r of set) put(r.who, r.at, "followup_set", `Follow-up set for ${dayText(r.due)}: ${r.title}${r.name ? ` (${r.name})` : ""}`, studentHref(r.studentId));
+  for (const r of contacts) put(r.who, r.at, "contact", contactLine(r.channel, r.outcome, r.name ?? "somebody", !r.studentId && !!r.enquiryId), recordHref(r));
+  for (const r of done) put(r.who, r.at, "followup_done", `Follow-up done: ${r.title}${r.name ? ` (${r.name})` : ""}`, recordHref(r));
+  for (const r of set) put(r.who, r.at, "followup_set", `Follow-up set for ${dayText(r.due)}: ${r.title}${r.name ? ` (${r.name})` : ""}`, recordHref(r));
   for (const r of messages) put(r.who, r.at, "message", r.channel === "STUDENT" ? `Wrote to ${r.name}` : `Team note on ${r.name}'s application`, `/students/${r.studentId}/applications?app=${r.appId}`);
   for (const r of enquiries) put(r.who, r.at, "enquiry", `Added the enquiry ${r.name}`, `/enquiries/${r.id}`);
   for (const r of enquiryNotes) put(r.who, r.at, "enquiry", `Note on the enquiry ${r.name}`, `/enquiries/${r.id}`);
@@ -343,7 +348,8 @@ export function kindCounts(entries: JournalEntry[]) {
 /**
  * What the portal can count towards somebody's day end figures, on the day, in
  * India time: the enquiries given to them, the calls they logged (the call
- * channel only; a WhatsApp or a visit is not a call), the calls they logged
+ * channel only; a WhatsApp or a visit is not a call), to students and to
+ * enquiries alike, since the contact history holds both, the calls they logged
  * with an outcome that means the person was reached, the follow-ups they
  * marked done and the students they registered. Everybody asked for gets all
  * five, 0 where nothing was found, so a quiet day is counted rather than left
@@ -363,22 +369,19 @@ export async function countedFigures(day: string, userIds: string[]): Promise<Ma
   const to = istAt(nextDay(day), "00:00");
   const within = (col: Parameters<typeof gte>[0]) => and(gte(col, from), lt(col, to));
   const count = sql<number>`count(*)::int`;
-  const [leads, calls, connected, done, registered] = await Promise.all([
+  const [leads, calls, done, registered] = await Promise.all([
     db
       .select({ who: en.assignedToId, n: count })
       .from(en)
       .where(and(inArray(en.assignedToId, userIds), within(en.createdAt), sql`${en.stage} <> 'MERGED'`))
       .groupBy(en.assignedToId),
+    // Every call each person logged, to students and enquiries alike, by
+    // outcome; which outcomes are connected is decided in one place.
     db
-      .select({ who: cl.byId, n: count })
+      .select({ who: cl.byId, channel: cl.channel, outcome: cl.outcome, n: count })
       .from(cl)
       .where(and(inArray(cl.byId, userIds), eq(cl.channel, "CALL"), within(cl.createdAt)))
-      .groupBy(cl.byId),
-    db
-      .select({ who: cl.byId, n: count })
-      .from(cl)
-      .where(and(inArray(cl.byId, userIds), eq(cl.channel, "CALL"), inArray(cl.outcome, [...CONNECTED_OUTCOMES]), within(cl.createdAt)))
-      .groupBy(cl.byId),
+      .groupBy(cl.byId, cl.channel, cl.outcome),
     db
       .select({ who: tk.doneById, n: count })
       .from(tk)
@@ -395,8 +398,13 @@ export async function countedFigures(day: string, userIds: string[]): Promise<Ma
     if (f) f[key] = n;
   };
   for (const r of leads) put(r.who, "leadsReceived", r.n);
-  for (const r of calls) put(r.who, "callsMade", r.n);
-  for (const r of connected) put(r.who, "connectedCalls", r.n);
+  const callsBy = new Map<string, typeof calls>();
+  for (const r of calls) if (r.who) callsBy.set(r.who, [...(callsBy.get(r.who) ?? []), r]);
+  for (const [who, rows] of callsBy) {
+    const f = callFigures(rows);
+    put(who, "callsMade", f.callsMade);
+    put(who, "connectedCalls", f.connectedCalls);
+  }
   for (const r of done) put(r.who, "followUpsDone", r.n);
   for (const r of registered) put(r.who, "registrationsDone", r.n);
   return out;

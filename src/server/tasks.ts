@@ -6,7 +6,7 @@ import type { SessionUser } from "@/lib/auth";
 import { PARTNER_ROLES, isStaff } from "@/lib/permissions";
 import { ownStudentsOnly } from "@/server/scope";
 
-const { tasks: tk, students: st, users: us, organizations: og, applications: ap } = schema;
+const { tasks: tk, students: st, users: us, organizations: og, applications: ap, enquiries: en } = schema;
 
 export type TaskRow = {
   id: string;
@@ -17,6 +17,9 @@ export type TaskRow = {
   source: string;
   studentId: string | null;
   studentName: string | null;
+  /** The enquiry this is the follow-up for, where it is one. */
+  enquiryId: string | null;
+  enquiryName: string | null;
   branch: string;
   applicationId: string | null;
   ackNo: string | null;
@@ -53,6 +56,8 @@ export async function taskList(scope: { orgId?: string; userId?: string; viewer?
       studentId: tk.studentId,
       firstName: st.firstName,
       lastName: st.lastName,
+      enquiryId: tk.enquiryId,
+      enquiryName: en.name,
       branch: og.name,
       applicationId: tk.applicationId,
       ackNo: ap.ackNo,
@@ -66,6 +71,7 @@ export async function taskList(scope: { orgId?: string; userId?: string; viewer?
     .innerJoin(og, eq(og.id, tk.orgId))
     .innerJoin(assignee, eq(assignee.id, tk.assignedToId))
     .leftJoin(st, eq(st.id, tk.studentId))
+    .leftJoin(en, eq(en.id, tk.enquiryId))
     .leftJoin(ap, eq(ap.id, tk.applicationId))
     .where(
       and(
@@ -89,6 +95,8 @@ export async function taskList(scope: { orgId?: string; userId?: string; viewer?
     source: r.source,
     studentId: r.studentId,
     studentName: r.firstName ? `${r.firstName} ${r.lastName}` : null,
+    enquiryId: r.enquiryId,
+    enquiryName: r.enquiryName,
     branch: r.branch,
     applicationId: r.applicationId,
     ackNo: r.ackNo,

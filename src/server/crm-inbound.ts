@@ -1,6 +1,7 @@
 import "server-only";
 import { and, eq, isNull, ne, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
+import { syncEnquiryFollowUp } from "@/server/enquiry-tasks";
 import { DATE_FIELDS, conflictSummary, planFieldUpdates, type FieldPlan, type SyncableField } from "@/lib/crm-link";
 import { tryMintStudentId } from "@/server/medcity-id";
 import { adminIds, notifyUsers } from "@/server/notify";
@@ -212,6 +213,7 @@ export async function applyIncomingEnquiry(e: IncomingEnquiry): Promise<{ ok: tr
   if (repeat.kind !== "create") {
     const out = await applyRepeat(repeat, { source: "OTHER", actorId: null, via: `from Medcity's CRM as ${e.crmId}`, message: e.notes, name: e.name, email: e.email });
     await updateTracked("enquiry", out.enquiryId, { crmId: e.crmId }, { by: null, action: "crm.enquiry.link", where: isNull(schema.enquiries.crmId) });
+    await syncEnquiryFollowUp(out.enquiryId);
     return { ok: true, enquiryId: out.enquiryId, created: false };
   }
 
@@ -241,5 +243,6 @@ export async function applyIncomingEnquiry(e: IncomingEnquiry): Promise<{ ok: tr
   });
   await audit(null, "enquiry.create", "enquiry", row.id, { source: "crm", crmId: e.crmId });
   await routeNewEnquiry(row, null);
+  await syncEnquiryFollowUp(row.id);
   return { ok: true, enquiryId: row.id, created: true };
 }

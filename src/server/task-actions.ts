@@ -9,6 +9,7 @@ import { audit } from "@/lib/audit";
 import { APP_ROLES, PARTNER_ROLES, PROCESSING_ROLES, isStaff } from "@/lib/permissions";
 import { autoKeys, CHANNEL_LABEL, OUTCOME_LABEL, TASK_KIND_LABEL } from "@/lib/crm";
 import { getStudentForUser } from "@/server/queries";
+import { followTask } from "@/server/enquiry-tasks";
 import type { FormState } from "@/lib/form-state";
 import type { ContactChannel, ContactOutcome, TaskKind } from "@/db/schema";
 
@@ -72,6 +73,7 @@ export async function saveTaskAction(_: FormState, fd: FormData): Promise<FormSt
     if (!held) return { error: "That task is gone." };
     if (!isStaff(user) && held.orgId !== user.orgId) return { error: "That task belongs to another branch." };
     await db.update(tk).set(values).where(eq(tk.id, d.taskId));
+    await followTask(held.enquiryId, user.id);
     await audit(user.id, "task.update", "task", d.taskId, { title: d.title, dueOn });
   } else {
     const [made] = await db.insert(tk).values({ ...values, createdById: user.id, source: "by hand" }).returning({ id: tk.id });
@@ -92,6 +94,7 @@ export async function finishTaskAction(fd: FormData): Promise<void> {
   if (!held) return;
   if (!isStaff(user) && held.orgId !== user.orgId) return;
   await db.update(tk).set({ doneAt: new Date(), doneById: user.id, doneNote: note, updatedAt: new Date() }).where(eq(tk.id, id));
+  await followTask(held.enquiryId, user.id);
   await audit(user.id, "task.done", "task", id, { title: held.title });
   revalidatePath("/my-day");
   if (held.studentId) revalidatePath(`/students/${held.studentId}`, "layout");
@@ -105,7 +108,11 @@ export async function reopenTaskAction(fd: FormData): Promise<void> {
   const held = await db.query.tasks.findFirst({ where: eq(tk.id, id) });
   if (!held) return;
   if (!isStaff(user) && held.orgId !== user.orgId) return;
+  // An enquiry holds one open follow-up: the one put back replaces whatever
+  // was raised in its place since.
+  if (held.enquiryId) await db.delete(tk).where(and(eq(tk.enquiryId, held.enquiryId), isNull(tk.doneAt)));
   await db.update(tk).set({ doneAt: null, doneById: null, doneNote: null, updatedAt: new Date() }).where(eq(tk.id, id));
+  await followTask(held.enquiryId, user.id);
   await audit(user.id, "task.reopen", "task", id, {});
   revalidatePath("/my-day");
   if (held.studentId) revalidatePath(`/students/${held.studentId}`, "layout");
@@ -127,6 +134,7 @@ export async function pushTaskAction(fd: FormData): Promise<void> {
   const base = from.getTime() < Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()) ? today : from;
   const next = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate() + days));
   await db.update(tk).set({ dueOn: next.toISOString().slice(0, 10), updatedAt: new Date() }).where(eq(tk.id, id));
+  await followTask(held.enquiryId, user.id);
   await audit(user.id, "task.push", "task", id, { days, to: next.toISOString().slice(0, 10) });
   revalidatePath("/my-day");
   if (held.studentId) revalidatePath(`/students/${held.studentId}`, "layout");
@@ -142,6 +150,7 @@ export async function deleteTaskAction(fd: FormData): Promise<void> {
   if (!isStaff(user) && held.orgId !== user.orgId) return;
   if (held.createdById !== user.id && !isStaff(user)) return;
   await db.delete(tk).where(eq(tk.id, id));
+  await followTask(held.enquiryId, user.id);
   await audit(user.id, "task.delete", "task", id, { title: held.title });
   revalidatePath("/my-day");
   if (held.studentId) revalidatePath(`/students/${held.studentId}`, "layout");
@@ -226,10 +235,12 @@ export async function clearDoneTasksAction(fd: FormData): Promise<void> {
   const user = await requireUser([...PROCESSING_ROLES, ...PARTNER_ROLES]);
   const ids = fd.getAll("taskId").map(String).filter(Boolean);
   if (!ids.length) return;
-  const rows = await db.select({ id: tk.id, orgId: tk.orgId }).from(tk).where(and(inArray(tk.id, ids), isNull(tk.doneAt)));
-  const mine = rows.filter((r) => isStaff(user) || r.orgId === user.orgId).map((r) => r.id);
+  const rows = await db.select({ id: tk.id, orgId: tk.orgId, enquiryId: tk.enquiryId }).from(tk).where(and(inArray(tk.id, ids), isNull(tk.doneAt)));
+  const allowed = rows.filter((r) => isStaff(user) || r.orgId === user.orgId);
+  const mine = allowed.map((r) => r.id);
   if (!mine.length) return;
   await db.update(tk).set({ doneAt: new Date(), doneById: user.id, updatedAt: new Date() }).where(inArray(tk.id, mine));
+  for (const r of allowed) await followTask(r.enquiryId, user.id);
   await audit(user.id, "task.done_many", "task", "*", { count: mine.length });
   revalidatePath("/my-day");
 }

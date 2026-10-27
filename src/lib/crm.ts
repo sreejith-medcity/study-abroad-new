@@ -36,15 +36,18 @@ export const OUTCOME_LABEL: Record<ContactOutcome, string> = {
   NOT_INTERESTED: "Not interested for now",
   WRONG_NUMBER: "Wrong number",
   OTHER: "Something else",
+  SWITCHED_OFF: "Switched off",
+  ENROLLED_ELSEWHERE: "Already enrolled elsewhere",
 };
 
 /**
  * The outcomes that mean the call was answered and a conversation took place,
- * whatever came of it: "not interested" is still somebody reached. No answer
- * and a wrong number reached nobody, and "something else" says too little to
- * count, so a connected calls figure never counts a call it cannot vouch for.
+ * whatever came of it: "not interested" and "already enrolled elsewhere" are
+ * still somebody reached. No answer, a phone switched off and a wrong number
+ * reached nobody, and "something else" says too little to count, so a
+ * connected calls figure never counts a call it cannot vouch for.
  */
-export const CONNECTED_OUTCOMES = ["REACHED", "WILL_SEND", "WANTS_TIME", "NEEDS_COUNSELLING", "NOT_INTERESTED"] as const satisfies readonly ContactOutcome[];
+export const CONNECTED_OUTCOMES = ["REACHED", "WILL_SEND", "WANTS_TIME", "NEEDS_COUNSELLING", "NOT_INTERESTED", "ENROLLED_ELSEWHERE"] as const satisfies readonly ContactOutcome[];
 export const isConnected = (outcome: ContactOutcome) => (CONNECTED_OUTCOMES as readonly string[]).includes(outcome);
 
 /**
@@ -61,6 +64,8 @@ export const SUGGESTED_FOLLOW_UP: Record<ContactOutcome, number | null> = {
   NOT_INTERESTED: 30,
   WRONG_NUMBER: null,
   OTHER: 7,
+  SWITCHED_OFF: 1,
+  ENROLLED_ELSEWHERE: null,
 };
 
 /** The day a follow-up falls on, from what came of the conversation. */

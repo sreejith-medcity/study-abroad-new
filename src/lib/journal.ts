@@ -1,4 +1,5 @@
 import { COUNSELLING_ROLES } from "./permissions";
+import { CONNECTED_OUTCOMES } from "./crm";
 
 /**
  * The day end report's clock, kept free of the database so the screens, the
@@ -57,6 +58,36 @@ export function dayText(day: string, long = false): string {
   return new Intl.DateTimeFormat("en-GB", long ? { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" } : { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(
     new Date(`${day}T12:00:00Z`),
   );
+}
+
+/**
+ * One conversation as a line of the day end report: "Call with Nandana
+ * Prakash: no answer", or "Call with the enquiry Nandana Prakash: no answer"
+ * where it was not yet a student.
+ */
+export function contactLine(channel: string, outcome: string, name: string, enquiry = false): string {
+  const how = channel === "CALL" ? "Call" : channel === "WHATSAPP" ? "WhatsApp" : channel === "VISIT" ? "Visit" : channel === "EMAIL" ? "Email" : "SMS";
+  return `${how} with ${enquiry ? "the enquiry " : ""}${name}: ${outcome.toLowerCase().replace(/_/g, " ")}`;
+}
+
+/**
+ * Calls made and connected calls from the day's contact history, counted the
+ * same whoever the call was to: a student or an enquiry not yet registered.
+ * Only the call channel is a call (a WhatsApp or a visit is not), and only an
+ * outcome that means somebody answered and spoke is connected, so connected
+ * calls can never come out larger than calls made. Each row may stand for
+ * several identical calls (`n`), as a grouped count hands them over.
+ */
+export function callFigures(rows: readonly { channel: string; outcome: string; n?: number; studentId?: string | null; enquiryId?: string | null }[]): { callsMade: number; connectedCalls: number } {
+  let callsMade = 0;
+  let connectedCalls = 0;
+  for (const r of rows) {
+    if (r.channel !== "CALL") continue;
+    const n = r.n ?? 1;
+    callsMade += n;
+    if ((CONNECTED_OUTCOMES as readonly string[]).includes(r.outcome)) connectedCalls += n;
+  }
+  return { callsMade, connectedCalls };
 }
 
 export type JournalClock = { dayEnd: string; outOfHours: string; cutoff: string; onSundays: boolean };

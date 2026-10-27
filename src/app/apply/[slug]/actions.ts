@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
+import { syncEnquiryFollowUp } from "@/server/enquiry-tasks";
 import { audit } from "@/lib/audit";
 import { orgForPrepSlug, orgForPublicSlug } from "@/server/public-form";
 import { answerError } from "@/lib/signup-questions";
@@ -79,7 +80,8 @@ export async function submitPublicEnquiryAction(_: PublicFormState, formData: Fo
   // person filling the form sees the same thank-you either way.
   const repeat = await findRepeat(org.id, d.phone);
   if (repeat.kind !== "create") {
-    await applyRepeat(repeat, { source: "WEBSITE", actorId: null, via: `through the branch ${prep ? "test preparation page" : "form"}`, message: d.message, name: d.name, email: d.email });
+    const out = await applyRepeat(repeat, { source: "WEBSITE", actorId: null, via: `through the branch ${prep ? "test preparation page" : "form"}`, message: d.message, name: d.name, email: d.email });
+    await syncEnquiryFollowUp(out.enquiryId);
     redirect(back);
   }
 
@@ -116,6 +118,8 @@ export async function submitPublicEnquiryAction(_: PublicFormState, formData: Fo
   await ledgerCreated(db, "enquiry", [row], null, "From the branch's public form");
   await notifyUsers(await partnerRecipients(org.id), prep ? "New test prep enquiry" : "New enquiry from your form", `${d.name} · ${d.phone}`, `/enquiries/${row.id}`);
   await routeNewEnquiry(row, null);
+  // After routing, so the follow-up lands on the desk of whoever holds it.
+  await syncEnquiryFollowUp(row.id);
 
   redirect(back);
 }

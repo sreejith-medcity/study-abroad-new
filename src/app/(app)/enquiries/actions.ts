@@ -14,6 +14,10 @@ import { applyRepeat, findRepeat, routeNewEnquiry } from "@/server/enquiry-routi
 import { mergeEnquiries } from "@/server/enquiry-merge";
 import { isOpenStage } from "@/lib/enquiry-routing";
 import { ledgerCreated, updateTracked } from "@/server/record-history";
+import { finishEnquiryFollowUp, syncEnquiryFollowUp } from "@/server/enquiry-tasks";
+import { CHANNEL_LABEL, isConnected, OUTCOME_LABEL } from "@/lib/crm";
+import { istDay } from "@/lib/journal";
+import type { ContactChannel, ContactOutcome } from "@/db/schema";
 
 import type { FormState } from "@/lib/form-state";
 export type { FormState };
@@ -71,7 +75,9 @@ export async function createEnquiryAction(_: FormState, formData: FormData): Pro
   const repeat = await findRepeat(orgId, d.phone);
   if (repeat.kind !== "create") {
     const out = await applyRepeat(repeat, { source: d.source, actorId: user.id, via: `entered by ${user.name}`, message: d.notes, name: d.name, email: d.email });
+    await syncEnquiryFollowUp(out.enquiryId);
     revalidatePath("/enquiries");
+    revalidatePath("/my-day");
     redirect(`/enquiries/${out.enquiryId}?repeat=${out.kind}`);
   }
 
@@ -108,6 +114,8 @@ export async function createEnquiryAction(_: FormState, formData: FormData): Pro
   } else if (row.assignedToId !== user.id) {
     await notifyUsers([row.assignedToId], "New enquiry assigned to you", `${row.name} · ${row.phone}`, `/enquiries/${row.id}`);
   }
+  // After routing, so the follow-up lands on the desk of whoever holds it.
+  await syncEnquiryFollowUp(row.id);
   redirect(`/enquiries/${row.id}`);
 }
 
@@ -142,8 +150,10 @@ export async function updateEnquiryAction(_: FormState, formData: FormData): Pro
     },
     { by: user.id, action: "enquiry.update" },
   );
+  await syncEnquiryFollowUp(id);
   await audit(user.id, "enquiry.update", "enquiry", id);
   revalidatePath(`/enquiries/${id}`);
+  revalidatePath("/my-day");
   return { ok: "Saved." };
 }
 
@@ -152,9 +162,18 @@ const followUpShape = z.object({
   body: z.string().trim().min(2, "Write what happened").max(2000),
   stage: z.enum(schema.enquiryStage.enumValues).optional().or(z.literal("")).transform((v) => v || null),
   nextFollowUpAt: optionalDate,
+  channel: z.enum(schema.contactChannel.enumValues).optional().or(z.literal("")).transform((v) => v || null),
+  outcome: z.enum(schema.contactOutcome.enumValues).optional().or(z.literal("")).transform((v) => v || null),
 });
 
-/** One contact attempt: what was said, the stage after it, and when to call again. */
+/**
+ * One contact attempt: what was said, the stage after it, and when to call again.
+ *
+ * Where it says how they spoke and what came of it, it also goes on the
+ * enquiry's contact history (which the day end report and the leaderboard
+ * count) and finishes the open follow-up; the next date raises a fresh one.
+ * A note on its own is a note, and leaves the follow-up where it was.
+ */
 export async function logFollowUpAction(_: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser([...ROLES]);
   const parsed = followUpShape.safeParse(Object.fromEntries(formData));
@@ -168,22 +187,59 @@ export async function logFollowUpAction(_: FormState, formData: FormData): Promi
   if (enquiry.stage === "LOST") return { error: "This enquiry is closed as lost. Add it again as a new enquiry with the same number to reopen it." };
   if (d.stage === "LOST" || d.stage === "MERGED" || d.stage === "CONVERTED") return { fieldErrors: { stage: [LOST_HINT] }, error: LOST_HINT };
 
+  if (d.channel && !d.outcome) return { fieldErrors: { outcome: ["Say what came of it"] }, error: "Say what came of it, or choose Just a note." };
+  if (d.outcome && !d.channel) return { fieldErrors: { channel: ["Say how you spoke to them"] }, error: "Say how you spoke to them: a call, WhatsApp, a visit, an email or an SMS." };
+  const contacted = !!(d.channel && d.outcome);
+  // The conversation is the follow-up when one was due today or is late, or
+  // none was set. One set for a later day still stands unless a new date
+  // replaces it.
+  const wasDue = !enquiry.nextFollowUpAt || istDay(enquiry.nextFollowUpAt) <= istDay();
+
   const stage = d.stage ?? (enquiry.stage === "NEW" ? "CONTACTED" : enquiry.stage);
-  await db.insert(schema.enquiryNotes).values({ enquiryId: enquiry.id, authorId: user.id, body: d.body, stageAfter: stage });
+  // A conversation goes on the contact history with what was said, so it is
+  // not written twice; a move of stage that came with it is still a note.
+  if (!contacted) await db.insert(schema.enquiryNotes).values({ enquiryId: enquiry.id, authorId: user.id, body: d.body, stageAfter: stage });
+  else if (stage !== enquiry.stage) {
+    await db.insert(schema.enquiryNotes).values({ enquiryId: enquiry.id, authorId: user.id, body: `Stage moved from ${STAGE_LABEL[enquiry.stage]} to ${STAGE_LABEL[stage]}.`, stageAfter: stage });
+  }
+  if (contacted) {
+    const channel = d.channel as ContactChannel;
+    const outcome = d.outcome as ContactOutcome;
+    const [logged] = await db
+      .insert(schema.contactLog)
+      .values({
+        orgId: enquiry.orgId,
+        enquiryId: enquiry.id,
+        channel,
+        outcome,
+        note: d.body,
+        byId: user.id,
+        nextActionOn: d.nextFollowUpAt ? istDay(d.nextFollowUpAt) : null,
+      })
+      .returning({ id: schema.contactLog.id });
+    if (wasDue) {
+      const done = await finishEnquiryFollowUp(enquiry.id, user.id, `${CHANNEL_LABEL[channel]}: ${OUTCOME_LABEL[outcome]}`);
+      if (done) await db.update(schema.contactLog).set({ taskId: done }).where(eq(schema.contactLog.id, logged.id));
+    }
+  }
+  const reached = !contacted || isConnected(d.outcome as ContactOutcome);
   await updateTracked(
     "enquiry",
     enquiry.id,
     {
       stage,
-      lastContactedAt: new Date(),
-      nextFollowUpAt: d.nextFollowUpAt ?? enquiry.nextFollowUpAt,
+      ...(reached ? { lastContactedAt: new Date() } : {}),
+      // A finished follow-up with no new date leaves none; a note leaves it as it was.
+      nextFollowUpAt: d.nextFollowUpAt ?? (contacted && wasDue ? null : enquiry.nextFollowUpAt),
       updatedAt: new Date(),
     },
     { by: user.id, action: "enquiry.follow_up" },
   );
-  await audit(user.id, "enquiry.follow_up", "enquiry", enquiry.id, { stage });
+  await syncEnquiryFollowUp(enquiry.id);
+  await audit(user.id, contacted ? "contact.log" : "enquiry.follow_up", "enquiry", enquiry.id, contacted ? { channel: d.channel, outcome: d.outcome, stage } : { stage });
   revalidatePath(`/enquiries/${enquiry.id}`);
   revalidatePath("/enquiries");
+  revalidatePath("/my-day");
   return { ok: `Logged. Stage is now ${STAGE_LABEL[stage]}.` };
 }
 
@@ -203,6 +259,7 @@ export async function setEnquiryStageAction(formData: FormData) {
     body: `Stage moved from ${STAGE_LABEL[enquiry.stage]} to ${STAGE_LABEL[stage]}.`,
     stageAfter: stage,
   });
+  await syncEnquiryFollowUp(id);
   await audit(user.id, "enquiry.stage", "enquiry", id, { from: enquiry.stage, to: stage });
   revalidatePath(`/enquiries/${id}`);
   revalidatePath("/enquiries");
@@ -241,7 +298,9 @@ export async function markEnquiryLostAction(_: FormState, formData: FormData): P
     body: `Closed as lost: ${reason.label}${detail ? `. ${detail}` : ""}`,
     stageAfter: "LOST",
   });
+  await syncEnquiryFollowUp(enquiry.id);
   await audit(user.id, "enquiry.lost", "enquiry", enquiry.id, { reasonId: reason.id, reason: reason.label, detail });
+  revalidatePath("/my-day");
   revalidatePath(`/enquiries/${enquiry.id}`);
   revalidatePath("/enquiries");
   return { ok: "Closed as lost." };
@@ -259,6 +318,10 @@ export async function mergeEnquiryAction(_: FormState, formData: FormData): Prom
   if (formData.get("confirm") !== "on") return { fieldErrors: { confirm: ["Tick to confirm"] }, error: "Tick the box to confirm the merge." };
   const out = await mergeEnquiries(user, keepId, removeId);
   if (!out.ok) return { error: out.why };
+  // The duplicate's follow-up goes; the survivor's matches its date and owner.
+  await syncEnquiryFollowUp(removeId);
+  await syncEnquiryFollowUp(out.keepId);
+  revalidatePath("/my-day");
   revalidatePath("/enquiries");
   revalidatePath(`/enquiries/${out.keepId}`);
   revalidatePath(`/enquiries/${removeId}`);
@@ -276,7 +339,9 @@ export async function claimEnquiryAction(formData: FormData) {
     { assignedToId: user.id, updatedAt: new Date() },
     { by: user.id, action: "enquiry.assign", where: or(isNull(schema.enquiries.assignedToId), eq(schema.enquiries.assignedToId, enquiry.assignedToId ?? "")) },
   );
+  await syncEnquiryFollowUp(id);
   await audit(user.id, "enquiry.assign", "enquiry", id, { to: user.id });
+  revalidatePath("/my-day");
   revalidatePath(`/enquiries/${id}`);
   revalidatePath("/enquiries");
 }

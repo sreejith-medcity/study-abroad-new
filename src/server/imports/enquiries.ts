@@ -9,6 +9,7 @@ import { branchOwner, branchResolver, emptyResult, lineOf, staffByEmail, type Im
 import { isCounsellor } from "@/lib/permissions";
 import { applyRepeat, newRouteMemo, routeNewEnquiry } from "@/server/enquiry-routing";
 import { ledgerCreated, updateTracked } from "@/server/record-history";
+import { syncEnquiryFollowUps } from "@/server/enquiry-tasks";
 
 export const ENQUIRY_COLUMNS = ["branch", "name", "phone", "email", "city", "source", "interest_country", "interest_pathway", "intake_month", "intake_year", "budget_lakhs", "next_follow_up", "counsellor_email", "notes"] as const;
 export const ENQUIRY_EXAMPLE = ["", "Rahul Nair", "+91 94460 11223", "rahul.nair@example.com", "Pala", "WALK_IN", "Germany", "AUSBILDUNG", "9", "2027", "8", "2026-10-05", "", "Plus two science, 78%. Wants nursing Ausbildung."];
@@ -27,6 +28,9 @@ const SOURCE_ALIASES: Record<string, (typeof schema.enquirySource.enumValues)[nu
  */
 export async function importEnquiries(user: SessionUser, rows: Record<string, string>[], commit: boolean): Promise<ImportResult> {
   const out = emptyResult();
+  // Every enquiry the upload made, filled in or reopened, so each one's
+  // follow-up date becomes a task on its owner's desk at the end.
+  const touched: string[] = [];
   const resolve = await branchResolver(user);
   const seen = new Set<string>();
   type Plan = { line: number; orgId: string; orgName: string; phone: string; fields: Record<string, unknown>; counsellor: string | null };
@@ -112,6 +116,7 @@ export async function importEnquiries(user: SessionUser, rows: Record<string, st
         { kind: "reopen", target: { id: wasLost.id, stage: "LOST", createdAt: wasLost.createdAt, lastContactedAt: wasLost.lastContactedAt }, stageAfter: wasLost.lastContactedAt ? "CONTACTED" : "NEW" },
         { source: (plan.fields.source as (typeof schema.enquirySource.enumValues)[number] | null) ?? "OTHER", actorId: user.id, via: "in a bulk upload", message: plan.fields.notes as string | null, name: plan.fields.name as string | null, email: plan.fields.email as string | null },
       );
+      touched.push(wasLost.id);
       continue;
     }
     if (!current) {
@@ -159,6 +164,7 @@ export async function importEnquiries(user: SessionUser, rows: Record<string, st
     if (out.sample.length < 8) out.sample.push(`Fill in: ${current.name} · ${plan.phone} (${Object.keys(set).join(", ")})`);
     if (!commit) continue;
     await updateTracked("enquiry", current.id, { ...set, updatedAt: new Date() }, { by: user.id, action: "enquiry.bulk_upload" });
+    touched.push(current.id);
     await db.insert(schema.enquiryNotes).values({ enquiryId: current.id, authorId: user.id, body: `Came in again in a bulk upload; filled in ${Object.keys(set).length} blank detail${Object.keys(set).length === 1 ? "" : "s"}. No second enquiry was made.` });
     await audit(user.id, "enquiry.update", "enquiry", current.id, { source: "bulk upload", fields: Object.keys(set) });
   }
@@ -171,6 +177,7 @@ export async function importEnquiries(user: SessionUser, rows: Record<string, st
     await db.insert(schema.auditLogs).values(made.map((m) => ({ actorId: user.id, action: "enquiry.create", entityType: "enquiry", entityId: m.id, meta: { source: "bulk upload" } })));
     // Rows naming nobody go by the routing rules. One notice per person for
     // the whole upload, rather than one per row.
+    touched.push(...made.map((m) => m.id));
     for (const m of made) {
       if (m.assignedToId) continue;
       const picked = await routeNewEnquiry(m, user.id, { memo, notify: false });
@@ -180,5 +187,6 @@ export async function importEnquiries(user: SessionUser, rows: Record<string, st
   for (const [userId, n] of given) {
     await notifyUsers([userId], n === 1 ? "New enquiry assigned to you" : `${n} new enquiries assigned to you`, "From a bulk upload", "/enquiries?stage=OPEN");
   }
+  if (commit) await syncEnquiryFollowUps(touched);
   return out;
 }

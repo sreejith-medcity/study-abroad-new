@@ -1,6 +1,8 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
 import {
+  callFigures,
+  contactLine,
   COUNTED_FIGURES,
   FIGURE_BLANK,
   FIGURE_KEYS,
@@ -93,15 +95,15 @@ test("each box says where its number came from", () => {
 /* ---------------- Which calls count as connected ---------------- */
 
 test("a call is connected when somebody answered and spoke, whatever they said", () => {
-  for (const o of ["REACHED", "WILL_SEND", "WANTS_TIME", "NEEDS_COUNSELLING", "NOT_INTERESTED"] as const) assert.ok(isConnected(o), o);
+  for (const o of ["REACHED", "WILL_SEND", "WANTS_TIME", "NEEDS_COUNSELLING", "NOT_INTERESTED", "ENROLLED_ELSEWHERE"] as const) assert.ok(isConnected(o), o);
 });
 
-test("no answer, a wrong number and an outcome that says nothing are not connected", () => {
-  for (const o of ["NO_ANSWER", "WRONG_NUMBER", "OTHER"] as const) assert.equal(isConnected(o), false, o);
+test("no answer, a phone switched off, a wrong number and an outcome that says nothing are not connected", () => {
+  for (const o of ["NO_ANSWER", "SWITCHED_OFF", "WRONG_NUMBER", "OTHER"] as const) assert.equal(isConnected(o), false, o);
 });
 
 test("every outcome is decided one way or the other, so a new outcome cannot slip through uncounted", () => {
-  const decided = new Set<string>([...CONNECTED_OUTCOMES, "NO_ANSWER", "WRONG_NUMBER", "OTHER"]);
+  const decided = new Set<string>([...CONNECTED_OUTCOMES, "NO_ANSWER", "SWITCHED_OFF", "WRONG_NUMBER", "OTHER"]);
   for (const o of contactOutcome.enumValues) assert.ok(decided.has(o), o);
   assert.equal(decided.size, contactOutcome.enumValues.length);
 });
@@ -358,4 +360,51 @@ test("a flag notice names the person and carries their note", () => {
   const n = flagNotice("Rohit Das", "2026-10-23", "The call at noon was Rohit's, not mine.");
   assert.equal(n.title, "Rohit Das flagged a problem on their day end report");
   assert.equal(n.body, "23 Oct 2026. Rohit Das wrote: The call at noon was Rohit's, not mine.");
+});
+
+/* ---------------- Calls to enquiries count as calls ---------------- */
+
+test("calls to an enquiry and to a student count the same towards calls made and connected calls", () => {
+  // Rows of the one contact history, told apart only by which of the two they
+  // are about. The pre-fill counts them through callFigures.
+  const rows = [
+    { studentId: "s1", enquiryId: null, channel: "CALL", outcome: "REACHED" },
+    { studentId: null, enquiryId: "e1", channel: "CALL", outcome: "NO_ANSWER" },
+    { studentId: null, enquiryId: "e1", channel: "CALL", outcome: "ENROLLED_ELSEWHERE" },
+    { studentId: null, enquiryId: "e2", channel: "CALL", outcome: "SWITCHED_OFF" },
+    { studentId: null, enquiryId: "e2", channel: "CALL", outcome: "WANTS_TIME" },
+    { studentId: null, enquiryId: "e3", channel: "WHATSAPP", outcome: "REACHED" },
+  ];
+  assert.deepEqual(callFigures(rows), { callsMade: 5, connectedCalls: 3 });
+  // Only the enquiry calls: still counted, none dropped for want of a student.
+  assert.deepEqual(callFigures(rows.filter((r) => r.enquiryId)), { callsMade: 4, connectedCalls: 2 });
+  const f = prefillFigures(callFigures(rows));
+  assert.equal(f.callsMade, 5);
+  assert.equal(f.connectedCalls, 3);
+});
+
+test("grouped counts add up as the calls they stand for, and connected never passes calls made", () => {
+  const f = callFigures([
+    { channel: "CALL", outcome: "NO_ANSWER", n: 7 },
+    { channel: "CALL", outcome: "REACHED", n: 3 },
+    { channel: "CALL", outcome: "WRONG_NUMBER", n: 1 },
+    { channel: "VISIT", outcome: "REACHED", n: 4 },
+  ]);
+  assert.deepEqual(f, { callsMade: 11, connectedCalls: 3 });
+  for (const o of contactOutcome.enumValues) {
+    const one = callFigures([{ channel: "CALL", outcome: o }]);
+    assert.ok(one.connectedCalls <= one.callsMade, o);
+    assert.equal(one.callsMade, 1, o);
+  }
+});
+
+test("a day with no calls logged counts 0 calls, not something made up", () => {
+  assert.deepEqual(callFigures([]), { callsMade: 0, connectedCalls: 0 });
+});
+
+test("a conversation reads as a line of the day end report, and says when it was an enquiry", () => {
+  assert.equal(contactLine("CALL", "NO_ANSWER", "Nandana Prakash"), "Call with Nandana Prakash: no answer");
+  assert.equal(contactLine("CALL", "SWITCHED_OFF", "Nandana Prakash", true), "Call with the enquiry Nandana Prakash: switched off");
+  assert.equal(contactLine("WHATSAPP", "WILL_SEND", "Abhijith Menon", true), "WhatsApp with the enquiry Abhijith Menon: will send");
+  assert.equal(contactLine("VISIT", "REACHED", "Sneha"), "Visit with Sneha: reached");
 });

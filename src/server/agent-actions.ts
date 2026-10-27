@@ -6,6 +6,7 @@ import { randomBytes } from "crypto";
 import { and, eq, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
+import { syncEnquiryFollowUp } from "@/server/enquiry-tasks";
 import { hashPassword, requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { ADMIN_ROLES, PARTNER_ROLES } from "@/lib/permissions";
@@ -512,6 +513,7 @@ export async function submitReferralAction(_: FormState, formData: FormData): Pr
   await ledgerCreated(db, "enquiry", [row], user.id, `Referred by ${user.orgName}`);
   // The head office's own rules may name somebody at the desk for referrals.
   await routeNewEnquiry(row, user.id);
+  await syncEnquiryFollowUp(row.id);
   await notifyUsers(await adminIds(), "A sub-agent has referred somebody", `${d.name} · ${d.phone} · from ${user.orgName}`, "/admin/agents?tab=referrals");
   revalidatePath("/referrals");
   return { redirectTo: "/referrals?sent=1" };
@@ -563,6 +565,7 @@ export async function assignReferralAction(_: FormState, formData: FormData): Pr
     body: `Given to ${branch.name} to work.${routed ? ` ${routed.userName} holds it, by the routing rule "${routed.ruleName}".` : ""}`,
     stageAfter: enquiry.stage,
   });
+  await syncEnquiryFollowUp(enquiryId);
   await audit(user.id, "referral.assign", "enquiry", enquiryId, { to: branch.id, owner: owner?.id ?? null, rule: routed?.ruleId ?? null });
   await notifyUsers(await partnerRecipients(branch.id, owner?.id ?? null), "A referral for you to work", `${enquiry.name} · ${enquiry.phone}`, `/enquiries/${enquiryId}`);
   if (enquiry.submittedByOrgId) {

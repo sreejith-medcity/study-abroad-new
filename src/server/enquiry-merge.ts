@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/permissions";
@@ -64,6 +64,16 @@ export async function mergeEnquiries(user: SessionUser, keepId: string, removeId
         .set({ enquiryId: keep.id })
         .where(eq(schema.enquiryNotes.enquiryId, remove.id))
         .returning({ id: schema.enquiryNotes.id });
+      // The calls logged on the duplicate, and the follow-ups finished on it,
+      // are the same person's history and move with the notes. Its open
+      // follow-up goes: the survivor holds the one follow-up from here on.
+      const calls = await tx
+        .update(schema.contactLog)
+        .set({ enquiryId: keep.id })
+        .where(eq(schema.contactLog.enquiryId, remove.id))
+        .returning({ id: schema.contactLog.id });
+      await tx.delete(schema.tasks).where(and(eq(schema.tasks.enquiryId, remove.id), isNull(schema.tasks.doneAt)));
+      await tx.update(schema.tasks).set({ enquiryId: keep.id }).where(eq(schema.tasks.enquiryId, remove.id));
       // An enquiry merged into the duplicate earlier now points at the survivor.
       await updateTrackedMany("enquiry", eq(e.mergedIntoId, remove.id), { mergedIntoId: keep.id }, { by: user.id, action: "enquiry.merge", tx });
       // The CRM id is unique, so it leaves the duplicate before it lands on the survivor.
@@ -130,6 +140,7 @@ export async function mergeEnquiries(user: SessionUser, keepId: string, removeId
           meta: {
             merged: remove.id,
             moved: notes.length,
+            calls: calls.length,
             filled: plan.filled,
             removed: { name: r.name, phone: r.phone, email: r.email, stage: r.stage, orgId: r.orgId, assignedToId: r.assignedToId },
           },

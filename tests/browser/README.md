@@ -40,6 +40,7 @@ on 3200, and run the same suites against both.
 | --- | --- |
 | `dashboards.mjs` | All five role dashboards, the landing page per role, nav labels |
 | `enquiries.mjs` | Capture, follow-up, conversion to a student, org isolation |
+| `calling.mjs` | Calling mode: the queue and its order, the seven outcomes, scope, the branch head's team queue, enquiry contact history, enquiry follow-ups as tasks on My day, the counsellor leaderboard and its CSV, and enquiry calls in the day end report |
 | `money.mjs` | Commission rules and pipeline, wallet, payout request and payment |
 | `phase4.mjs` | Insights, its CSV export, and the learning library audiences |
 | `roles.mjs` | Adding a user with a role and title, and what ops managers and the documentation team can reach |
