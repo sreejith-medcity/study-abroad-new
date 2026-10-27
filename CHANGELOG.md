@@ -5,6 +5,13 @@ version in package.json and adds an entry here and in src/lib/releases.ts (the
 What's new page reads that one). After applying a release, tag it with the
 version so it can be found and rolled back to.
 
+## 1.8.7 (27 October 2026)
+
+- The Degree pathway is now called Study abroad wherever it is shown: filters, the student file, the Teams and Status flows screens, programmes, reports and the applications and programme exports. It covers every level, from diploma and post-basic to Master's and PhD. Stored files and imports are unchanged, and "degree" still works in a bulk upload.
+- Au pair is a pathway of its own: a student, an enquiry, a programme, a team and a routing rule can be put on it, and the filters offer it. It follows a provisional list of steps until its written process guide is added.
+
+On the VPS this release runs `docker compose --profile tools run --build --rm migrate` (migration 0089, the Au pair pathway), then loads `deploy/au-pair-pathway.sql` (its statuses and documents), before the new build.
+
 ## 1.8.6 (27 October 2026)
 
 - A head office admin can move a student to another branch: one student from the Branch section of their file, or every active student of a branch at once from that branch on Partners, which is how a branch made by mistake is emptied before it is closed. The new counsellor is picked from the target branch, or the student is left for its branch head.

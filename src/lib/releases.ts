@@ -12,6 +12,14 @@ export type Release = { version: string; date: string; changes: string[] };
 
 export const RELEASES: Release[] = [
   {
+    version: "1.8.7",
+    date: "2026-10-27",
+    changes: [
+      "The Degree pathway is now called Study abroad wherever it is shown: filters, the student file, the Teams and Status flows screens, programmes, reports and the applications and programme exports. It covers every level, from diploma and post-basic to Master's and PhD. Stored files and imports are unchanged, and \"degree\" still works in a bulk upload.",
+      "Au pair is a pathway of its own: a student, an enquiry, a programme, a team and a routing rule can be put on it, and the filters offer it. It follows a provisional list of steps until its written process guide is added.",
+    ],
+  },
+  {
     version: "1.8.6",
     date: "2026-10-27",
     changes: [
