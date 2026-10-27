@@ -332,8 +332,10 @@ export async function assignStudentAction(formData: FormData): Promise<AssignOut
     return { ok: "Saved." };
   }
 
-  // A team or another branch: the head office admins' call.
-  if (!isAdmin(user)) return { error: "Only the head office admins can give a student to a team or another branch." };
+  // A team or another branch: for whoever may give a student to anybody in
+  // the company (ASSIGN_ANYWHERE), by default the head office admins and the
+  // application team leader.
+  if (!(await can(user, "ASSIGN_ANYWHERE"))) return { error: "You cannot give a student to a team or another branch. The Who may do what screen decides who can." };
 
   if (choice.kind === "team") {
     const team = await db.query.teams.findFirst({ where: eq(schema.teams.id, choice.teamId), columns: { id: true, name: true, active: true } });

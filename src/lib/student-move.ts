@@ -1,4 +1,5 @@
-import { ADMIN_ROLES, STUDENT_WORK_ROLES } from "./permissions";
+import { STUDENT_WORK_ROLES } from "./permissions";
+import { roleCan, type Override } from "./capabilities";
 import type { OrgType } from "./people";
 
 /**
@@ -14,9 +15,13 @@ import type { OrgType } from "./people";
  * move.
  */
 
-/** Who may move a student: the head office admins, never a branch. */
-export function mayMoveStudents(role: string): boolean {
-  return (ADMIN_ROLES as readonly string[]).includes(role);
+/**
+ * Who may move a student to another branch: whoever may give a student to
+ * anybody in the company (ASSIGN_ANYWHERE), by default the head office admins
+ * and the application team leader, never a branch.
+ */
+export function mayMoveStudents(role: string, overrides: Override[] = []): boolean {
+  return roleCan(role, "ASSIGN_ANYWHERE", overrides);
 }
 
 export type MoveTarget = { id: string; name: string; type: OrgType; active: boolean };

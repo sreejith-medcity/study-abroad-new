@@ -157,3 +157,14 @@ describe("what the desk is told", () => {
     assert.match(said, /1 archived student stays at NCLEX RN\./);
   });
 });
+
+describe("who may move a student or give one to anybody in the company", () => {
+  it("is the head office admins and the application team leader by default, never a branch", () => {
+    for (const r of ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "APPLICATION_TEAM_LEADER"]) assert.equal(mayMoveStudents(r), true, r);
+    for (const r of ["PARTNER", "COUNSELLOR", "SENIOR_COUNSELLOR", "DOCUMENTATION", "FINANCE", "MANAGEMENT", "DESK_COUNSELLOR"]) assert.equal(mayMoveStudents(r), false, r);
+  });
+  it("follows the Who may do what screen when it is changed", () => {
+    assert.equal(mayMoveStudents("APPLICATION_TEAM_LEADER", [{ role: "APPLICATION_TEAM_LEADER", capability: "ASSIGN_ANYWHERE", allowed: false }]), false);
+    assert.equal(mayMoveStudents("DESK_COUNSELLOR", [{ role: "DESK_COUNSELLOR", capability: "ASSIGN_ANYWHERE", allowed: true }]), true);
+  });
+});

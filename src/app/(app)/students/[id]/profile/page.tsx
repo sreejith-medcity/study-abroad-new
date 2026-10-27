@@ -103,7 +103,7 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
   const leadsTeam = teamMembers.length > 0 && !!student.team;
   // Which branch the student belongs to is the head office admins' call, and
   // only for a file still in use: an archived one is brought back first.
-  const mayMoveBranch = isAdmin(user) && !student.archived;
+  const mayMoveBranch = (await can(user, "ASSIGN_ANYWHERE")) && !student.archived;
   const moveTargets = mayMoveBranch ? await moveBranchOptions(student.orgId) : [];
   // The same "Assigned to" dropdown as the student list, for the head office:
   // the student's branch and the head office, and for an admin every team and
@@ -112,7 +112,7 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
   const assignHere = staffHere && mayAssign;
   const assignable = assignHere ? await assignableFor([student.orgId], { includeHeadOffice: true }) : [];
   const wider =
-    assignHere && isAdmin(user)
+    assignHere && (await can(user, "ASSIGN_ANYWHERE"))
       ? { teams: await teamsToAssign(), branches: (await moveBranchOptions("")).map((b) => ({ id: b.id, name: b.name, people: b.people })) }
       : null;
 

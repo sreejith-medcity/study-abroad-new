@@ -88,11 +88,12 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
     if (got) got.push(person);
     else branchPeople.set(person.orgId, [person]);
   }
-  // A head office admin can also give a student to a team, or move them to
-  // another branch, from the same dropdown. What that needs is read once for
+  // Whoever may give a student to anybody in the company (the head office
+  // admins and the application team leader, ASSIGN_ANYWHERE) can also give a
+  // student to a team, or move them to another branch, from the same dropdown. What that needs is read once for
   // the page and shared by every row, never per row, and for nobody else.
   const wider =
-    canAssign && isAdmin(user)
+    canAssign && (await can(user, "ASSIGN_ANYWHERE"))
       ? { teams: await teamsToAssign(), branches: (await moveBranchOptions("")).map((b) => ({ id: b.id, name: b.name, people: b.people })) }
       : null;
   // Who shares each of these files, in one query rather than fifty.

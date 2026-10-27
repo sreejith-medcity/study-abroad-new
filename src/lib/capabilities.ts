@@ -32,6 +32,7 @@ export const CAPABILITIES = [
   "REGISTER_STUDENT",
   "COLLECT_FEES",
   "SEE_UNASSIGNED_FILES",
+  "ASSIGN_ANYWHERE",
 ] as const;
 
 export type Capability = (typeof CAPABILITIES)[number];
@@ -76,9 +77,12 @@ export const CAPABILITY_LABEL: Record<Capability, string> = {
   REGISTER_STUDENT: "Register a student",
   COLLECT_FEES: "Bill a student and take their fees",
   SEE_UNASSIGNED_FILES: "See and hand out the files nobody is carrying",
+  ASSIGN_ANYWHERE: "Give a student to anybody in the company",
 };
 
 export const CAPABILITY_MEANS: Record<Capability, string> = {
+  ASSIGN_ANYWHERE:
+    "The Assign list on the students list and the student's file offers every team and every branch, not only the student's own branch and the head office: picking a team member puts the student on that team, and picking somebody at another branch moves the student there with them as counsellor, after a confirmation. The Branch section of the student's file moves a student too. Moving a whole branch's students at once stays on Partners, with the admins.",
   SEE_UNASSIGNED_FILES:
     "Every file a branch has handed to the desk that has no officer on it yet, from every branch: the Unassigned view on the work queue and the applications list, the count on the menu and the dashboard, and opening the student. Giving the file to an officer still needs the right to move files between officers.",
   COLLECT_FEES:
@@ -150,6 +154,10 @@ export const DEFAULTS: Record<Capability, AppRole[]> = {
   // every student can open these files anyway and need nothing more; an
   // ordinary documentation officer works what they are given and gains nothing.
   SEE_UNASSIGNED_FILES: ["SUPER_ADMIN", "APPLICATION_TEAM_LEADER"],
+  // The head office admins had this from 1.8.6 and 1.8.8 as a fixed rule; the
+  // application team leader was given it because the team leader hands
+  // students out across the whole company, not inside one branch.
+  ASSIGN_ANYWHERE: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "APPLICATION_TEAM_LEADER"],
 };
 
 /** A capability nobody may take off a super admin, whatever the matrix says. */

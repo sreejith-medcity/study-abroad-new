@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
-import { ADMIN_ROLES } from "@/lib/permissions";
+import { STAFF_ROLES } from "@/lib/permissions";
+import { can } from "@/server/capabilities";
 import { getStudentForUser } from "@/server/queries";
 import { moveStudents } from "@/server/student-move";
 import type { FormState } from "@/lib/form-state";
@@ -15,7 +16,8 @@ const clean = (v: FormDataEntryValue | null) => String(v ?? "").trim().slice(0, 
  * least of all about a student it would be giving away or taking in.
  */
 export async function moveStudentAction(_: FormState, fd: FormData): Promise<FormState> {
-  const user = await requireUser([...ADMIN_ROLES]);
+  const user = await requireUser([...STAFF_ROLES]);
+  if (!(await can(user, "ASSIGN_ANYWHERE"))) return { error: "You cannot move a student to another branch. The Who may do what screen decides who can." };
   const studentId = clean(fd.get("studentId"));
   const student = await getStudentForUser(user, studentId);
   const said = await moveStudents(user, {
