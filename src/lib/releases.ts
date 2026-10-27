@@ -12,6 +12,15 @@ export type Release = { version: string; date: string; changes: string[] };
 
 export const RELEASES: Release[] = [
   {
+    version: "1.8.2",
+    date: "2026-10-27",
+    changes: [
+      "The students list shows where each student is applying and to what: a Country column with the countries of their applications (or their preferred country, marked Preferred, when they have none yet), and a Programs applied column with how many applications, the first one or two programmes with their university, and how many more, linking to the student's applications. On a laptop the country is shown under the programmes, and Email and Phone share one Contact column so the table fits.",
+      "Whoever sees every student can filter the list by counsellor, or by Unassigned. The filter keeps working with Show more, saved views and the dashboard links, and replaces the branch's Assigned to filter.",
+      "The Country filter finds a student by the countries they have applied to, or by their preference when they have no applications, the same as the column shows.",
+    ],
+  },
+  {
     version: "1.8.1",
     date: "2026-10-27",
     changes: [

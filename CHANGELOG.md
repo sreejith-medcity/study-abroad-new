@@ -5,6 +5,14 @@ version in package.json and adds an entry here and in src/lib/releases.ts (the
 What's new page reads that one). After applying a release, tag it with the
 version so it can be found and rolled back to.
 
+## 1.8.2 (27 October 2026)
+
+- The students list shows where each student is applying and to what: a Country column with the countries of their applications (or their preferred country, marked Preferred, when they have none yet), and a Programs applied column with how many applications, the first one or two programmes with their university, and how many more, linking to the student's applications. On a laptop the country is shown under the programmes, and Email and Phone share one Contact column so the table fits.
+- Whoever sees every student can filter the list by counsellor, or by Unassigned. The filter keeps working with Show more, saved views and the dashboard links, and replaces the branch's Assigned to filter.
+- The Country filter finds a student by the countries they have applied to, or by their preference when they have no applications, the same as the column shows.
+
+Nothing to run on the VPS beyond the new build: no migration and no SQL.
+
 ## 1.8.1 (27 October 2026)
 
 - A person can be moved to another organisation with a new role in one step: from the head office to a branch as its branch head, from a branch to the head office, or between branches and sub-agent firms. The move form offers only the roles that fit the organisation chosen, warns when the branch already has a branch head, and keeps every earlier safeguard: a branch is never left without a head, and its students and open tasks are handed to a colleague or left for the branch head. Someone leaving the head office comes off its teams, service ownership and the officer field on open files. Moving anybody into or out of the head office, or changing their role, needs the right to manage users; only a super admin moves a super admin, and the last one cannot be moved out.
