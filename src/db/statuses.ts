@@ -91,10 +91,53 @@ const NURSING: StatusSeed[] = [
   { code: "DEPLOYED", label: "Deployed", studentLabel: "Started work", studentLabelMl: "ജോലി ആരംഭിച്ചു", group: "SUCCESS", isMilestone: true },
 ];
 
+/*
+ * FSJ and BFD share Medcity's written FSJ / BFD process (src/lib/fsj.ts): one
+ * chain of statuses, one per step or decision, recorded for each of the two
+ * pathways so each keeps its own name on the volunteer start. Codes the
+ * dashboards already count (VISA_FILED, VISA_RECEIVED, PRE_DEPARTURE, JOINED,
+ * HAPPY_CALL) are reused with the FSJ / BFD wording, so a visa here counts as
+ * a visa everywhere. No Malayalam yet: the portal falls back to the English.
+ */
+const fsjChain = (programme: "FSJ" | "BFD"): StatusSeed[] => [
+  // Counsellor department: steps 2 and 3.
+  { code: "REGISTRATION", label: "Registration and agreement", studentLabel: "Registering with us", group: "NEW", sortOrder: 10 },
+  { code: "DOCUMENT_COLLECTION", label: "Document collection and profile verification", studentLabel: "Send us your documents", group: "NEW", sortOrder: 22 },
+  // Documentation department: steps 4 to 7.
+  { code: "DOCUMENT_CROSS_CHECK", label: "With the documentation team: document cross-check", studentLabel: "Our documentation team is checking your documents", group: "IN_PROGRESS", isMilestone: true, sortOrder: 24 },
+  { code: "LANGUAGE_ASSESSMENT", label: "German language assessment", studentLabel: "Your German language assessment", group: "IN_PROGRESS", sortOrder: 30 },
+  { code: "PAYMENT_CHECK", label: "Payment check: registration and application fee", studentLabel: "Checking your fees", group: "IN_PROGRESS", sortOrder: 34 },
+  { code: "APPLICATION_ON_HOLD", label: "Application on hold: application fee pending", studentLabel: "Your application starts once the application fee is paid", group: "HOLD", sortOrder: 36 },
+  { code: "LANGUAGE_IMPROVEMENT", label: "Language improvement classes, then re-assessment", studentLabel: "German improvement classes before your next assessment", group: "IN_PROGRESS", sortOrder: 38 },
+  { code: "INTERVIEW_PREPARATION", label: "Application started: interview preparation", studentLabel: "Preparing you for employer interviews", group: "IN_PROGRESS", isMilestone: true, sortOrder: 40 },
+  // Interview and employer stage: steps 8 to 10.
+  { code: "INTERVIEW_SCHEDULED", label: "Employer interview scheduled", studentLabel: "Your interview with an employer is scheduled", group: "IN_PROGRESS", isMilestone: true, sortOrder: 50 },
+  { code: "INTERVIEW_ATTENDED", label: "Interview attended: awaiting employer feedback", studentLabel: "Waiting for the employer's decision", group: "IN_PROGRESS", sortOrder: 54 },
+  { code: "SECOND_ROUND", label: "Shortlisted: second-round interview", studentLabel: "Shortlisted for a second interview", group: "IN_PROGRESS", isMilestone: true, sortOrder: 56 },
+  { code: "EMPLOYER_CONFIRMED", label: "Employer confirmed: offer letter awaited", studentLabel: "An employer has selected you", group: "OFFER", isMilestone: true, sortOrder: 60 },
+  { code: "OFFER_RECEIVED", label: "Offer letter / contract issued", studentLabel: "Your offer letter has arrived", group: "OFFER", isMilestone: true, sortOrder: 62 },
+  { code: "CONTRACT_SIGNED", label: "Contract signed and returned to the employer", studentLabel: "Contract signed", group: "OFFER", isMilestone: true, sortOrder: 64 },
+  // Visa team: steps 11 to 15.
+  { code: "VFS_SLOT_BOOKING", label: "Visa team: VFS slot booking", studentLabel: "Booking your visa appointment", group: "IN_PROGRESS", sortOrder: 70 },
+  { code: "PRE_VISA_DOCUMENTS", label: "Visa document preparation", studentLabel: "Preparing your visa file", group: "IN_PROGRESS", sortOrder: 75 },
+  { code: "VISA_RESUBMISSION", label: "Visa refused: correcting the file to resubmit", studentLabel: "We are correcting your visa file to submit it again", group: "IN_PROGRESS", sortOrder: 77 },
+  { code: "VISA_FILED", label: "Visa submission at VFS", studentLabel: "Your visa appointment at VFS", group: "IN_PROGRESS", isMilestone: true, sortOrder: 80 },
+  { code: "VISA_PROCESSING", label: "Visa processing", studentLabel: "The embassy is processing your visa", group: "IN_PROGRESS", sortOrder: 85 },
+  { code: "VISA_RECEIVED", label: "Visa approved", studentLabel: "Visa approved", studentLabelMl: "വിസ ലഭിച്ചു", group: "SUCCESS", isMilestone: true, sortOrder: 90 },
+  // Travel desk: steps 16 to 18.
+  { code: "PRE_DEPARTURE", label: "Pre-departure process", studentLabel: "Getting you ready to travel", group: "SUCCESS", isMilestone: true, sortOrder: 95 },
+  { code: "JOINED", label: `Departed: started as ${programme === "FSJ" ? "an FSJ" : "a BFD"} volunteer`, studentLabel: "Started your volunteer service in Germany", group: "SUCCESS", isMilestone: true, sortOrder: 100 },
+  { code: "HAPPY_CALL", label: "Post-arrival follow-up", studentLabel: "Settling in: we stay in touch", group: "SUCCESS", sortOrder: 105 },
+];
+const FSJ = fsjChain("FSJ");
+const BFD = fsjChain("BFD");
+
 export const STATUS_SEED: Record<Pathway, StatusSeed[]> = {
   DEGREE: [...DEGREE.slice(0, 1), COMMON[0], ...DEGREE.slice(1), ...COMMON.slice(1)],
   AUSBILDUNG: [...AUSBILDUNG.slice(0, 1), COMMON[0], ...AUSBILDUNG.slice(1), ...COMMON.slice(1)],
   NURSING: [...NURSING.slice(0, 1), COMMON[0], ...NURSING.slice(1), ...COMMON.slice(1)],
+  FSJ: [...FSJ.slice(0, 1), COMMON[0], ...FSJ.slice(1), ...COMMON.slice(1)],
+  BFD: [...BFD.slice(0, 1), COMMON[0], ...BFD.slice(1), ...COMMON.slice(1)],
 };
 
 export const DOCUMENT_TYPES = [

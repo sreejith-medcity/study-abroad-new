@@ -6,6 +6,7 @@ import { COUNSELLING_ROLES } from "@/lib/permissions";
 import { getSlaDays } from "./dashboard";
 import { lensApps, lensListHref, lensOrg, lensStudents, type Lens } from "./dashboard-lens";
 import { trackerRows } from "./ausbildung";
+import { fsjFigures } from "./fsj";
 
 const {
   applications: a,
@@ -433,7 +434,7 @@ export async function placements(lens: Lens) {
   // registered and nobody had been given yet, so the figure and the list
   // disagreed.
   const scope = { org: lens.org ?? undefined, of: lens.ofPerson ?? undefined };
-  const [aus, nclex] = await Promise.all([trackerRows(lens.user, { tab: "ausbildung", ...scope }), trackerRows(lens.user, { tab: "nclex", ...scope })]);
+  const [aus, nclex, fsj] = await Promise.all([trackerRows(lens.user, { tab: "ausbildung", ...scope }), trackerRows(lens.user, { tab: "nclex", ...scope }), fsjFigures(lens.user, scope)]);
   const dayAgo = Date.now() - 86_400_000;
   const unpaid = (r: (typeof aus)[number]) => !r.charge.any || r.charge.byCurrency.some((b) => b.received < b.owed) || r.charge.unpriced > 0;
   return {
@@ -449,5 +450,7 @@ export async function placements(lens: Lens) {
       opened: nclex.filter((r) => r.nclexOpened).length,
       passed: nclex.filter((r) => r.nclexResult === "PASS").length,
     },
+    // FSJ and BFD, read through their own tracker's rows.
+    fsj,
   };
 }

@@ -16,7 +16,7 @@ export type { FieldChange };
 export type HistoryEntity = "student" | "enquiry" | "application" | "user";
 
 /** How a stored value is read back to a person. */
-type Kind = "text" | "day" | "time" | "bool" | "number" | "month" | "user" | "org" | "status" | "route" | "team" | "lostReason" | "enquiry" | "enum" | "answers" | "passport";
+type Kind = "text" | "day" | "time" | "bool" | "number" | "month" | "user" | "org" | "status" | "route" | "team" | "lostReason" | "enquiry" | "enum" | "answers" | "passport" | "list";
 
 export type FieldDef = {
   label: string;
@@ -51,6 +51,7 @@ const WHY = {
   referral: "Who referred a student decides who is paid for them, so it is not changed from here.",
   merge: "A merge moves the duplicate's history across and closes it, so it is not undone from here.",
   repeat: "This counts the times the person came again, and is kept by the portal as they arrive.",
+  fsj: "FSJ / BFD steps are recorded on the FSJ / BFD tab, which moves the status and tells the next department, so correct it there.",
 } as const;
 
 const PATHWAY = PATHWAY_LABEL;
@@ -183,6 +184,28 @@ export const HISTORY_FIELDS: Record<HistoryEntity, Record<string, FieldDef>> = {
     visaLodgedOn: { label: "Visa lodged on", kind: "day", noRestore: WHY.offer },
     visaDecision: { label: "Visa decision", kind: "enum", values: { GRANTED: "Granted", REFUSED: "Refused" }, noRestore: WHY.offer },
     visaDecisionOn: { label: "Visa decided on", kind: "day", noRestore: WHY.offer },
+    fsjRegistrationFeePaidOn: { label: "FSJ / BFD registration fee paid on", kind: "day", noRestore: WHY.fsj },
+    fsjAgreementSignedOn: { label: "Agreement / declaration signed on", kind: "day", noRestore: WHY.fsj },
+    fsjApplicationFeePaidOn: { label: "FSJ / BFD application fee paid on", kind: "day", noRestore: WHY.fsj },
+    fsjOfferPaymentOn: { label: "Offer-letter stage payment on", kind: "day", noRestore: WHY.fsj },
+    fsjPreVisaPaymentOn: { label: "Pre-visa payment on", kind: "day", noRestore: WHY.fsj },
+    fsjApplicationStartedOn: { label: "FSJ / BFD application started on", kind: "day", noRestore: WHY.fsj },
+    fsjLanguageLevel: { label: "Language level assessed", kind: "text", noRestore: WHY.fsj },
+    fsjLanguageResult: { label: "Language assessment result", kind: "enum", values: { SUFFICIENT: "Sufficient", NOT_SUFFICIENT: "Not sufficient" }, noRestore: WHY.fsj },
+    fsjLanguageAssessedOn: { label: "Language assessed on", kind: "day", noRestore: WHY.fsj },
+    fsjEmployer: { label: "Organisation / employer", kind: "text", noRestore: WHY.fsj },
+    fsjInterviewAt: { label: "Interview at", kind: "time", noRestore: WHY.fsj },
+    fsjInterviewLink: { label: "Interview link", kind: "text", noRestore: WHY.fsj },
+    fsjResponsibilities: { label: "Work responsibilities", kind: "text", noRestore: WHY.fsj },
+    fsjRequirements: { label: "Employer requirements", kind: "text", noRestore: WHY.fsj },
+    fsjFeedback: { label: "Employer feedback", kind: "enum", values: { POSITIVE: "Positive", SECOND_ROUND: "Second round", NOT_SELECTED: "Not selected" }, noRestore: WHY.fsj },
+    fsjOfferOn: { label: "Offer letter issued on", kind: "day", noRestore: WHY.fsj },
+    fsjContractSignedOn: { label: "Contract signed on", kind: "day", noRestore: WHY.fsj },
+    fsjVfsSlotOn: { label: "VFS slot", kind: "day", noRestore: WHY.fsj },
+    fsjVisaReason: { label: "Visa refusal reason", kind: "text", noRestore: WHY.fsj },
+    fsjJoiningOn: { label: "Joining date", kind: "day", noRestore: WHY.fsj },
+    fsjDepartedOn: { label: "Departed on", kind: "day", noRestore: WHY.fsj },
+    fsjDone: { label: "FSJ / BFD checklist ticks", kind: "list", noRestore: WHY.fsj },
   },
   user: {
     name: { label: "Name", kind: "text" },
@@ -309,6 +332,8 @@ export function showValue(entity: HistoryEntity, field: string, value: unknown, 
       const yes = entries.filter(([, a]) => a?.answer === true).length;
       return `${entries.length} answered, ${yes} yes`;
     }
+    case "list":
+      return Array.isArray(value) ? value.map(String).join(", ") : String(value);
     case "number":
     case "text":
     default: {

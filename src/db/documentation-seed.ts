@@ -207,6 +207,66 @@ export const STAGE_REQUIREMENTS: SeedRequirement[] = [
   { stage: "APPLICATION", typeCode: "CREDENTIAL_EVALUATION", pathway: "NURSING", guidance: "CGFNS for NCLEX-RN, or the evaluation the board names." },
 ];
 
+/* ---------- FSJ and BFD ---------- */
+
+/** The document types the FSJ / BFD guide names that no other journey asked for. */
+export const FSJ_DOCUMENT_TYPES = [
+  { code: "EUROPASS_CV", label: "Europass CV", labelMl: null, uploadedBy: "team", sortOrder: 95 },
+  { code: "AADHAAR_CARD", label: "Aadhaar card", labelMl: null, uploadedBy: "partner", sortOrder: 14 },
+  { code: "DRIVING_LICENCE", label: "Driving licence", labelMl: null, uploadedBy: "partner", sortOrder: 19 },
+];
+
+/**
+ * Section 2 of the FSJ / BFD guide, "Required documents", item by item, and
+ * the document types that carry each. The passport, the photograph and the
+ * 10th and 12th marksheets are already asked of every journey, so they are
+ * not repeated as FSJ / BFD rows. All documents must be clear and scanned in
+ * colour, which the guidance says on each row.
+ */
+export const FSJ_SECTION_2: { n: number; item: string; typeCodes: string[] }[] = [
+  { n: 1, item: "Passport (both sides)", typeCodes: ["PASSPORT"] },
+  { n: 2, item: "Academic documents (10th, 12th, degree certificates if graduated)", typeCodes: ["MARKSHEET_10", "MARKSHEET_12", "DEGREE_CERTIFICATE"] },
+  { n: 3, item: "German-translated certificates (10th, 12th and birth certificate)", typeCodes: ["TRANSLATED_CERTIFICATES"] },
+  { n: 4, item: "Birth certificate", typeCodes: ["BIRTH_CERTIFICATE"] },
+  { n: 5, item: "Vaccination certificates (COVID, MMR, chickenpox, Hepatitis A & B)", typeCodes: ["VACCINATION_CERTIFICATE"] },
+  { n: 6, item: "German language proficiency certificate (B1 / B2)", typeCodes: ["GERMAN_CERTIFICATE"] },
+  { n: 7, item: "Europass CV", typeCodes: ["EUROPASS_CV"] },
+  { n: 8, item: "Motivation letter", typeCodes: ["MOTIVATION_LETTER"] },
+  { n: 9, item: "Passport-size photo (white background)", typeCodes: ["PHOTOGRAPH"] },
+  { n: 10, item: "Aadhaar card", typeCodes: ["AADHAAR_CARD"] },
+  { n: 11, item: "Experience certificate", typeCodes: ["WORK_EXPERIENCE_LETTER"] },
+  { n: 12, item: "Police clearance certificate", typeCodes: ["POLICE_CLEARANCE"] },
+  { n: 13, item: "Driving licence", typeCodes: ["DRIVING_LICENCE"] },
+];
+
+const COLOUR = "Clear and scanned in colour.";
+
+/*
+ * The FSJ / BFD rows, one list written once and placed on both pathways. What
+ * the counsellor collects at step 3 lands on Profile, so the hand-over to the
+ * documentation team waits on it; what the documentation team prepares at
+ * step 7 (the Europass CV, the motivation letter, the translations) lands on
+ * Application and is owed by Medcity. The experience certificate and the
+ * driving licence are on the guide's list but not every candidate holds one,
+ * so they are asked for without holding the file up: a point for the head
+ * office to confirm.
+ */
+const FSJ_ROWS: Omit<SeedRequirement, "pathway">[] = [
+  { stage: "PROFILE", typeCode: "DEGREE_CERTIFICATE", required: false, guidance: `Degree certificates, if graduated. ${COLOUR}` },
+  { stage: "PROFILE", typeCode: "BIRTH_CERTIFICATE", guidance: COLOUR },
+  { stage: "PROFILE", typeCode: "VACCINATION_CERTIFICATE", guidance: `COVID, MMR, chickenpox, Hepatitis A and B. ${COLOUR}` },
+  { stage: "PROFILE", typeCode: "GERMAN_CERTIFICATE", guidance: `German language proficiency certificate, B1 / B2. ${COLOUR}` },
+  { stage: "PROFILE", typeCode: "AADHAAR_CARD", guidance: COLOUR },
+  { stage: "PROFILE", typeCode: "POLICE_CLEARANCE", guidance: COLOUR },
+  { stage: "PROFILE", typeCode: "WORK_EXPERIENCE_LETTER", required: false, guidance: `The experience certificate, where the candidate has one. ${COLOUR}` },
+  { stage: "PROFILE", typeCode: "DRIVING_LICENCE", required: false, guidance: `Where the candidate holds one. ${COLOUR}` },
+  { stage: "APPLICATION", typeCode: "TRANSLATED_CERTIFICATES", owedBy: "MEDCITY", guidance: "German translation of the 10th, 12th and birth certificate, completed by the documentation team (step 7), with attestation where required." },
+  { stage: "APPLICATION", typeCode: "EUROPASS_CV", owedBy: "MEDCITY", guidance: "Prepared by the documentation team at interview preparation (step 7), with the German / English CV." },
+  { stage: "APPLICATION", typeCode: "MOTIVATION_LETTER", owedBy: "MEDCITY", guidance: "Prepared by the documentation team at interview preparation (step 7)." },
+];
+
+export const FSJ_REQUIREMENTS: SeedRequirement[] = (["FSJ", "BFD"] as const).flatMap((pathway) => FSJ_ROWS.map((r) => ({ ...r, pathway })));
+
 /** The reasons a document goes back. The words here are the words the student reads. */
 export const REJECTION_REASONS = [
   { code: "not_clear", label: "Not clear enough to read", labelMl: "വായിക്കാൻ വ്യക്തമല്ല" },

@@ -167,6 +167,11 @@ export async function dashboardWorkbook(lens: Lens) {
         ["NCLEX-RN (USA)", "Nursing students", placed.nclex.students],
         ["NCLEX-RN (USA)", "On the NCLEX process", placed.nclex.opened],
         ["NCLEX-RN (USA)", "Passed", placed.nclex.passed],
+        ["FSJ / BFD", "Students", placed.fsj.students],
+        ["FSJ / BFD", "Language assessment", placed.fsj.language],
+        ["FSJ / BFD", "On hold: fee pending", placed.fsj.onHold],
+        ["FSJ / BFD", "Interviews in hand", placed.fsj.interview],
+        ["FSJ / BFD", "With the visa team", placed.fsj.visa],
       ],
       [18, 26, 12],
     );

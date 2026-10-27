@@ -197,6 +197,11 @@ const en = {
   ausbildungStep16: "Getting you ready to travel",
   ausbildungStep18: "Flying to Germany and starting your training",
   ausbildungStep19: "Settling in: we call to check you are doing well",
+  // The FSJ / BFD journey card on the portal home. The step lines themselves
+  // are in src/lib/fsj.ts (FSJ_STUDENT_STEP), in English until translated.
+  fsjJourney: "Your FSJ / BFD journey",
+  fsjJourneyNote: "Volunteer service in Germany, step by step. Your counsellor and our teams move this along with you.",
+  fsjStepOf: "Step",
 } as const;
 
 /**
@@ -248,7 +253,11 @@ type Untranslated =
   | "milestoneEightyWhen"
   | "milestoneFull"
   | "milestoneFullWhen"
-  | `ausbildungStep${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 18 | 19}`;
+  | `ausbildungStep${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 18 | 19}`
+  // The FSJ / BFD journey card, shown in English until translated.
+  | "fsjJourney"
+  | "fsjJourneyNote"
+  | "fsjStepOf";
 
 const ml: Record<Exclude<keyof typeof en, Untranslated>, string> = {
   portal: "വിദ്യാർഥി പോർട്ടൽ",

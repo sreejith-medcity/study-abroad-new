@@ -155,8 +155,8 @@ export default async function Executive({ lens, sp }: { lens: Lens; sp: Record<s
             </Card>
           )}
           <Card>
-            <CardHeader title="Placements" subtitle="Ausbildung and NCLEX-RN, each figure opening the placement tracker" />
-            <Placements ausbildung={placed.ausbildung} nclex={placed.nclex} query={lens.org ? `branch=${lens.org}` : ""} />
+            <CardHeader title="Placements" subtitle="Ausbildung, NCLEX-RN and FSJ / BFD, each figure opening its tracker" />
+            <Placements ausbildung={placed.ausbildung} nclex={placed.nclex} fsj={placed.fsj} query={lens.org ? `branch=${lens.org}` : ""} />
           </Card>
           <Card>
             <CardHeader title="Where students want to go" subtitle="Preferred country, as registered" />

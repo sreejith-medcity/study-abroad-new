@@ -8,6 +8,8 @@ import { datesAhead } from "@/lib/family";
 import { pickAusbildungApplication } from "@/lib/ausbildung-journey";
 import { DatesAhead, JourneyRail } from "@/components/journey-rail";
 import { AusbildungJourney } from "@/components/ausbildung-journey";
+import { FsjJourney } from "@/components/fsj-journey";
+import { pickFsjApplication } from "@/lib/fsj";
 import { Card, CardHeader, Chip, EmptyState, StatusBadge } from "@/components/ui";
 import { IconApplications, IconCheck, IconClock, IconDoc } from "@/components/icons";
 
@@ -20,6 +22,8 @@ export default async function PortalHome() {
   // rule so the student and the counsellor read the same file. Its German
   // levels, mentor and payments are only fetched when there is one.
   const ausbildung = pickAusbildungApplication(apps);
+  // The FSJ / BFD round, chosen by the same rule the staff tab uses.
+  const fsj = pickFsjApplication(apps);
   const [timeline, docs, shortlist, checklist, journey] = await Promise.all([
     studentTimeline(apps.map((a) => a.id), locale),
     studentDocuments(student.id, [...new Set(apps.flatMap((a) => a.requiredDocs ?? []))], locale),
@@ -67,6 +71,15 @@ export default async function PortalHome() {
       </div>
 
       <JourneyRail current={student.journeyStage} locale={locale} />
+
+      {fsj && (
+        <FsjJourney
+          locale={locale}
+          programme={fsj.pathway}
+          application={{ statusCode: fsj.statusCode, statusLabel: fsj.statusLabel }}
+          counsellor={student.assignedTo ? { name: student.assignedTo.name, phone: student.assignedTo.phone } : null}
+        />
+      )}
 
       {ausbildung && journey && (
         <AusbildungJourney

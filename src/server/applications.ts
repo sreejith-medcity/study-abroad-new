@@ -7,8 +7,9 @@ import { fullName, intakeLabel } from "@/lib/format";
 import { audit } from "@/lib/audit";
 import { documentationIds, notifyUsers, partnerRecipients } from "./notify";
 import { sendWhatsApp } from "./whatsapp";
-import { isAdmin, isDocumentationTeam } from "@/lib/permissions";
+import { isAdmin, isDocumentationTeam, isStaff } from "@/lib/permissions";
 import { handedToDeskByStatus } from "@/lib/ausbildung";
+import { feeGate, feeGateRefusal, fsjPastBranch, isFsjPathway, needsFees } from "@/lib/fsj";
 import { EARNING_CODES, accrueCommission } from "./commission";
 import { sendStatusChange } from "@/server/crm-out";
 import { updateTracked } from "@/server/record-history";
@@ -37,12 +38,15 @@ export async function changeStatus(
   applicationId: string,
   toStatusId: string,
   reason?: string,
-  opts: { viaVendorUpdate?: boolean; viaMentor?: boolean } = {},
+  opts: { viaVendorUpdate?: boolean; viaMentor?: boolean; viaFsj?: boolean } = {},
 ) {
   // The documentation desk also moves an Ausbildung file to "Mentor assigned"
   // when it names the mentor: the guide gives that step to the desk, and the
   // mentor field is the one place it is recorded.
-  const allowed = isAdmin(user) || (isDocumentationTeam(user) && (opts.viaVendorUpdate === true || opts.viaMentor === true));
+  // An FSJ / BFD step recorded on the student's FSJ tab moves the status as
+  // part of it, by whichever department owns that step; the step's own action
+  // has already checked who may record it (mayDo in src/lib/fsj.ts).
+  const allowed = isAdmin(user) || (isDocumentationTeam(user) && (opts.viaVendorUpdate === true || opts.viaMentor === true)) || opts.viaFsj === true;
   if (!allowed) throw new StatusChangeError("Only the Medcity Overseas team can change status.");
 
   const app = await db.query.applications.findFirst({
@@ -60,7 +64,16 @@ export async function changeStatus(
   // An Ausbildung file moved to the mentor's step or past it is with the
   // documentation desk, whoever moved it, so it is handed over here if the
   // branch never pressed the button: the desk can only open a handed-over file.
-  const handsOver = app.program.pathway === "AUSBILDUNG" && !app.handedOverAt && handedToDeskByStatus(to.code);
+  const fsj = isFsjPathway(app.program.pathway);
+  const handsOver = !app.handedOverAt && ((app.program.pathway === "AUSBILDUNG" && handedToDeskByStatus(to.code)) || (fsj && fsjPastBranch(to.code)));
+
+  // The FSJ / BFD fee gate (step 6 of that guide): the application does not
+  // start, from any screen, until the registration and application fees are
+  // marked paid.
+  if (fsj && needsFees(to.code)) {
+    const gate = feeGate({ registrationFeePaidOn: app.fsjRegistrationFeePaidOn, applicationFeePaidOn: app.fsjApplicationFeePaidOn });
+    if (!gate.clear) throw new StatusChangeError(feeGateRefusal(gate.missing));
+  }
 
   await db.transaction(async (tx) => {
     const now = new Date();
@@ -71,7 +84,9 @@ export async function changeStatus(
         statusId: to.id,
         statusChangedAt: now,
         updatedAt: now,
-        officerId: app.officerId ?? user.id,
+        // The first Medcity Overseas person to move the file becomes its
+        // officer. A branch recording an FSJ / BFD step of its own is not one.
+        officerId: app.officerId ?? (isStaff(user) ? user.id : null),
         ...(handsOver ? { handedOverAt: now, handedOverById: user.id } : {}),
       },
       { by: user.id, action: "application.status", tx },
@@ -102,7 +117,8 @@ export async function changeStatus(
   await audit(user.id, "application.status", "application", app.id, { from: app.status.code, to: to.code, reason });
   if (handsOver) {
     await audit(user.id, "application.handover", "application", app.id, { via: "status", to: to.code });
-    await tellDeskAusbildungArrived({ studentId: app.studentId, student: fullName(app.student), branch: app.orgId, because: `moved to ${to.label}` });
+    if (fsj) await tellDeskFsjArrived({ studentId: app.studentId, student: fullName(app.student), branch: app.orgId, because: `moved to ${to.label}` });
+    else await tellDeskAusbildungArrived({ studentId: app.studentId, student: fullName(app.student), branch: app.orgId, because: `moved to ${to.label}` });
   }
   await sendStatusChange(app.id, {
     ackNo: app.ackNo,
@@ -154,6 +170,21 @@ export async function tellDeskAusbildungArrived(args: { studentId: string; stude
     `${args.student}: Ausbildung file handed to the documentation desk`,
     `From ${org?.name ?? "the branch"}, ${args.because}. Name the mentor on the Ausbildung tab.`,
     `/students/${args.studentId}/ausbildung`,
+  );
+}
+
+/**
+ * Tells the documentation team that an FSJ / BFD file has reached it: the
+ * branch's hand-over at the end of document collection (step 3), or a status
+ * moved to the cross-check or later. The link goes to the FSJ / BFD tab.
+ */
+export async function tellDeskFsjArrived(args: { studentId: string; student: string; branch: string; because: string }) {
+  const org = await db.query.organizations.findFirst({ where: eq(schema.organizations.id, args.branch), columns: { name: true } });
+  await notifyUsers(
+    await documentationIds(),
+    `${args.student}: FSJ / BFD file handed to the documentation team`,
+    `From ${org?.name ?? "the branch"}, ${args.because}. The document cross-check (step 4) is next.`,
+    `/students/${args.studentId}/fsj`,
   );
 }
 

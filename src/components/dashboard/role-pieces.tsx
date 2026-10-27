@@ -632,14 +632,18 @@ export function ageText(days: number) {
 export function Placements({
   ausbildung,
   nclex,
+  fsj,
   query,
 }: {
   ausbildung: { students: number; interview: number; contract: number; german: number; unpaid: number };
   nclex: { students: number; opened: number; passed: number };
+  /** FSJ and BFD, drawn only where there are any, so a board without them reads as before. */
+  fsj?: { students: number; language: number; onHold: number; interview: number; visa: number };
   /** The branch or counsellor the tracker should open on, as an address query. */
   query: string;
 }) {
   const href = (extra: string) => `/ausbildung?${[extra, query].filter(Boolean).join("&")}`;
+  const fsjHref = (extra: string) => `/fsj?${[extra, query].filter(Boolean).join("&")}`;
   const row = (title: string, items: { slug: string; label: string; value: number; href: string; tone?: "warn" | "good" | "stop" }[]) => (
     <div>
       <p className="mb-2 text-3xs font-semibold uppercase tracking-wider text-muted">{title}</p>
@@ -675,6 +679,14 @@ export function Placements({
         { slug: "nclex-opened", label: "On the NCLEX process", value: nclex.opened, href: href("tab=nclex") },
         { slug: "nclex-passed", label: "Passed", value: nclex.passed, href: href("tab=nclex"), tone: "good" },
       ])}
+      {fsj && fsj.students > 0 &&
+        row("FSJ / BFD", [
+          { slug: "fsj-students", label: "Students", value: fsj.students, href: fsjHref("") },
+          { slug: "fsj-language", label: "Language assessment", value: fsj.language, href: fsjHref("step=5"), tone: "warn" },
+          { slug: "fsj-on-hold", label: "On hold: fee pending", value: fsj.onHold, href: fsjHref("hold=1"), tone: "stop" },
+          { slug: "fsj-interview", label: "Interviews in hand", value: fsj.interview, href: fsjHref("dept=INTERVIEW") },
+          { slug: "fsj-visa", label: "With the visa team", value: fsj.visa, href: fsjHref("dept=VISA"), tone: "good" },
+        ])}
     </div>
   );
 }

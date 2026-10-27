@@ -4,6 +4,7 @@ import { BACKGROUND_QUESTIONS } from "../lib/background";
 import { branchCodeFrom, formatStudentId } from "../lib/medcity-id";
 import { AGENT_CONSENT } from "../lib/agents";
 import { AUSBILDUNG_CONTACT_AREA, AUSBILDUNG_TEAM } from "../lib/ausbildung";
+import { FSJ_CONTACT_AREA, FSJ_TEAM } from "../lib/fsj";
 import { STAFF_GUIDES, guideHref } from "../lib/staff-guides";
 import { LIVING_FUNDS } from "./living-funds";
 import { mkdir, writeFile } from "fs/promises";
@@ -14,7 +15,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
 import { DOCUMENT_TYPES, STATUS_SEED } from "./statuses";
-import { DOCUMENTATION_TYPES, REJECTION_REASONS, STAGE_REQUIREMENTS } from "./documentation-seed";
+import { DOCUMENTATION_TYPES, FSJ_DOCUMENT_TYPES, FSJ_REQUIREMENTS, REJECTION_REASONS, STAGE_REQUIREMENTS } from "./documentation-seed";
 import { syncChecklist } from "./documentation-sync";
 import { PARTNER_ROLES } from "@/lib/permissions";
 
@@ -89,7 +90,7 @@ async function main() {
       .returning();
     for (const r of rows) statusIds[`${pw}.${r.code}`] = r.id;
   }
-  await db.insert(schema.documentTypes).values([...DOCUMENT_TYPES, ...DOCUMENTATION_TYPES]);
+  await db.insert(schema.documentTypes).values([...DOCUMENT_TYPES, ...DOCUMENTATION_TYPES, ...FSJ_DOCUMENT_TYPES]);
   await db.insert(schema.rejectionReasons).values(REJECTION_REASONS.map((r, i) => ({ ...r, sortOrder: (i + 1) * 10 })));
 
   // Catalogue
@@ -147,7 +148,7 @@ async function main() {
 
   // The nine stage lists, and what each destination adds on top of them.
   await db.insert(schema.documentRequirements).values(
-    STAGE_REQUIREMENTS.map((r, i) => ({
+    [...STAGE_REQUIREMENTS, ...FSJ_REQUIREMENTS].map((r, i) => ({
       stage: r.stage,
       typeCode: r.typeCode,
       source: r.country ? ("DESTINATION" as const) : ("ALWAYS" as const),
@@ -168,6 +169,8 @@ async function main() {
     // The Ausbildung hand-over addresses are the real ones from the written
     // process, not samples: the tracker points the desk at them.
     ...AUSBILDUNG_TEAM.map((t) => ({ area: AUSBILDUNG_CONTACT_AREA, ...t })),
+    // The FSJ / BFD registration addresses, from that guide's email matrix.
+    ...FSJ_TEAM.map((t) => ({ area: FSJ_CONTACT_AREA, ...t })),
   ]);
   await db.insert(schema.quickLinks).values([
     { label: "UK Student visa", url: "https://www.gov.uk/student-visa", note: "UKVI's own guidance", sortOrder: 10 },

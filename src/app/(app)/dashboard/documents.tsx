@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { overTurnaroundCount } from "@/server/ausbildung";
+import { fsjTrackerRows } from "@/server/fsj";
 import { deskPool, deskStanding } from "@/server/documentation";
 import { documentBoard, documentFigures, documentsToCome } from "@/server/dashboard-work";
 import type { Lens } from "@/server/dashboard-lens";
@@ -22,7 +23,16 @@ import { Controls, ViewingAsNote, firstName, partOfDay } from "./controls";
  */
 export default async function Documents({ lens }: { lens: Lens }) {
   const { user } = lens;
-  const [f, board, owed, standing, pool, overTat] = await Promise.all([documentFigures(lens), documentBoard(lens), documentsToCome(lens), deskStanding(), deskPool(), overTurnaroundCount(user)]);
+  const [f, board, owed, standing, pool, overTat, fsjDesk] = await Promise.all([
+    documentFigures(lens),
+    documentBoard(lens),
+    documentsToCome(lens),
+    deskStanding(),
+    deskPool(),
+    overTurnaroundCount(user),
+    // The FSJ / BFD files whose current step the documentation department owns.
+    fsjTrackerRows(user, { dept: "DOCUMENTATION" }, 1000).then((rows) => rows.length),
+  ]);
 
   return (
     <>
@@ -54,6 +64,7 @@ export default async function Documents({ lens }: { lens: Lens }) {
           // The Ausbildung files sitting past their step's turnaround, only
           // while there are any: a desk with none late has nothing to open.
           ...(overTat > 0 ? [{ slug: "over-turnaround", label: "Ausbildung over turnaround", value: overTat, note: "against the written process", tone: "warn" as const, href: "/ausbildung?show=over" }] : []),
+          ...(fsjDesk > 0 ? [{ slug: "fsj-documentation", label: "FSJ / BFD with documentation", value: fsjDesk, note: "steps 4 to 7", tone: "info" as const, href: "/fsj?dept=DOCUMENTATION" }] : []),
         ]}
       />
 

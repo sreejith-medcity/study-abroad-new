@@ -220,12 +220,13 @@ export default async function Pipeline({ lens }: { lens: Lens }) {
 
       {/* Placement work, where the branch or the counsellor has any. A board of
           noughts for somebody who never places anybody would be noise. */}
-      {placed.ausbildung.students + placed.nclex.students > 0 && (
+      {placed.ausbildung.students + placed.nclex.students + placed.fsj.students > 0 && (
         <Card className="mt-5">
-          <CardHeader title="Placements" subtitle="Ausbildung and NCLEX-RN, each figure opening the placement tracker" />
+          <CardHeader title="Placements" subtitle="Ausbildung, NCLEX-RN and FSJ / BFD, each figure opening its tracker" />
           <Placements
             ausbildung={placed.ausbildung}
             nclex={placed.nclex}
+            fsj={placed.fsj}
             // The same "of" the figures were counted with (see placements in
             // server/dashboard-work.ts), so the tracker opens on the same
             // students. The counsellor picker's "who" would narrow to the

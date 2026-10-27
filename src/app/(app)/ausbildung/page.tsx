@@ -96,6 +96,10 @@ export default async function AusbildungTrackerPage({ searchParams }: { searchPa
             {label}
           </Link>
         ))}
+        {/* FSJ and BFD have their own written process and their own tracker. */}
+        <Link href="/fsj" className="rounded-full border border-line-strong px-3.5 py-1.5 text-sm font-medium text-ink-soft hover:bg-surface-2" data-fsj-tracker-link>
+          FSJ / BFD
+        </Link>
         {tab === "service" && (
           <span className="text-xs text-muted">
             {charging.length

@@ -24,6 +24,7 @@ import { offerVisa, saveOfferVisa } from "@/server/offer-visa";
 import { saveUpload, UploadError } from "@/server/storage";
 import { sendWhatsApp } from "@/server/whatsapp";
 import { updateTracked } from "@/server/record-history";
+import { isFsjPathway } from "@/lib/fsj";
 
 import type { FormState } from "@/lib/form-state";
 export type { FormState };
@@ -83,7 +84,11 @@ export async function createApplicationAction(_: FormState, formData: FormData):
   // missing rather than being a bare error, and an admin may let it through with
   // a reason, which is logged on the file.
   const settings = await getSettings();
-  const checklist = settings.holdApplicationsOnDocuments ? await studentChecklist(student.id) : [];
+  // FSJ and BFD are the exception: their written process opens the application
+  // at registration (step 2) and collects the documents after it (step 3), and
+  // the hand-over to the documentation team is gated on the same profile
+  // documents instead (see src/server/fsj-actions.ts).
+  const checklist = settings.holdApplicationsOnDocuments && !isFsjPathway(program.pathway) ? await studentChecklist(student.id) : [];
   if (checklist.length) {
     const ctx = await studentContext(student.id);
     const profile = stageGate(checklist, "PROFILE", ctx.courseStart);

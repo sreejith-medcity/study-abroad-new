@@ -14,6 +14,7 @@ import { commissionVisible } from "@/server/commission-visibility";
 import { assignStudentIdAction } from "@/server/id-actions";
 import { aimLabel } from "@/lib/aims";
 import { showsAusbildungTab } from "@/server/ausbildung";
+import { showsFsjTab } from "@/server/fsj";
 
 
 export default async function StudentLayout({ children, params }: { children: React.ReactNode; params: Promise<{ id: string }> }) {
@@ -46,6 +47,8 @@ export default async function StudentLayout({ children, params }: { children: Re
   // Ausbildung, or a destination that collects a service charge: the file
   // gets a tab for German, the Ausbildung dates and the service charge.
   const extra = await showsAusbildungTab(id);
+  // FSJ or BFD: the file gets a tab for that written process.
+  const fsjTab = await showsFsjTab(id);
   // The student's preferred destination is stored by name; search filters by code.
   const preferred = student.preferredCountry
     ? await db.query.countries.findFirst({ where: ilike(schema.countries.name, student.preferredCountry.trim()) })
@@ -110,6 +113,7 @@ export default async function StudentLayout({ children, params }: { children: Re
                 ...(extra.ausbildung || extra.charging || extra.nursing
                   ? [{ href: `/students/${id}/ausbildung`, label: extra.ausbildung ? "Ausbildung" : extra.nursing ? "NCLEX-RN" : "Service charge", done: true }]
                   : []),
+                ...(fsjTab ? [{ href: `/students/${id}/fsj`, label: "FSJ / BFD", done: true }] : []),
               ]}
             />
           </div>
