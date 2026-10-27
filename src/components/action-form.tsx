@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, startTransition, useActionState, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Alert, Button, cn } from "./ui";
 import { toast } from "./toast";
@@ -121,6 +122,13 @@ export function ActionForm({
     <ErrorsContext.Provider value={complaining ? state.fieldErrors ?? {} : {}}>
       <form ref={ref} onSubmit={onSubmit} onInput={noteEdit} onChange={noteEdit} className={cn("space-y-3", className)} noValidate>
         {(refused || (state.error && complaining)) && <Alert tone="bad">{refused ?? state.error}</Alert>}
+        {!refused && state.error && complaining && state.link && (
+          <p>
+            <Link href={state.link.href} className="text-sm font-medium text-brand-600 hover:underline" data-form-link>
+              {state.link.label}
+            </Link>
+          </p>
+        )}
         {state.ok && state.keep && !dismissed && <KeepAlert message={state.ok} onDismiss={() => setDismissed(true)} />}
         {children}
         {!hideSubmit && (

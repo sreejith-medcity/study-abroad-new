@@ -2,14 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { randomBytes } from "crypto";
-import { and, count, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, count, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { hashPassword, requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { departmentChoice } from "@/lib/departments";
 import type { FormState } from "@/lib/form-state";
-import { emailProblem, normalizeEmail } from "@/lib/people";
+import { emailProblem, emailTakenMessage, normalizeEmail } from "@/lib/people";
+import { emailHolder } from "@/server/email-holder";
 import { BRANCH_COUNSELLOR_ROLES, PARTNER_ROLES } from "@/lib/permissions";
 import { seatFree } from "@/lib/seats";
 import { notifyUsers } from "@/server/notify";
@@ -35,13 +36,17 @@ const newCounsellor = z.object({
 /** Postgres refusing a row because another already holds the same unique value. */
 const uniqueViolation = (e: unknown) => (e as { code?: string }).code === "23505" || (e as { cause?: { code?: string } }).cause?.code === "23505";
 
-/** Somebody else already signing in with this address, in any case. */
-async function emailTaken(email: string, exceptUserId?: string) {
-  const row = await db.query.users.findFirst({
-    where: and(sql`lower(${schema.users.email}) = ${email}`, exceptUserId ? ne(schema.users.id, exceptUserId) : undefined),
-    columns: { id: true },
-  });
-  return !!row;
+/**
+ * Somebody else already signing in with this address, in any case, as the
+ * refusal to show a branch head: who and where for one of their own people,
+ * and for anybody else only that the head office can move them. Null when
+ * the address is free.
+ */
+async function takenFor(owner: { orgId: string }, email: string, exceptUserId?: string): Promise<FormState | null> {
+  const holder = await emailHolder(email, exceptUserId);
+  if (!holder) return null;
+  const said = emailTakenMessage(holder, { orgId: owner.orgId, seesEveryOrg: false });
+  return { fieldErrors: { email: ["Someone already signs in with this email"] }, error: said.text };
 }
 
 /** Adds a counsellor; a sub-agent within its seats, a branch without a limit. The one-time password is shown once and must be changed at first sign in. */
@@ -57,7 +62,8 @@ export async function addCounsellorAction(_: FormState, fd: FormData): Promise<F
     .from(schema.users)
     .where(and(eq(schema.users.orgId, org.id), eq(schema.users.active, true), inArray(schema.users.role, [...PARTNER_ROLES])));
   if (!seatFree(org, n)) return { error: `All ${org.counsellorSeats} seats for your tier are in use. Switch someone off, or ask the Overseas team about a higher tier.` };
-  if (await emailTaken(d.email)) return { fieldErrors: { email: ["Someone already signs in with this email"] }, error: "Check the highlighted fields." };
+  const taken = await takenFor(owner, d.email);
+  if (taken) return taken;
   const dept = departmentChoice(d.department, departments(await getSettings()));
   if (!dept.ok) return { fieldErrors: { department: [dept.error] }, error: "Check the highlighted fields." };
   const password = tempPassword();
@@ -139,9 +145,8 @@ export async function editMemberAction(_: FormState, fd: FormData): Promise<Form
   const email = normalizeEmail(d.email);
   const problem = emailProblem(email);
   if (problem) return { fieldErrors: { email: [problem] }, error: "Check the highlighted fields." };
-  if (email !== target.email.toLowerCase() && (await emailTaken(email, target.id))) {
-    return { fieldErrors: { email: ["Someone already signs in with this email"] }, error: "Someone already signs in with that email." };
-  }
+  const taken = email !== target.email.toLowerCase() ? await takenFor(owner, email, target.id) : null;
+  if (taken) return taken;
   const dept = departmentChoice(d.department, departments(await getSettings()), target.department);
   if (!dept.ok) return { fieldErrors: { department: [dept.error] }, error: "Check the highlighted fields." };
 
@@ -172,7 +177,7 @@ export async function editMemberAction(_: FormState, fd: FormData): Promise<Form
   } catch (e) {
     // Somebody took the address between the check above and this write. The
     // same answer as the check gives, rather than a dead screen.
-    if (uniqueViolation(e)) return { fieldErrors: { email: ["Someone already signs in with this email"] }, error: "Someone already signs in with that email." };
+    if (uniqueViolation(e)) return (await takenFor(owner, email, target.id)) ?? { fieldErrors: { email: ["Someone already signs in with this email"] }, error: "Someone already signs in with that email." };
     throw e;
   }
   await audit(owner.id, "team.edit", "user", target.id, { email: target.email, changes });

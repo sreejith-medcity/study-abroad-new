@@ -166,13 +166,13 @@ async function findRow(who) {
 }
 let row = await findRow(OLD_EMAIL);
 check((await row.count()) === 1, "the person is listed with their email");
-check((await row.locator("[data-edit-person]").count()) === 1 && (await row.locator("[data-move-person]").count()) === 1, "the row offers Edit details and Move to another branch");
+check((await row.locator("[data-edit-person]").count()) === 1 && (await row.locator("[data-move-person]").count()) === 1, "the row offers Edit details and Move to another organisation");
 
 // A taken email is refused, in any case.
 await row.locator("[data-edit-person] summary").click();
 await row.locator(`#email-${PERSON}`).fill("Kottayam@Medcity.Test");
 await row.getByRole("button", { name: "Save details" }).click();
-check(await row.getByText("Somebody else already signs in with that email.").waitFor({ timeout: 10000 }).then(() => true, () => false), "edit: an email somebody else signs in with is refused, whatever its case");
+check(await row.getByText(/That email already belongs to .+, Branch head at Medcity Kottayam\./).waitFor({ timeout: 10000 }).then(() => true, () => false), "edit: an email somebody else signs in with is refused, whatever its case");
 check(sql(`select email from users where id = '${PERSON}'`) === OLD_EMAIL, "edit: and nothing was saved");
 
 // Name and email change together; the account keeps its id and its students.
@@ -221,7 +221,12 @@ check((await page.locator("[id^='org-']").count()) === orgCount, "department: ev
 row = await findRow(NEW_EMAIL);
 await row.locator("[data-move-person] summary").click();
 const targets = await row.locator('select[name="toOrgId"] option').allInnerTexts();
-check(targets.some((t) => /Medcity Kochi/.test(t)) && !targets.some((t) => /Overseas Corporation|Horizon/.test(t)), `move: only organisations a branch counsellor fits are offered (${targets.join(", ")})`);
+// A super admin can change the role in the same step, so every other open
+// organisation is offered, and the role list is only what fits the one picked.
+check(targets.some((t) => /Medcity Kochi/.test(t)) && targets.some((t) => /head office/.test(t)), `move: every other open organisation is offered (${targets.join(", ")})`);
+await row.locator('select[name="toOrgId"]').selectOption(kochi);
+const kochiRoles = await row.locator('select[name="role"] option').allInnerTexts();
+check(kochiRoles.some((r) => /Counsellor \(now\)/.test(r)) && !kochiRoles.some((r) => /Overseas|Sub-agent/.test(r)), `move: only roles a branch takes are offered, starting on theirs (${kochiRoles.join(", ")})`);
 check((await row.locator("[data-move-students]").getAttribute("data-move-students")) === "2", "move: the form says two students are assigned to them at Kottayam");
 const peopleBefore = seen(`select count(*) from student_people where user_id = '${PERSON}'`);
 const reassignBefore = seen(`select count(*) from audit_logs where action = 'student.reassign' and meta->>'via' = 'user.move' and meta->>'from' = '${PERSON}'`);

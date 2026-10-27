@@ -142,7 +142,7 @@ const member = op.getByTestId(`member-${email}`);
 await member.getByText("Details and password").click();
 await member.locator(`#email-${newId}`).fill("UK.DOCS@medcity.test");
 await member.getByRole("button", { name: "Save details" }).click();
-check(await member.getByText("Someone already signs in with that email.").waitFor({ timeout: 10000 }).then(() => true, () => false), "edit: an email already in use is refused, whatever its case");
+check(await member.getByText(/That email already belongs to .+ at /).waitFor({ timeout: 10000 }).then(() => true, () => false), "edit: an email already in use is refused, whatever its case");
 await member.locator(`#name-${newId}`).fill("Renamed Counsellor");
 await member.locator(`#email-${newId}`).fill(renamed);
 await member.locator(`#dept-${newId}`).selectOption("Ausbildung");
@@ -166,7 +166,7 @@ check((await op.getByTestId(`member-${renamed}`).count()) === 1 && (await op.get
 
 // A branch head cannot move anybody, and cannot edit somebody at another branch.
 shown = await go(op, "/settings/team");
-check(!/Move to another branch/.test(shown), "access: the branch head is not offered a move");
+check(!/Move to (another|a) /.test(shown), "access: the branch head is not offered a move");
 const partnersPage = await op.goto(`${BASE}/admin/partners`);
 await hydrated(op);
 check(/\/forbidden/.test(op.url()) || partnersPage.status() >= 400 || !/Partners and people/.test(await main(op)), "access: the branch head cannot open the head office's people screen");

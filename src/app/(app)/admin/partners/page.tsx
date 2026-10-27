@@ -1,4 +1,4 @@
-import { asc, eq, ne, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, ne, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { fmtDate } from "@/lib/format";
@@ -26,7 +26,7 @@ const ROLE_TONE: Record<string, "brand" | "info" | "neutral" | "gold" | "warn" |
   STUDENT: "neutral",
 };
 
-export default async function PartnersPage({ searchParams }: { searchParams: Promise<{ department?: string }> }) {
+export default async function PartnersPage({ searchParams }: { searchParams: Promise<{ department?: string; move?: string; to?: string; role?: string }> }) {
   const me = await requireUser([...ADMIN_ROLES]);
   const manageUsers = canManageUsers(me);
   const superAdmin = canManageSuperAdmins(me);
@@ -36,6 +36,9 @@ export default async function PartnersPage({ searchParams }: { searchParams: Pro
   // the screen does not read as if the branch had gone.
   const sp = await searchParams;
   const department = (sp.department ?? "").trim() || null;
+  // Opened on one person's move form, as the "email already in use" refusal
+  // offers: their organisation unfolded, their form open and pre-filled.
+  const moving = (sp.move ?? "").trim() || null;
 
   const everyOrg = await db.query.organizations.findMany({
     with: {
@@ -58,13 +61,46 @@ export default async function PartnersPage({ searchParams }: { searchParams: Pro
     .where(eq(schema.students.orgId, schema.users.orgId))
     .groupBy(schema.students.assignedToId);
   const studentsOf = Object.fromEntries(carrying.map((r) => [r.userId ?? "", Number(r.n)])) as Record<string, number>;
+  // Somebody at the head office works files at every branch, and what they
+  // hand over on a move is everything on their name, wherever it is: their
+  // students and their open tasks.
+  const hqOrg = everyOrg.find((o) => o.type === "HQ");
+  const deskCarrying = hqOrg
+    ? await db
+        .select({ userId: schema.students.assignedToId, n: sql<number>`count(*)::int` })
+        .from(schema.students)
+        .innerJoin(schema.users, eq(schema.users.id, schema.students.assignedToId))
+        .where(eq(schema.users.orgId, hqOrg.id))
+        .groupBy(schema.students.assignedToId)
+    : [];
+  const deskTasks = hqOrg
+    ? await db
+        .select({ userId: schema.tasks.assignedToId, n: sql<number>`count(*)::int` })
+        .from(schema.tasks)
+        .innerJoin(schema.users, eq(schema.users.id, schema.tasks.assignedToId))
+        .where(and(eq(schema.users.orgId, hqOrg.id), isNull(schema.tasks.doneAt)))
+        .groupBy(schema.tasks.assignedToId)
+    : [];
+  const deskStudentsOf = Object.fromEntries(deskCarrying.map((r) => [r.userId ?? "", Number(r.n)])) as Record<string, number>;
+  const deskTasksOf = Object.fromEntries(deskTasks.map((r) => [r.userId, Number(r.n)])) as Record<string, number>;
+  // Whether an organisation already has an active branch head other than
+  // this person, so the move form can say so before the move is refused.
+  const hasHeadBesides = (orgId: string, exceptId: string) =>
+    everyOrg.find((o) => o.id === orgId)?.users.some((u) => u.id !== exceptId && u.active && u.role === "PARTNER") ?? false;
   const colleaguesAt = (orgId: string, exceptId: string) =>
     everyOrg
       .find((o) => o.id === orgId)
       ?.users.filter((u) => u.id !== exceptId && u.active && (STUDENT_WORK_ROLES as readonly string[]).includes(u.role))
       .map((u) => ({ id: u.id, name: u.name, deskLabel: u.deskLabel })) ?? [];
-  const targetsFor = (role: string, orgId: string) =>
-    everyOrg.filter((o) => o.id !== orgId && o.active && roleFitsOrg(role, o.type)).map((o) => ({ id: o.id, name: o.name, type: o.type }));
+  // Where a person can be moved to. Those who manage user accounts can change
+  // the role in the same step, so every other open organisation is offered,
+  // the head office included, and the form lists the roles that fit each.
+  // Anybody else moves people in the role they have, so only the
+  // organisations that role fits, and never into the head office.
+  const targetsFor = (role: string, orgId: string, userId: string) =>
+    everyOrg
+      .filter((o) => o.id !== orgId && o.active && (manageUsers || (o.type !== "HQ" && roleFitsOrg(role, o.type))))
+      .map((o) => ({ id: o.id, name: o.name, type: o.type, hasHead: hasHeadBesides(o.id, userId) }));
   // Which of these have done nothing at all, and so can be deleted rather
   // than closed. One definition, shared with the action behind the button.
   const untouched = await untouchedOrgs(orgs.filter((o) => o.type !== "HQ").map((o) => o.id));
@@ -170,7 +206,7 @@ export default async function PartnersPage({ searchParams }: { searchParams: Pro
                 title={o.name}
                 meta={meta}
                 attention={todo.join(" · ") || null}
-                defaultOpen={hq || waiting > 0}
+                defaultOpen={hq || waiting > 0 || (!!moving && o.users.some((u) => u.id === moving))}
                 haystack={haystack}
               >
                 {!hq && (
@@ -229,9 +265,9 @@ export default async function PartnersPage({ searchParams }: { searchParams: Pro
                     // The same line the actions draw: anybody but me, and
                     // Medcity Overseas staff only for those who manage users.
                     const editable = u.id !== me.id && (manageUsers || !(HQ_ROLES as readonly string[]).includes(u.role));
-                    const targets = editable ? targetsFor(u.role, o.id) : [];
+                    const targets = editable ? targetsFor(u.role, o.id, u.id) : [];
                     return (
-                    <li key={u.id} className="px-4 py-3" data-testid={`person-${u.email}`} data-department={u.department ?? ""}>
+                    <li key={u.id} id={`person-${u.id}`} className="px-4 py-3" data-testid={`person-${u.email}`} data-department={u.department ?? ""}>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                         <div className="min-w-48">
                           <p className={u.active ? "font-medium" : "text-muted line-through"}>{u.name}</p>
@@ -265,21 +301,28 @@ export default async function PartnersPage({ searchParams }: { searchParams: Pro
                               <EditPersonForm userId={u.id} name={u.name} email={u.email} deskLabel={u.deskLabel} department={u.department} departments={departments} />
                             </div>
                           </details>
-                          {!hq && (
-                            <details data-move-person>
-                              <summary className="cursor-pointer text-xs font-medium text-brand-600">Move to another branch</summary>
-                              <div className="mt-2 max-w-xl">
-                                <MovePersonForm
-                                  userId={u.id}
-                                  name={u.name}
-                                  orgName={o.name}
-                                  students={studentsOf[u.id] ?? 0}
-                                  targets={targets}
-                                  colleagues={colleaguesAt(o.id, u.id)}
-                                />
-                              </div>
-                            </details>
-                          )}
+                          <details data-move-person open={moving === u.id || undefined}>
+                            <summary className="cursor-pointer text-xs font-medium text-brand-600">{hq ? "Move to a branch" : "Move to another organisation"}</summary>
+                            <div className="mt-2 max-w-xl">
+                              <MovePersonForm
+                                userId={u.id}
+                                name={u.name}
+                                orgName={o.name}
+                                hq={hq}
+                                role={u.role}
+                                deskLabel={u.deskLabel}
+                                students={hq ? (deskStudentsOf[u.id] ?? 0) : (studentsOf[u.id] ?? 0)}
+                                tasks={hq ? (deskTasksOf[u.id] ?? 0) : 0}
+                                targets={targets}
+                                colleagues={colleaguesAt(o.id, u.id)}
+                                canChangeRole={manageUsers}
+                                canSetSuperAdmin={superAdmin}
+                                roleLabel={ROLE_LABEL}
+                                defaultTo={moving === u.id ? sp.to : undefined}
+                                defaultRole={moving === u.id ? sp.role : undefined}
+                              />
+                            </div>
+                          </details>
                         </div>
                       )}
                     </li>

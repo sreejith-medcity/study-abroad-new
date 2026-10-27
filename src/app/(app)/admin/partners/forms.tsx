@@ -1,6 +1,7 @@
 "use client";
 
 import { HQ_ROLE_OPTIONS, PARTNER_ROLE_OPTIONS } from "@/lib/permissions";
+import { defaultMoveRole, rolesFor } from "@/lib/people";
 import { useState } from "react";
 import { ActionForm } from "@/components/action-form";
 import { SelectField, TextField } from "@/components/fields";
@@ -190,53 +191,143 @@ export function EditPersonForm({
   );
 }
 
-export type MoveTarget = { id: string; name: string; type: "HQ" | "BRANCH" | "SUB_AGENT" };
+export type MoveTarget = {
+  id: string;
+  name: string;
+  type: "HQ" | "BRANCH" | "SUB_AGENT";
+  /** Whether it already has an active branch head, this person not counted. */
+  hasHead: boolean;
+};
 export type Colleague = { id: string; name: string; deskLabel: string | null };
 
+/** Every role a person can be given on the people screen, head office first. */
+const MOVE_ROLE_OPTIONS = [...HQ_ROLE_OPTIONS, ...PARTNER_ROLE_OPTIONS] as const;
+
 /**
- * Moving somebody to another branch. The students assigned to them stay at
- * the old branch, so the form says how many there are and makes the desk
- * choose what happens to them before anything moves.
+ * Moving somebody to another organisation, in a new role when the move needs
+ * one. The role list is only the roles that fit where they are going, and
+ * starts on the one they have when that fits. The students assigned to them
+ * stay where they are, so the form says how many there are and makes the
+ * desk choose what happens to them before anything moves.
  */
 export function MovePersonForm({
   userId,
   name,
   orgName,
+  hq,
+  role,
+  deskLabel,
   students,
+  tasks,
   targets,
   colleagues,
+  canChangeRole,
+  canSetSuperAdmin,
+  roleLabel,
+  defaultTo,
+  defaultRole,
 }: {
   userId: string;
   name: string;
   orgName: string;
-  /** Students assigned to them at the branch they are leaving. */
+  /** Whether they are at the head office now. */
+  hq: boolean;
+  role: string;
+  deskLabel: string | null;
+  /** Students assigned to them where they are leaving: their branch, or anywhere for the head office. */
   students: number;
-  /** Organisations their role fits, other than the one they are at. */
+  /** Open tasks on their name, counted for somebody at the head office. */
+  tasks: number;
+  /** Organisations they could go to, other than the one they are at. */
   targets: MoveTarget[];
-  /** People at the old branch who could take the students. */
+  /** People where they are leaving who could take the students. */
   colleagues: Colleague[];
+  /** Whether this person may give them a different role in the move. */
+  canChangeRole: boolean;
+  canSetSuperAdmin: boolean;
+  roleLabel: Record<string, string>;
+  /** Pre-filled from a link, such as the one an email already in use offers. */
+  defaultTo?: string;
+  defaultRole?: string;
 }) {
+  const first = targets.find((t) => t.id === defaultTo) ?? targets[0];
+  const startRole = (t: MoveTarget | undefined) => (t ? (defaultRole && rolesFor(t.type, MOVE_ROLE_OPTIONS).includes(defaultRole) ? defaultRole : defaultMoveRole(role, t.type, MOVE_ROLE_OPTIONS)) : role);
+  const [toId, setToId] = useState(first?.id ?? "");
+  const [newRole, setNewRole] = useState(startRole(first));
+  const [title, setTitle] = useState(startRole(first) === role ? (deskLabel ?? "") : "");
   const [choice, setChoice] = useState<"hand" | "leave">(colleagues.length ? "hand" : "leave");
   if (targets.length === 0) {
     return <p className="text-sm text-muted">There is no other organisation their role fits. Change their role first.</p>;
   }
+  const to = targets.find((t) => t.id === toId) ?? targets[0];
+  const fits = rolesFor(to.type, MOVE_ROLE_OPTIONS);
+  const pickRole = (r: string) => {
+    setNewRole(r);
+    setTitle(r === role ? (deskLabel ?? "") : "");
+  };
+  const pickTarget = (id: string) => {
+    setToId(id);
+    const t = targets.find((x) => x.id === id);
+    if (t && !rolesFor(t.type, MOVE_ROLE_OPTIONS).includes(newRole)) pickRole(defaultMoveRole(role, t.type, MOVE_ROLE_OPTIONS));
+  };
+  // From the head office the open tasks go with the students, since there is
+  // no branch head there to take them.
+  const toHand = students + (hq ? tasks : 0);
+  const what = [
+    students > 0 ? `${students} ${students === 1 ? "student is" : "students are"} assigned to ${name}` : null,
+    hq && tasks > 0 ? `${tasks} open ${tasks === 1 ? "task is" : "tasks are"} on their name` : null,
+  ]
+    .filter(Boolean)
+    .join(", and ");
   return (
     <ActionForm action={moveUserAction} submitLabel={`Move ${name}`} pendingLabel="Moving…" submitVariant="secondary">
       <input type="hidden" name="userId" value={userId} />
-      <SelectField id={`move-to-${userId}`} label="Move to" name="toOrgId" aria-label="Move to">
-        {targets.map((t) => (
-          <option key={t.id} value={t.id}>
-            {t.name}
-            {t.type === "SUB_AGENT" ? " (sub-agent)" : ""}
-          </option>
-        ))}
-      </SelectField>
-      {students > 0 ? (
-        <fieldset className="space-y-2 rounded-lg border border-line p-3" data-move-students={students}>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <SelectField id={`move-to-${userId}`} label="Move to" name="toOrgId" aria-label="Move to" value={toId} onChange={(e) => pickTarget(e.target.value)}>
+          {targets.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+              {t.type === "SUB_AGENT" ? " (sub-agent)" : t.type === "HQ" ? " (head office)" : ""}
+            </option>
+          ))}
+        </SelectField>
+        {canChangeRole ? (
+          <SelectField id={`move-role-${userId}`} label="Role there" name="role" aria-label="Role after the move" value={newRole} onChange={(e) => pickRole(e.target.value)}>
+            {fits.map((r) => (
+              <option key={r} value={r} disabled={r === "SUPER_ADMIN" && r !== role && !canSetSuperAdmin}>
+                {roleLabel[r] ?? r}
+                {r === role ? " (now)" : ""}
+              </option>
+            ))}
+          </SelectField>
+        ) : (
+          <input type="hidden" name="role" value={role} />
+        )}
+        <TextField
+          id={`move-title-${userId}`}
+          label="Job title there"
+          name="deskLabel"
+          aria-label="Job title after the move"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder={TITLE_SUGGESTIONS[newRole] ?? "Optional"}
+          hint={newRole !== role ? "Their old title is cleared with the new role" : "Free text, shown beside their name"}
+        />
+      </div>
+      {newRole === "PARTNER" && to.hasHead && (
+        <p className="text-xs text-stop-500" data-move-head-warning>
+          {to.name} already has an active branch head, so this move will be refused. Pick another role, or switch the other head off first.
+        </p>
+      )}
+      {toHand > 0 ? (
+        <fieldset className="space-y-2 rounded-lg border border-line p-3" data-move-students={students} data-move-tasks={hq ? tasks : 0}>
           <legend className="px-1 text-sm font-medium">
-            {students} {students === 1 ? "student is" : "students are"} assigned to {name} at {orgName}
+            {what}
+            {hq ? "" : ` at ${orgName}`}
           </legend>
-          <p className="text-xs text-muted">Students stay at {orgName}. A student never moves with a person.</p>
+          <p className="text-xs text-muted">
+            {hq ? "Students stay at their branches. A student never moves with a person." : `Students stay at ${orgName}. A student never moves with a person.`}
+          </p>
           <label className="flex items-start gap-2 text-sm">
             <input type="radio" name="studentsChoice" value="hand" checked={choice === "hand"} onChange={() => setChoice("hand")} disabled={!colleagues.length} className="mt-1" />
             <span>
@@ -258,14 +349,20 @@ export function MovePersonForm({
           )}
           <label className="flex items-start gap-2 text-sm">
             <input type="radio" name="studentsChoice" value="leave" checked={choice === "leave"} onChange={() => setChoice("leave")} className="mt-1" />
-            <span>Leave them unassigned at {orgName}, for somebody there to pick up</span>
+            <span>
+              {hq
+                ? "Leave the students unassigned at their branches, and the tasks on their name"
+                : `Leave them unassigned at ${orgName}, for somebody there to pick up`}
+            </span>
           </label>
         </fieldset>
       ) : (
-        <p className="text-xs text-muted">No students are assigned to {name} at {orgName}.</p>
+        <p className="text-xs text-muted">No students are assigned to {name}{hq ? "" : ` at ${orgName}`}.</p>
       )}
       <p className="text-xs text-muted">
-        {name} is taken off every file at {orgName} they are named on, signed out, and told. Their role stays the same.
+        {name} is taken off every file they are named on {hq ? `outside ${to.name}` : `at ${orgName}`}, signed out, and told.
+        {hq ? " Their teams, the request types that land on them and their name as officer on open applications are taken off them too." : ""}
+        {newRole === role ? " Their role stays the same." : ` They become ${roleLabel[newRole] ?? newRole}.`}
       </p>
     </ActionForm>
   );

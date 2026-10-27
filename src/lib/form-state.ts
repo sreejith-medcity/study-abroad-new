@@ -18,4 +18,10 @@ export type FormState = {
    * form stuck on its pending label after the server had already saved.
    */
   redirectTo?: string;
+  /**
+   * A way on from a refusal, shown under the error: the email that is already
+   * somebody's sign-in offers that person's move screen, so the refusal is
+   * not a dead end.
+   */
+  link?: { href: string; label: string };
 };

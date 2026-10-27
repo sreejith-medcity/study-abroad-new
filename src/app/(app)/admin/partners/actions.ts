@@ -9,8 +9,9 @@ import { db, schema } from "@/db";
 import { hashPassword, requireUser, type SessionUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { departmentChoice } from "@/lib/departments";
-import { emailProblem, moveSummary, normalizeEmail, planMove, roleFitRefusal, roleFitsOrg, taskTaker } from "@/lib/people";
+import { emailProblem, emailTakenMessage, mayMovePerson, moveSummary, normalizeEmail, planMove, roleFitRefusal, roleFitsOrg, taskTaker, type EmailHolder, type OrgType } from "@/lib/people";
 import { ADMIN_ROLES, HQ_ROLES, PARTNER_ROLES, ROLE_LABEL, canManageSuperAdmins, canManageUsers, canResetPasswords, isFamilyRole } from "@/lib/permissions";
+import { emailHolder, moveLink } from "@/server/email-holder";
 import { notifyUsers } from "@/server/notify";
 import { makeSlug } from "@/server/public-form";
 import { orgIsUntouched } from "@/server/org-untouched";
@@ -41,7 +42,8 @@ export async function invitePartnerAction(_: FormState, formData: FormData): Pro
   const parsed = invite.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, error: "Check the highlighted fields." };
   const d = parsed.data;
-  if (await db.query.users.findFirst({ where: eq(schema.users.email, d.ownerEmail) })) return { error: "A user with that email already exists.", fieldErrors: { ownerEmail: ["Already in use"] } };
+  const holder = await emailHolder(d.ownerEmail);
+  if (holder) return takenAnswer(user, holder, "ownerEmail");
 
   const password = tempPassword();
   const passwordHash = await hashPassword(password);
@@ -61,19 +63,37 @@ const addUser = z.object({
   email: z.string().trim().toLowerCase().email("Enter a valid email"),
   deskLabel: z.string().trim().max(60).optional(),
   department: z.string().trim().max(60).optional(),
-  role: z.enum([...PARTNER_ROLES, "ADMIN", "MANAGEMENT", "SUPER_ADMIN", "OPS_MANAGER", "DOCUMENTATION"]),
+  // Every role the screen offers, built from the lists rather than typed out:
+  // the typed list had fallen behind and refused the desk counsellor, the
+  // application team leader and finance with a schema error.
+  role: z.enum([...PARTNER_ROLES, ...HQ_ROLES]),
 });
 
 /** Postgres refusing a row because another already holds the same unique value. */
 const uniqueViolation = (e: unknown) => (e as { code?: string }).code === "23505" || (e as { cause?: { code?: string } }).cause?.code === "23505";
 
-/** Somebody else already signing in with this address, in any case. */
-async function emailTaken(email: string, exceptUserId?: string) {
-  const row = await db.query.users.findFirst({
-    where: and(sql`lower(${schema.users.email}) = ${email}`, exceptUserId ? ne(schema.users.id, exceptUserId) : undefined),
-    columns: { id: true },
-  });
-  return !!row;
+/**
+ * The refusal for an address that is already somebody's sign-in, said the way
+ * emailTakenMessage decides: who has it and where, and, when this person may
+ * move them to where the new account was meant to be, a link to do that
+ * instead. `to` is the organisation and role the desk was adding somebody as;
+ * left out (an edit), the link opens their move form with nothing chosen.
+ */
+function takenAnswer(actor: SessionUser, holder: EmailHolder, field: string, to?: { orgId: string; type: OrgType; role: string }): FormState {
+  const allowed =
+    holder.org.id !== to?.orgId &&
+    mayMovePerson({
+      actor: { id: actor.id, role: actor.role, managesUsers: canManageUsers(actor), managesSuperAdmins: canManageSuperAdmins(actor) },
+      person: { id: holder.id, role: holder.role, orgType: holder.org.type },
+      toType: to?.type ?? holder.org.type,
+      role: to && roleFitsOrg(to.role, to.type) ? to.role : undefined,
+    }).ok;
+  const said = emailTakenMessage(holder, { orgId: actor.orgId, seesEveryOrg: true }, { mayMove: allowed });
+  return {
+    error: said.text,
+    fieldErrors: { [field]: ["Already in use"] },
+    ...(allowed ? { link: { href: moveLink(holder.id, to ? { orgId: to.orgId, role: to.role } : undefined), label: `Move ${holder.name}${to ? " here" : ""}` } } : {}),
+  };
 }
 
 export async function addUserAction(_: FormState, formData: FormData): Promise<FormState> {
@@ -96,7 +116,8 @@ export async function addUserAction(_: FormState, formData: FormData): Promise<F
   }
   if (org.type !== "HQ" && !(PARTNER_ROLES as readonly string[]).includes(d.role)) return { error: "A partner's people are a branch head or one of the counsellor roles." };
   if (!roleFitsOrg(d.role, org.type)) return { error: roleFitRefusal(d.role, org.type) };
-  if (await emailTaken(d.email)) return { error: "A user with that email already exists." };
+  const holder = await emailHolder(d.email);
+  if (holder) return takenAnswer(user, holder, "email", { orgId: org.id, type: org.type, role: d.role });
   const dept = departmentChoice(d.department, departments(await getSettings()));
   if (!dept.ok) return { error: dept.error, fieldErrors: { department: [dept.error] } };
 
@@ -353,9 +374,8 @@ export async function editUserAction(_: FormState, formData: FormData): Promise<
   const email = normalizeEmail(d.email);
   const problem = emailProblem(email);
   if (problem) return { error: "Check the highlighted fields.", fieldErrors: { email: [problem] } };
-  if (email !== target.email.toLowerCase() && (await emailTaken(email, target.id))) {
-    return { error: "Somebody else already signs in with that email.", fieldErrors: { email: ["Already in use"] } };
-  }
+  const holder = email !== target.email.toLowerCase() ? await emailHolder(email, target.id) : null;
+  if (holder) return takenAnswer(actor, holder, "email");
   const dept = departmentChoice(d.department, departments(await getSettings()), target.department);
   if (!dept.ok) return { error: dept.error, fieldErrors: { department: [dept.error] } };
 
@@ -387,7 +407,10 @@ export async function editUserAction(_: FormState, formData: FormData): Promise<
   } catch (e) {
     // Somebody took the address between the check above and this write. The
     // same answer as the check gives, rather than a dead screen.
-    if (uniqueViolation(e)) return { error: "Somebody else already signs in with that email.", fieldErrors: { email: ["Already in use"] } };
+    if (uniqueViolation(e)) {
+      const late = await emailHolder(email, target.id);
+      return late ? takenAnswer(actor, late, "email") : { error: "Somebody else already signs in with that email.", fieldErrors: { email: ["Already in use"] } };
+    }
     throw e;
   }
   await audit(actor.id, "user.edit", "user", target.id, { email: target.email, changes });
@@ -401,19 +424,34 @@ export async function editUserAction(_: FormState, formData: FormData): Promise<
 const moveUser = z.object({
   userId: z.string().min(1),
   toOrgId: z.string().min(1),
+  role: z.string().optional(),
+  // Sent by the move form; left out, the title is kept unless the role changes.
+  deskLabel: z.string().trim().max(60).optional(),
   studentsChoice: z.string().optional(),
   handToId: z.string().optional(),
 });
 
 /**
- * Moves a person to another branch or sub-agent firm.
+ * Moves a person to another organisation, in a new role when asked: a branch,
+ * a sub-agent firm, or the head office and back.
  *
  * Their students do not go with them: a student belongs to the branch that
  * registered them, and a counsellor who leaves it could not open those files
- * from the new one. So the students are handed to a named colleague at the
- * old branch, or left with nobody there, and the person is taken off every
- * file at the old branch they were named on. All of it in one transaction,
- * so a refusal part way leaves nothing half moved.
+ * from the new one. So the students are handed to a named colleague where
+ * they are leaving, or left with nobody there, and the person is taken off
+ * every file there they were named on. All of it in one transaction, so a
+ * refusal part way leaves nothing half moved.
+ *
+ * Somebody leaving the head office worked files at every branch, so what they
+ * hand over is everything on their name, wherever it is, and their open tasks
+ * go with the students, there being no branch head at the head office to fall
+ * back on. The desk-only things go too, because they mean nothing at a branch:
+ * their teams, the request types that land on them, and their name as officer
+ * on applications still open. Their department stays: it is a line of the
+ * business (Ausbildung, NCLEX-RN), as true at a branch as at the desk. Their
+ * job title is what the form says, and when the role changes and nothing is
+ * said, the old one is cleared rather than left describing a job they no
+ * longer do.
  */
 export async function moveUserAction(_: FormState, formData: FormData): Promise<FormState> {
   const actor = await requireUser([...ADMIN_ROLES]);
@@ -427,12 +465,32 @@ export async function moveUserAction(_: FormState, formData: FormData): Promise<
 
   const to = await db.query.organizations.findFirst({ where: eq(schema.organizations.id, d.toOrgId) });
   if (!to) return { error: "Organisation not found." };
-  if (to.type === "HQ" && !canManageUsers(actor)) return { error: "Only a super admin or an ops manager can move somebody into Medcity Overseas." };
+  const role = (d.role || target.role) as (typeof schema.role.enumValues)[number];
+  if (!schema.role.enumValues.includes(role)) return { error: "Pick a valid role." };
+  const allowed = mayMovePerson({
+    actor: { id: actor.id, role: actor.role, managesUsers: canManageUsers(actor), managesSuperAdmins: canManageSuperAdmins(actor) },
+    person: { id: target.id, role: target.role, orgType: target.org.type },
+    toType: to.type,
+    role,
+  });
+  if (!allowed.ok) return { error: allowed.error };
+  if (target.role === "SUPER_ADMIN" && role !== "SUPER_ADMIN" && target.active) {
+    const [{ n }] = await db.select({ n: count() }).from(schema.users).where(and(eq(schema.users.role, "SUPER_ADMIN"), eq(schema.users.active, true)));
+    if (n <= 1) return { error: "Keep at least one active super admin." };
+  }
 
-  const [{ n: students }] = await db
-    .select({ n: count() })
-    .from(schema.students)
-    .where(and(eq(schema.students.assignedToId, target.id), eq(schema.students.orgId, target.orgId)));
+  const fromOrg = target.org;
+  const leavesHq = fromOrg.type === "HQ";
+  // What is theirs to hand over: at the old branch, or anywhere for somebody
+  // leaving the head office.
+  const theirStudents = leavesHq
+    ? eq(schema.students.assignedToId, target.id)
+    : and(eq(schema.students.assignedToId, target.id), eq(schema.students.orgId, fromOrg.id))!;
+  const openTasks = leavesHq
+    ? and(eq(schema.tasks.assignedToId, target.id), isNull(schema.tasks.doneAt))!
+    : and(eq(schema.tasks.assignedToId, target.id), eq(schema.tasks.orgId, fromOrg.id), isNull(schema.tasks.doneAt))!;
+  const [{ n: students }] = await db.select({ n: count() }).from(schema.students).where(theirStudents);
+  const [{ n: openTaskCount }] = leavesHq ? await db.select({ n: count() }).from(schema.tasks).where(openTasks) : [{ n: 0 }];
   const colleague = d.handToId
     ? ((await db.query.users.findFirst({ where: eq(schema.users.id, d.handToId), columns: { id: true, orgId: true, role: true, active: true, name: true } })) ?? null)
     : null;
@@ -444,9 +502,11 @@ export async function moveUserAction(_: FormState, formData: FormData): Promise<
 
   const planned = planMove({
     person: { id: target.id, role: target.role, orgId: target.orgId, active: target.active },
-    from: { id: target.org.id, type: target.org.type, name: target.org.name },
+    from: { id: fromOrg.id, type: fromOrg.type, name: fromOrg.name },
     to: { id: to.id, type: to.type, active: to.active, name: to.name },
+    role,
     students,
+    tasks: openTaskCount,
     choice: d.studentsChoice ?? "",
     colleague,
     heads: { othersAtFrom, atTarget },
@@ -460,22 +520,23 @@ export async function moveUserAction(_: FormState, formData: FormData): Promise<
     if (!seatFree(to, n)) return { error: `${to.name} has used all ${to.counsellorSeats} seats for its tier.` };
   }
 
-  const fromOrg = target.org;
+  const deskLabel = d.deskLabel !== undefined ? d.deskLabel || null : plan.roleChanged ? null : target.deskLabel;
   const handed: { id: string; firstName: string; lastName: string }[] = [];
   let takenOff = 0;
-  // The open tasks on their name at the old branch: how many there were, and
-  // who they went to. Null when nobody there could take them.
+  const cleared = { teams: 0, services: [] as string[], officerOn: 0 };
+  // The open tasks on their name they leave behind: how many there were, and
+  // who they went to. Null when nobody could take them.
   const { tasks, tasksTo } = await db.transaction(async (tx): Promise<{ tasks: number; tasksTo: { id: string; name: string } | null }> => {
     // Bumped in the database rather than from the row read earlier, so two
     // bumps landing at once cannot write the same number.
-    await updateTracked("user", target.id, { orgId: to.id, sessionVersion: sql`${schema.users.sessionVersion} + 1` }, { by: actor.id, action: "user.move", tx });
+    await updateTracked("user", target.id, { orgId: to.id, role, deskLabel, sessionVersion: sql`${schema.users.sessionVersion} + 1` }, { by: actor.id, action: "user.move", tx });
     if (plan.students > 0) {
       // Each student's history and ledger line say who they went to and why,
       // in the same transaction as the move, so a refusal part way leaves
       // neither the files nor their record half moved.
       const moved = await updateTrackedMany(
         "student",
-        and(eq(schema.students.assignedToId, target.id), eq(schema.students.orgId, fromOrg.id))!,
+        theirStudents,
         { assignedToId: plan.handTo, updatedAt: new Date() },
         { by: actor.id, action: "student.reassign", tx, ledgerDetail: `${target.name} moved to ${to.name}` },
       );
@@ -489,26 +550,48 @@ export async function moveUserAction(_: FormState, formData: FormData): Promise<
         );
       }
     }
+    // Their part on files they can no longer open: at the old branch, or, for
+    // somebody leaving the head office, everywhere but where they are going.
+    const filesLeft = leavesHq
+      ? tx.select({ id: schema.students.id }).from(schema.students).where(ne(schema.students.orgId, to.id))
+      : tx.select({ id: schema.students.id }).from(schema.students).where(eq(schema.students.orgId, fromOrg.id));
     const off = await tx
       .delete(schema.studentPeople)
-      .where(
-        and(
-          eq(schema.studentPeople.userId, target.id),
-          inArray(schema.studentPeople.studentId, tx.select({ id: schema.students.id }).from(schema.students).where(eq(schema.students.orgId, fromOrg.id))),
-        ),
-      )
+      .where(and(eq(schema.studentPeople.userId, target.id), inArray(schema.studentPeople.studentId, filesLeft)))
       .returning({ id: schema.studentPeople.id });
     takenOff = off.length;
 
-    // Their open tasks at the old branch would otherwise sit on the name of
-    // somebody who is no longer there, where nobody at the branch looks.
-    const openTasks = and(eq(schema.tasks.assignedToId, target.id), eq(schema.tasks.orgId, fromOrg.id), isNull(schema.tasks.doneAt));
+    if (leavesHq) {
+      const teams = await tx.delete(schema.teamMembers).where(eq(schema.teamMembers.userId, target.id)).returning({ id: schema.teamMembers.id });
+      cleared.teams = teams.length;
+      // A request type that landed on them goes back to the whole desk, as
+      // taking the name off on the services screen does.
+      const services = await tx.delete(schema.serviceOwners).where(eq(schema.serviceOwners.userId, target.id)).returning({ type: schema.serviceOwners.type });
+      cleared.services = services.map((x) => x.type);
+      // An application still being worked goes back to the desk's queue
+      // without an officer. A finished one keeps the name of who did it.
+      const stillOpen = tx
+        .select({ id: schema.statusDefinitions.id })
+        .from(schema.statusDefinitions)
+        .where(sql`${schema.statusDefinitions.group} not in ('SUCCESS', 'CLOSED')`);
+      const apps = await updateTrackedMany(
+        "application",
+        and(eq(schema.applications.officerId, target.id), inArray(schema.applications.statusId, stillOpen))!,
+        { officerId: null },
+        { by: actor.id, action: "application.officer", tx, ledgerDetail: `${target.name} moved to ${to.name}` },
+      );
+      cleared.officerOn = apps.length;
+    }
+
+    // Their open tasks would otherwise sit on the name of somebody who is no
+    // longer there, where nobody looks.
     const [{ n: tasks }] = await tx.select({ n: count() }).from(schema.tasks).where(openTasks);
     let tasksTo: { id: string; name: string } | null = null;
     if (tasks > 0) {
-      const head = plan.handTo
-        ? null
-        : ((await tx.query.users.findFirst({ where: activeHead(fromOrg.id), columns: { id: true, name: true }, orderBy: asc(schema.users.name) })) ?? null);
+      const head =
+        plan.handTo || leavesHq
+          ? null
+          : ((await tx.query.users.findFirst({ where: activeHead(fromOrg.id), columns: { id: true, name: true }, orderBy: asc(schema.users.name) })) ?? null);
       const takerId = taskTaker(plan, head);
       if (takerId) {
         await tx.update(schema.tasks).set({ assignedToId: takerId }).where(openTasks);
@@ -524,14 +607,20 @@ export async function moveUserAction(_: FormState, formData: FormData): Promise<
         email: target.email,
         from: fromOrg.id,
         fromName: fromOrg.name,
+        fromType: fromOrg.type,
         to: to.id,
         toName: to.name,
+        toType: to.type,
+        fromRole: target.role,
+        toRole: role,
+        ...(deskLabel !== target.deskLabel ? { deskLabel: { from: target.deskLabel, to: deskLabel } } : {}),
         students: plan.students,
         handTo: plan.handTo,
         takenOffFiles: takenOff,
         tasks,
         tasksTo: tasksTo?.id ?? null,
         tasksLeft: tasksTo ? 0 : tasks,
+        ...(leavesHq ? { teamsLeft: cleared.teams, servicesCleared: cleared.services, officerClearedOn: cleared.officerOn } : {}),
       },
     });
     return { tasks, tasksTo };
@@ -551,6 +640,8 @@ export async function moveUserAction(_: FormState, formData: FormData): Promise<
     colleagueName: plan.handTo ? (colleague?.name ?? "a colleague") : null,
     tasks,
     tasksTo: tasksTo?.name ?? null,
+    newRole: plan.roleChanged ? (ROLE_LABEL[role] ?? role) : null,
+    fromHq: leavesHq,
   });
   await notifyUsers([target.id], `You have been moved to ${to.name}`, said.forPerson, "/dashboard");
   revalidatePath("/admin/partners");
