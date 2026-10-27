@@ -12,6 +12,13 @@ export type Release = { version: string; date: string; changes: string[] };
 
 export const RELEASES: Release[] = [
   {
+    version: "1.9.4",
+    date: "2026-10-27",
+    changes: [
+      "The application team leader can give any student to anybody in the company: every team and every branch are on their Assign list, and they can move a student to another branch from the list or the student's file. This is a new line on the Who may do what screen, Give a student to anybody in the company, on for the super admin, operations, the admins and the application team leader. The team leader already saw every branch's students.",
+    ],
+  },
+  {
     version: "1.9.3",
     date: "2026-10-27",
     changes: [

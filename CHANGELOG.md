@@ -5,6 +5,12 @@ version in package.json and adds an entry here and in src/lib/releases.ts (the
 What's new page reads that one). After applying a release, tag it with the
 version so it can be found and rolled back to.
 
+## 1.9.4 (27 October 2026)
+
+- The application team leader can give any student to anybody in the company: every team and every branch are on their Assign list, and they can move a student to another branch from the list or the student's file. This is a new line on the Who may do what screen, Give a student to anybody in the company, on for the super admin, operations, the admins and the application team leader. The team leader already saw every branch's students.
+
+Nothing to run on the VPS beyond `bash /root/update-portal.sh`: no migration and no SQL.
+
 ## 1.9.3 (27 October 2026)
 
 - A documentation officer sees a student only while the file is theirs: assigned to them, registered by them, an application they are the officer on, a document they are checking now, or a file they have been put on by name (a team lead giving them a team file counts). A document they checked earlier, or a team they are in, no longer opens a student assigned to somebody else.
