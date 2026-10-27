@@ -12,6 +12,15 @@ export type Release = { version: string; date: string; changes: string[] };
 
 export const RELEASES: Release[] = [
   {
+    version: "1.8.4",
+    date: "2026-10-27",
+    changes: [
+      "A team can carry pathways and work its students across branches. On the Teams screen each team ticks the pathways it carries (the Ausbildung team carries Ausbildung). A student who gets one of those pathways, at registration, with any application, from a bulk upload or from the CRM, and is not on a team yet, is put on the one live team carrying it, whichever branch registered them. A team somebody chose or cleared by hand on the file is never changed. An Apply to existing students button on each team does the same once for the files already in the portal, is written to the audit log and says how many it placed.",
+      "Team members can open the team's students and see them in the students list, the Ausbildung and FSJ trackers and their counts at any branch, and notices about those students reach them. A branch user sees another branch's student only when that student is on a team they are in, and a retired team opens nothing.",
+      "This is shared working, not a transfer: the student keeps their branch and counsellor. The header names the team (and the branch, for a team member from elsewhere), the students list has a Team filter, and the team lead gives a team student to a team member from the file's profile, which puts that member on the file as its Team person and tells them. Branch people, not only the head office, can now be put in a team.",
+    ],
+  },
+  {
     version: "1.8.3",
     date: "2026-10-27",
     changes: [
