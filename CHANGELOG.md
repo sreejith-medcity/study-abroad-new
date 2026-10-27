@@ -5,6 +5,12 @@ version in package.json and adds an entry here and in src/lib/releases.ts (the
 What's new page reads that one). After applying a release, tag it with the
 version so it can be found and rolled back to.
 
+## 1.9.1 (27 October 2026)
+
+- The Documents dashboard and the processing desk's dashboard now show the person's own students, for anybody who has some: how many are theirs (the same number their students list shows), how many are assigned to them, follow-ups due and late, their students' applications, offers and visas, and those applications by stage. Every figure opens a list holding the same number.
+
+Nothing to run on the VPS beyond `bash /root/update-portal.sh`: no migration and no SQL.
+
 ## 1.9.0 (27 October 2026)
 
 - A documentation officer now sees only their own work: the files they are the officer on, the documents they have claimed or checked, the students they have been put on by name (mentors included), their team's students and anything they registered. Every other file handed to the desk, the unclaimed pool, other officers' files in the work queue and on the vendor desk, and the whole desk's counts are no longer shown to them, and a claim on a file that is not theirs is refused.

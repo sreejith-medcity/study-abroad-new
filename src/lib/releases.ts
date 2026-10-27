@@ -12,6 +12,13 @@ export type Release = { version: string; date: string; changes: string[] };
 
 export const RELEASES: Release[] = [
   {
+    version: "1.9.1",
+    date: "2026-10-27",
+    changes: [
+      "The Documents dashboard and the processing desk's dashboard now show the person's own students, for anybody who has some: how many are theirs (the same number their students list shows), how many are assigned to them, follow-ups due and late, their students' applications, offers and visas, and those applications by stage. Every figure opens a list holding the same number.",
+    ],
+  },
+  {
     version: "1.9.0",
     date: "2026-10-27",
     changes: [
