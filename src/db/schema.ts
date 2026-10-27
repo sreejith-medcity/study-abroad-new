@@ -1,6 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   date,
   type AnyPgColumn,
   index,
@@ -238,6 +239,11 @@ export const contactOutcome = pgEnum("contact_outcome", [
   "NOT_INTERESTED",
   "WRONG_NUMBER",
   "OTHER",
+  // Added with calling mode: a phone that is off is not the same as a phone
+  // nobody picked up, and somebody who has already joined another consultant
+  // was reached and has told us so.
+  "SWITCHED_OFF",
+  "ENROLLED_ELSEWHERE",
 ]);
 
 /**
@@ -1596,6 +1602,11 @@ export const tasks = pgTable(
       .references(() => organizations.id, { onDelete: "cascade" }),
     studentId: text("student_id").references(() => students.id, { onDelete: "cascade" }),
     applicationId: text("application_id").references(() => applications.id, { onDelete: "cascade" }),
+    /**
+     * The enquiry this is the follow-up for. An enquiry with a next follow-up
+     * date holds exactly one open task, on its owner's desk, due that day.
+     */
+    enquiryId: text("enquiry_id").references((): AnyPgColumn => enquiries.id, { onDelete: "cascade" }),
     kind: taskKind("kind").notNull().default("FOLLOW_UP"),
     title: text("title").notNull(),
     detail: text("detail"),
@@ -1619,6 +1630,8 @@ export const tasks = pgTable(
     index("tasks_assigned_idx").on(t.assignedToId, t.doneAt, t.dueOn),
     index("tasks_student_idx").on(t.studentId),
     uniqueIndex("tasks_auto_key_uq").on(t.autoKey),
+    // One open follow-up per enquiry, however many times its date is moved.
+    uniqueIndex("tasks_enquiry_open_uq").on(t.enquiryId).where(sql`${t.doneAt} is null`),
   ],
 );
 
@@ -1637,9 +1650,10 @@ export const contactLog = pgTable(
     orgId: text("org_id")
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
-    studentId: text("student_id")
-      .notNull()
-      .references(() => students.id, { onDelete: "cascade" }),
+    /** The student spoken to, or null where it was an enquiry. */
+    studentId: text("student_id").references(() => students.id, { onDelete: "cascade" }),
+    /** The enquiry spoken to, where it was not yet a student. Exactly one of the two is set. */
+    enquiryId: text("enquiry_id").references((): AnyPgColumn => enquiries.id, { onDelete: "cascade" }),
     channel: contactChannel("channel").notNull().default("CALL"),
     /** True where the student called us rather than the other way round. */
     inbound: boolean("inbound").notNull().default(false),
@@ -1652,7 +1666,12 @@ export const contactLog = pgTable(
     taskId: text("task_id").references(() => tasks.id, { onDelete: "set null" }),
     createdAt: createdAt(),
   },
-  (t) => [index("contact_log_student_idx").on(t.studentId, t.happenedAt), index("contact_log_by_idx").on(t.byId, t.createdAt)],
+  (t) => [
+    index("contact_log_student_idx").on(t.studentId, t.happenedAt),
+    index("contact_log_enquiry_idx").on(t.enquiryId, t.happenedAt),
+    index("contact_log_by_idx").on(t.byId, t.createdAt),
+    check("contact_log_one_subject", sql`num_nonnulls(${t.studentId}, ${t.enquiryId}) = 1`),
+  ],
 );
 
 /**
@@ -3893,6 +3912,7 @@ export const incomeLinesRelations = relations(incomeLines, ({ one }) => ({
 export const tasksRelations = relations(tasks, ({ one }) => ({
   org: one(organizations, { fields: [tasks.orgId], references: [organizations.id] }),
   student: one(students, { fields: [tasks.studentId], references: [students.id] }),
+  enquiry: one(enquiries, { fields: [tasks.enquiryId], references: [enquiries.id] }),
   application: one(applications, { fields: [tasks.applicationId], references: [applications.id] }),
   assignedTo: one(users, { fields: [tasks.assignedToId], references: [users.id] }),
   createdBy: one(users, { fields: [tasks.createdById], references: [users.id], relationName: "taskCreator" }),
@@ -3901,6 +3921,7 @@ export const tasksRelations = relations(tasks, ({ one }) => ({
 
 export const contactLogRelations = relations(contactLog, ({ one }) => ({
   student: one(students, { fields: [contactLog.studentId], references: [students.id] }),
+  enquiry: one(enquiries, { fields: [contactLog.enquiryId], references: [enquiries.id] }),
   by: one(users, { fields: [contactLog.byId], references: [users.id] }),
   task: one(tasks, { fields: [contactLog.taskId], references: [tasks.id] }),
 }));
@@ -4022,6 +4043,7 @@ export const enquiriesRelations = relations(enquiries, ({ one, many }) => ({
   createdBy: one(users, { fields: [enquiries.createdById], references: [users.id], relationName: "enquiryCreator" }),
   student: one(students, { fields: [enquiries.studentId], references: [students.id] }),
   notes: many(enquiryNotes),
+  contacts: many(contactLog),
 }));
 
 export const enquiryNotesRelations = relations(enquiryNotes, ({ one }) => ({
