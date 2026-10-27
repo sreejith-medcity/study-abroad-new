@@ -243,7 +243,14 @@ export async function studentWhere(user: SessionUser, f: Record<string, string |
     f.team ? eq(st.teamId, f.team) : undefined,
     f.from ? gte(st.createdAt, new Date(f.from)) : undefined,
     f.to ? lte(st.createdAt, new Date(`${f.to}T23:59:59`)) : undefined,
-    f.country ? eq(st.preferredCountry, f.country) : undefined,
+    // The country the list shows: where their applications are for, or, for
+    // a student with none yet, the country they said they would prefer. It
+    // used to read the preference alone, so a student who preferred the UK
+    // and applied to Germany was found under the UK and not under Germany.
+    f.country
+      ? sql`(exists (select 1 from applications fa join programs fp on fp.id = fa.program_id join universities fu on fu.id = fp.university_id join countries fc on fc.id = fu.country_id where fa.student_id = ${st.id} and fc.name = ${f.country})
+          or (${st.preferredCountry} = ${f.country} and not exists (select 1 from applications fa where fa.student_id = ${st.id})))`
+      : undefined,
     f.pathway ? eq(st.preferredPathway, f.pathway as schema.Pathway) : undefined,
     f.q
       ? or(
@@ -256,4 +263,74 @@ export async function studentWhere(user: SessionUser, f: Record<string, string |
         )
       : undefined,
   );
+}
+
+/**
+ * What the students list shows about one page of students' applications: how
+ * many, the first two programmes with their universities, and the countries
+ * they are for. One grouped query for the page's ids, rather than one per row,
+ * so fifty rows cost the same as one.
+ *
+ * Nothing here decides who may see what. The ids come from the list, which is
+ * already bounded by the scope rules, and anybody who may see a student sees
+ * every application of theirs (ownApplicationsOnly says the same).
+ */
+export async function studentListExtras(ids: string[]) {
+  const out = new Map<string, { total: number; programmes: number; first: { programme: string; university: string }[]; countries: string[] }>();
+  if (ids.length === 0) return out;
+  // A student applied to the same programme for two intakes has one
+  // programme, not two: the names are each programme once, in the order it
+  // was first applied for, and so are the countries.
+  const label = sql`json_build_object('programme', ${p.name}, 'university', ${u.name})::text`;
+  const order = sql`order by ${a.createdAt}, ${a.id}`;
+  const once = (value: SQL) => sql`array(select x.v from unnest(array_agg(${value} ${order})) with ordinality as x(v, n) group by x.v order by min(x.n))`;
+  const rows = await db
+    .select({
+      studentId: a.studentId,
+      total: sql<number>`count(*)::int`,
+      programmes: sql<number>`count(distinct ${label})::int`,
+      first: sql<string>`to_json((${once(label)})[1:2])::text`,
+      countries: sql<string>`to_json(${once(sql`${c.name}`)})::text`,
+    })
+    .from(a)
+    .innerJoin(p, eq(p.id, a.programId))
+    .innerJoin(u, eq(u.id, p.universityId))
+    .innerJoin(c, eq(c.id, u.countryId))
+    .where(inArray(a.studentId, ids))
+    .groupBy(a.studentId);
+  for (const r of rows) {
+    const first = (JSON.parse(r.first ?? "[]") as string[]).map((x) => JSON.parse(x) as { programme: string; university: string });
+    out.set(r.studentId, { total: Number(r.total), programmes: Number(r.programmes), first, countries: JSON.parse(r.countries ?? "[]") as string[] });
+  }
+  return out;
+}
+
+/**
+ * Who the students list's Counsellor filter offers: everybody holding a
+ * student this person may see, and for a branch its own active people too,
+ * so a counsellor who has nobody yet can still be picked and found empty.
+ *
+ * Asked of the same rule the list counts with, less the list's own narrowing
+ * (search, dates, the counsellor chosen), so the choices do not vanish as the
+ * filters are set. The Partner filter does narrow it: picking a branch offers
+ * that branch's people. Only for somebody who sees every student of their
+ * organisation; anybody else's list is their own files, and the page does not
+ * show the filter to them.
+ */
+export async function counsellorOptions(user: SessionUser, f: Record<string, string | undefined>) {
+  const st = schema.students;
+  const usr = schema.users;
+  const o = schema.organizations;
+  const holding = await db
+    .selectDistinct({ id: usr.id, name: usr.name, deskLabel: usr.deskLabel, orgName: o.name })
+    .from(st)
+    .innerJoin(usr, eq(usr.id, st.assignedToId))
+    .innerJoin(o, eq(o.id, usr.orgId))
+    .where(await studentWhere(user, { view: f.view, org: f.org, of: f.of }));
+  const people = new Map(holding.map((h) => [h.id, h]));
+  if (!isStaff(user)) for (const person of await orgUsers(user.orgId)) if (!people.has(person.id)) people.set(person.id, { ...person, orgName: "" });
+  const staff = isStaff(user);
+  return [...people.values()]
+    .map((x) => ({ value: x.id, label: staff && x.orgName && !f.org ? `${x.deskLabel ?? x.name} (${x.orgName})` : (x.deskLabel ?? x.name) }))
+    .sort((x, y) => x.label.localeCompare(y.label, "en-IN"));
 }

@@ -7,7 +7,9 @@ import { ViewTabs } from "@/components/view-tabs";
 import { viewsWithPins } from "@/server/views";
 import { APP_ROLES, ROLE_LABEL, canAssignStudents, isAdmin, isStaff } from "@/lib/permissions";
 import { fmtDate, fullName } from "@/lib/format";
-import { assignableFor, orgUsers, readFilters, studentWhere } from "@/server/queries";
+import { assignableFor, counsellorOptions, orgUsers, readFilters, studentListExtras, studentWhere } from "@/server/queries";
+import { programmesSummary } from "@/lib/student-list";
+import { CountryNames } from "./country-names";
 import { peopleOnFiles } from "@/server/teams";
 import { Card, Chip, EmptyState, LinkButton, PageHeader, Table, Td, Th } from "@/components/ui";
 import { FilterBar } from "@/components/filter-bar";
@@ -53,6 +55,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
       assignedToId: s.assignedToId,
       createdByDesk: sql<string | null>`coalesce(creator.desk_label, creator.name)`,
       source: s.source,
+      preferredCountry: s.preferredCountry,
       appCount: sql<number>`(select count(*)::int from applications ap where ap.student_id = ${s.id})`,
       submittedCount: sql<number>`(select count(*)::int from applications ap join status_definitions sd on sd.id = ap.status_id where ap.student_id = ${s.id} and sd.group not in ('NEW','PENDING_PARTNER','CLOSED'))`,
       pendingCount: sql<number>`(select count(*)::int from applications ap join status_definitions sd on sd.id = ap.status_id where ap.student_id = ${s.id} and sd.group = 'PENDING_PARTNER')`,
@@ -83,6 +86,14 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
     else branchPeople.set(person.orgId, [person]);
   }
   // Who shares each of these files, in one query rather than fifty.
+  // Where each of these students is applying, and to what, in one more query
+  // for the page rather than one for each row.
+  const extras = await studentListExtras(rows.map((r) => r.id));
+  // The counsellor filter is for somebody who sees more students than their
+  // own. Anybody else's list already is their own files, so the filter would
+  // offer them only themselves.
+  const seesEvery = await can(user, "SEE_EVERY_STUDENT");
+  const counsellors = seesEvery ? await counsellorOptions(user, f) : [];
   const sharedWith = canAssign ? await peopleOnFiles(rows.map((r) => r.id)) : new Map<string, { id: string; name: string; part: string }[]>();
   const countries = await db.select().from(schema.countries).orderBy(asc(schema.countries.name));
   const orgs = staff ? await db.select().from(schema.organizations).where(sql`type <> 'HQ'`).orderBy(asc(schema.organizations.name)) : [];
@@ -130,14 +141,13 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
         keep={["of"]}
         fields={[
           { kind: "search", name: "q", label: "Search", placeholder: "Name, Medcity ID, email or phone" },
-          staff
-            ? { kind: "select", name: "org", label: "Partner", options: orgs.map((o) => ({ value: o.id, label: o.name })) }
-            : {
-                kind: "select",
-                name: "assignedTo",
-                label: "Assigned to",
-                options: [{ value: "none", label: "Nobody yet" }, ...assignable.map((c) => ({ value: c.id, label: c.deskLabel ?? c.name }))],
-              },
+          ...(staff ? [{ kind: "select" as const, name: "org", label: "Partner", options: orgs.map((o) => ({ value: o.id, label: o.name })) }] : []),
+          // The counsellor a student is assigned to. The same "assignedTo"
+          // the dashboard's figures link with, so a list opened from one of
+          // them shows the filter that is on, and a saved view keeps it.
+          ...(seesEvery
+            ? [{ kind: "select" as const, name: "assignedTo", label: "Counsellor", options: [{ value: "none", label: "Unassigned" }, ...counsellors] }]
+            : []),
           {
             kind: "select",
             name: "pathway",
@@ -194,9 +204,14 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                 <Th>Created by</Th>
                 <Th>Created on</Th>
                 <Th>Student name</Th>
-                <Th>Email</Th>
-                <Th>Phone</Th>
+                {/* The country has a column of its own on a wide screen; on a
+                    laptop it is a line in the programmes cell instead, and on
+                    a phone both fold away, where the status pill already says
+                    how many applications there are. */}
+                <Th className="hidden min-[1680px]:table-cell">Country</Th>
+                <Th>Contact</Th>
                 {canAssign && <Th>Assigned to</Th>}
+                <Th className="hidden md:table-cell">Programs applied</Th>
                 <Th>Status</Th>
                 <Th><span className="sr-only">Actions</span></Th>
               </tr>
@@ -209,8 +224,11 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                       pair of them pushed the status pill off the right of the
                       screen on a laptop, which is the column somebody is
                       actually scanning for. */}
-                  <Td className="whitespace-nowrap">
-                    <span className="block">
+                  <Td>
+                    {/* Allowed to wrap at a width rather than run on: a
+                        sub-agent's name like "Horizon Consultants, Thrissur"
+                        was the widest thing in the row. */}
+                    <span className="block max-w-[10rem]">
                       {staff ? r.orgName : r.createdByDesk}
                       {r.source !== "partner" && <Chip className="ml-1">{r.source.toUpperCase()}</Chip>}
                     </span>
@@ -223,24 +241,29 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                     <Link href={`/students/${r.id}/profile`} className="whitespace-nowrap font-medium text-ink hover:text-brand-600 hover:underline">{fullName(r)}</Link>
                     {r.medcityId && <span className="block font-mono text-2xs text-muted">{r.medcityId}</span>}
                   </Td>
+                  <Td className="hidden min-[1680px]:table-cell">
+                    <CountryNames applied={extras.get(r.id)?.countries ?? []} preferred={r.preferredCountry} className="w-[6.5rem]" />
+                  </Td>
                   {/* A counsellor works this list with the phone in the other
                       hand. The address and the number were text to read out;
-                      they are the thing you press now. */}
-                  <Td className="max-w-[10rem] text-muted">
-                    {r.email ? (
-                      <a href={`mailto:${r.email}`} className="flex items-center gap-1.5 hover:text-brand-600" title={r.email}>
-                        <IconMail className="size-3.5 shrink-0 text-muted/70" />
-                        <span className="truncate">{r.email}</span>
+                      they are the thing you press now. The two are stacked in
+                      one column, the way "Created by" is, so the country and
+                      the programmes fit beside them on a laptop. */}
+                  <Td className="text-muted">
+                    <div className="w-[9.5rem] space-y-1">
+                      <a href={`tel:${r.phone.replace(/[^+\d]/g, "")}`} className="flex items-center gap-1.5 whitespace-nowrap tabular hover:text-brand-600">
+                        <IconPhone className="size-3.5 shrink-0 text-muted/70" />
+                        {r.phone}
                       </a>
-                    ) : (
-                      <span className="text-muted">No email</span>
-                    )}
-                  </Td>
-                  <Td className="whitespace-nowrap">
-                    <a href={`tel:${r.phone.replace(/[^+\d]/g, "")}`} className="flex items-center gap-1.5 tabular text-muted hover:text-brand-600">
-                      <IconPhone className="size-3.5 shrink-0 text-muted/70" />
-                      {r.phone}
-                    </a>
+                      {r.email ? (
+                        <a href={`mailto:${r.email}`} className="flex items-center gap-1.5 text-sm hover:text-brand-600" title={r.email}>
+                          <IconMail className="size-3.5 shrink-0 text-muted/70" />
+                          <span className="truncate">{r.email}</span>
+                        </a>
+                      ) : (
+                        <span className="block text-sm text-muted/70">No email</span>
+                      )}
+                    </div>
                   </Td>
                   {canAssign && (
                     <Td>
@@ -285,6 +308,37 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                       />
                     </Td>
                   )}
+                  <Td className="hidden md:table-cell">
+                    {(() => {
+                      const got = extras.get(r.id);
+                      const where = <CountryNames inline applied={got?.countries ?? []} preferred={r.preferredCountry} className="w-[10rem] text-2xs min-[1680px]:hidden" />;
+                      if (!got) {
+                        return (
+                          <>
+                            <span className="block whitespace-nowrap text-xs text-muted/70">None yet</span>
+                            {where}
+                          </>
+                        );
+                      }
+                      const sum = programmesSummary(got.first, got.programmes);
+                      return (
+                        <Link
+                          href={`/students/${r.id}/applications`}
+                          className="group block w-[10rem] text-sm hover:text-brand-600"
+                          title={sum.shown.join("\n")}
+                        >
+                          <span className="block text-2xs font-medium text-muted group-hover:text-brand-600">
+                            {got.total} application{got.total === 1 ? "" : "s"}
+                          </span>
+                          {sum.shown.map((line, i) => (
+                            <span key={i} className="line-clamp-2 text-xs group-hover:underline">{line}</span>
+                          ))}
+                          {sum.moreLabel && <span className="block text-2xs text-muted">{sum.moreLabel}</span>}
+                          {where}
+                        </Link>
+                      );
+                    })()}
+                  </Td>
                   <Td>
                     {/* Nothing in flight is the quiet answer, so it is set
                         quiet. A blue pill on every row of a new branch's list
