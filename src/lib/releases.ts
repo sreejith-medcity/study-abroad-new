@@ -12,6 +12,13 @@ export type Release = { version: string; date: string; changes: string[] };
 
 export const RELEASES: Release[] = [
   {
+    version: "1.9.2",
+    date: "2026-10-27",
+    changes: [
+      "Status flows shows one pathway at a time: tabs across the top name every pathway with how many statuses it has in use, and saving a status comes back to the same pathway. Switched-off statuses are greyed.",
+    ],
+  },
+  {
     version: "1.9.1",
     date: "2026-10-27",
     changes: [

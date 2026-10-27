@@ -5,6 +5,12 @@ version in package.json and adds an entry here and in src/lib/releases.ts (the
 What's new page reads that one). After applying a release, tag it with the
 version so it can be found and rolled back to.
 
+## 1.9.2 (27 October 2026)
+
+- Status flows shows one pathway at a time: tabs across the top name every pathway with how many statuses it has in use, and saving a status comes back to the same pathway. Switched-off statuses are greyed.
+
+Nothing to run on the VPS beyond `bash /root/update-portal.sh`: no migration and no SQL.
+
 ## 1.9.1 (27 October 2026)
 
 - The Documents dashboard and the processing desk's dashboard now show the person's own students, for anybody who has some: how many are theirs (the same number their students list shows), how many are assigned to them, follow-ups due and late, their students' applications, offers and visas, and those applications by stage. Every figure opens a list holding the same number.
