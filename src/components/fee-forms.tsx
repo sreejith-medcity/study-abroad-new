@@ -177,13 +177,28 @@ export function TaxDetailsForm({ org }: { org: { id: string; name: string; gstin
 
 // ---------- A student's schedule ----------
 
-export function ApplyPlan({ studentId, plans, today }: { studentId: string; plans: { id: string; name: string; shares: boolean; summary: string }[]; today: string }) {
+/**
+ * Puts a plan on the student. `billedEarlier` names what an earlier plan has
+ * already billed, which the new plan does not raise again; the plan can also
+ * be started from a later instalment.
+ */
+export function ApplyPlan({
+  studentId,
+  plans,
+  today,
+  billedEarlier = [],
+}: {
+  studentId: string;
+  plans: { id: string; name: string; shares: boolean; summary: string; labels: string[] }[];
+  today: string;
+  billedEarlier?: string[];
+}) {
   const [planId, setPlanId] = useState(plans[0]?.id ?? "");
   const chosen = plans.find((p) => p.id === planId);
   return (
     <ActionForm action={applyFeePlanAction} submitLabel="Apply plan" pendingLabel="Applying…">
       <input type="hidden" name="studentId" value={studentId} />
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-4">
         <SelectField label="Fee plan" name="planId" value={planId} onChange={(e) => setPlanId(e.target.value)}>
           {plans.map((p) => (
             <option key={p.id} value={p.id}>
@@ -199,8 +214,20 @@ export function ApplyPlan({ studentId, plans, today }: { studentId: string; plan
           disabled={!chosen?.shares}
         />
         <TextField label="Applied from" name="startOn" type="date" defaultValue={today} hint="Instalments due in days count from here." />
+        <SelectField key={planId} label="Start from instalment" name="startFrom" defaultValue="1" hint="Instalments before it are not raised on this plan.">
+          {(chosen?.labels ?? []).map((label, k) => (
+            <option key={k} value={k + 1}>
+              {k + 1}. {label}
+            </option>
+          ))}
+        </SelectField>
       </div>
       {chosen && <p className="text-xs text-muted">{chosen.summary}</p>}
+      {billedEarlier.length > 0 && (
+        <p className="text-xs text-muted" data-testid="billed-earlier">
+          Already billed under an earlier plan, so not raised again where the new plan has the same instalment or step: {billedEarlier.join("; ")}.
+        </p>
+      )}
     </ActionForm>
   );
 }
@@ -299,12 +326,30 @@ export function SendLink({ invoiceId }: { invoiceId: string }) {
   );
 }
 
-export function CancelInvoice({ invoiceId, draft }: { invoiceId: string; draft: boolean }) {
+/**
+ * Cancels or discards an invoice. One raised from a schedule asks what
+ * becomes of its instalment: raised again later, or waived for good (only
+ * for those who collect fees).
+ */
+export function CancelInvoice({ invoiceId, draft, instalment, mayWaive }: { invoiceId: string; draft: boolean; instalment?: string | null; mayWaive?: boolean }) {
   return (
     <Fold label={draft ? "Discard draft" : "Cancel invoice"} tone="danger">
       <ActionForm action={cancelFeeInvoiceAction} submitLabel={draft ? "Discard" : "Cancel it"} submitVariant="secondary">
         <input type="hidden" name="invoiceId" value={invoiceId} />
-        <TextField id={`cancel-${invoiceId}`} label="Why" name="reason" />
+        <TextField id={`cancel-${invoiceId}`} label="Why" name="reason" hint={instalment && mayWaive ? "Needed for a waiver too." : undefined} />
+        {instalment && (
+          <fieldset className="space-y-1 text-xs">
+            <legend className="mb-1 text-muted">{instalment}, afterwards</legend>
+            <label className="flex items-center gap-2">
+              <input type="radio" name="afterwards" value="RAISE_AGAIN" defaultChecked /> Raise it again later
+            </label>
+            {mayWaive && (
+              <label className="flex items-center gap-2">
+                <input type="radio" name="afterwards" value="WAIVE" /> Waive this instalment: it is never raised again
+              </label>
+            )}
+          </fieldset>
+        )}
       </ActionForm>
     </Fold>
   );

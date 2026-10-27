@@ -7,12 +7,16 @@ import { APP_ROLES } from "@/lib/permissions";
 import {
   FEE_INVOICE_STATE_LABEL,
   FEE_METHOD_LABEL,
+  INSTALMENT_STATE_LABEL,
+  LIVE_INSTALMENT_STATES,
   addDays,
   ageOf,
   balanceDue,
   dueWords,
+  fullyRefunded,
   gstWords,
   instalmentDueWords,
+  invoiceStateLabel,
   istToday,
   refundRoom,
   rupees,
@@ -78,7 +82,20 @@ export default async function StudentFeesPage({ params }: { params: Promise<{ id
     billingOrgId(student.orgId).then((orgId) => db.query.organizations.findFirst({ where: eq(schema.organizations.id, orgId) })),
     razorpayConfig(),
   ]);
-  const live = fees.instalments.filter((i) => i.state !== "CANCELLED");
+  // The schedule in force: the plan applied last that still has a live row.
+  // Rows of one plan share the moment they were put on.
+  const scheduleOf = (i: (typeof fees.instalments)[number]) => `${i.planName}|${i.createdAt.toISOString()}`;
+  const current = fees.instalments.filter((i) => LIVE_INSTALMENT_STATES.includes(i.state)).map(scheduleOf).at(-1);
+  const live = current ? fees.instalments.filter((i) => scheduleOf(i) === current && i.state !== "CANCELLED") : [];
+  const invoiceById = new Map(fees.invoices.map((x) => [x.id, x]));
+  // What earlier plans billed, which a new plan does not raise again.
+  const seenEarlier = new Set<string>();
+  const billedEarlier = fees.instalments
+    .filter((i) => i.state === "CANCELLED" && i.invoiceId && invoiceById.get(i.invoiceId)?.state !== "CANCELLED")
+    .filter((i) => (seenEarlier.has(i.invoiceId!) ? false : (seenEarlier.add(i.invoiceId!), true)))
+    .map((i) => `${i.label} (${invoiceById.get(i.invoiceId!)?.number ?? "draft"})`);
+  // The instalment behind an invoice, for the choice of raising it again or waiving it.
+  const instalmentBy = new Map(fees.instalments.filter((i) => i.invoiceId && (i.state === "INVOICED" || i.state === "SKIPPED")).map((i) => [i.invoiceId!, i.label]));
   const issued = fees.invoices.filter((i) => i.state !== "DRAFT" && i.state !== "CANCELLED");
   const invoiced = issued.reduce((s, i) => s + (i.total ?? 0) - i.refunded, 0);
   const received = issued.reduce((s, i) => s + i.received - i.refunded, 0);
@@ -127,15 +144,26 @@ export default async function StudentFeesPage({ params }: { params: Promise<{ id
                 </thead>
                 <tbody>
                   {live.map((i) => {
-                    const inv = fees.invoices.find((x) => x.id === i.invoiceId);
+                    const inv = i.invoiceId ? invoiceById.get(i.invoiceId) : undefined;
                     return (
-                      <tr key={i.id} data-instalment={i.label}>
+                      <tr key={i.id} data-instalment={i.label} data-instalment-state={i.state}>
                         <Td className="tabular">{i.seq}</Td>
                         <Td className="font-medium">{i.label}</Td>
                         <Td className="text-right tabular">{rupees(i.amount)}</Td>
                         <Td>{i.dueOn ? fmtDate(i.dueOn) : instalmentDueWords(i)}</Td>
                         <Td>{gstWords(i.gstPercent)}</Td>
-                        <Td>{i.state === "INVOICED" ? <span>Invoiced{inv?.number ? ` as ${inv.number}` : " as a draft"}</span> : <span className="text-muted">Scheduled</span>}</Td>
+                        <Td>
+                          {i.state === "INVOICED" ? (
+                            <span>Invoiced{inv?.number ? ` as ${inv.number}` : " as a draft"}</span>
+                          ) : i.state === "WAIVED" ? (
+                            <Chip tone="neutral">Waived</Chip>
+                          ) : i.state === "SKIPPED" ? (
+                            <span>{INSTALMENT_STATE_LABEL.SKIPPED}</span>
+                          ) : (
+                            <span className="text-muted">Scheduled</span>
+                          )}
+                          {i.closedReason && (i.state === "WAIVED" || i.state === "SKIPPED") && <span className="block text-xs text-muted">{i.closedReason}</span>}
+                        </Td>
                         <Td>{access.act && i.state === "SCHEDULED" && <RaiseInstalment instalmentId={i.id} dueOn={i.dueOn ?? addDays(today, 7)} />}</Td>
                       </tr>
                     );
@@ -153,9 +181,11 @@ export default async function StudentFeesPage({ params }: { params: Promise<{ id
               <ApplyPlan
                 studentId={id}
                 today={today}
+                billedEarlier={billedEarlier}
                 plans={livePlans.map((p) => ({
                   id: p.id,
                   name: p.name,
+                  labels: p.items.map((it) => it.label),
                   shares: usesShares(p.items),
                   summary: p.items.map((it) => `${it.label}: ${it.share != null ? `${it.share}%` : rupees(it.amount)} ${dueWords(it)}`).join("; "),
                 }))}
@@ -182,7 +212,7 @@ export default async function StudentFeesPage({ params }: { params: Promise<{ id
               <div key={inv.id} data-invoice={inv.number ?? "draft"} className="rounded-xl border border-line p-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-sm font-semibold">{inv.number ?? "Draft"}</span>
-                  <Chip tone={STATE_TONE[inv.state]}>{FEE_INVOICE_STATE_LABEL[inv.state]}</Chip>
+                  <Chip tone={fullyRefunded(inv) && inv.state !== "CANCELLED" ? "neutral" : STATE_TONE[inv.state]}>{invoiceStateLabel(inv)}</Chip>
                   {inv.kind && <span className="text-xs text-muted">{inv.kind === "TAX_INVOICE" ? "Tax invoice" : "Bill of supply"}</span>}
                   {late > 0 && <Chip tone="bad">{late} days late</Chip>}
                   {inv.number && (
@@ -243,7 +273,7 @@ export default async function StudentFeesPage({ params }: { params: Promise<{ id
                     ? access.act
                     : access.desk && (inv.state === "ISSUED" || inv.state === "PART_PAID" || (inv.state === "PAID" && inv.received - inv.refunded <= 0))) && (
                     <div className="w-full md:w-72">
-                      <CancelInvoice invoiceId={inv.id} draft={inv.state === "DRAFT"} />
+                      <CancelInvoice invoiceId={inv.id} draft={inv.state === "DRAFT"} instalment={instalmentBy.get(inv.id) ?? null} mayWaive={access.act} />
                     </div>
                   )}
                   {access.desk && (inv.state === "ISSUED" || inv.state === "PART_PAID") && (
@@ -331,6 +361,11 @@ export default async function StudentFeesPage({ params }: { params: Promise<{ id
                   <Td>
                     {REFUND_LABEL[r.state]}
                     {r.payoutReference && <span className="block text-xs text-muted">Reference {r.payoutReference}</span>}
+                    {r.creditNoteNumber && (
+                      <Link href={`/print/fees/credit-note/${r.id}`} target="_blank" className="block text-xs font-medium text-brand-600 hover:underline">
+                        Credit note {r.creditNoteNumber}
+                      </Link>
+                    )}
                     {r.decisionNote && <span className="block text-xs text-muted">{r.decisionNote}</span>}
                   </Td>
                   <Td>

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { requireUser, type SessionUser } from "@/lib/auth";
@@ -10,24 +10,35 @@ import { GSTIN_RE } from "@/lib/billing";
 import type { FormState } from "@/lib/form-state";
 import { APP_ROLES } from "@/lib/permissions";
 import {
+  AMOUNT_CAP_WORDS,
   COUNTER_METHODS,
+  LIVE_INSTALMENT_STATES,
+  MAX_FEE_AMOUNT,
   STAGE_INVOICE_DAYS,
   addDays,
+  amountCapProblem,
   balanceDue,
+  creditNoteSplit,
   isDay,
   istToday,
+  linkRefusal,
+  needsCreditNote,
   planProblem,
   refundRoom,
   rupees,
   scheduleFrom,
+  skipsOnSwitch,
   stateFromGstin,
   usesShares,
   type FeeMethod,
   type FeePlanItem,
+  type LinkCancelResult,
 } from "@/lib/student-fees";
 import {
+  billedEarlier,
   cancelLiveLinks,
   createDraft,
+  feeDeskIds,
   billingOrgId,
   createPaymentLink,
   feeAccess,
@@ -176,10 +187,22 @@ export async function saveTaxDetailsAction(_: FormState, fd: FormData): Promise<
 
 // ---------- A student's schedule ----------
 
+class Refused extends Error {}
+
 /**
  * Puts a fee plan on a student. Dated instalments are invoiced at once, so
  * the ageing report sees them coming; those tied to a stage are invoiced when
  * the file reaches it, or now where it already has.
+ *
+ * Moving a student to another plan does not bill them twice: an instalment
+ * whose name or step was already billed under the earlier plan (its invoice
+ * out and not cancelled) is not raised, and the person applying can start
+ * the plan from a later instalment. Both are kept on the schedule as "not
+ * raised", with the reason.
+ *
+ * The student's row is locked while the check for a live schedule and the
+ * new rows are written, so two people applying plans at once cannot both get
+ * one on; a unique index on live instalments backs that up.
  */
 export async function applyFeePlanAction(_: FormState, fd: FormData): Promise<FormState> {
   const { user, access } = await actor();
@@ -190,42 +213,79 @@ export async function applyFeePlanAction(_: FormState, fd: FormData): Promise<Fo
   if (!plan) return { fieldErrors: { planId: ["Choose a plan"] }, error: "Check the highlighted fields." };
   const fee = wholeRupees(fd.get("fee"));
   if (fee === "bad") return { fieldErrors: { fee: ["Whole rupees, no paise"] }, error: "Check the highlighted fields." };
+  if (amountCapProblem(fee)) return { fieldErrors: { fee: [AMOUNT_CAP_WORDS] }, error: "Check the highlighted fields." };
   if (usesShares(plan.items) && !fee) {
     return { fieldErrors: { fee: ["This plan is in shares, so it needs the package fee"] }, error: "A share of a fee nobody recorded cannot be worked out. Enter the package fee." };
   }
   const startOn = String(fd.get("startOn") ?? "") || istToday();
   if (!isDay(startOn)) return { fieldErrors: { startOn: ["Enter a date"] }, error: "Check the highlighted fields." };
-  const live = await db.query.feeInstalments.findFirst({ where: and(eq(fs.studentId, student.id), inArray(fs.state, ["SCHEDULED", "INVOICED"])) });
-  if (live) return { error: `${student.firstName} already has a fee schedule (${live.planName}). Cancel what is left of it first.` };
+  const startRaw = String(fd.get("startFrom") ?? "").trim();
+  const startFrom = startRaw ? Number(startRaw) : 1;
+  if (!Number.isInteger(startFrom) || startFrom < 1 || startFrom > plan.items.length) {
+    return { fieldErrors: { startFrom: [`An instalment from 1 to ${plan.items.length}`] }, error: "Check the highlighted fields." };
+  }
   const rows = scheduleFrom(plan.items, usesShares(plan.items) ? fee : null, startOn, plan.gstPercent);
-  const billedBy = await billingOrgId(student.orgId);
   if (rows.some((r) => r.amount == null)) return { error: "An instalment came out with no amount. Check the plan." };
-  const inserted = await db
-    .insert(fs)
-    .values(
-      rows.map((r) => ({
-        studentId: student.id,
-        orgId: billedBy,
-        planId: plan.id,
-        planName: plan.name,
-        seq: r.seq,
-        label: r.label,
-        amount: r.amount!,
-        currency: plan.currency,
-        gstPercent: r.gstPercent,
-        dueOn: r.dueOn,
-        stepPathway: r.stepPathway,
-        stepKey: r.stepKey,
-        createdById: user.id,
-      })),
-    )
-    .returning({ id: fs.id, dueOn: fs.dueOn, stepPathway: fs.stepPathway, stepKey: fs.stepKey });
-  await audit(user.id, "fee_plan.apply", "student", student.id, { plan: plan.name, fee, startOn, instalments: rows.length, total: rows.reduce((s, r) => s + (r.amount ?? 0), 0) });
+  if (rows.some((r) => amountCapProblem(r.amount))) return { error: AMOUNT_CAP_WORDS };
+  const billedBy = await billingOrgId(student.orgId);
+  const already = (name: string) => `${student.firstName} already has a fee schedule (${name}). Cancel what is left of it first.`;
+  let made;
+  try {
+    made = await db.transaction(async (tx) => {
+      // Two people applying plans to the same student queue up here.
+      await tx.execute(sql`select id from students where id = ${student.id} for no key update`);
+      const [live] = await tx.select({ planName: fs.planName }).from(fs).where(and(eq(fs.studentId, student.id), inArray(fs.state, LIVE_INSTALMENT_STATES))).limit(1);
+      if (live) throw new Refused(already(live.planName));
+      const skips = skipsOnSwitch(rows, await billedEarlier(tx, student.id), startFrom);
+      const now = new Date();
+      const inserted = await tx
+        .insert(fs)
+        .values(
+          rows.map((r, k) => ({
+            studentId: student.id,
+            orgId: billedBy,
+            planId: plan.id,
+            planName: plan.name,
+            seq: r.seq,
+            label: r.label,
+            amount: r.amount!,
+            currency: plan.currency,
+            gstPercent: r.gstPercent,
+            dueOn: r.dueOn,
+            stepPathway: r.stepPathway,
+            stepKey: r.stepKey,
+            state: skips[k] ? ("SKIPPED" as const) : ("SCHEDULED" as const),
+            invoiceId: skips[k]?.invoiceId ?? null,
+            closedReason: skips[k]?.reason ?? null,
+            closedById: skips[k] ? user.id : null,
+            closedAt: skips[k] ? now : null,
+            createdById: user.id,
+          })),
+        )
+        .returning({ id: fs.id, seq: fs.seq, label: fs.label, state: fs.state, dueOn: fs.dueOn, stepPathway: fs.stepPathway, stepKey: fs.stepKey });
+      return { inserted, skips };
+    });
+  } catch (e) {
+    if (e instanceof Refused) return { error: e.message };
+    if (/fee_instalments_live_uq/.test(String((e as Error).message ?? e))) return { error: already("applied a moment ago") };
+    throw e;
+  }
+  const skipped = made.skips.filter((x): x is NonNullable<typeof x> => !!x);
+  await audit(user.id, "fee_plan.apply", "student", student.id, {
+    plan: plan.name,
+    fee,
+    startOn,
+    startFrom,
+    instalments: rows.length,
+    total: rows.reduce((s, r) => s + (r.amount ?? 0), 0),
+    skipped: skipped.map((x) => ({ seq: x.seq, label: rows[x.seq - 1]?.label, reason: x.reason, invoiceId: x.invoiceId })),
+  });
   let raised = 0;
   let drafts = 0;
   // A stage or step the file has already reached is due now, the same as a dated one.
   const at = await fileProgress(student.id);
-  for (const ins of inserted) {
+  for (const ins of made.inserted) {
+    if (ins.state !== "SCHEDULED") continue;
     const now = ins.dueOn != null || reachedBy(ins, at);
     if (!now) continue;
     // A stage already reached gets the same week to pay as a stage reached tomorrow.
@@ -235,16 +295,24 @@ export async function applyFeePlanAction(_: FormState, fd: FormData): Promise<Fo
     else drafts++;
   }
   refresh(student.id);
-  const waiting = rows.length - raised - drafts;
+  const waiting = rows.length - skipped.length - raised - drafts;
+  const skippedWords = skipped.length
+    ? ` Not raised: ${skipped.map((x) => `${x.seq}. ${rows[x.seq - 1]?.label} (${x.reason.replace(/\.$/, "").replace(/^./, (c) => c.toLowerCase())})`).join("; ")}.`
+    : "";
   return {
     ok:
       `${plan.name} applied: ${rows.length} instalment${rows.length === 1 ? "" : "s"}, ${raised} invoiced now` +
       (drafts ? `, ${drafts} left as draft${drafts === 1 ? "" : "s"} for a GST rate` : "") +
-      (waiting ? `, ${waiting} when the file reaches the stage or step.` : "."),
+      (waiting ? `, ${waiting} when the file reaches the stage or step.` : ".") +
+      skippedWords,
   };
 }
 
-/** Takes the rest of a schedule off: what is not yet invoiced is cancelled. Invoices already out stay. */
+/**
+ * Takes the rest of a schedule off: what is not yet invoiced is cancelled.
+ * Invoices already out stay, and are remembered, so a plan applied next does
+ * not bill them again. A waived instalment stays waived.
+ */
 export async function cancelScheduleAction(_: FormState, fd: FormData): Promise<FormState> {
   const { user, access } = await actor();
   if (!access.act) return { error: NO_ACT };
@@ -252,10 +320,14 @@ export async function cancelScheduleAction(_: FormState, fd: FormData): Promise<
   if (!student) return { error: NOT_YOURS };
   const reason = String(fd.get("reason") ?? "").trim();
   if (reason.length < 3) return { fieldErrors: { reason: ["Say why, for the record"] }, error: "Check the highlighted fields." };
-  const gone = await db.update(fs).set({ state: "CANCELLED" }).where(and(eq(fs.studentId, student.id), eq(fs.state, "SCHEDULED"))).returning({ id: fs.id });
-  // Invoiced instalments are settled through their invoices; marking them done
-  // lets a new plan go on while those invoices carry on.
-  const left = await db.update(fs).set({ state: "CANCELLED" }).where(and(eq(fs.studentId, student.id), eq(fs.state, "INVOICED"))).returning({ id: fs.id });
+  const { gone, left } = await db.transaction(async (tx) => {
+    await tx.execute(sql`select id from students where id = ${student.id} for no key update`);
+    const gone = await tx.update(fs).set({ state: "CANCELLED" }).where(and(eq(fs.studentId, student.id), inArray(fs.state, ["SCHEDULED", "SKIPPED"]))).returning({ id: fs.id });
+    // Invoiced instalments are settled through their invoices; marking them done
+    // lets a new plan go on while those invoices carry on.
+    const left = await tx.update(fs).set({ state: "CANCELLED" }).where(and(eq(fs.studentId, student.id), eq(fs.state, "INVOICED"))).returning({ id: fs.id });
+    return { gone, left };
+  });
   await audit(user.id, "fee_schedule.cancel", "student", student.id, { reason, cancelled: gone.length, closedWithInvoices: left.length });
   refresh(student.id);
   return { ok: gone.length ? `${gone.length} instalment${gone.length === 1 ? "" : "s"} taken off. Invoices already issued stay as they are.` : "Nothing was left to invoice. Invoices already issued stay as they are." };
@@ -293,6 +365,7 @@ export async function createFeeInvoiceAction(_: FormState, fd: FormData): Promis
     if (!description && amount == null) continue;
     if (!description) fieldErrors[`description${n}`] = ["Say what it is for"];
     if (amount === "bad" || amount == null || amount <= 0) fieldErrors[`amount${n}`] = ["Whole rupees above nought"];
+    else if (amount > MAX_FEE_AMOUNT) fieldErrors[`amount${n}`] = [AMOUNT_CAP_WORDS];
     else if (description) lines.push({ description: description.slice(0, 200), amount });
   }
   const gst = gstRate(fd.get("gstPercent"));
@@ -301,6 +374,7 @@ export async function createFeeInvoiceAction(_: FormState, fd: FormData): Promis
   if (!isDay(dueOn)) fieldErrors.dueOn = ["When is it due?"];
   if (Object.keys(fieldErrors).length) return { fieldErrors, error: "Check the highlighted fields." };
   if (!lines.length) return { fieldErrors: { description1: ["Add at least one line"] }, error: "Check the highlighted fields." };
+  if (lines.reduce((s, l) => s + l.amount, 0) > MAX_FEE_AMOUNT) return { error: `The lines add up to more than one invoice can carry. ${AMOUNT_CAP_WORDS}` };
   const draft = await createDraft(db, {
     studentId: student.id,
     orgId: await billingOrgId(student.orgId),
@@ -350,6 +424,15 @@ export async function issueFeeInvoiceAction(_: FormState, fd: FormData): Promise
  * only by finance or the head office, and only while nothing is held on it:
  * money received is refunded first, so the books never show a cancelled
  * invoice with somebody's fee still sitting on it.
+ *
+ * An invoice raised from a schedule asks what becomes of its instalment: it
+ * goes back on the schedule to be raised again later, or it is waived, let
+ * off for good and never raised again. Waiving needs the Collect fees
+ * permission and a reason, and is audited.
+ *
+ * The invoice row is locked while what is held on it is checked and it is
+ * closed, the same as a refund, so a receipt taken at that moment cannot slip
+ * under a cancellation.
  */
 export async function cancelFeeInvoiceAction(_: FormState, fd: FormData): Promise<FormState> {
   const { user, access } = await actor();
@@ -359,29 +442,61 @@ export async function cancelFeeInvoiceAction(_: FormState, fd: FormData): Promis
   const { invoice } = found;
   const reason = String(fd.get("reason") ?? "").trim();
   if (reason.length < 3) return { fieldErrors: { reason: ["Say why, for the record"] }, error: "Check the highlighted fields." };
+  const afterwards = String(fd.get("afterwards") ?? "RAISE_AGAIN");
+  if (afterwards !== "RAISE_AGAIN" && afterwards !== "WAIVE") return { error: "Choose whether the instalment is raised again later or waived." };
+  const waive = afterwards === "WAIVE";
+  if (waive && !access.act) return { error: "Waiving an instalment needs the Collect fees permission." };
   // A paid invoice can be cancelled once everything on it has gone back (the
   // check on what is held follows), as the refusal below tells people to do.
   if (invoice.state === "CANCELLED" || invoice.state === "WRITTEN_OFF") return { error: "This invoice is already closed." };
   if (invoice.state !== "DRAFT" && !access.desk) return { error: "An issued invoice is cancelled by finance or the head office." };
   if (invoice.received - invoice.refunded > 0) return { error: `${rupees(invoice.received - invoice.refunded)} has been received on this invoice. Refund it first, then cancel.` };
-  if ((await pendingRefunds(db, invoice.id)) > 0) return { error: "A refund on this invoice is still open. Settle it first." };
   // A link already with the student must not stay payable.
-  const stale = await cancelLiveLinks(invoice.id);
-  if (stale) return { error: stale };
-  const [row] = await db
-    .update(fi)
-    .set({ state: "CANCELLED", closedReason: reason, closedById: user.id, closedAt: new Date(), updatedAt: new Date() })
-    .where(and(eq(fi.id, invoice.id), eq(fi.state, invoice.state)))
-    .returning({ id: fi.id });
-  if (!row) return { error: "The invoice changed a moment ago. Reload and look again." };
-  // The instalment goes back on the schedule, to be raised again when it is right.
-  await db.update(fs).set({ state: "SCHEDULED", invoiceId: null }).where(and(eq(fs.invoiceId, invoice.id), eq(fs.state, "INVOICED")));
-  await audit(user.id, "fee_invoice.cancel", "fee_invoice", invoice.id, { number: invoice.number, from: invoice.state, reason });
+  const refusal = linkRefusal(await cancelLiveLinks(invoice.id, user.id), "so the invoice was not cancelled");
+  if (refusal) return { error: refusal };
+  const done = await db.transaction(async (tx) => {
+    await tx.select({ id: fi.id }).from(fi).where(eq(fi.id, invoice.id)).for("update");
+    const [inv] = await tx.select().from(fi).where(eq(fi.id, invoice.id));
+    if (inv.state === "CANCELLED" || inv.state === "WRITTEN_OFF") return { error: "This invoice is already closed." };
+    if (inv.state !== "DRAFT" && !access.desk) return { error: "An issued invoice is cancelled by finance or the head office." };
+    if (inv.received - inv.refunded > 0) return { error: `${rupees(inv.received - inv.refunded)} has been received on this invoice. Refund it first, then cancel.` };
+    if ((await pendingRefunds(tx, inv.id)) > 0) return { error: "A refund on this invoice is still open. Settle it first." };
+    const behind = and(eq(fs.invoiceId, inv.id), inArray(fs.state, ["INVOICED", "SKIPPED"]));
+    if (waive) {
+      const [one] = await tx.select({ id: fs.id }).from(fs).where(behind).limit(1);
+      if (!one) return { error: "This invoice was not raised from a fee schedule, so there is no instalment to waive. Cancel it without waiving." };
+    }
+    await tx.update(fi).set({ state: "CANCELLED", closedReason: reason, closedById: user.id, closedAt: new Date(), updatedAt: new Date() }).where(eq(fi.id, inv.id));
+    const instalments = waive
+      ? // Let off for good: never raised again, and shown as waived.
+        await tx.update(fs).set({ state: "WAIVED", closedReason: reason, closedById: user.id, closedAt: new Date() }).where(behind).returning({ id: fs.id, label: fs.label, amount: fs.amount })
+      : // Back on the schedule, to be raised again when it is right.
+        await tx.update(fs).set({ state: "SCHEDULED", invoiceId: null, closedReason: null, closedById: null, closedAt: null }).where(behind).returning({ id: fs.id, label: fs.label, amount: fs.amount });
+    return { from: inv.state, instalments };
+  });
+  if ("error" in done) return { error: done.error };
+  await audit(user.id, "fee_invoice.cancel", "fee_invoice", invoice.id, { number: invoice.number, from: done.from, reason, instalments: waive ? "waived" : "raise again later" });
+  for (const i of waive ? done.instalments : []) {
+    await audit(user.id, "fee_instalment.waive", "fee_instalment", i.id, { studentId: found.student.id, label: i.label, amount: i.amount, invoice: invoice.number, reason });
+  }
   refresh(found.student.id);
-  return { ok: invoice.number ? `${invoice.number} cancelled.` : "Draft cancelled." };
+  const what = invoice.number ? `${invoice.number} cancelled.` : "Draft cancelled.";
+  if (!done.instalments.length) return { ok: what };
+  const names = done.instalments.map((i) => i.label).join(", ");
+  return { ok: waive ? `${what} ${names} waived: it is not raised again.` : `${what} ${names} is back on the schedule, to be raised again later.` };
 }
 
-/** Writes off what is left on an issued invoice. Finance or the head office, with a reason. */
+/**
+ * Writes off what is left on an issued invoice. Finance or the head office,
+ * with a reason. The invoice row is locked while the balance is read and the
+ * invoice closed.
+ *
+ * A live payment link is cancelled first. Where Razorpay says the student has
+ * paid it, the write-off goes ahead and the link is left as it is: the
+ * payment, when Razorpay confirms it, is recorded and flagged as more than
+ * was due, for finance to refund or settle. Where Razorpay cannot confirm the
+ * link is closed, nothing is written off.
+ */
 export async function writeOffFeeInvoiceAction(_: FormState, fd: FormData): Promise<FormState> {
   const { user, access } = await actor();
   if (!access.desk) return { error: DESK_ONLY };
@@ -391,16 +506,37 @@ export async function writeOffFeeInvoiceAction(_: FormState, fd: FormData): Prom
   const reason = String(fd.get("reason") ?? "").trim();
   if (reason.length < 3) return { fieldErrors: { reason: ["Say why, for the record"] }, error: "Check the highlighted fields." };
   if (invoice.state !== "ISSUED" && invoice.state !== "PART_PAID") return { error: "Only an issued invoice with money still due can be written off." };
-  const [row] = await db
-    .update(fi)
-    .set({ state: "WRITTEN_OFF", closedReason: reason, closedById: user.id, closedAt: new Date(), updatedAt: new Date() })
-    .where(and(eq(fi.id, invoice.id), inArray(fi.state, ["ISSUED", "PART_PAID"])))
-    .returning({ id: fi.id });
-  if (!row) return { error: "The invoice changed a moment ago. Reload and look again." };
-  await cancelLiveLinks(invoice.id);
-  await audit(user.id, "fee_invoice.write_off", "fee_invoice", invoice.id, { number: invoice.number, balance: balanceDue(invoice.total, invoice.received), reason });
+  const links = await cancelLiveLinks(invoice.id, user.id);
+  if (links.failed) return { error: linkRefusal({ ...links, paid: [] }, "so nothing was written off")! };
+  const done = await db.transaction(async (tx) => {
+    await tx.select({ id: fi.id }).from(fi).where(eq(fi.id, invoice.id)).for("update");
+    const [inv] = await tx.select().from(fi).where(eq(fi.id, invoice.id));
+    if (inv.state !== "ISSUED" && inv.state !== "PART_PAID") return { error: "The invoice changed a moment ago. Reload and look again." };
+    const balance = balanceDue(inv.total, inv.received);
+    if (!balance) return { error: "Nothing is left to write off on this invoice." };
+    await tx.update(fi).set({ state: "WRITTEN_OFF", closedReason: reason, closedById: user.id, closedAt: new Date(), updatedAt: new Date() }).where(eq(fi.id, inv.id));
+    return { balance };
+  });
+  if ("error" in done) return { error: done.error };
+  await audit(user.id, "fee_invoice.write_off", "fee_invoice", invoice.id, { number: invoice.number, balance: done.balance, reason, paidLinks: links.paid });
   refresh(found.student.id);
+  if (links.paid.length) {
+    await notifyUsers(
+      [...new Set([...(await feeDeskIds()), ...(await adminIds())])].filter((id) => id !== user.id),
+      `${invoice.number} written off with a payment link the student has paid`,
+      `${found.student.firstName} ${found.student.lastName} paid the link before it could be cancelled. When Razorpay confirms the payment it is recorded as more than was due: refund it or settle it with the student.`,
+      `/students/${found.student.id}/fees`,
+    );
+    return { ok: `${invoice.number} written off. The student has already paid its payment link, so the link was left as it is: when Razorpay confirms the payment it is recorded as an over-payment, for finance to refund or settle.` };
+  }
   return { ok: `${invoice.number} written off.` };
+}
+
+/** A line for a success message when the old links on an invoice could not all be closed. */
+function linkNote(r: LinkCancelResult): string {
+  if (r.paid.length) return " The earlier payment link was not cancelled: Razorpay says the student has paid it, so watch for that payment.";
+  if (r.failed) return ` The earlier payment link could not be cancelled at Razorpay (${r.failed}) and is still payable. Cancel it before sending a new one.`;
+  return "";
 }
 
 // ---------- Receipts and links ----------
@@ -418,16 +554,17 @@ export async function recordFeeReceiptAction(_: FormState, fd: FormData): Promis
   const fieldErrors: Record<string, string[]> = {};
   if (!COUNTER_METHODS.includes(method)) fieldErrors.method = ["How was it paid?"];
   if (amount === "bad" || amount == null) fieldErrors.amount = ["Whole rupees above nought"];
+  else if (amount > MAX_FEE_AMOUNT) fieldErrors.amount = [AMOUNT_CAP_WORDS];
   if (method !== "CASH" && !reference) fieldErrors.reference = ["The UPI, card or bank reference, so it can be matched"];
   if (!isDay(receivedOn) || receivedOn > today) fieldErrors.receivedOn = ["A day up to today"];
   if (Object.keys(fieldErrors).length) return { fieldErrors, error: "Check the highlighted fields." };
   const r = await recordReceipt({ invoiceId: found.invoice.id, amount: amount as number, method, reference, receivedOn, recordedById: user.id, note: String(fd.get("note") ?? "").trim() || null });
   if (!r.ok) return { error: r.error };
-  // A link sent earlier asks for the old balance; it goes, and a new one can be sent for what is left.
-  await cancelLiveLinks(found.invoice.id);
   await audit(user.id, "fee_receipt.record", "fee_invoice", found.invoice.id, { receipt: r.number, amount, method, reference, receivedOn });
+  // A link sent earlier asks for the old balance; it goes, and a new one can be sent for what is left.
+  const links = await cancelLiveLinks(found.invoice.id, user.id);
   refresh(found.student.id);
-  return { ok: `Receipt ${r.number} for ${rupees(amount as number)}.` };
+  return { ok: `Receipt ${r.number} for ${rupees(amount as number)}.${linkNote(links)}` };
 }
 
 export async function sendFeeLinkAction(_: FormState, fd: FormData): Promise<FormState> {
@@ -452,6 +589,7 @@ export async function requestFeeRefundAction(_: FormState, fd: FormData): Promis
   const reason = String(fd.get("reason") ?? "").trim();
   const fieldErrors: Record<string, string[]> = {};
   if (amount === "bad" || amount == null || amount <= 0) fieldErrors.amount = ["Whole rupees above nought"];
+  else if (amount > MAX_FEE_AMOUNT) fieldErrors.amount = [AMOUNT_CAP_WORDS];
   if (reason.length < 5) fieldErrors.reason = ["Why the money is going back"];
   if (Object.keys(fieldErrors).length) return { fieldErrors, error: "Check the highlighted fields." };
   const code = await ensureBranchCode(found.invoice.orgId);
@@ -509,6 +647,11 @@ export async function decideFeeRefundAction(_: FormState, fd: FormData): Promise
  * The money has gone back: the payout reference goes on the refund and the
  * invoice's received and fee both come down by the amount, so its balance
  * still reads true.
+ *
+ * On a tax invoice that charged GST, the payout also makes a credit note:
+ * numbered in its own series per branch and financial year, taking back the
+ * fee and the GST in the same proportion as the invoice. The invoice keeps
+ * its PAID state, which the fee gates read; lists show it as refunded.
  */
 export async function payFeeRefundAction(_: FormState, fd: FormData): Promise<FormState> {
   const { user, access } = await actor();
@@ -522,21 +665,40 @@ export async function payFeeRefundAction(_: FormState, fd: FormData): Promise<Fo
   if (!COUNTER_METHODS.includes(method)) fieldErrors.method = ["How did it go back?"];
   if (reference.length < 3) fieldErrors.reference = ["The bank, UPI or cash voucher reference"];
   if (Object.keys(fieldErrors).length) return { fieldErrors, error: "Check the highlighted fields." };
+  const code = await ensureBranchCode(refund.orgId);
+  const today = istToday();
   const done = await db.transaction(async (tx) => {
     await tx.select({ id: fi.id }).from(fi).where(eq(fi.id, refund.invoiceId)).for("update");
     const [inv] = await tx.select().from(fi).where(eq(fi.id, refund.invoiceId));
     if (inv.received - inv.refunded < refund.amount) return { error: "Less is held on this invoice than the refund. Look at the invoice again." };
+    const credit =
+      needsCreditNote(inv) && inv.total != null
+        ? { number: await nextNumber(tx, "CRN", inv.orgId, code, today), ...creditNoteSplit({ total: inv.total, cgst: inv.cgst, sgst: inv.sgst, igst: inv.igst }, inv.refunded, refund.amount) }
+        : null;
     const [row] = await tx
       .update(rf)
-      .set({ state: "PAID", payoutMethod: method, payoutReference: reference, paidById: user.id, paidAt: new Date() })
+      .set({
+        state: "PAID",
+        payoutMethod: method,
+        payoutReference: reference,
+        paidById: user.id,
+        paidAt: new Date(),
+        ...(credit
+          ? { creditNoteNumber: credit.number, creditNoteOn: today, creditTaxable: credit.taxable, creditCgst: credit.cgst, creditSgst: credit.sgst, creditIgst: credit.igst }
+          : {}),
+      })
       .where(and(eq(rf.id, refund.id), eq(rf.state, "APPROVED")))
       .returning({ id: rf.id });
-    if (!row) return { error: "Only an approved refund can be paid out." };
+    // Throwing rolls the credit note's number back with everything else.
+    if (!row) throw new Refused("Only an approved refund can be paid out.");
     await tx.update(fi).set({ refunded: inv.refunded + refund.amount, updatedAt: new Date() }).where(eq(fi.id, inv.id));
-    return { ok: true as const };
+    return { ok: true as const, credit };
+  }).catch((e) => {
+    if (e instanceof Refused) return { error: e.message };
+    throw e;
   });
   if ("error" in done) return { error: done.error };
-  await audit(user.id, "fee_refund.pay", "fee_refund", refund.id, { number: refund.number, amount: refund.amount, method, reference, invoiceId: refund.invoiceId });
+  await audit(user.id, "fee_refund.pay", "fee_refund", refund.id, { number: refund.number, amount: refund.amount, method, reference, invoiceId: refund.invoiceId, creditNote: done.credit });
   refresh(refund.studentId);
-  return { ok: `Refund ${refund.number} paid out. The invoice now shows it.` };
+  return { ok: `Refund ${refund.number} paid out. The invoice now shows it.${done.credit ? ` Credit note ${done.credit.number} made for ${rupees(refund.amount)}, of which ${rupees(done.credit.tax)} is GST.` : ""}` };
 }

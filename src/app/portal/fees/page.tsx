@@ -2,7 +2,7 @@ import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { fmtDate } from "@/lib/format";
 import { translator, type Phrase } from "@/lib/i18n";
-import { balanceDue, instalmentDueWords, rupees } from "@/lib/student-fees";
+import { balanceDue, fullyRefunded, instalmentDueWords, rupees } from "@/lib/student-fees";
 import { requireStudent } from "@/server/portal";
 import { Card, CardHeader, Chip, EmptyState } from "@/components/ui";
 
@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 export default async function PortalFees() {
   const { student, locale } = await requireStudent();
   const t = translator(locale);
-  const { feeInvoices: fi, feeReceipts: fr, feePaymentLinks: pl, feeInstalments: fs } = schema;
+  const { feeInvoices: fi, feeReceipts: fr, feePaymentLinks: pl, feeInstalments: fs, feeRefunds: rf } = schema;
   const [invoices, receipts, scheduled] = await Promise.all([
     db
       .select()
@@ -26,10 +26,20 @@ export default async function PortalFees() {
     db.select({ r: fr, invoiceNumber: fi.number }).from(fr).innerJoin(fi, eq(fi.id, fr.invoiceId)).where(eq(fr.studentId, student.id)).orderBy(desc(fr.receivedOn)),
     db.select().from(fs).where(and(eq(fs.studentId, student.id), eq(fs.state, "SCHEDULED"))).orderBy(asc(fs.seq)),
   ]);
-  const links = invoices.length
-    ? await db.select().from(pl).where(and(inArray(pl.invoiceId, invoices.map((i) => i.id)), eq(pl.state, "CREATED")))
-    : [];
+  const ids = invoices.map((i) => i.id);
+  const [links, credits] = ids.length
+    ? await Promise.all([
+        db.select().from(pl).where(and(inArray(pl.invoiceId, ids), eq(pl.state, "CREATED"))),
+        db
+          .select({ id: rf.id, invoiceId: rf.invoiceId, number: rf.creditNoteNumber })
+          .from(rf)
+          .where(and(inArray(rf.invoiceId, ids), eq(rf.state, "PAID")))
+          .orderBy(asc(rf.paidAt)),
+      ])
+    : [[], []];
   const linkBy = new Map(links.map((l) => [l.invoiceId, l]));
+  const creditsBy = new Map<string, { id: string; number: string }[]>();
+  for (const c of credits) if (c.number) creditsBy.set(c.invoiceId, [...(creditsBy.get(c.invoiceId) ?? []), { id: c.id, number: c.number }]);
 
   return (
     <div className="space-y-5">
@@ -39,18 +49,22 @@ export default async function PortalFees() {
       ) : (
         <div className="space-y-3">
           {invoices.map((inv) => {
-            const bal = balanceDue(inv.total, inv.received) ?? 0;
+            // What is still to pay is the invoice's balance, whatever has been refunded on it.
+            const bal = inv.state === "WRITTEN_OFF" ? 0 : (balanceDue(inv.total, inv.received) ?? 0);
             const link = linkBy.get(inv.id);
+            const refunded = fullyRefunded(inv);
             return (
               <Card key={inv.id} className="p-4" data-invoice={inv.number ?? ""}>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-sm font-semibold">{inv.number}</span>
-                  <Chip tone={inv.state === "PAID" ? "ok" : inv.state === "PART_PAID" ? "warn" : inv.state === "ISSUED" ? "info" : "neutral"}>{t(`feesState${inv.state}` as Phrase)}</Chip>
+                  <Chip tone={refunded ? "neutral" : inv.state === "PAID" ? "ok" : inv.state === "PART_PAID" ? "warn" : inv.state === "ISSUED" ? "info" : "neutral"}>
+                    {refunded ? t("feesRefunded") : t(`feesState${inv.state}` as Phrase)}
+                  </Chip>
                   <a href={`/print/fees/invoice/${inv.id}`} target="_blank" className="ml-auto text-sm font-medium text-brand-600 hover:underline">
                     {t("feesPrintInvoice")}
                   </a>
                 </div>
-                <dl className="mt-2 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+                <dl className="mt-2 grid grid-cols-2 gap-2 text-sm sm:grid-cols-5">
                   <div>
                     <dt className="text-xs text-muted">{t("feesDue")}</dt>
                     <dd>{inv.dueOn ? fmtDate(inv.dueOn) : "Not recorded"}</dd>
@@ -64,10 +78,21 @@ export default async function PortalFees() {
                     <dd className="tabular">{rupees(inv.received)}</dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-muted">{inv.refunded ? t("feesRefunded") : t("feesBalance")}</dt>
-                    <dd className="tabular font-semibold">{inv.refunded ? rupees(inv.refunded) : inv.state === "WRITTEN_OFF" ? rupees(0) : rupees(bal)}</dd>
+                    <dt className="text-xs text-muted">{t("feesBalance")}</dt>
+                    <dd className="tabular font-semibold">{rupees(bal)}</dd>
                   </div>
+                  {inv.refunded > 0 && (
+                    <div>
+                      <dt className="text-xs text-muted">{t("feesRefunded")}</dt>
+                      <dd className="tabular">{rupees(inv.refunded)}</dd>
+                    </div>
+                  )}
                 </dl>
+                {(creditsBy.get(inv.id) ?? []).map((c) => (
+                  <a key={c.id} href={`/print/fees/credit-note/${c.id}`} target="_blank" className="mt-2 mr-3 inline-block text-sm font-medium text-brand-600 hover:underline">
+                    Credit note {c.number}
+                  </a>
+                ))}
                 {link && bal > 0 && (inv.state === "ISSUED" || inv.state === "PART_PAID") && (
                   <a href={link.url} target="_blank" rel="noreferrer" className="mt-3 inline-block rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white">
                     {t("feesPayOnline")} {rupees(link.amount)}

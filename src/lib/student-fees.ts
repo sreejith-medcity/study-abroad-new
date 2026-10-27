@@ -91,6 +91,7 @@ export function planProblem(items: FeePlanItem[]): string | null {
     if (!item.label.trim()) return `Instalment ${n} needs a name.`;
     if ((item.amount == null) === (item.share == null)) return `Instalment ${n} needs either an amount or a share, not both.`;
     if (item.amount != null && (!Number.isInteger(item.amount) || item.amount <= 0)) return `Instalment ${n}: an amount is whole rupees above nought.`;
+    if (item.amount != null && item.amount > MAX_FEE_AMOUNT) return `Instalment ${n}: ${AMOUNT_CAP_WORDS}`;
     if (item.share != null && !(item.share > 0 && item.share <= 100)) return `Instalment ${n}: a share is a percentage above nought and up to 100.`;
     if (item.due === "DAYS" && (item.days == null || !Number.isInteger(item.days) || item.days < 0 || item.days > 1500)) return `Instalment ${n}: give the number of days.`;
     if (item.due === "DATE" && !/^\d{4}-\d{2}-\d{2}$/.test(item.date ?? "")) return `Instalment ${n}: give the date.`;
@@ -180,6 +181,72 @@ export function scheduleFrom(items: FeePlanItem[], fee: number | null, appliedOn
 
 /** The days a stage-tied instalment's invoice gives the student to pay. */
 export const STAGE_INVOICE_DAYS = 7;
+
+// ---------- Limits ----------
+
+/** The most one line, one invoice or one payment can be: Rs 10,00,00,000. */
+export const MAX_FEE_AMOUNT = 100_000_000;
+
+export const AMOUNT_CAP_WORDS = `No single amount can be more than ₹${groupInr(MAX_FEE_AMOUNT)}. Check the figure, or split it across invoices.`;
+
+/** Whether an amount is over the cap, in words, or null when it is within it. */
+export const amountCapProblem = (amount: number | null | undefined): string | null => (amount != null && amount > MAX_FEE_AMOUNT ? AMOUNT_CAP_WORDS : null);
+
+// ---------- Switching plans ----------
+
+/** Where one instalment of a schedule stands. */
+export type FeeInstalmentState = "SCHEDULED" | "INVOICED" | "CANCELLED" | "WAIVED" | "SKIPPED";
+
+/** States that keep a schedule live: while any row is in one, no other plan goes on. */
+export const LIVE_INSTALMENT_STATES: FeeInstalmentState[] = ["SCHEDULED", "INVOICED", "SKIPPED"];
+
+/**
+ * An instalment of an earlier schedule, cancelled when the student moved to
+ * another plan, whose invoice was issued and not cancelled: the student has
+ * been billed for it already.
+ */
+export type BilledEarlier = { invoiceId: string; invoiceNumber: string | null; label: string; stepPathway: string | null; stepKey: string | null };
+
+export type SkipDecision = { seq: number; reason: string; invoiceId: string | null } | null;
+
+const sameLabel = (a: string, b: string) => a.trim().toLowerCase().replace(/\s+/g, " ") === b.trim().toLowerCase().replace(/\s+/g, " ");
+
+/**
+ * Which instalments of a new plan are not raised, and why.
+ *
+ * An instalment before the one the plan is started from is not raised. One
+ * whose name, or whose step, matches an instalment already billed under an
+ * earlier plan is not raised either, so switching plans never bills the same
+ * fee twice. Each earlier invoice covers one new instalment at most: a match
+ * by name is taken first, then a match by step.
+ */
+export function skipsOnSwitch(rows: Pick<ScheduledRow, "seq" | "label" | "stepPathway" | "stepKey">[], earlier: BilledEarlier[], startFrom = 1): SkipDecision[] {
+  const used = new Set<string>();
+  const out: SkipDecision[] = rows.map((r) => (r.seq < startFrom ? { seq: r.seq, reason: `The plan was started from instalment ${startFrom}.`, invoiceId: null } : null));
+  const cover = (k: number, e: BilledEarlier) => {
+    used.add(e.invoiceId);
+    out[k] = { seq: rows[k].seq, reason: `Already billed under the earlier plan${e.invoiceNumber ? ` on ${e.invoiceNumber}` : ""}.`, invoiceId: e.invoiceId };
+  };
+  rows.forEach((r, k) => {
+    if (out[k]) return;
+    const e = earlier.find((x) => !used.has(x.invoiceId) && sameLabel(x.label, r.label));
+    if (e) cover(k, e);
+  });
+  rows.forEach((r, k) => {
+    if (out[k] || !r.stepPathway || !r.stepKey) return;
+    const e = earlier.find((x) => !used.has(x.invoiceId) && x.stepPathway === r.stepPathway && x.stepKey === r.stepKey);
+    if (e) cover(k, e);
+  });
+  return out;
+}
+
+export const INSTALMENT_STATE_LABEL: Record<FeeInstalmentState, string> = {
+  SCHEDULED: "Scheduled",
+  INVOICED: "Invoiced",
+  CANCELLED: "Cancelled",
+  WAIVED: "Waived",
+  SKIPPED: "Not raised",
+};
 
 // ---------- GST ----------
 
@@ -330,7 +397,7 @@ export function fyStartYear(day: string): number {
   return m >= 4 ? y : y - 1;
 }
 
-export type DocKind = "INV" | "RCT" | "RFD";
+export type DocKind = "INV" | "RCT" | "RFD" | "CRN";
 
 /**
  * A fee document's number: INV/KTM/26-27/0007. One series per kind, per
@@ -367,6 +434,47 @@ export const FEE_METHOD_LABEL: Record<FeeMethod, string> = {
   RAZORPAY: "Razorpay link",
 };
 
+/** Whether everything received on an invoice has gone back to the student. */
+export const fullyRefunded = (inv: { received: number; refunded: number }) => inv.received > 0 && inv.refunded >= inv.received;
+
+/**
+ * An invoice's state as lists show it. The stored state stays PAID after a
+ * refund, because the fee gates read it; a list says "Refunded" once all of
+ * it has gone back, and notes a part refund.
+ */
+export function invoiceStateLabel(inv: { state: FeeInvoiceState; received: number; refunded: number }): string {
+  if (inv.state === "CANCELLED" || inv.state === "DRAFT") return FEE_INVOICE_STATE_LABEL[inv.state];
+  if (fullyRefunded(inv)) return "Refunded";
+  if (inv.refunded > 0) return `${FEE_INVOICE_STATE_LABEL[inv.state]}, part refunded`;
+  return FEE_INVOICE_STATE_LABEL[inv.state];
+}
+
+/**
+ * The GST a refund takes back, for its credit note.
+ *
+ * The refund is split between the fee and the tax in the same proportion as
+ * the invoice's total. The figures are worked out on everything refunded so
+ * far and the earlier credit notes taken off, so however many part refunds
+ * there are, a full refund takes back exactly the tax that was charged.
+ */
+export function creditNoteSplit(
+  inv: { total: number; cgst: number | null; sgst: number | null; igst: number | null },
+  refundedBefore: number,
+  amount: number,
+): { taxable: number; cgst: number | null; sgst: number | null; igst: number | null; tax: number } {
+  const upTo = (part: number | null, refunded: number) => (part == null || inv.total <= 0 ? 0 : Math.round((Math.min(refunded, inv.total) * part) / inv.total));
+  const share = (part: number | null) => (part == null ? null : upTo(part, refundedBefore + amount) - upTo(part, refundedBefore));
+  const cgst = share(inv.cgst);
+  const sgst = share(inv.sgst);
+  const igst = share(inv.igst);
+  const tax = (cgst ?? 0) + (sgst ?? 0) + (igst ?? 0);
+  return { taxable: amount - tax, cgst, sgst, igst, tax };
+}
+
+/** Whether a paid-out refund on this invoice needs a credit note: a tax invoice that charged GST. */
+export const needsCreditNote = (inv: { kind: string | null; cgst: number | null; sgst: number | null; igst: number | null }) =>
+  inv.kind === "TAX_INVOICE" && (inv.cgst ?? 0) + (inv.sgst ?? 0) + (inv.igst ?? 0) > 0;
+
 /** The methods a person records at the counter. Razorpay is recorded by Razorpay. */
 export const COUNTER_METHODS: FeeMethod[] = ["CASH", "UPI", "CARD", "BANK_TRANSFER"];
 
@@ -384,6 +492,7 @@ export const balanceDue = (total: number | null, received: number) => (total == 
 /** Whether a receipt of this amount may be recorded at the counter. */
 export function receiptProblem(amount: number, due: number | null): string | null {
   if (!Number.isInteger(amount) || amount <= 0) return "Enter the amount in whole rupees, above nought.";
+  if (amount > MAX_FEE_AMOUNT) return AMOUNT_CAP_WORDS;
   if (due == null) return "This invoice has no total yet, so nothing can be received against it.";
   if (due <= 0) return "Nothing is due on this invoice.";
   if (amount > due) return `Only ₹${groupInr(due)} is due. Record what was received, up to the balance.`;
@@ -396,6 +505,41 @@ export function receiptProblem(amount: number, due: number | null): string | nul
  */
 export function refundRoom(received: number, refunded: number, pending: number): number {
   return Math.max(0, received - refunded - pending);
+}
+
+// ---------- Notices ----------
+
+/** The notice's title: issued invoices counted apart from drafts. */
+export function raisedTitle(name: string, issued: number, drafts: number, what: string): string {
+  const parts = [
+    issued ? `${issued} fee invoice${issued === 1 ? "" : "s"} issued` : "",
+    drafts ? `${drafts} left as draft${drafts === 1 ? "" : "s"}` : "",
+  ].filter(Boolean);
+  return `${name}: ${parts.join(", ")} on reaching ${what}`;
+}
+
+/** The notice's body: only an issued invoice is due and in the portal; a draft waits for its GST rate. */
+export function raisedBody(issued: number, drafts: number): string {
+  return [
+    issued ? `Due in a week. The student sees ${issued === 1 ? "it" : "them"} in their portal.` : "",
+    drafts ? `${drafts === 1 ? "A draft is" : "Drafts are"} not sent to the student: record the GST rate on the fees tab, then issue ${drafts === 1 ? "it" : "them"}.` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+/**
+ * What became of an invoice's live links: how many Razorpay confirmed as
+ * cancelled (or already cancelled or expired), the ones Razorpay says were
+ * paid, and the first failure that left a link live, in words.
+ */
+export type LinkCancelResult = { cancelled: number; paid: string[]; failed: string | null };
+
+/** Why an action cannot go ahead over a link that is still live, or null when none is. */
+export function linkRefusal(r: LinkCancelResult, then: string): string | null {
+  if (r.paid.length) return `The student seems to have paid the payment link already, ${then}. Wait for Razorpay to confirm the payment.`;
+  if (r.failed) return `The earlier payment link could not be cancelled at Razorpay (${r.failed}), ${then}. Try again in a few minutes, or cancel the link in the Razorpay dashboard and try again.`;
+  return null;
 }
 
 // ---------- Ageing ----------
@@ -504,6 +648,8 @@ export const rupees = (amount: number | null | undefined) => (amount == null ? "
 
 /** One spreadsheet cell, quoted, with a leading formula character defused. */
 export function csvCell(v: unknown): string {
+  // A number is never a formula, so a refund's negative amount stays a number.
+  if (typeof v === "number" && Number.isFinite(v)) return `"${v}"`;
   const s = v == null ? "" : String(v);
   const safe = /^\s*[=+\-@]|^[\t\r]/.test(s) ? `'${s}` : s;
   return `"${safe.replace(/"/g, '""')}"`;

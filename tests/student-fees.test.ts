@@ -26,6 +26,17 @@ import {
   instalmentDueWords,
   itemGst,
   DUE_CHOICES,
+  AMOUNT_CAP_WORDS,
+  MAX_FEE_AMOUNT,
+  amountCapProblem,
+  creditNoteSplit,
+  fullyRefunded,
+  invoiceStateLabel,
+  linkRefusal,
+  needsCreditNote,
+  raisedBody,
+  raisedTitle,
+  skipsOnSwitch,
   type FeePlanItem,
 } from "../src/lib/student-fees";
 import { FEE_STEP_PATHWAYS, FSJ_FEE_PATHWAY, ausbildungStepReached, feeStepReached, feeStepWords, fsjStepReached, isFeeStep, nclexStepReached, stageReached } from "../src/lib/fee-steps";
@@ -447,4 +458,121 @@ test("the migration puts in exactly the starter plans this file lists", async ()
     assert.ok(sqlText.includes(`'${items}'`), `${p.key}: its instalments are the ones listed here`);
   }
   assert.equal((sqlText.match(/\('starter-/g) ?? []).length, STARTER_PLANS.length);
+});
+
+// ---------- Caps ----------
+
+test("no line, invoice or payment can be more than Rs 10,00,00,000, with a plain message", () => {
+  assert.equal(MAX_FEE_AMOUNT, 100_000_000);
+  assert.match(AMOUNT_CAP_WORDS, /₹10,00,00,000/);
+  assert.ok(!AMOUNT_CAP_WORDS.includes("\u2014"));
+  assert.equal(amountCapProblem(MAX_FEE_AMOUNT), null);
+  assert.equal(amountCapProblem(MAX_FEE_AMOUNT + 1), AMOUNT_CAP_WORDS);
+  assert.equal(amountCapProblem(null), null);
+  assert.match(planProblem([fixed("Huge", MAX_FEE_AMOUNT + 1)]) ?? "", /Instalment 1: No single amount/);
+  assert.equal(planProblem([fixed("Big", MAX_FEE_AMOUNT)]), null);
+  assert.equal(receiptProblem(MAX_FEE_AMOUNT + 1, MAX_FEE_AMOUNT * 2), AMOUNT_CAP_WORDS);
+});
+
+// ---------- Switching plans ----------
+
+const row = (seq: number, label: string, stepPathway: string | null = null, stepKey: string | null = null) => ({ seq, label, stepPathway, stepKey });
+
+test("a new plan does not raise what the earlier plan already billed, by name or by step", () => {
+  const rows = [row(1, "Registration"), row(2, "Application fee", "AUSBILDUNG", "9"), row(3, "After offer letter", "AUSBILDUNG", "11"), row(4, "Before visa", "AUSBILDUNG", "12")];
+  const earlier = [
+    { invoiceId: "i1", invoiceNumber: "INV/KTM/26-27/0001", label: " registration ", stepPathway: null, stepKey: null },
+    { invoiceId: "i2", invoiceNumber: "INV/KTM/26-27/0002", label: "Application", stepPathway: "AUSBILDUNG", stepKey: "9" },
+  ];
+  const out = skipsOnSwitch(rows, earlier);
+  assert.deepEqual(out.map((x) => x?.invoiceId ?? null), ["i1", "i2", null, null]);
+  assert.match(out[0]!.reason, /Already billed under the earlier plan on INV\/KTM\/26-27\/0001/);
+});
+
+test("one earlier invoice covers one new instalment at most, a name match first", () => {
+  const rows = [row(1, "Second payment", "NCLEX", "SECOND_SERVICE_CHARGE"), row(2, "Service, Second Payment", "NCLEX", "SECOND_SERVICE_CHARGE")];
+  const earlier = [{ invoiceId: "i9", invoiceNumber: null, label: "Service, Second Payment", stepPathway: "NCLEX", stepKey: "SECOND_SERVICE_CHARGE" }];
+  const out = skipsOnSwitch(rows, earlier);
+  assert.equal(out[0], null);
+  assert.equal(out[1]?.invoiceId, "i9");
+  assert.match(out[1]!.reason, /earlier plan\.$/);
+});
+
+test("a plan can be started from a later instalment, and nothing is skipped by default", () => {
+  const rows = [row(1, "A"), row(2, "B"), row(3, "C")];
+  assert.deepEqual(skipsOnSwitch(rows, []), [null, null, null]);
+  const out = skipsOnSwitch(rows, [], 3);
+  assert.deepEqual(out.map((x) => x?.seq ?? null), [1, 2, null]);
+  assert.equal(out[0]!.invoiceId, null);
+  assert.match(out[0]!.reason, /started from instalment 3/);
+});
+
+// ---------- Refunds and credit notes ----------
+
+test("a refunded invoice reads Refunded in lists while it stays PAID underneath", () => {
+  assert.equal(invoiceStateLabel({ state: "PAID", received: 35400, refunded: 35400 }), "Refunded");
+  assert.equal(invoiceStateLabel({ state: "PAID", received: 35400, refunded: 5000 }), "Paid, part refunded");
+  assert.equal(invoiceStateLabel({ state: "PAID", received: 35400, refunded: 0 }), "Paid");
+  assert.equal(invoiceStateLabel({ state: "CANCELLED", received: 100, refunded: 100 }), "Cancelled");
+  assert.equal(fullyRefunded({ received: 0, refunded: 0 }), false);
+});
+
+test("a credit note takes the GST back in proportion, and part refunds add up to exactly the tax charged", () => {
+  const inv = { total: 11800, cgst: 900, sgst: 900, igst: null };
+  const one = creditNoteSplit(inv, 0, 5900);
+  assert.deepEqual(one, { taxable: 5000, cgst: 450, sgst: 450, igst: null, tax: 900 });
+  // Three uneven refunds that come to the whole invoice.
+  const parts = [3333, 4444, 4023];
+  let before = 0;
+  const notes = parts.map((amount) => {
+    const n = creditNoteSplit(inv, before, amount);
+    before += amount;
+    assert.equal(n.taxable + n.tax, amount);
+    return n;
+  });
+  assert.equal(notes.reduce((s, n) => s + (n.cgst ?? 0), 0), 900);
+  assert.equal(notes.reduce((s, n) => s + (n.sgst ?? 0), 0), 900);
+  assert.equal(notes.reduce((s, n) => s + n.taxable, 0), 10000);
+  const inter = creditNoteSplit({ total: 10500, cgst: null, sgst: null, igst: 500 }, 0, 10500);
+  assert.deepEqual(inter, { taxable: 10000, cgst: null, sgst: null, igst: 500, tax: 500 });
+});
+
+test("only a tax invoice that charged GST needs a credit note", () => {
+  assert.equal(needsCreditNote({ kind: "TAX_INVOICE", cgst: 900, sgst: 900, igst: null }), true);
+  assert.equal(needsCreditNote({ kind: "TAX_INVOICE", cgst: 0, sgst: 0, igst: null }), false);
+  assert.equal(needsCreditNote({ kind: "BILL_OF_SUPPLY", cgst: null, sgst: null, igst: null }), false);
+});
+
+test("a refund's negative amount stays a number in the day book sheet", () => {
+  assert.equal(csvCell(-5000), `"-5000"`);
+  assert.equal(csvCell("-5000"), `"'-5000"`);
+});
+
+// ---------- Notices and links ----------
+
+test("the raised-invoices notice counts issued invoices only and never puts a draft in the portal", () => {
+  assert.equal(raisedTitle("Asha K", 2, 0, "the stage"), "Asha K: 2 fee invoices issued on reaching the stage");
+  assert.equal(raisedTitle("Asha K", 1, 1, "the stage"), "Asha K: 1 fee invoice issued, 1 left as draft on reaching the stage");
+  assert.equal(raisedTitle("Asha K", 0, 2, "the stage"), "Asha K: 2 left as drafts on reaching the stage");
+  assert.match(raisedBody(1, 0), /sees it in their portal/);
+  assert.doesNotMatch(raisedBody(0, 1), /portal/);
+  assert.match(raisedBody(0, 1), /A draft is not sent to the student/);
+});
+
+test("a link that is paid or could not be cancelled stops a new link, and says why", () => {
+  assert.equal(linkRefusal({ cancelled: 2, paid: [], failed: null }, "so no new link was made"), null);
+  assert.match(linkRefusal({ cancelled: 0, paid: ["plink_1"], failed: null }, "so no new link was made")!, /seems to have paid/);
+  assert.match(linkRefusal({ cancelled: 0, paid: [], failed: "Razorpay could not be reached: timeout" }, "so no new link was made")!, /could not be cancelled at Razorpay \(Razorpay could not be reached: timeout\), so no new link was made/);
+});
+
+// ---------- Starter notes ----------
+
+test("the Ausbildung Nursing starter carries the sheet's refundable employer deposit, and a data migration puts it on plans already there", async () => {
+  const nursing = STARTER_PLANS.find((p) => p.key === "ausbildung-nursing-without-interview")!;
+  assert.equal(nursing.note, "Candidate must additionally pay a refundable €1,000 to the employer.");
+  const { readdirSync, readFileSync } = await import("node:fs");
+  const file = readdirSync("drizzle").find((f) => /_fee_schedule_guard\.sql$/.test(f));
+  assert.ok(file, "the data migration is there");
+  const sqlText = readFileSync(`drizzle/${file}`, "utf8");
+  assert.ok(sqlText.includes(`SET "note" = '${nursing.note!.replace(/'/g, "''")}'`) && sqlText.includes(`"starter_key" = '${nursing.key}'`));
 });

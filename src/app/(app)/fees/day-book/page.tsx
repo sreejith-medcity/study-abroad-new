@@ -10,8 +10,9 @@ const METHODS: FeeMethod[] = [...COUNTER_METHODS, "RAZORPAY"];
 
 /**
  * One day's receipts by branch and by method, for closing the cash and the
- * bank. Refunds paid out that day are listed under it, apart from the
- * receipts, so the drawer can be counted both ways.
+ * bank. Refunds paid out that day are negative lines, under their credit
+ * note's number where the invoice charged GST, with a line for them and a net
+ * line in the totals, so the drawer can be counted both ways.
  */
 export default async function DayBookPage({ searchParams }: { searchParams: Promise<{ day?: string }> }) {
   const { user } = await requireFees();
@@ -21,6 +22,8 @@ export default async function DayBookPage({ searchParams }: { searchParams: Prom
   const [rows, refunds] = await Promise.all([receiptsBetween(user, day, day), refundsPaidBetween(user, new Date(`${day}T00:00:00+05:30`), new Date(`${day}T23:59:59.999+05:30`))]);
   const branches = [...new Set(rows.map((r) => r.branch))].sort();
   const cell = (branch: string | null, m: FeeMethod | null) => rows.filter((r) => (!branch || r.branch === branch) && (!m || r.receipt.method === m)).reduce((s, r) => s + r.receipt.amount, 0);
+  const out = (m: FeeMethod | null) => refunds.filter((r) => !m || r.refund.payoutMethod === m).reduce((s, r) => s + r.refund.amount, 0);
+  const minus = (n: number) => (n ? `-${rupees(n)}` : rupees(0));
   return (
     <div className="space-y-4">
       <form className="flex flex-wrap items-end gap-2" action="/fees/day-book">
@@ -35,7 +38,7 @@ export default async function DayBookPage({ searchParams }: { searchParams: Prom
       </form>
       <Card>
         <CardHeader title={`Receipts on ${fmtDate(day)}`} subtitle="By the branch that took them and how they were paid." />
-        {rows.length === 0 ? (
+        {rows.length === 0 && refunds.length === 0 ? (
           <div className="p-4 pt-0">
             <EmptyState title="Nothing received this day">Receipts recorded at the counter or by Razorpay appear here on the day they were received.</EmptyState>
           </div>
@@ -64,13 +67,35 @@ export default async function DayBookPage({ searchParams }: { searchParams: Prom
                   <Td className="text-right tabular">{rupees(cell(b, null))}</Td>
                 </tr>
               ))}
+              {refunds.length > 0 && (
+                <>
+                  <tr data-daybook="Refunds paid out">
+                    <Td>Refunds paid out</Td>
+                    {METHODS.map((m) => (
+                      <Td key={m} className="text-right tabular">
+                        {minus(out(m))}
+                      </Td>
+                    ))}
+                    <Td className="text-right tabular">{minus(out(null))}</Td>
+                  </tr>
+                  <tr data-daybook="Net" className="font-semibold">
+                    <Td>Net of refunds</Td>
+                    {METHODS.map((m) => (
+                      <Td key={m} className="text-right tabular">
+                        {rupees(cell(null, m) - out(m))}
+                      </Td>
+                    ))}
+                    <Td className="text-right tabular">{rupees(cell(null, null) - out(null))}</Td>
+                  </tr>
+                </>
+              )}
             </tbody>
           </Table>
         )}
       </Card>
-      {rows.length > 0 && (
+      {(rows.length > 0 || refunds.length > 0) && (
         <Card>
-          <CardHeader title="Every receipt" />
+          <CardHeader title="Every receipt" subtitle={refunds.length ? "Refunds paid out are the negative lines at the end." : undefined} />
           <Table>
             <thead>
               <tr>
@@ -96,22 +121,20 @@ export default async function DayBookPage({ searchParams }: { searchParams: Prom
                   <Td>{r.by ?? (r.receipt.method === "RAZORPAY" ? "Razorpay" : "Not recorded")}</Td>
                 </tr>
               ))}
-            </tbody>
-          </Table>
-        </Card>
-      )}
-      {refunds.length > 0 && (
-        <Card>
-          <CardHeader title="Refunds paid out this day" />
-          <Table>
-            <tbody>
               {refunds.map((r) => (
-                <tr key={r.refund.id}>
-                  <Td className="font-mono text-xs">{r.refund.number}</Td>
+                <tr key={r.refund.id} data-daybook-refund={r.refund.creditNoteNumber ?? r.refund.number}>
+                  <Td className="font-mono text-xs">
+                    {r.refund.creditNoteNumber ?? r.refund.number}
+                    <span className="block text-2xs text-muted">{r.refund.creditNoteNumber ? `Credit note, refund ${r.refund.number}` : "Refund"}</span>
+                  </Td>
                   <Td>{r.branch}</Td>
                   <Td>{fullName(r)}</Td>
-                  <Td>{r.refund.payoutMethod ? FEE_METHOD_LABEL[r.refund.payoutMethod] : "Not recorded"}</Td>
-                  <Td className="text-right tabular">{rupees(r.refund.amount)}</Td>
+                  <Td>
+                    {r.refund.payoutMethod ? FEE_METHOD_LABEL[r.refund.payoutMethod] : "Not recorded"}
+                    {r.refund.payoutReference && <span className="block text-xs text-muted">{r.refund.payoutReference}</span>}
+                  </Td>
+                  <Td className="text-right tabular text-stop-700">{minus(r.refund.amount)}</Td>
+                  <Td>Paid out against {r.invoiceNumber}</Td>
                 </tr>
               ))}
             </tbody>

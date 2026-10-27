@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { fmtDate, fullName } from "@/lib/format";
-import { FEE_INVOICE_STATE_LABEL, ageOf, balanceDue, istToday, rupees, type FeeInvoiceState } from "@/lib/student-fees";
+import { ageOf, balanceDue, fullyRefunded, invoiceStateLabel, istToday, rupees, type FeeInvoiceState } from "@/lib/student-fees";
 import { branchOptions, invoiceList, openBalances, receiptsBetween, requireFees } from "@/server/student-fees";
 import { Card, Chip, EmptyState, Table, Td, Th } from "@/components/ui";
 
@@ -121,7 +121,7 @@ export default async function FeesPage({ searchParams }: { searchParams: Promise
                     <Td className="text-right tabular">{rupees(i.received - i.refunded)}</Td>
                     <Td className="text-right tabular">{bal == null ? "Not recorded" : rupees(bal)}</Td>
                     <Td>
-                      <Chip tone={i.state === "PAID" ? "ok" : i.state === "PART_PAID" ? "warn" : i.state === "WRITTEN_OFF" ? "bad" : i.state === "ISSUED" ? "info" : "neutral"}>{FEE_INVOICE_STATE_LABEL[i.state]}</Chip>
+                      <Chip tone={fullyRefunded(i) && i.state !== "CANCELLED" ? "neutral" : i.state === "PAID" ? "ok" : i.state === "PART_PAID" ? "warn" : i.state === "WRITTEN_OFF" ? "bad" : i.state === "ISSUED" ? "info" : "neutral"}>{invoiceStateLabel(i)}</Chip>
                     </Td>
                   </tr>
                 );

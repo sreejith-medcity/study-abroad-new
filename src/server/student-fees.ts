@@ -6,10 +6,15 @@ import { requireUser, type SessionUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { APP_ROLES, DOCUMENTATION_ROLES } from "@/lib/permissions";
 import {
+  AMOUNT_CAP_WORDS,
+  MAX_FEE_AMOUNT,
   STAGE_INVOICE_DAYS,
   addDays,
   balanceDue,
   feeDocNumber,
+  linkRefusal,
+  raisedBody,
+  raisedTitle,
   fyOf,
   fyStartYear,
   gstFor,
@@ -18,7 +23,9 @@ import {
   seriesScope,
   stateAfterReceipts,
   stateFromGstin,
+  type BilledEarlier,
   type DocKind,
+  type LinkCancelResult,
   type FeeInvoiceState,
   type FeeMethod,
 } from "@/lib/student-fees";
@@ -31,7 +38,7 @@ import { can } from "@/server/capabilities";
 import { ensureBranchCode } from "@/server/medcity-id";
 import { mayOpenStudent, studentWhere } from "@/server/scope";
 import { razorpayConfig } from "@/server/razorpay";
-import { notifyUsers, partnerRecipients } from "@/server/notify";
+import { adminIds, notifyUsers, partnerRecipients } from "@/server/notify";
 import { tellDeskIfFsjFeesIn } from "@/server/fsj-fees";
 
 const { feeInvoices: fi, feeInvoiceLines: fl, feeInstalments: fs, feeReceipts: fr, feeRefunds: rf, feePaymentLinks: pl, students: st, organizations: og } = schema;
@@ -169,11 +176,13 @@ export async function issueInvoice(invoiceId: string, actorId: string | null, to
   ]);
   if (!org || !student) return { ok: false, error: "The student or the branch is no longer on record." };
   if (invoice.taxable <= 0) return { ok: false, error: "An invoice needs at least one line with an amount." };
+  if (invoice.taxable > MAX_FEE_AMOUNT) return { ok: false, error: AMOUNT_CAP_WORDS };
   const sellerState = org.gstin ? (stateFromGstin(org.gstin) ?? org.state) : org.state;
   const tax = gstFor(invoice.taxable, invoice.gstPercent, { gstin: org.gstin, state: sellerState }, student.state);
   if (tax.total == null) {
     return { ok: false, error: `${org.name} has GSTIN ${org.gstin} on record and this invoice has no GST rate. Record the rate on the draft, then issue it.` };
   }
+  if (tax.total > MAX_FEE_AMOUNT) return { ok: false, error: `With GST this invoice comes to more than the most one invoice can be. ${AMOUNT_CAP_WORDS}` };
   const dueOn = invoice.dueOn ?? today;
   const code = await ensureBranchCode(org.id);
   const done = await db.transaction(async (tx) => {
@@ -303,8 +312,10 @@ async function writeReceipt(input: ReceiptInput): Promise<ReceiptResult> {
       const received = inv.received + input.amount;
       const state = stateAfterReceipts(inv.state, inv.total, received);
       await tx.update(fi).set({ received, state, updatedAt: new Date() }).where(eq(fi.id, inv.id));
-      // Money on a cancelled invoice is owed back in full: nothing was due on it.
-      const over = inv.state === "CANCELLED" || inv.state === "DRAFT" ? input.amount : due == null ? 0 : Math.max(0, input.amount - due);
+      // Money on a cancelled invoice is owed back in full: nothing was due on
+      // it. On a written-off invoice the balance was given up, so money that
+      // arrives afterwards is flagged the same way for finance to settle.
+      const over = inv.state === "CANCELLED" || inv.state === "DRAFT" || inv.state === "WRITTEN_OFF" ? input.amount : due == null ? 0 : Math.max(0, input.amount - due);
       return { ok: true as const, id: row.id, number, state, over };
     });
   } catch (e) {
@@ -426,24 +437,27 @@ async function raiseReached(studentId: string, at: FileProgress, actorId: string
       .where(and(eq(fs.studentId, studentId), eq(fs.state, "SCHEDULED"), isNotNull(fs.stepPathway), isNotNull(fs.stepKey)))
       .orderBy(asc(fs.seq));
     const due = addDays(istToday(), STAGE_INVOICE_DAYS);
-    const raised: string[] = [];
+    let issued = 0;
+    let drafts = 0;
     for (const w of waiting) {
       if (!reachedBy(w, at)) continue;
       const r = await invoiceInstalment(w.id, actorId, due);
-      if (r.ok) raised.push(r.invoiceId);
+      if (!r.ok) continue;
+      if (r.issued.ok) issued++;
+      else drafts++;
     }
-    if (raised.length) {
+    if (issued || drafts) {
       const student = await db.query.students.findFirst({ where: eq(st.id, studentId), columns: { orgId: true, assignedToId: true, firstName: true, lastName: true } });
       if (student) {
         await notifyUsers(
           await partnerRecipients(student.orgId, student.assignedToId),
-          `${student.firstName} ${student.lastName}: ${raised.length} fee invoice${raised.length === 1 ? "" : "s"} raised on reaching ${what}`,
-          "Due in a week. The student sees it in their portal.",
+          raisedTitle(`${student.firstName} ${student.lastName}`, issued, drafts, what),
+          raisedBody(issued, drafts),
           `/students/${studentId}/fees`,
         );
       }
     }
-    return raised.length;
+    return issued;
   } catch (e) {
     console.error("fees: instalments not raised", studentId, what, e);
     return 0;
@@ -498,6 +512,33 @@ export async function studentFees(studentId: string) {
   return { instalments, invoices, receipts, refunds, lines, links: links.map((x) => x.l) };
 }
 
+/**
+ * The instalments of the student's earlier schedules, cancelled when they
+ * moved to another plan, whose invoice is out and not cancelled: what the
+ * student has been billed for already. A draft counts too, since it is still
+ * to be issued.
+ */
+export async function billedEarlier(exec: Exec, studentId: string): Promise<BilledEarlier[]> {
+  const rows = await exec
+    .select({ invoiceId: fi.id, invoiceNumber: fi.number, label: fs.label, stepPathway: fs.stepPathway, stepKey: fs.stepKey })
+    .from(fs)
+    .innerJoin(fi, eq(fi.id, fs.invoiceId))
+    .where(and(eq(fs.studentId, studentId), eq(fs.state, "CANCELLED"), ne(fi.state, "CANCELLED")))
+    .orderBy(desc(fs.createdAt), asc(fs.seq));
+  // One invoice can sit behind more than one cancelled row (a plan switched twice): count it once.
+  const seen = new Set<string>();
+  return rows.filter((r) => (seen.has(r.invoiceId) ? false : (seen.add(r.invoiceId), true)));
+}
+
+/** One refund with its invoice, student and seller, for its credit note. */
+export async function loadCreditNote(refundId: string) {
+  const refund = await db.query.feeRefunds.findFirst({ where: eq(rf.id, refundId) });
+  if (!refund || !refund.creditNoteNumber) return null;
+  const data = await loadInvoice(refund.invoiceId);
+  if (!data) return null;
+  return { refund, ...data };
+}
+
 /** Refunds requested or approved and not yet paid, against one invoice. */
 export async function pendingRefunds(exec: Exec, invoiceId: string) {
   const [row] = await exec
@@ -514,7 +555,8 @@ const apiBase = () => (process.env.RAZORPAY_API_BASE ?? "https://api.razorpay.co
 /**
  * A Razorpay payment link for what is due now. One live link per invoice: an
  * older one is cancelled at Razorpay first, so a student holding two links
- * cannot pay twice. Off while Razorpay is off, as it is everywhere else.
+ * cannot pay twice, and where Razorpay does not confirm that, no new link is
+ * made. Off while Razorpay is off, as it is everywhere else.
  */
 export async function createPaymentLink(invoiceId: string, actorId: string): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
   const cfg = await razorpayConfig();
@@ -526,8 +568,9 @@ export async function createPaymentLink(invoiceId: string, actorId: string): Pro
   const due = balanceDue(invoice.total, invoice.received);
   if (!due) return { ok: false, error: "Nothing is due on this invoice." };
   const auth = `Basic ${Buffer.from(`${cfg.keyId}:${cfg.keySecret}`).toString("base64")}`;
-  const stale = await cancelLiveLinks(invoiceId);
-  if (stale) return { ok: false, error: stale };
+  const stale = await cancelLiveLinks(invoiceId, actorId);
+  const refusal = linkRefusal(stale, "so no new link was made");
+  if (refusal) return { ok: false, error: refusal };
   let link: { id?: string; short_url?: string; error?: { description?: string } };
   try {
     const res = await fetch(`${apiBase()}/v1/payment_links`, {
@@ -554,58 +597,128 @@ export async function createPaymentLink(invoiceId: string, actorId: string): Pro
   return { ok: true, url: link.short_url };
 }
 
-/**
- * Cancels the live payment links on an invoice, at Razorpay and here. Answers
- * with a reason when Razorpay says the link was already paid, so nothing is
- * closed over money that is on its way.
- */
-export async function cancelLiveLinks(invoiceId: string): Promise<string | null> {
-  const open = await db.select().from(pl).where(and(eq(pl.invoiceId, invoiceId), eq(pl.state, "CREATED")));
-  if (!open.length) return null;
-  const cfg = await razorpayConfig();
-  for (const l of open) {
-    if (cfg) {
-      const res = await fetch(`${apiBase()}/v1/payment_links/${l.razorpayLinkId}/cancel`, {
-        method: "POST",
-        headers: { Authorization: `Basic ${Buffer.from(`${cfg.keyId}:${cfg.keySecret}`).toString("base64")}` },
-        signal: AbortSignal.timeout(15000),
-      }).catch(() => null);
-      const body = res && !res.ok ? await res.text().catch(() => "") : "";
-      if (res && !res.ok && /paid/i.test(body)) return "The student seems to have paid the payment link already. Wait for Razorpay to confirm it.";
-    }
-    await db.update(pl).set({ state: "CANCELLED" }).where(eq(pl.id, l.id));
+type CancelOutcome = { kind: "cancelled"; how: string } | { kind: "paid"; how: string } | { kind: "failed"; how: string };
+
+/** Razorpay's error, in its own words where it gave them. */
+async function razorpayWords(res: Response): Promise<{ text: string; status?: string }> {
+  const raw = await res.text().catch(() => "");
+  try {
+    const body = JSON.parse(raw) as { status?: string; error?: { description?: string } };
+    return { text: body.error?.description ?? raw.slice(0, 200), status: body.status };
+  } catch {
+    return { text: raw.slice(0, 200) };
   }
-  return null;
+}
+
+/** Asks Razorpay to cancel one link, and reads its answer. */
+async function cancelAtRazorpay(linkId: string): Promise<CancelOutcome> {
+  const cfg = await razorpayConfig();
+  if (!cfg) return { kind: "failed", how: "Razorpay's keys are not on record, so it cannot be asked" };
+  const auth = `Basic ${Buffer.from(`${cfg.keyId}:${cfg.keySecret}`).toString("base64")}`;
+  let res: Response;
+  try {
+    res = await fetch(`${apiBase()}/v1/payment_links/${encodeURIComponent(linkId)}/cancel`, { method: "POST", headers: { Authorization: auth }, signal: AbortSignal.timeout(15000) });
+  } catch (e) {
+    return { kind: "failed", how: `Razorpay could not be reached: ${(e as Error).message}` };
+  }
+  const said = await razorpayWords(res);
+  if (res.ok) {
+    if (!said.status || said.status === "cancelled") return { kind: "cancelled", how: "cancelled" };
+    if (said.status === "paid" || said.status === "partially_paid") return { kind: "paid", how: said.status };
+    if (said.status === "expired") return { kind: "cancelled", how: "expired" };
+    return { kind: "failed", how: `Razorpay answered that the link is ${said.status}` };
+  }
+  if (/already\s+(been\s+)?cancel/i.test(said.text)) return { kind: "cancelled", how: "already cancelled" };
+  if (/expire/i.test(said.text)) return { kind: "cancelled", how: "expired" };
+  if (/paid/i.test(said.text)) return { kind: "paid", how: "paid" };
+  // An answer that says neither: ask Razorpay where the link stands.
+  try {
+    const look = await fetch(`${apiBase()}/v1/payment_links/${encodeURIComponent(linkId)}`, { headers: { Authorization: auth }, signal: AbortSignal.timeout(15000) });
+    if (look.ok) {
+      const { status } = await razorpayWords(look);
+      if (status === "cancelled" || status === "expired") return { kind: "cancelled", how: status === "expired" ? "expired" : "already cancelled" };
+      if (status === "paid" || status === "partially_paid") return { kind: "paid", how: status };
+    }
+  } catch {
+    // Falls through to the failure below, in Razorpay's first words.
+  }
+  return { kind: "failed", how: said.text ? `Razorpay said: ${said.text}` : `Razorpay answered ${res.status}` };
+}
+
+/**
+ * Cancels the live payment links on an invoice. A link is marked cancelled
+ * here only when Razorpay confirms the cancel or says it was already
+ * cancelled or has expired. A link Razorpay says was paid, or one it could
+ * not be asked about, stays live, and the answer says so. Every attempt is
+ * audited.
+ */
+export async function cancelLiveLinks(invoiceId: string, actorId: string | null): Promise<LinkCancelResult> {
+  const open = await db.select().from(pl).where(and(eq(pl.invoiceId, invoiceId), eq(pl.state, "CREATED")));
+  const result: LinkCancelResult = { cancelled: 0, paid: [], failed: null };
+  for (const l of open) {
+    const outcome = await cancelAtRazorpay(l.razorpayLinkId);
+    if (outcome.kind === "cancelled") {
+      await db.update(pl).set({ state: "CANCELLED" }).where(and(eq(pl.id, l.id), eq(pl.state, "CREATED")));
+      result.cancelled++;
+      await audit(actorId, "fee_link.cancel", "fee_invoice", invoiceId, { linkId: l.razorpayLinkId, amount: l.amount, razorpay: outcome.how });
+    } else if (outcome.kind === "paid") {
+      result.paid.push(l.razorpayLinkId);
+      await audit(actorId, "fee_link.cancel_refused", "fee_invoice", invoiceId, { linkId: l.razorpayLinkId, amount: l.amount, razorpay: outcome.how, kept: "live, the student has paid it" });
+    } else {
+      result.failed ??= outcome.how;
+      await audit(actorId, "fee_link.cancel_failed", "fee_invoice", invoiceId, { linkId: l.razorpayLinkId, amount: l.amount, reason: outcome.how, kept: "live" });
+    }
+  }
+  return result;
 }
 
 /**
  * Razorpay says a payment link was paid: record the receipt against its
- * invoice, once, whatever the webhook does next.
+ * invoice, once, whatever the webhook does next. A delivery for a link that
+ * is not on record, or a repeat of one already recorded, is audited and
+ * otherwise left alone.
  */
 export async function markPaymentLinkPaid(linkId: string, paymentId: string, amountMinor: number) {
   const link = await db.query.feePaymentLinks.findFirst({ where: eq(pl.razorpayLinkId, linkId) });
-  if (!link) return false;
+  if (!link) {
+    await audit(null, "fee_link.webhook_unknown", "fee_payment_link", linkId, { paymentId, amountMinor });
+    return false;
+  }
   const amount = Math.round(amountMinor / 100);
   if (!(amount > 0)) {
     console.error("fees: payment link paid with no amount", linkId, paymentId, amountMinor);
+    await audit(null, "fee_link.webhook_no_amount", "fee_invoice", link.invoiceId, { linkId, paymentId, amountMinor });
     return false;
   }
   const r = await recordReceipt({ invoiceId: link.invoiceId, amount, method: "RAZORPAY", reference: paymentId, receivedOn: istToday(), recordedById: null, razorpayPaymentId: paymentId });
   await db.update(pl).set({ state: "PAID", paidAt: new Date() }).where(and(eq(pl.id, link.id), ne(pl.state, "PAID")));
-  if (r.ok) {
-    await audit(null, "fee_receipt.razorpay", "fee_invoice", link.invoiceId, { receipt: r.number, amount, paymentId, linkId, over: r.over });
-    const inv = await db.query.feeInvoices.findFirst({ where: eq(fi.id, link.invoiceId) });
-    const student = inv ? await db.query.students.findFirst({ where: eq(st.id, inv.studentId), columns: { orgId: true, assignedToId: true, firstName: true, lastName: true } }) : null;
-    if (inv && student) {
-      await notifyUsers(
-        await partnerRecipients(student.orgId, student.assignedToId),
-        `${student.firstName} ${student.lastName} paid ${inv.number} online`,
-        r.over > 0 ? `₹${amount}, of which ₹${r.over} is more than was due. Finance will send it back.` : `₹${amount}, receipt ${r.number}.`,
-        `/students/${inv.studentId}/fees`,
-      );
-    }
+  if (!r.ok) {
+    await audit(null, r.duplicate ? "fee_link.webhook_repeat" : "fee_link.webhook_refused", "fee_invoice", link.invoiceId, { linkId, paymentId, amount, error: r.error });
+    return true;
+  }
+  await audit(null, "fee_receipt.razorpay", "fee_invoice", link.invoiceId, { receipt: r.number, amount, paymentId, linkId, over: r.over, linkWas: link.state });
+  const inv = await db.query.feeInvoices.findFirst({ where: eq(fi.id, link.invoiceId) });
+  const student = inv ? await db.query.students.findFirst({ where: eq(st.id, inv.studentId), columns: { orgId: true, assignedToId: true, firstName: true, lastName: true } }) : null;
+  if (inv && student) {
+    const people = await partnerRecipients(student.orgId, student.assignedToId);
+    // Money above what was due goes back through a refund, which finance decides.
+    const desk = r.over > 0 ? [...(await feeDeskIds()), ...(await adminIds())] : [];
+    await notifyUsers(
+      [...new Set([...people, ...desk])],
+      `${student.firstName} ${student.lastName} paid ${inv.number} online`,
+      r.over > 0
+        ? `₹${amount}, of which ₹${r.over} is more than was due${inv.state === "WRITTEN_OFF" ? " (the invoice was written off)" : inv.state === "CANCELLED" ? " (the invoice was cancelled)" : ""}. Request a refund of it on the fees tab, or settle it with the student.`
+        : `₹${amount}, receipt ${r.number}.`,
+      `/students/${inv.studentId}/fees`,
+    );
   }
   return true;
+}
+
+/** Finance's people, who settle money that came in above what was due. */
+export async function feeDeskIds(): Promise<string[]> {
+  const rows = await db.select({ id: schema.users.id }).from(schema.users).where(and(eq(schema.users.role, "FINANCE"), eq(schema.users.active, true)));
+  return rows.map((r) => r.id);
 }
 
 // ---------- Lists ----------

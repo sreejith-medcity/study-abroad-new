@@ -3108,7 +3108,12 @@ export const payments = pgTable(
 export const feeInvoiceState = pgEnum("fee_invoice_state", ["DRAFT", "ISSUED", "PART_PAID", "PAID", "CANCELLED", "WRITTEN_OFF"]);
 /** How the money came in. Razorpay is recorded by Razorpay's webhook, never typed. */
 export const feeMethod = pgEnum("fee_method", ["CASH", "UPI", "CARD", "BANK_TRANSFER", "RAZORPAY"]);
-export const feeInstalmentState = pgEnum("fee_instalment_state", ["SCHEDULED", "INVOICED", "CANCELLED"]);
+/**
+ * Where one instalment stands. WAIVED is let off for good and never raised;
+ * SKIPPED is not raised under this plan, because an earlier plan already
+ * billed it or the plan was started from a later instalment.
+ */
+export const feeInstalmentState = pgEnum("fee_instalment_state", ["SCHEDULED", "INVOICED", "CANCELLED", "WAIVED", "SKIPPED"]);
 export const feeRefundState = pgEnum("fee_refund_state", ["REQUESTED", "APPROVED", "REJECTED", "PAID"]);
 
 /**
@@ -3236,11 +3241,22 @@ export const feeInstalments = pgTable(
     stepPathway: text("step_pathway"),
     stepKey: text("step_key"),
     state: feeInstalmentState("state").notNull().default("SCHEDULED"),
+    /** The invoice that bills it: its own, or for a SKIPPED row the earlier plan's invoice that already did. */
     invoiceId: text("invoice_id").references(() => feeInvoices.id, { onDelete: "set null" }),
+    /** Why it was waived or not raised, who did it and when. */
+    closedReason: text("closed_reason"),
+    closedById: text("closed_by_id").references(() => users.id),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
     createdById: text("created_by_id").references(() => users.id),
     createdAt: createdAt(),
   },
-  (t) => [index("fee_instalments_student_idx").on(t.studentId, t.seq), index("fee_instalments_step_idx").on(t.state, t.stepPathway)],
+  (t) => [
+    index("fee_instalments_student_idx").on(t.studentId, t.seq),
+    index("fee_instalments_step_idx").on(t.state, t.stepPathway),
+    // One live schedule per student: two plans applied at once would both
+    // start at instalment 1, and the second is refused here.
+    uniqueIndex("fee_instalments_live_uq").on(t.studentId, t.seq).where(sql`state in ('SCHEDULED', 'INVOICED')`),
+  ],
 );
 
 /** Money received against one invoice, with its own number. */
@@ -3330,9 +3346,25 @@ export const feeRefunds = pgTable(
     payoutReference: text("payout_reference"),
     paidById: text("paid_by_id").references(() => users.id),
     paidAt: timestamp("paid_at", { withTimezone: true }),
+    /**
+     * The credit note made when a refund on a tax invoice is paid out: its
+     * own number per branch and financial year, its day, and the fee and GST
+     * it takes back, in proportion to the invoice.
+     */
+    creditNoteNumber: text("credit_note_number"),
+    creditNoteOn: date("credit_note_on"),
+    creditTaxable: integer("credit_taxable"),
+    creditCgst: integer("credit_cgst"),
+    creditSgst: integer("credit_sgst"),
+    creditIgst: integer("credit_igst"),
     createdAt: createdAt(),
   },
-  (t) => [uniqueIndex("fee_refunds_number_uq").on(t.number), index("fee_refunds_invoice_idx").on(t.invoiceId), index("fee_refunds_state_idx").on(t.state)],
+  (t) => [
+    uniqueIndex("fee_refunds_number_uq").on(t.number),
+    uniqueIndex("fee_refunds_credit_note_uq").on(t.creditNoteNumber),
+    index("fee_refunds_invoice_idx").on(t.invoiceId),
+    index("fee_refunds_state_idx").on(t.state),
+  ],
 );
 
 /** The AI features' switch, key and monthly allowances. ANTHROPIC_API_KEY, when set, wins over the stored key. */

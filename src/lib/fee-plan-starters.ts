@@ -17,7 +17,9 @@
  *
  * These are put in by the "Migration for student fees" migration, once each,
  * by their key. Editing this list does not change plans already in a
- * database; tests/student-fees.test.ts holds the list to its sources.
+ * database: a change to a starter goes in by a new data migration as well,
+ * never by editing that one. tests/student-fees.test.ts holds the list to its
+ * sources.
  */
 import type { JourneyStage } from "@/db/schema";
 import type { NclexStepKey } from "./nclex";
@@ -116,7 +118,8 @@ export const STARTER_PLANS: StarterPlan[] = [
     name: "Ausbildung Nursing (Without Interview)",
     source:
       "Registration: ₹10,000 + 18% GST. Application: ₹2,50,000 + 18% GST. After Receiving Offer Letter: ₹2,50,000 + 18% GST. Before Visa Submission: ₹1,90,000 + 18% GST. Total: ₹7,00,000 + GST (4 instalments).",
-    note: null,
+    // Put on plans already in a database by the fee_schedule_guard migration.
+    note: "Candidate must additionally pay a refundable €1,000 to the employer.",
     gstPercent: 18,
     items: [
       on("Registration", 10000),

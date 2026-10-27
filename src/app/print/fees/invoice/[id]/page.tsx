@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { fmtDate, fullName } from "@/lib/format";
-import { FEE_INVOICE_STATE_LABEL, balanceDue, rupees, rupeesInWords } from "@/lib/student-fees";
+import { balanceDue, invoiceStateLabel, rupees, rupeesInWords } from "@/lib/student-fees";
 import { loadInvoice } from "@/server/student-fees";
 import { mayPrint } from "../../access";
 import { PaperHead, PaperShell } from "../../shell";
@@ -17,7 +17,8 @@ export default async function FeeInvoicePrint({ params }: { params: Promise<{ id
   const { id } = await params;
   const data = await loadInvoice(id);
   if (!data || !data.invoice.number) notFound();
-  const { invoice: inv, lines, student, receipts } = data;
+  const { invoice: inv, lines, student, receipts, refunds } = data;
+  const credits = refunds.filter((r) => r.creditNoteNumber);
   await mayPrint(student, true);
   const tax = inv.kind === "TAX_INVOICE";
   const due = balanceDue(inv.total, inv.received);
@@ -42,7 +43,7 @@ export default async function FeeInvoicePrint({ params }: { params: Promise<{ id
         <div className="text-right">
           <p>Due by {inv.dueOn ? fmtDate(inv.dueOn) : "Not recorded"}</p>
           {tax && <p>Place of supply: {inv.placeOfSupply ?? inv.sellerState ?? "Not recorded"}</p>}
-          <p>Status: {FEE_INVOICE_STATE_LABEL[inv.state]}</p>
+          <p>Status: {invoiceStateLabel(inv)}</p>
         </div>
       </section>
       <table className="w-full border-collapse">
@@ -107,6 +108,11 @@ export default async function FeeInvoicePrint({ params }: { params: Promise<{ id
       {!tax && <p className="mt-1 text-[#6b6275]">No GST is charged: the supplier has no GSTIN recorded.</p>}
       {receipts.length > 0 && (
         <p className="mt-3 text-[#6b6275]">Receipts: {receipts.map((r) => `${r.number} (${rupees(r.amount)}, ${fmtDate(r.receivedOn)})`).join("; ")}</p>
+      )}
+      {credits.length > 0 && (
+        <p className="mt-1 text-[#6b6275]" data-testid="credit-notes">
+          Credit notes: {credits.map((r) => `${r.creditNoteNumber} (${rupees(r.amount)}, ${fmtDate(r.creditNoteOn)})`).join("; ")}
+        </p>
       )}
       <footer className="mt-12 flex items-end justify-between text-[12px] text-[#6b6275]">
         <span>This is a computer-generated document.</span>
