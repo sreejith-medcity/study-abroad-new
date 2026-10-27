@@ -381,6 +381,14 @@ export const organizations = pgTable("organizations", {
   signupQuestions: jsonb("signup_questions").$type<SignupQuestion[]>().notNull().default(sql`'[]'::jsonb`),
   /** The branch's own test preparation page, at /prep/<public slug>. */
   prepPageEnabled: boolean("prep_page_enabled").notNull().default(false),
+  /**
+   * The organisation's GSTIN, where it has one, and its state. A student's fee
+   * invoice carries GST only when a GSTIN is recorded here; without one it is
+   * a bill of supply with no tax on it. The state is read from the GSTIN when
+   * there is one, so the two cannot disagree.
+   */
+  gstin: text("gstin"),
+  state: text("state"),
   active: boolean("active").notNull().default(true),
   createdAt: createdAt(),
 });
@@ -3086,6 +3094,239 @@ export const payments = pgTable(
   (t) => [index("payments_org_idx").on(t.orgId, t.createdAt), index("payments_app_idx").on(t.applicationId)],
 );
 
+// ---------- Student fees ----------
+
+/** Where a student's fee invoice has got to. Paid and part paid follow the receipts. */
+export const feeInvoiceState = pgEnum("fee_invoice_state", ["DRAFT", "ISSUED", "PART_PAID", "PAID", "CANCELLED", "WRITTEN_OFF"]);
+/** How the money came in. Razorpay is recorded by Razorpay's webhook, never typed. */
+export const feeMethod = pgEnum("fee_method", ["CASH", "UPI", "CARD", "BANK_TRANSFER", "RAZORPAY"]);
+export const feeInstalmentState = pgEnum("fee_instalment_state", ["SCHEDULED", "INVOICED", "CANCELLED"]);
+export const feeRefundState = pgEnum("fee_refund_state", ["REQUESTED", "APPROVED", "REJECTED", "PAID"]);
+
+/**
+ * A fee plan template, kept by the head office and finance: a package's fee
+ * as instalments, each a fixed amount or a share of the fee, each due on a
+ * day or when the file reaches a stage or a step of its pathway. Amounts are
+ * whole rupees.
+ */
+export const feePlans = pgTable("fee_plans", {
+  id: id(),
+  name: text("name").notNull(),
+  note: text("note"),
+  currency: text("currency").notNull().default("INR"),
+  /** The GST rate on these fees, where Medcity has recorded one. Null is not recorded, never nought. */
+  gstPercent: real("gst_percent"),
+  items: jsonb("items").$type<import("../lib/student-fees").FeePlanItem[]>().notNull(),
+  /**
+   * Set on the starter templates shipped from Medcity's fee sheets: which
+   * sheet it came from, so it is put in once and can be told apart from a
+   * plan somebody wrote. Null on a plan made here.
+   */
+  starterKey: text("starter_key").unique(),
+  /** The fee sheet's own lines, word for word, for a starter template. */
+  source: text("source"),
+  active: boolean("active").notNull().default(true),
+  createdById: text("created_by_id").references(() => users.id),
+  updatedById: text("updated_by_id").references(() => users.id),
+  createdAt: createdAt(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * A fee to a student, as a printed document. Drafts have no number; the
+ * number, the seller's details and the tax are fixed when it is issued, so a
+ * GSTIN changed later does not rewrite an invoice already given out.
+ */
+export const feeInvoices = pgTable(
+  "fee_invoices",
+  {
+    id: id(),
+    number: text("number"),
+    orgId: text("org_id")
+      .notNull()
+      .references(() => organizations.id),
+    studentId: text("student_id")
+      .notNull()
+      .references(() => students.id),
+    state: feeInvoiceState("state").notNull().default("DRAFT"),
+    /** TAX_INVOICE or BILL_OF_SUPPLY, set on issue. */
+    kind: text("kind"),
+    currency: text("currency").notNull().default("INR"),
+    issuedOn: date("issued_on"),
+    dueOn: date("due_on"),
+    sellerName: text("seller_name"),
+    sellerGstin: text("seller_gstin"),
+    sellerState: text("seller_state"),
+    sellerAddress: text("seller_address"),
+    /** The student's state on record at issue, where there was one. */
+    placeOfSupply: text("place_of_supply"),
+    gstPercent: real("gst_percent"),
+    /** The sum of the lines. */
+    taxable: integer("taxable").notNull().default(0),
+    cgst: integer("cgst"),
+    sgst: integer("sgst"),
+    igst: integer("igst"),
+    /** Null while a GST rate the seller needs is not recorded. */
+    total: integer("total"),
+    received: integer("received").notNull().default(0),
+    refunded: integer("refunded").notNull().default(0),
+    note: text("note"),
+    /** Why it was cancelled or written off. Required for both. */
+    closedReason: text("closed_reason"),
+    closedById: text("closed_by_id").references(() => users.id),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    createdById: text("created_by_id").references(() => users.id),
+    issuedById: text("issued_by_id").references(() => users.id),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("fee_invoices_number_uq").on(t.number),
+    index("fee_invoices_student_idx").on(t.studentId),
+    index("fee_invoices_org_idx").on(t.orgId, t.state),
+  ],
+);
+
+export const feeInvoiceLines = pgTable(
+  "fee_invoice_lines",
+  {
+    id: id(),
+    invoiceId: text("invoice_id")
+      .notNull()
+      .references(() => feeInvoices.id, { onDelete: "cascade" }),
+    description: text("description").notNull(),
+    amount: integer("amount").notNull(),
+    instalmentId: text("instalment_id"),
+  },
+  (t) => [index("fee_invoice_lines_invoice_idx").on(t.invoiceId)],
+);
+
+/** One student's schedule: a plan applied to them, an instalment per row. */
+export const feeInstalments = pgTable(
+  "fee_instalments",
+  {
+    id: id(),
+    studentId: text("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    orgId: text("org_id")
+      .notNull()
+      .references(() => organizations.id),
+    planId: text("plan_id").references(() => feePlans.id, { onDelete: "set null" }),
+    planName: text("plan_name").notNull(),
+    seq: integer("seq").notNull(),
+    label: text("label").notNull(),
+    amount: integer("amount").notNull(),
+    currency: text("currency").notNull().default("INR"),
+    gstPercent: real("gst_percent"),
+    dueOn: date("due_on"),
+    /**
+     * For an instalment that waits on the file, rather than a date: the
+     * process (JOURNEY, AUSBILDUNG, NCLEX, or another listed in
+     * src/lib/fee-steps.ts) and the step within it that brings it due.
+     */
+    stepPathway: text("step_pathway"),
+    stepKey: text("step_key"),
+    state: feeInstalmentState("state").notNull().default("SCHEDULED"),
+    invoiceId: text("invoice_id").references(() => feeInvoices.id, { onDelete: "set null" }),
+    createdById: text("created_by_id").references(() => users.id),
+    createdAt: createdAt(),
+  },
+  (t) => [index("fee_instalments_student_idx").on(t.studentId, t.seq), index("fee_instalments_step_idx").on(t.state, t.stepPathway)],
+);
+
+/** Money received against one invoice, with its own number. */
+export const feeReceipts = pgTable(
+  "fee_receipts",
+  {
+    id: id(),
+    number: text("number").notNull(),
+    invoiceId: text("invoice_id")
+      .notNull()
+      .references(() => feeInvoices.id),
+    studentId: text("student_id")
+      .notNull()
+      .references(() => students.id),
+    orgId: text("org_id")
+      .notNull()
+      .references(() => organizations.id),
+    amount: integer("amount").notNull(),
+    method: feeMethod("method").notNull(),
+    reference: text("reference"),
+    receivedOn: date("received_on").notNull(),
+    /** Set on a Razorpay receipt, so a webhook sent twice records it once. */
+    razorpayPaymentId: text("razorpay_payment_id"),
+    note: text("note"),
+    /** Null when Razorpay recorded it. */
+    recordedById: text("recorded_by_id").references(() => users.id),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("fee_receipts_number_uq").on(t.number),
+    uniqueIndex("fee_receipts_razorpay_uq").on(t.razorpayPaymentId),
+    index("fee_receipts_invoice_idx").on(t.invoiceId),
+    index("fee_receipts_day_idx").on(t.orgId, t.receivedOn),
+  ],
+);
+
+/** A Razorpay payment link for what is due on one invoice. */
+export const feePaymentLinks = pgTable(
+  "fee_payment_links",
+  {
+    id: id(),
+    invoiceId: text("invoice_id")
+      .notNull()
+      .references(() => feeInvoices.id, { onDelete: "cascade" }),
+    razorpayLinkId: text("razorpay_link_id").notNull(),
+    url: text("url").notNull(),
+    amount: integer("amount").notNull(),
+    /** CREATED, PAID or CANCELLED. */
+    state: text("state").notNull().default("CREATED"),
+    createdById: text("created_by_id").references(() => users.id),
+    createdAt: createdAt(),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+  },
+  (t) => [uniqueIndex("fee_payment_links_rzp_uq").on(t.razorpayLinkId), index("fee_payment_links_invoice_idx").on(t.invoiceId)],
+);
+
+/**
+ * Money going back to a student. Requested by the branch or the desk,
+ * approved or rejected by finance or the head office, never by the person who
+ * asked, and paid out with a reference. Paid, it comes off the invoice's
+ * received figure and its fee alike, so the balance still reads true.
+ */
+export const feeRefunds = pgTable(
+  "fee_refunds",
+  {
+    id: id(),
+    number: text("number").notNull(),
+    invoiceId: text("invoice_id")
+      .notNull()
+      .references(() => feeInvoices.id),
+    studentId: text("student_id")
+      .notNull()
+      .references(() => students.id),
+    orgId: text("org_id")
+      .notNull()
+      .references(() => organizations.id),
+    amount: integer("amount").notNull(),
+    reason: text("reason").notNull(),
+    state: feeRefundState("state").notNull().default("REQUESTED"),
+    requestedById: text("requested_by_id")
+      .notNull()
+      .references(() => users.id),
+    decidedById: text("decided_by_id").references(() => users.id),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    decisionNote: text("decision_note"),
+    payoutMethod: feeMethod("payout_method"),
+    payoutReference: text("payout_reference"),
+    paidById: text("paid_by_id").references(() => users.id),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("fee_refunds_number_uq").on(t.number), index("fee_refunds_invoice_idx").on(t.invoiceId), index("fee_refunds_state_idx").on(t.state)],
+);
+
 /** The AI features' switch, key and monthly allowances. ANTHROPIC_API_KEY, when set, wins over the stored key. */
 export const aiSettings = pgTable("ai_settings", {
   id: text("id").primaryKey().default("app"),
@@ -4086,3 +4327,5 @@ export type Team = typeof teams.$inferSelect;
 export type StudentPerson = typeof studentPeople.$inferSelect;
 export type View = typeof views.$inferSelect;
 export type ViewScope = (typeof viewScope.enumValues)[number];
+export type FeeInvoiceStateValue = (typeof feeInvoiceState.enumValues)[number];
+export type FeeMethodValue = (typeof feeMethod.enumValues)[number];
