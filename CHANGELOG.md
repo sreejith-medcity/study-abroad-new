@@ -5,6 +5,12 @@ version in package.json and adds an entry here and in src/lib/releases.ts (the
 What's new page reads that one). After applying a release, tag it with the
 version so it can be found and rolled back to.
 
+## 1.9.3 (27 October 2026)
+
+- A documentation officer sees a student only while the file is theirs: assigned to them, registered by them, an application they are the officer on, a document they are checking now, or a file they have been put on by name (a team lead giving them a team file counts). A document they checked earlier, or a team they are in, no longer opens a student assigned to somebody else.
+
+Nothing to run on the VPS beyond `bash /root/update-portal.sh`: no migration and no SQL.
+
 ## 1.9.2 (27 October 2026)
 
 - Status flows shows one pathway at a time: tabs across the top name every pathway with how many statuses it has in use, and saving a status comes back to the same pathway. Switched-off statuses are greyed.

@@ -12,6 +12,13 @@ export type Release = { version: string; date: string; changes: string[] };
 
 export const RELEASES: Release[] = [
   {
+    version: "1.9.3",
+    date: "2026-10-27",
+    changes: [
+      "A documentation officer sees a student only while the file is theirs: assigned to them, registered by them, an application they are the officer on, a document they are checking now, or a file they have been put on by name (a team lead giving them a team file counts). A document they checked earlier, or a team they are in, no longer opens a student assigned to somebody else.",
+    ],
+  },
+  {
     version: "1.9.2",
     date: "2026-10-27",
     changes: [
