@@ -12,6 +12,17 @@ export type Release = { version: string; date: string; changes: string[] };
 
 export const RELEASES: Release[] = [
   {
+    version: "1.8.0",
+    date: "2026-10-27",
+    changes: [
+      "FSJ and BFD are pathways of their own and follow the written FSJ & BFD process: 18 steps across the branch, documentation, interviews, the visa team and the travel desk, with the language assessment and re-assessment, the fee check before the application starts, interviews with employer feedback (including another employer when not selected or when an employer withdraws after a visa refusal), offer and contract, VFS slot, visa outcome, pre-departure and the follow-up after arrival. Each student has an FSJ / BFD tab, the FSJ / BFD tracker lists every file by step and department, and the student sees their step on their portal. The portal does not send email: each email in the guide becomes a notice to whoever sends it, with the addresses and the text to copy.",
+      "Calling mode under Calls opens a counsellor's own enquiries and students that need a call, one at a time: not contacted yet, then late follow-ups, then today's, with tap to call, WhatsApp and seven outcomes that set the next call or close the enquiry. Branch heads see their team's queue.",
+      "Enquiries keep a call history with how and with what result, every next follow-up is a task on My day, and the day end report counts calls to enquiries too.",
+      "Reports has a Counsellor leaderboard: calls made, connected, follow-ups on time and late, and enquiries converted for any period, from what was recorded.",
+      "Student fees: fee plans from Medcity's fee sheets with instalments due on a date or a step of the student's process, invoices with GST when the branch's GSTIN is recorded, receipts, printable invoices, receipts and credit notes, payment links through Razorpay, waiving an instalment, refunds approved by someone other than the person asking, receivables ageing and a day book. Students see their invoices and receipts on their portal.",
+    ],
+  },
+  {
     version: "1.7.0",
     date: "2026-10-27",
     changes: [

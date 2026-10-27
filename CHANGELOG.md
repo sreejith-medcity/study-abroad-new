@@ -5,6 +5,16 @@ version in package.json and adds an entry here and in src/lib/releases.ts (the
 What's new page reads that one). After applying a release, tag it with the
 version so it can be found and rolled back to.
 
+## 1.8.0 (27 October 2026)
+
+- FSJ and BFD are pathways of their own and follow the written FSJ & BFD process: 18 steps across the branch, documentation, interviews, the visa team and the travel desk, with the language assessment and re-assessment, the fee check before the application starts, interviews with employer feedback (including another employer when not selected or when an employer withdraws after a visa refusal), offer and contract, VFS slot, visa outcome, pre-departure and the follow-up after arrival. Each student has an FSJ / BFD tab, the FSJ / BFD tracker lists every file by step and department, and the student sees their step on their portal. The portal does not send email: each email in the guide becomes a notice to whoever sends it, with the addresses and the text to copy.
+- Calling mode under Calls opens a counsellor's own enquiries and students that need a call, one at a time: not contacted yet, then late follow-ups, then today's, with tap to call, WhatsApp and seven outcomes that set the next call or close the enquiry. Branch heads see their team's queue.
+- Enquiries keep a call history with how and with what result, every next follow-up is a task on My day, and the day end report counts calls to enquiries too.
+- Reports has a Counsellor leaderboard: calls made, connected, follow-ups on time and late, and enquiries converted for any period, from what was recorded.
+- Student fees: fee plans from Medcity's fee sheets with instalments due on a date or a step of the student's process, invoices with GST when the branch's GSTIN is recorded, receipts, printable invoices, receipts and credit notes, payment links through Razorpay, waiving an instalment, refunds approved by someone other than the person asking, receivables ageing and a day book. Students see their invoices and receipts on their portal.
+
+On the VPS this release runs `docker compose --profile tools run --rm migrate` (migrations 0082 to 0086), then loads `deploy/fsj-bfd-process.sql`, before the new build. Branches need their GSTIN recorded before fee invoices carry GST, and an FSJ or BFD programme added under Programs before an FSJ or BFD application can start.
+
 ## 1.7.0 (27 October 2026)
 
 - New enquiries without an owner are given out by routing rules: by source, pathway and branch, each naming a person or sharing enquiries in turn among the branch's active counsellors, fewest open enquiries first. The head office sets rules for any branch and a branch head for their own, under Settings, Enquiries. With no matching rule an enquiry stays with the branch to hand out, as before.
