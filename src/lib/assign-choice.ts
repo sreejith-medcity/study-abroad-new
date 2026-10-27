@@ -109,3 +109,28 @@ export function assignGroups(input: {
   }
   return groups;
 }
+
+/**
+ * The groups a typed search leaves, for the searchable Assign list.
+ *
+ * Every word typed must appear in the person's name or in their group's
+ * name, so "ausb" offers the whole Ausbildung team and the people at the
+ * Ausbildung branch, "elvin" finds Elvin wherever he is, and "move kollam"
+ * narrows to the people a student could be moved to at Kollam. Case and
+ * extra spaces are ignored. A group nobody in it matches is left out, and an
+ * empty search leaves everything as it was.
+ */
+export function filterAssignGroups(groups: AssignGroup[], query: string): AssignGroup[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.length) return groups;
+  const out: AssignGroup[] = [];
+  for (const g of groups) {
+    const groupText = g.label.toLowerCase();
+    const options = g.options.filter((o) => {
+      const text = `${o.label.toLowerCase()} ${groupText}`;
+      return words.every((w) => text.includes(w));
+    });
+    if (options.length) out.push({ ...g, options });
+  }
+  return out;
+}

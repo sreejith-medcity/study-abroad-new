@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
-import { assignGroups, moveConfirmText, moveValue, parseAssignChoice, teamLabel, teamValue } from "../src/lib/assign-choice";
+import { assignGroups, filterAssignGroups, moveConfirmText, moveValue, parseAssignChoice, teamLabel, teamValue } from "../src/lib/assign-choice";
 
 describe("what an Assigned to choice means", () => {
   it("reads nobody, a person, a team, a team member and a move", () => {
@@ -57,5 +57,31 @@ describe("the words", () => {
     assert.equal(teamLabel("Ausbildung"), "Ausbildung team");
     assert.equal(teamLabel("UK team"), "UK team");
     assert.equal(moveConfirmText("Asha Joseph", "Medcity Thrissur"), "This moves Asha Joseph to Medcity Thrissur. Their Medcity ID, documents and invoices stay as they are.");
+  });
+});
+
+describe("searching the Assign list", () => {
+  const groups = [
+    { label: "Medcity Kottayam", kind: "branch" as const, options: [{ value: "u1", label: "Sreekutty" }, { value: "u2", label: "firoz" }] },
+    { label: "Ausbildung team", kind: "team" as const, options: [{ value: "team:t1", label: "Whole team, nobody named yet" }, { value: "team:t1:u3", label: "Elvin" }] },
+    { label: "Move to Medcity Kollam", kind: "move" as const, branchName: "Medcity Kollam", options: [{ value: "move:o1:u4", label: "Arya Murali" }, { value: "move:o1:u5", label: "Elvin K" }] },
+  ];
+  it("leaves everything when nothing is typed", () => {
+    assert.deepEqual(filterAssignGroups(groups, "   "), groups);
+  });
+  it("finds a person in every group they appear in, ignoring case", () => {
+    const found = filterAssignGroups(groups, "ELVIN");
+    assert.deepEqual(found.map((g) => g.label), ["Ausbildung team", "Move to Medcity Kollam"]);
+  });
+  it("keeps a whole group when its name matches", () => {
+    const found = filterAssignGroups(groups, "ausb");
+    assert.equal(found.length, 1);
+    assert.equal(found[0].options.length, 2);
+  });
+  it("needs every word, across the name and the group", () => {
+    const found = filterAssignGroups(groups, "kollam arya");
+    assert.deepEqual(found.map((g) => g.options.map((o) => o.label)), [["Arya Murali"]]);
+    assert.equal(found[0].branchName, "Medcity Kollam");
+    assert.deepEqual(filterAssignGroups(groups, "nobody here"), []);
   });
 });

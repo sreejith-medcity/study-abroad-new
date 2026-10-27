@@ -4,6 +4,7 @@ import { Fragment, createContext, useContext, useEffect, useRef, useState, useTr
 import { useRouter } from "next/navigation";
 import { Button, Select } from "@/components/ui";
 import { toast } from "@/components/toast";
+import { GroupedPicker } from "@/components/grouped-picker";
 import { assignGroups, moveConfirmText, parseAssignChoice, type AssignPerson, type WiderChoices } from "@/lib/assign-choice";
 import { assignStudentAction, reassignStudentAction } from "./actions";
 
@@ -63,6 +64,10 @@ export function RowAssign({
   const [saved, setSaved] = useState(false);
   const [asking, setAsking] = useState<{ value: string; branchName: string } | null>(null);
   const field = useRef<HTMLSelectElement>(null);
+  // Who the picker shows as chosen. A person picked becomes it; a team or a
+  // move leaves the counsellor as they were, so it goes back to `current`.
+  const [chosen, setChosen] = useState(current);
+  useEffect(() => setChosen(current), [current]);
 
   useEffect(() => setScripted(true), []);
 
@@ -79,6 +84,7 @@ export function RowAssign({
   // back to showing them; the team shows on the row, the move moves the row.
   const putBack = () => {
     if (field.current) field.current.value = current;
+    setChosen(current);
   };
 
   function send(value: string, confirmed = false) {
@@ -105,7 +111,10 @@ export function RowAssign({
   }
 
   function onChange() {
-    const value = field.current?.value ?? "";
+    choose(field.current?.value ?? "");
+  }
+
+  function choose(value: string) {
     const choice = parseAssignChoice(value);
     if (choice?.kind === "move") {
       const group = groups.find((g) => g.kind === "move" && g.options.some((o) => o.value === value));
@@ -113,6 +122,7 @@ export function RowAssign({
       return;
     }
     setAsking(null);
+    setChosen(value);
     send(value);
   }
 
@@ -120,27 +130,38 @@ export function RowAssign({
     <div>
       <form action={reassignStudentAction} className="flex items-center gap-1.5">
         <input type="hidden" name="studentId" value={studentId} />
-        <Select
-          ref={field}
-          name="assignedToId"
-          defaultValue={current}
-          aria-label={label}
-          className="min-w-32 py-1.5"
-          disabled={pending || !!asking}
-          onChange={scripted ? onChange : undefined}
-        >
-          <option value="">Unassigned</option>
-          {groups.map((g) => {
-            const options = g.options.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ));
-            return grouped ? (
-              <optgroup key={`${g.kind}:${g.label}`} label={g.label}>{options}</optgroup>
-            ) : (
-              <Fragment key={`${g.kind}:${g.label}`}>{options}</Fragment>
-            );
-          })}
-        </Select>
+        {scripted ? (
+          <GroupedPicker
+            groups={groups}
+            value={chosen}
+            label={label}
+            grouped={grouped}
+            disabled={pending || !!asking}
+            onPick={choose}
+          />
+        ) : (
+          <Select
+            ref={field}
+            name="assignedToId"
+            defaultValue={current}
+            aria-label={label}
+            className="min-w-32 py-1.5"
+            disabled={pending || !!asking}
+            onChange={scripted ? onChange : undefined}
+          >
+            <option value="">Unassigned</option>
+            {groups.map((g) => {
+              const options = g.options.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ));
+              return grouped ? (
+                <optgroup key={`${g.kind}:${g.label}`} label={g.label}>{options}</optgroup>
+              ) : (
+                <Fragment key={`${g.kind}:${g.label}`}>{options}</Fragment>
+              );
+            })}
+          </Select>
+        )}
         {scripted ? (
           <span className="w-11 shrink-0 text-2xs text-muted" aria-live="polite">
             {pending ? "Saving" : saved ? "Saved" : ""}
