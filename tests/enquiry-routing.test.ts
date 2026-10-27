@@ -52,6 +52,7 @@ test("a rule asking for a pathway does not take an enquiry with none given", () 
   assert.equal(ruleMatches(rule({ pathway: "NURSING" }), { orgId: "o", source: "PHONE", pathway: null }), false);
   assert.equal(ruleMatches(rule({ pathway: "NCLEX" }), { orgId: "o", source: "PHONE", pathway: "NCLEX" }), true, "a rule can ask for the new pathways");
   assert.equal(ruleMatches(rule({ pathway: "NCLEX" }), { orgId: "o", source: "PHONE", pathway: "NURSING" }), false, "and NCLEX-RN is not nursing");
+  assert.equal(ruleMatches(rule({ pathway: "AU_PAIR" }), { orgId: "o", source: "PHONE", pathway: "AU_PAIR" }), true, "a rule can ask for Au pair");
 });
 
 test("a rule that is off never matches", () => {

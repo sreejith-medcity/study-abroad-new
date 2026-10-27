@@ -11,12 +11,13 @@ import { ADMIN_ROLES } from "@/lib/permissions";
 export const metadata = { title: "Status flows" };
 
 const PATHWAY_LABEL: Record<Pathway, string> = {
-  DEGREE: "Degree (UK, IE, AU, CA, MT)",
+  DEGREE: "Study abroad (UK, IE, AU, CA, MT)",
   AUSBILDUNG: "Ausbildung (Germany)",
   NURSING: "Nurse registration (OET, Anerkennung, and NCLEX-RN files opened before NCLEX-RN had its own pathway)",
   NCLEX: "NCLEX-RN (USA nurse licensing)",
   WEITERBILDUNG: "Weiterbildung (Germany), provisional until the written guide arrives",
   CCM: "CCM, provisional until the written guide arrives",
+  AU_PAIR: "Au pair, provisional until the written guide arrives",
   FSJ: "FSJ, Freiwilliges Soziales Jahr (Germany)",
   BFD: "BFD, Bundesfreiwilligendienst (Germany)",
 };

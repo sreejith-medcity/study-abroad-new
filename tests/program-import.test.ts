@@ -29,6 +29,12 @@ test("takes the new pathways", () => {
   assert.deepEqual(rows.map((r) => r.pathway), ["NCLEX", "WEITERBILDUNG", "CCM"]);
 });
 
+test("takes Au pair", () => {
+  const { rows, errors } = parseProgramCsv(`${header}\nAu pair placement,Agency,DE,AU_PAIR,CERTIFICATE,Aug,,,`, []);
+  assert.equal(errors.length, 0, JSON.stringify(errors));
+  assert.deepEqual(rows.map((r) => r.pathway), ["AU_PAIR"]);
+});
+
 test("rejects files missing required columns", () => {
   const { errors } = parseProgramCsv("program,university\nA,B", []);
   assert.match(errors[0].message, /Missing required columns/);

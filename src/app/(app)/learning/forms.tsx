@@ -36,7 +36,7 @@ export function ResourceForm({ countries }: { countries: { id: string; name: str
         </SelectField>
         <SelectField label="Pathway" name="pathway" defaultValue="">
           <option value="">Any pathway</option>
-          <option value="DEGREE">Degree</option>
+          <option value="DEGREE">Study abroad</option>
           <option value="AUSBILDUNG">Ausbildung</option>
           <option value="NURSING">Nurse registration</option>
           <option value="FSJ">FSJ, Freiwilliges Soziales Jahr (Germany)</option>
@@ -44,6 +44,7 @@ export function ResourceForm({ countries }: { countries: { id: string; name: str
           <option value="NCLEX">NCLEX-RN (USA nurse licensing)</option>
           <option value="WEITERBILDUNG">Weiterbildung (Germany: further training and nurse recognition)</option>
           <option value="CCM">CCM</option>
+          <option value="AU_PAIR">Au pair (a year with a host family abroad)</option>
         </SelectField>
         <SelectField label="Destination" name="countryId" defaultValue="">
           <option value="">Any destination</option>

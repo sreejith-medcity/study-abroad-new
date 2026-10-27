@@ -61,7 +61,7 @@ export const NUMBER_FIELDS: readonly SyncableField[] = ["backlogs", "gapYears"];
  * outside the list is named back to them instead of breaking the write.
  */
 export const ENUM_FIELDS: Partial<Record<SyncableField, readonly string[]>> = {
-  preferredPathway: ["DEGREE", "AUSBILDUNG", "NURSING", "FSJ", "BFD", "NCLEX", "WEITERBILDUNG", "CCM"],
+  preferredPathway: ["DEGREE", "AUSBILDUNG", "NURSING", "FSJ", "BFD", "NCLEX", "WEITERBILDUNG", "CCM", "AU_PAIR"],
 };
 
 const isBlank = (v: unknown) => v === null || v === undefined || (typeof v === "string" && v.trim() === "");
@@ -82,7 +82,8 @@ export function normalise(field: SyncableField, value: unknown): string | number
   }
   const allowed = ENUM_FIELDS[field];
   if (allowed) {
-    const up = String(value).trim().toUpperCase();
+    // "Au pair" and "au-pair" are the AU_PAIR the list holds: spaces and hyphens read as the underscore.
+    const up = String(value).trim().toUpperCase().replace(/[\s-]+/g, "_");
     return allowed.includes(up) ? up : null;
   }
   return String(value).trim();

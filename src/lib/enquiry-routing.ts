@@ -5,7 +5,7 @@
  */
 
 export type RoutingSource = "WALK_IN" | "PHONE" | "WHATSAPP" | "WEBSITE" | "REFERRAL" | "EVENT" | "SOCIAL" | "OTHER";
-export type RoutingPathway = "DEGREE" | "AUSBILDUNG" | "NURSING" | "FSJ" | "BFD" | "NCLEX" | "WEITERBILDUNG" | "CCM";
+export type RoutingPathway = "DEGREE" | "AUSBILDUNG" | "NURSING" | "FSJ" | "BFD" | "NCLEX" | "WEITERBILDUNG" | "CCM" | "AU_PAIR";
 export type EnquiryStageName = "NEW" | "CONTACTED" | "QUALIFIED" | "COUNSELLING" | "CONVERTED" | "LOST" | "MERGED";
 
 export const OPEN_ENQUIRY_STAGES: EnquiryStageName[] = ["NEW", "CONTACTED", "QUALIFIED", "COUNSELLING"];

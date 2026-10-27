@@ -292,7 +292,7 @@ export async function bulkStatusAction(_: BulkStatusState, formData: FormData): 
 }
 
 const LEVELS = ["SCHOOL", "UG_DIPLOMA", "UG", "PG_DIPLOMA", "PG", "PHD", "VOCATIONAL", "REGISTRATION", "CERTIFICATE"] as const;
-const PATHWAYS = ["DEGREE", "AUSBILDUNG", "NURSING", "FSJ", "BFD", "NCLEX", "WEITERBILDUNG", "CCM"] as const;
+const PATHWAYS = ["DEGREE", "AUSBILDUNG", "NURSING", "FSJ", "BFD", "NCLEX", "WEITERBILDUNG", "CCM", "AU_PAIR"] as const;
 const CEFR = ["A1", "A2", "B1", "B2", "C1", "C2"] as const;
 
 /** Reads an optional number field. Blank means "not recorded", which is not zero. */

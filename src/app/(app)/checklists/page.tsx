@@ -19,6 +19,7 @@ const JOURNEYS: { key: Pathway; label: string; blurb: string }[] = [
   { key: "BFD", label: "BFD (Germany)", blurb: "Bundesfreiwilligendienst: the federal volunteer service, on the FSJ / BFD written process" },
   { key: "WEITERBILDUNG", label: "Weiterbildung", blurb: "Further training in Germany and the nurse recognition adaptation. A starting list until the written guide arrives" },
   { key: "CCM", label: "CCM", blurb: "A starting list until the written guide arrives" },
+  { key: "AU_PAIR", label: "Au pair", blurb: "A year with a host family abroad. A starting list until the written guide arrives" },
 ];
 
 /**

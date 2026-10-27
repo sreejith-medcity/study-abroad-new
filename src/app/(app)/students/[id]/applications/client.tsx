@@ -155,7 +155,7 @@ export function ApplyForm({
           </Select>
           <Select aria-label="Pathway" value={pathway} onChange={(e) => setPathway(e.target.value)}>
             <option value="">All pathways</option>
-            <option value="DEGREE">University degree</option>
+            <option value="DEGREE">Study abroad</option>
             <option value="AUSBILDUNG">Ausbildung (Germany)</option>
             <option value="NURSING">Nurse registration</option>
             <option value="FSJ">FSJ, Freiwilliges Soziales Jahr (Germany)</option>
@@ -163,6 +163,7 @@ export function ApplyForm({
             <option value="NCLEX">NCLEX-RN (USA nurse licensing)</option>
             <option value="WEITERBILDUNG">Weiterbildung (Germany: further training and nurse recognition)</option>
             <option value="CCM">CCM</option>
+            <option value="AU_PAIR">Au pair (a year with a host family abroad)</option>
           </Select>
         </div>
         <FieldError name="programId" />

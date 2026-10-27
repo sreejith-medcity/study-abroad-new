@@ -287,6 +287,18 @@ export const NEW_PATHWAY_REQUIREMENTS: SeedRequirement[] = [
   { stage: "PROFILE", typeCode: "DEGREE_CERTIFICATE", pathway: "CCM", required: false, guidance: "The highest qualification, where the student holds one." },
 ];
 
+/**
+ * PROVISIONAL for Au pair, until the department's process guide arrives: only
+ * what every au pair file plainly needs. The passport and the photographs
+ * already reach every pathway from the stage lists; a CV goes to the agency
+ * and the host families, and a language certificate (German, mostly) helps
+ * where the student has one.
+ */
+export const AU_PAIR_REQUIREMENTS: SeedRequirement[] = [
+  { stage: "PROFILE", typeCode: "CV", pathway: "AU_PAIR", guidance: "Childcare experience first: babysitting, siblings, teaching, volunteering." },
+  { stage: "PROFILE", typeCode: "GERMAN_CERTIFICATE", pathway: "AU_PAIR", required: false, guidance: "German or another language certificate, where the student has one." },
+];
+
 /** The reasons a document goes back. The words here are the words the student reads. */
 export const REJECTION_REASONS = [
   { code: "not_clear", label: "Not clear enough to read", labelMl: "വായിക്കാൻ വ്യക്തമല്ല" },

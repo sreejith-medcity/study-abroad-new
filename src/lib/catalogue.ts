@@ -14,7 +14,7 @@ export const LEVEL_LABEL: Record<string, string> = {
 };
 
 export const PATHWAY_LABEL: Record<string, string> = {
-  DEGREE: "Degree",
+  DEGREE: "Study abroad",
   AUSBILDUNG: "Ausbildung",
   NURSING: "Nurse registration",
   FSJ: "FSJ (Germany)",
@@ -22,6 +22,7 @@ export const PATHWAY_LABEL: Record<string, string> = {
   NCLEX: "NCLEX-RN",
   WEITERBILDUNG: "Weiterbildung",
   CCM: "CCM",
+  AU_PAIR: "Au pair",
 };
 
 /**

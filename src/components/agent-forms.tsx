@@ -111,7 +111,7 @@ export function ReferForm() {
         <TextField label="Where they want to go" name="interestCountry" hint="A country, if they have said." />
         <SelectField label="What they are after" name="interestPathway">
           <option value="">Not sure yet</option>
-          <option value="DEGREE">A degree</option>
+          <option value="DEGREE">Study abroad (a degree, diploma or foundation course)</option>
           <option value="AUSBILDUNG">Ausbildung in Germany</option>
           <option value="NURSING">Nurse registration</option>
           <option value="FSJ">FSJ, Freiwilliges Soziales Jahr (Germany)</option>
@@ -119,6 +119,7 @@ export function ReferForm() {
           <option value="NCLEX">NCLEX-RN (USA nurse licensing)</option>
           <option value="WEITERBILDUNG">Weiterbildung (Germany: further training and nurse recognition)</option>
           <option value="CCM">CCM</option>
+          <option value="AU_PAIR">Au pair (a year with a host family abroad)</option>
         </SelectField>
       </div>
       <TextareaField label="Anything we should know" name="notes" rows={3} hint="Their qualifications, their budget, when they want to go, who to ask for." />

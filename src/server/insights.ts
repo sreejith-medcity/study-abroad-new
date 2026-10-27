@@ -4,6 +4,7 @@ import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { orgScope } from "@/lib/permissions";
 import { rate } from "@/lib/money";
+import { pathwayName } from "@/lib/pathways";
 
 export { rate };
 
@@ -98,7 +99,8 @@ export async function breakdown(user: SessionUser, f: InsightFilters, dim: Dimen
   if (dim === "officer") q = q.leftJoin(us, eq(a.officerId, us.id));
   const rows = await q.where(where(user, f)).groupBy(sql`1`).orderBy(sql`2 desc`).limit(15);
   return rows.map((r) => ({
-    label: r.label,
+    // The pathway is stored as its code (DEGREE); people read its name (Study abroad).
+    label: dim === "pathway" ? pathwayName(r.label) : r.label,
     total: Number(r.total),
     offers: Number(r.offers),
     visas: Number(r.visas),

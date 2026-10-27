@@ -444,7 +444,7 @@ const referralShape = z.object({
   email: z.string().trim().toLowerCase().email("A working email address").optional().or(z.literal("")).transform((v) => v || null),
   city: z.string().trim().max(80).optional().transform((v) => v || null),
   interestCountry: z.string().trim().max(80).optional().transform((v) => v || null),
-  interestPathway: z.enum(["DEGREE", "AUSBILDUNG", "NURSING", "FSJ", "BFD", "NCLEX", "WEITERBILDUNG", "CCM"]).optional(),
+  interestPathway: z.enum(["DEGREE", "AUSBILDUNG", "NURSING", "FSJ", "BFD", "NCLEX", "WEITERBILDUNG", "CCM", "AU_PAIR"]).optional(),
   notes: z.string().trim().max(1000).optional().transform((v) => v || null),
   consent: z.string().optional(),
 });

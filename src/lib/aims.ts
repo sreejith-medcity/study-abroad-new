@@ -4,7 +4,7 @@ import type { Pathway, StudyLevel } from "@/db/schema";
  * What a counsellor picks on a student's file, in one list.
  *
  * Two things are being recorded at once and they are not the same. The pathway
- * is the journey the file follows: a degree, an Ausbildung, a nurse
+ * is the journey the file follows: study abroad, an Ausbildung, a nurse
  * registration, each with its own status steps and its own documents. The
  * level is what they are aiming for inside it, which decides only which
  * courses are worth showing them.
@@ -15,13 +15,13 @@ import type { Pathway, StudyLevel } from "@/db/schema";
 export type Aim = { value: string; label: string; pathway: Pathway; level: StudyLevel | null };
 
 export const AIMS: Aim[] = [
-  { value: "DEGREE", label: "University degree (level not decided)", pathway: "DEGREE", level: null },
-  { value: "DEGREE:UG", label: "Bachelor's degree", pathway: "DEGREE", level: "UG" },
-  { value: "DEGREE:PG", label: "Master's", pathway: "DEGREE", level: "PG" },
-  { value: "DEGREE:PHD", label: "PhD", pathway: "DEGREE", level: "PHD" },
-  { value: "DEGREE:TOP_UP", label: "Top-up degree (post-basic BSc nursing and the like)", pathway: "DEGREE", level: "TOP_UP" },
-  { value: "DEGREE:UG_DIPLOMA", label: "Diploma", pathway: "DEGREE", level: "UG_DIPLOMA" },
-  { value: "DEGREE:PG_DIPLOMA", label: "PG diploma", pathway: "DEGREE", level: "PG_DIPLOMA" },
+  { value: "DEGREE", label: "Study abroad (level not decided)", pathway: "DEGREE", level: null },
+  { value: "DEGREE:UG", label: "Study abroad: Bachelor's degree", pathway: "DEGREE", level: "UG" },
+  { value: "DEGREE:PG", label: "Study abroad: Master's", pathway: "DEGREE", level: "PG" },
+  { value: "DEGREE:PHD", label: "Study abroad: PhD", pathway: "DEGREE", level: "PHD" },
+  { value: "DEGREE:TOP_UP", label: "Study abroad: top-up degree (post-basic BSc nursing and the like)", pathway: "DEGREE", level: "TOP_UP" },
+  { value: "DEGREE:UG_DIPLOMA", label: "Study abroad: diploma", pathway: "DEGREE", level: "UG_DIPLOMA" },
+  { value: "DEGREE:PG_DIPLOMA", label: "Study abroad: PG diploma", pathway: "DEGREE", level: "PG_DIPLOMA" },
   { value: "AUSBILDUNG", label: "Ausbildung (Germany)", pathway: "AUSBILDUNG", level: "VOCATIONAL" },
   { value: "NURSING", label: "Nurse registration", pathway: "NURSING", level: null },
   { value: "FSJ", label: "FSJ, Freiwilliges Soziales Jahr (Germany)", pathway: "FSJ", level: null },
@@ -29,6 +29,7 @@ export const AIMS: Aim[] = [
   { value: "NCLEX", label: "NCLEX-RN (USA nurse licensing)", pathway: "NCLEX", level: null },
   { value: "WEITERBILDUNG", label: "Weiterbildung (Germany: further training and nurse recognition)", pathway: "WEITERBILDUNG", level: null },
   { value: "CCM", label: "CCM", pathway: "CCM", level: null },
+  { value: "AU_PAIR", label: "Au pair (a year with a host family abroad)", pathway: "AU_PAIR", level: null },
 ];
 
 /** The pair behind one choice, or nulls for "not decided". */

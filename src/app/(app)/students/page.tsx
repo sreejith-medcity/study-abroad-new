@@ -160,7 +160,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
             name: "pathway",
             label: "Pathway",
             options: [
-              { value: "DEGREE", label: "Degree" },
+              { value: "DEGREE", label: "Study abroad" },
               { value: "AUSBILDUNG", label: "Ausbildung" },
               { value: "NURSING", label: "Nurse registration" },
               { value: "FSJ", label: "FSJ (Germany)" },
@@ -168,6 +168,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
               { value: "NCLEX", label: "NCLEX-RN" },
               { value: "WEITERBILDUNG", label: "Weiterbildung" },
               { value: "CCM", label: "CCM" },
+              { value: "AU_PAIR", label: "Au pair" },
             ],
           },
           ...(teamOptions.length

@@ -228,4 +228,6 @@ test("a pathway is taken whatever case it arrives in, and only from the three", 
   assert.equal(normalise("preferredPathway", "nclex"), "NCLEX", "NCLEX-RN is a pathway of its own");
   assert.equal(normalise("preferredPathway", "Weiterbildung"), "WEITERBILDUNG");
   assert.equal(normalise("preferredPathway", "ccm"), "CCM");
+  assert.equal(normalise("preferredPathway", "Au pair"), "AU_PAIR", "Au pair, as a person types it");
+  assert.equal(normalise("preferredPathway", "au-pair"), "AU_PAIR");
 });

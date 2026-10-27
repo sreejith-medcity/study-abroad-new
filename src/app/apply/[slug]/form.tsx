@@ -29,7 +29,7 @@ export function PublicEnquiryForm({ slug, countries, questions = [] }: { slug: s
         <TextField label="Town or city" name="city" autoComplete="address-level2" />
         <SelectField label="What interests you" name="interestPathway" defaultValue="">
           <option value="">Not sure yet</option>
-          <option value="DEGREE">A university degree abroad</option>
+          <option value="DEGREE">Study abroad (a degree, diploma or foundation course)</option>
           <option value="AUSBILDUNG">Ausbildung in Germany</option>
           <option value="NURSING">Nurse registration abroad</option>
           <option value="FSJ">FSJ, Freiwilliges Soziales Jahr (Germany)</option>
@@ -37,6 +37,7 @@ export function PublicEnquiryForm({ slug, countries, questions = [] }: { slug: s
           <option value="NCLEX">NCLEX-RN (USA nurse licensing)</option>
           <option value="WEITERBILDUNG">Weiterbildung (Germany: further training and nurse recognition)</option>
           <option value="CCM">CCM</option>
+          <option value="AU_PAIR">Au pair (a year with a host family abroad)</option>
         </SelectField>
         <SelectField label="Where you would like to go" name="interestCountry" defaultValue="">
           <option value="">Not sure yet</option>

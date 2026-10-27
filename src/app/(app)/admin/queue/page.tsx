@@ -29,7 +29,7 @@ const LANE_LABEL: { group: StatusGroup; label: string }[] = [
   { group: "SUCCESS", label: "Visa / done" },
 ];
 const PATHWAYS: { key: Pathway; label: string }[] = [
-  { key: "DEGREE", label: "Degree" },
+  { key: "DEGREE", label: "Study abroad" },
   { key: "AUSBILDUNG", label: "Ausbildung" },
   { key: "NURSING", label: "Nurse registration" },
   { key: "FSJ", label: "FSJ" },
@@ -37,6 +37,7 @@ const PATHWAYS: { key: Pathway; label: string }[] = [
   { key: "NCLEX", label: "NCLEX-RN" },
   { key: "WEITERBILDUNG", label: "Weiterbildung" },
   { key: "CCM", label: "CCM" },
+  { key: "AU_PAIR", label: "Au pair" },
 ];
 
 export default async function QueuePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {

@@ -117,7 +117,7 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
                 {countries.map((x) => <option key={x.id} value={x.code}>{x.name}</option>)}
               </Select>
               <Select name="pathway" aria-label="Pathway" defaultValue={f.pathway ?? ""}>
-                <option value="">Pathway</option><option value="DEGREE">Degree</option><option value="AUSBILDUNG">Ausbildung</option><option value="NURSING">Nurse registration</option><option value="FSJ">FSJ</option><option value="BFD">BFD</option><option value="NCLEX">NCLEX-RN</option><option value="WEITERBILDUNG">Weiterbildung</option><option value="CCM">CCM</option>
+                <option value="">Pathway</option><option value="DEGREE">Study abroad</option><option value="AUSBILDUNG">Ausbildung</option><option value="NURSING">Nurse registration</option><option value="FSJ">FSJ</option><option value="BFD">BFD</option><option value="NCLEX">NCLEX-RN</option><option value="WEITERBILDUNG">Weiterbildung</option><option value="CCM">CCM</option><option value="AU_PAIR">Au pair</option>
               </Select>
               <Select name="level" aria-label="Level" defaultValue={f.level ?? ""}>
                 <option value="">Any level</option>

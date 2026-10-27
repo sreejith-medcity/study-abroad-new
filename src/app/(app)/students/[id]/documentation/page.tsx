@@ -20,6 +20,7 @@ const JOURNEY_NAME: Record<Pathway, string> = {
   NCLEX: "NCLEX-RN",
   WEITERBILDUNG: "Weiterbildung",
   CCM: "CCM",
+  AU_PAIR: "Au pair",
   FSJ: "FSJ (Germany)",
   BFD: "BFD (Germany)",
 };

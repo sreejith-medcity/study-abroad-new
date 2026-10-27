@@ -89,7 +89,7 @@ export default async function InsightsPage({ searchParams }: { searchParams: Pro
           </Select>
           <Select name="pathway" aria-label="Pathway" defaultValue={f.pathway ?? ""}>
             <option value="">All pathways</option>
-            <option value="DEGREE">Degree</option>
+            <option value="DEGREE">Study abroad</option>
             <option value="AUSBILDUNG">Ausbildung</option>
             <option value="NURSING">Nurse registration</option>
             <option value="FSJ">FSJ, Freiwilliges Soziales Jahr (Germany)</option>
@@ -97,6 +97,7 @@ export default async function InsightsPage({ searchParams }: { searchParams: Pro
             <option value="NCLEX">NCLEX-RN (USA nurse licensing)</option>
             <option value="WEITERBILDUNG">Weiterbildung (Germany: further training and nurse recognition)</option>
             <option value="CCM">CCM</option>
+            <option value="AU_PAIR">Au pair (a year with a host family abroad)</option>
           </Select>
           <Select name="org" aria-label="Partner" defaultValue={f.org ?? ""}>
             <option value="">All partners</option>

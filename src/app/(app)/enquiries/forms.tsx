@@ -93,7 +93,7 @@ export function EnquiryForm({
         </SelectField>
         <SelectField label="Interested in" name="interestPathway" defaultValue={values.interestPathway ?? ""}>
           <option value="">Not decided</option>
-          <option value="DEGREE">University degree</option>
+          <option value="DEGREE">Study abroad (degree, diploma or foundation course)</option>
           <option value="AUSBILDUNG">Ausbildung (Germany)</option>
           <option value="NURSING">Nurse registration</option>
           <option value="FSJ">FSJ, Freiwilliges Soziales Jahr (Germany)</option>
@@ -101,6 +101,7 @@ export function EnquiryForm({
           <option value="NCLEX">NCLEX-RN (USA nurse licensing)</option>
           <option value="WEITERBILDUNG">Weiterbildung (Germany: further training and nurse recognition)</option>
           <option value="CCM">CCM</option>
+          <option value="AU_PAIR">Au pair (a year with a host family abroad)</option>
         </SelectField>
         <SelectField label="Destination" name="interestCountry" defaultValue={values.interestCountry ?? ""}>
           <option value="">Not decided</option>

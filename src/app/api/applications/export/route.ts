@@ -5,6 +5,7 @@ import { audit } from "@/lib/audit";
 import { fmtDate, intakeLabel } from "@/lib/format";
 import { applicationScope, applicationsBase, applicationWhere, readFilters } from "@/server/queries";
 import { isFamilyRole } from "@/lib/permissions";
+import { pathwayName } from "@/lib/pathways";
 
 function csvCell(v: unknown) {
   const s = v == null ? "" : String(v);
@@ -25,7 +26,7 @@ export async function GET(req: Request) {
   for (const r of rows) {
     lines.push([
       r.ackNo, fmtDate(r.createdAt), `${r.firstName} ${r.lastName}`, r.universityName, r.countryName, r.programName,
-      intakeLabel(r.intakeMonth, r.intakeYear), r.pathway, r.statusLabel, fmtDate(r.statusChangedAt), fmtDate(r.deadline),
+      intakeLabel(r.intakeMonth, r.intakeYear), pathwayName(r.pathway), r.statusLabel, fmtDate(r.statusChangedAt), fmtDate(r.deadline),
       r.createdByName ?? r.createdByFallback, r.officerName ?? "",
       r.offerType === "UNCONDITIONAL" ? "Unconditional" : r.offerType === "CONDITIONAL" ? "Conditional" : "", r.offerDate, r.depositPaidOn,
       r.confirmationNumber, r.visaLodgedOn, r.visaDecision === "GRANTED" ? "Granted" : r.visaDecision === "REFUSED" ? "Refused" : "", r.visaDecisionOn,

@@ -15,7 +15,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
 import { DOCUMENT_TYPES, STATUS_SEED } from "./statuses";
-import { DOCUMENTATION_TYPES, FSJ_DOCUMENT_TYPES, FSJ_REQUIREMENTS, NEW_PATHWAY_REQUIREMENTS, REJECTION_REASONS, STAGE_REQUIREMENTS } from "./documentation-seed";
+import { AU_PAIR_REQUIREMENTS, DOCUMENTATION_TYPES, FSJ_DOCUMENT_TYPES, FSJ_REQUIREMENTS, NEW_PATHWAY_REQUIREMENTS, REJECTION_REASONS, STAGE_REQUIREMENTS } from "./documentation-seed";
 import { syncChecklist } from "./documentation-sync";
 import { PARTNER_ROLES } from "@/lib/permissions";
 
@@ -148,7 +148,7 @@ async function main() {
 
   // The nine stage lists, and what each destination adds on top of them.
   await db.insert(schema.documentRequirements).values(
-    [...STAGE_REQUIREMENTS, ...FSJ_REQUIREMENTS, ...NEW_PATHWAY_REQUIREMENTS].map((r, i) => ({
+    [...STAGE_REQUIREMENTS, ...FSJ_REQUIREMENTS, ...NEW_PATHWAY_REQUIREMENTS, ...AU_PAIR_REQUIREMENTS].map((r, i) => ({
       stage: r.stage,
       typeCode: r.typeCode,
       source: r.country ? ("DESTINATION" as const) : ("ALWAYS" as const),

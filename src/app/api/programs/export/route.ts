@@ -3,6 +3,7 @@ import { db, schema } from "@/db";
 import { getSession } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { LEVEL_LABEL } from "@/lib/catalogue";
+import { pathwayName } from "@/lib/pathways";
 import { MONTHS } from "@/lib/format";
 import { isAdmin } from "@/lib/permissions";
 import { programFilterWhere, readProgramFilters } from "@/server/program-filters";
@@ -44,7 +45,7 @@ export async function GET(req: Request) {
   const lines = [header.map(csvCell).join(",")];
   for (const r of rows) {
     lines.push([
-      r.name, r.university, r.campus, r.country, LEVEL_LABEL[r.level] ?? r.level, r.pathway, r.field, r.months, r.perYear, r.total, r.currency,
+      r.name, r.university, r.campus, r.country, LEVEL_LABEL[r.level] ?? r.level, pathwayName(r.pathway), r.field, r.months, r.perYear, r.total, r.currency,
       r.appFee, r.deposit, r.intakes.map((m) => MONTHS[m - 1]).join(" "), r.ielts, r.pte, r.oet, r.german, r.toefl, r.duolingo, r.gre, r.gmat, r.sat, r.academic, r.waiver,
       r.workRights === "ELIGIBLE" ? "Eligible" : r.workRights === "INELIGIBLE" ? "Not eligible" : "Not confirmed", r.note, r.status,
       r.source ?? "Researched catalogue", r.code,

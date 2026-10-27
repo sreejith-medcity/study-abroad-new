@@ -126,7 +126,7 @@ export async function importStudents(user: SessionUser, rows: Row[], commit: boo
       preferredPathway: (() => {
         const soft: Problems = [];
         const hit = oneOf(r.preferred_pathway, "preferred_pathway", schema.pathway.enumValues, soft, PATHWAY_IMPORT_ALIASES);
-        if (soft.length) ignored.push(`preferred_pathway: "${String(r.preferred_pathway).trim()}" is not a pathway the portal knows (degree, Ausbildung, nursing, NCLEX-RN, Weiterbildung, CCM, FSJ or BFD), so it was left blank`);
+        if (soft.length) ignored.push(`preferred_pathway: "${String(r.preferred_pathway).trim()}" is not a pathway the portal knows (study abroad or degree, Ausbildung, nursing, NCLEX-RN, Weiterbildung, CCM, au pair, FSJ or BFD), so it was left blank`);
         return hit;
       })(),
     };

@@ -67,7 +67,7 @@ export function ProgramEditForm({ program, currency, docs }: { program: Editable
           <option value="SCHOOL">School</option>
         </SelectField>
         <SelectField label="Pathway" name="pathway" required defaultValue={program.pathway}>
-          <option value="DEGREE">Degree</option>
+          <option value="DEGREE">Study abroad</option>
           <option value="AUSBILDUNG">Ausbildung</option>
           <option value="NURSING">Nurse registration</option>
           <option value="FSJ">FSJ, Freiwilliges Soziales Jahr (Germany)</option>
@@ -75,6 +75,7 @@ export function ProgramEditForm({ program, currency, docs }: { program: Editable
           <option value="NCLEX">NCLEX-RN (USA nurse licensing)</option>
           <option value="WEITERBILDUNG">Weiterbildung (Germany: further training and nurse recognition)</option>
           <option value="CCM">CCM</option>
+          <option value="AU_PAIR">Au pair (a year with a host family abroad)</option>
         </SelectField>
         <TextField label="Study area" name="studyArea" defaultValue={v(program.studyArea)} />
         <TextField label="Campus" name="campus" defaultValue={v(program.campus)} hint="The town that teaches it, where the university has more than one" />

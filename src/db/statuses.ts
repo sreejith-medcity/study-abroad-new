@@ -192,6 +192,35 @@ const provisionalChain = (pathway: "WEITERBILDUNG" | "CCM"): StatusSeed[] => [
 const WEITERBILDUNG = provisionalChain("WEITERBILDUNG");
 const CCM = provisionalChain("CCM");
 
+/*
+ * PROVISIONAL. Au pair: a year living with a host family abroad (mostly
+ * Germany), looking after the children for board, lodging and pocket money.
+ * The Au pair department's written process has not arrived yet, so this is a
+ * generic chain in the order such a file plainly runs: the enquiry and a first
+ * check, the documents, the au pair profile the agency puts out, matching with
+ * a host family, the interview with the family, their offer and the contract,
+ * the visa, travel, and arrival. The closing statuses come from COMMON. When
+ * the guide arrives its own chain replaces this one the way the Ausbildung and
+ * FSJ / BFD chains were written, keeping the codes here that it keeps. Codes
+ * shared with the other lists (ASSESSMENT, DOCUMENT_COLLECTION, OFFER_RECEIVED,
+ * CONTRACT_SIGNED, VISA_FILED, VISA_RECEIVED, PRE_DEPARTURE, JOINED) are reused
+ * so the dashboards count them the same way.
+ */
+const AU_PAIR: StatusSeed[] = [
+  { code: "ASSESSMENT", label: "Enquiry: eligibility check pending", studentLabel: "Application received", studentLabelMl: "അപേക്ഷ ലഭിച്ചു", group: "NEW", sortOrder: 10 },
+  { code: "DOCUMENT_COLLECTION", label: "Document collection", studentLabel: "Send us your documents", group: "NEW", sortOrder: 22 },
+  { code: "AGENCY_PROFILE", label: "Au pair profile prepared and sent to the agency", studentLabel: "Your au pair profile is being prepared", group: "IN_PROGRESS", isMilestone: true, sortOrder: 30 },
+  { code: "FAMILY_MATCHING", label: "Host family matching", studentLabel: "We are looking for a host family for you", group: "IN_PROGRESS", sortOrder: 35 },
+  { code: "FAMILY_INTERVIEW", label: "Interview with a host family", studentLabel: "Your interview with a host family", group: "IN_PROGRESS", isMilestone: true, sortOrder: 40 },
+  { code: "OFFER_RECEIVED", label: "Host family offer received", studentLabel: "A host family has chosen you", group: "OFFER", isMilestone: true, sortOrder: 45 },
+  { code: "CONTRACT_SIGNED", label: "Au pair contract signed with the host family", studentLabel: "Contract signed", studentLabelMl: "കരാർ ഒപ്പിട്ടു", group: "OFFER", isMilestone: true, sortOrder: 50 },
+  { code: "VISA_FILED", label: "Visa filed", studentLabel: "Visa applied", studentLabelMl: "വിസയ്ക്ക് അപേക്ഷിച്ചു", group: "IN_PROGRESS", isMilestone: true, sortOrder: 55 },
+  { code: "VISA_PROCESSING", label: "Visa processing", studentLabel: "Your visa is being processed", group: "IN_PROGRESS", sortOrder: 60 },
+  { code: "VISA_RECEIVED", label: "Visa received", studentLabel: "Visa approved", studentLabelMl: "വിസ ലഭിച്ചു", group: "SUCCESS", isMilestone: true, sortOrder: 65 },
+  { code: "PRE_DEPARTURE", label: "Travel arrangements", studentLabel: "Getting you ready to travel", group: "SUCCESS", isMilestone: true, sortOrder: 70 },
+  { code: "JOINED", label: "Arrived: living with the host family", studentLabel: "Arrived and started", group: "SUCCESS", isMilestone: true, sortOrder: 75 },
+];
+
 export const STATUS_SEED: Record<Pathway, StatusSeed[]> = {
   DEGREE: [...DEGREE.slice(0, 1), COMMON[0], ...DEGREE.slice(1), ...COMMON.slice(1)],
   AUSBILDUNG: [...AUSBILDUNG.slice(0, 1), COMMON[0], ...AUSBILDUNG.slice(1), ...COMMON.slice(1)],
@@ -201,6 +230,7 @@ export const STATUS_SEED: Record<Pathway, StatusSeed[]> = {
   NCLEX: [...NCLEX.slice(0, 1), COMMON[0], ...NCLEX.slice(1), ...COMMON.slice(1)],
   WEITERBILDUNG: [...WEITERBILDUNG.slice(0, 1), COMMON[0], ...WEITERBILDUNG.slice(1), ...COMMON.slice(1)],
   CCM: [...CCM.slice(0, 1), COMMON[0], ...CCM.slice(1), ...COMMON.slice(1)],
+  AU_PAIR: [...AU_PAIR.slice(0, 1), COMMON[0], ...AU_PAIR.slice(1), ...COMMON.slice(1)],
 };
 
 export const DOCUMENT_TYPES = [

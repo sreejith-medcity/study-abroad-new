@@ -72,7 +72,7 @@ export const role = pgEnum("role", [
  * provisional status lists until their written guides arrive. src/lib/pathways.ts
  * keeps the words for each.
  */
-export const pathway = pgEnum("pathway", ["DEGREE", "AUSBILDUNG", "NURSING", "FSJ", "BFD", "NCLEX", "WEITERBILDUNG", "CCM"]);
+export const pathway = pgEnum("pathway", ["DEGREE", "AUSBILDUNG", "NURSING", "FSJ", "BFD", "NCLEX", "WEITERBILDUNG", "CCM", "AU_PAIR"]);
 /** The FSJ / BFD language assessment's outcome, as the documentation team records it. */
 export const fsjLanguageResult = pgEnum("fsj_language_result", ["SUFFICIENT", "NOT_SUFFICIENT"]);
 /** What the employer said after an FSJ / BFD interview. */

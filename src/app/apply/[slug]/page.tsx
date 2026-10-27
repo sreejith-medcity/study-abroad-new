@@ -12,7 +12,7 @@ import { PublicEnquiryForm } from "./form";
 export const metadata = { title: "Enquire · Medcity Overseas" };
 
 const POINTS = [
-  "University degrees, Ausbildung in Germany and nurse registration, all from one counter",
+  "Study abroad, Ausbildung in Germany, nurse registration and au pair, all from one counter",
   "A counsellor who stays with you from the first call to the day you fly",
   "Every step of your application visible to you, in writing",
 ];
