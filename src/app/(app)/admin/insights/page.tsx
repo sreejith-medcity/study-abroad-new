@@ -92,6 +92,8 @@ export default async function InsightsPage({ searchParams }: { searchParams: Pro
             <option value="DEGREE">Degree</option>
             <option value="AUSBILDUNG">Ausbildung</option>
             <option value="NURSING">Nurse registration</option>
+            <option value="FSJ">FSJ, Freiwilliges Soziales Jahr (Germany)</option>
+            <option value="BFD">BFD, Bundesfreiwilligendienst (Germany)</option>
           </Select>
           <Select name="org" aria-label="Partner" defaultValue={f.org ?? ""}>
             <option value="">All partners</option>

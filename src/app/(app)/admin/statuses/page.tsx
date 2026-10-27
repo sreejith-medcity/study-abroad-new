@@ -8,7 +8,7 @@ import { ADMIN_ROLES } from "@/lib/permissions";
 
 export const metadata = { title: "Status flows" };
 
-const PATHWAY_LABEL = { DEGREE: "Degree (UK, IE, AU, CA, MT)", AUSBILDUNG: "Ausbildung (Germany)", NURSING: "Nurse registration (NCLEX, OET, Anerkennung)" } as const;
+const PATHWAY_LABEL = { DEGREE: "Degree (UK, IE, AU, CA, MT)", AUSBILDUNG: "Ausbildung (Germany)", NURSING: "Nurse registration (NCLEX, OET, Anerkennung)", FSJ: "FSJ, Freiwilliges Soziales Jahr (Germany)", BFD: "BFD, Bundesfreiwilligendienst (Germany)" } as const;
 
 async function saveStatus(formData: FormData) {
   "use server";
@@ -32,7 +32,7 @@ async function saveStatus(formData: FormData) {
 export default async function StatusesPage() {
   await requireUser([...ADMIN_ROLES]);
   const rows = await db.select().from(schema.statusDefinitions).orderBy(asc(schema.statusDefinitions.pathway), asc(schema.statusDefinitions.sortOrder));
-  const pathways = ["DEGREE", "AUSBILDUNG", "NURSING"] as const;
+  const pathways = ["DEGREE", "AUSBILDUNG", "NURSING", "FSJ", "BFD"] as const;
 
   return (
     <>

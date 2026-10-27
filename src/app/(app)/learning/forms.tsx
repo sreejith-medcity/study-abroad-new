@@ -39,6 +39,8 @@ export function ResourceForm({ countries }: { countries: { id: string; name: str
           <option value="DEGREE">Degree</option>
           <option value="AUSBILDUNG">Ausbildung</option>
           <option value="NURSING">Nurse registration</option>
+          <option value="FSJ">FSJ, Freiwilliges Soziales Jahr (Germany)</option>
+          <option value="BFD">BFD, Bundesfreiwilligendienst (Germany)</option>
         </SelectField>
         <SelectField label="Destination" name="countryId" defaultValue="">
           <option value="">Any destination</option>

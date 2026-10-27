@@ -95,6 +95,8 @@ export function EnquiryForm({
           <option value="DEGREE">University degree</option>
           <option value="AUSBILDUNG">Ausbildung (Germany)</option>
           <option value="NURSING">Nurse registration</option>
+          <option value="FSJ">FSJ, Freiwilliges Soziales Jahr (Germany)</option>
+          <option value="BFD">BFD, Bundesfreiwilligendienst (Germany)</option>
         </SelectField>
         <SelectField label="Destination" name="interestCountry" defaultValue={values.interestCountry ?? ""}>
           <option value="">Not decided</option>

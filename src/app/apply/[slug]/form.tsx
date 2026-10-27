@@ -32,6 +32,8 @@ export function PublicEnquiryForm({ slug, countries, questions = [] }: { slug: s
           <option value="DEGREE">A university degree abroad</option>
           <option value="AUSBILDUNG">Ausbildung in Germany</option>
           <option value="NURSING">Nurse registration abroad</option>
+          <option value="FSJ">FSJ, Freiwilliges Soziales Jahr (Germany)</option>
+          <option value="BFD">BFD, Bundesfreiwilligendienst (Germany)</option>
         </SelectField>
         <SelectField label="Where you would like to go" name="interestCountry" defaultValue="">
           <option value="">Not sure yet</option>

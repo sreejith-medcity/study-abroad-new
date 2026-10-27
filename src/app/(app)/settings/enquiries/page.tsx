@@ -12,7 +12,7 @@ import { deleteRoutingRuleAction, toggleLostReasonAction } from "./actions";
 
 export const metadata = { title: "Enquiry settings" };
 
-const PATHWAY_LABEL: Record<string, string> = { DEGREE: "University degree", AUSBILDUNG: "Ausbildung", NURSING: "Nurse registration" };
+const PATHWAY_LABEL: Record<string, string> = { DEGREE: "University degree", AUSBILDUNG: "Ausbildung", NURSING: "Nurse registration", FSJ: "FSJ (Germany)", BFD: "BFD (Germany)" };
 
 /**
  * Who new enquiries go to, and the reasons an enquiry can be lost for. The

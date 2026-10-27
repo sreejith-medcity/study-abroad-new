@@ -61,7 +61,7 @@ export const NUMBER_FIELDS: readonly SyncableField[] = ["backlogs", "gapYears"];
  * outside the list is named back to them instead of breaking the write.
  */
 export const ENUM_FIELDS: Partial<Record<SyncableField, readonly string[]>> = {
-  preferredPathway: ["DEGREE", "AUSBILDUNG", "NURSING"],
+  preferredPathway: ["DEGREE", "AUSBILDUNG", "NURSING", "FSJ", "BFD"],
 };
 
 const isBlank = (v: unknown) => v === null || v === undefined || (typeof v === "string" && v.trim() === "");

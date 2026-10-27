@@ -85,6 +85,8 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
               { value: "DEGREE", label: "Degree" },
               { value: "AUSBILDUNG", label: "Ausbildung" },
               { value: "NURSING", label: "Nurse registration" },
+              { value: "FSJ", label: "FSJ (Germany)" },
+              { value: "BFD", label: "BFD (Germany)" },
             ],
           },
           { kind: "select", name: "priority", label: "Priority", options: Object.entries(PRIORITY_LABEL).map(([k, v]) => ({ value: k, label: v })) },

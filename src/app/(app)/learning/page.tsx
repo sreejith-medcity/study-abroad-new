@@ -89,7 +89,7 @@ export default async function LearningPage({ searchParams }: { searchParams: Pro
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
             <Chip tone={KIND_TONE[x.kind] ?? "neutral"}>{KIND_LABEL[x.kind] ?? x.kind}</Chip>
-            {x.pathway && <Chip>{x.pathway === "AUSBILDUNG" ? "Ausbildung" : x.pathway === "NURSING" ? "Nursing" : "Degree"}</Chip>}
+            {x.pathway && <Chip>{x.pathway === "AUSBILDUNG" ? "Ausbildung" : x.pathway === "NURSING" ? "Nursing" : x.pathway === "FSJ" || x.pathway === "BFD" ? x.pathway : "Degree"}</Chip>}
             {x.countryName && <Chip tone="info">{x.countryName}</Chip>}
             {!x.published && <Chip tone="bad">Unpublished</Chip>}
           </div>

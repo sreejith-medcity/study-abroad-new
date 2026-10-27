@@ -53,7 +53,7 @@ export async function importEnquiries(user: SessionUser, rows: Record<string, st
       city: text(r.city, 80),
       source: oneOf(r.source, "source", schema.enquirySource.enumValues, p, SOURCE_ALIASES),
       interestCountry: text(r.interest_country, 80),
-      interestPathway: oneOf(r.interest_pathway, "interest_pathway", schema.pathway.enumValues, p, { degree: "DEGREE", ausbildung: "AUSBILDUNG", nursing: "NURSING" }),
+      interestPathway: oneOf(r.interest_pathway, "interest_pathway", schema.pathway.enumValues, p, { degree: "DEGREE", ausbildung: "AUSBILDUNG", nursing: "NURSING", fsj: "FSJ", bfd: "BFD" }),
       intakeMonth: num(r.intake_month, "intake_month", p, { int: true, min: 1, max: 12 }),
       intakeYear: num(r.intake_year, "intake_year", p, { int: true, min: 2020, max: 2100 }),
       budgetLakhs: num(r.budget_lakhs, "budget_lakhs", p, { min: 0, max: 1000 }),

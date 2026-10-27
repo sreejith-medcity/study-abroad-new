@@ -12,7 +12,7 @@ import { Alert, Card, CardHeader, Chip, Table, Td, Th } from "@/components/ui";
 import { AddItem, ItemActions, StageMover } from "./client";
 
 /** The journeys, as the team says them, for the line above the list. */
-const JOURNEY_NAME = { DEGREE: "Study abroad", AUSBILDUNG: "Ausbildung", NURSING: "Nursing / NCLEX-RN" } as const;
+const JOURNEY_NAME = { DEGREE: "Study abroad", AUSBILDUNG: "Ausbildung", NURSING: "Nursing / NCLEX-RN", FSJ: "FSJ (Germany)", BFD: "BFD (Germany)" } as const;
 
 export const metadata = { title: "Documentation" };
 

@@ -123,7 +123,7 @@ export async function importStudents(user: SessionUser, rows: Row[], commit: boo
       // unrecognised value is left blank and said out loud, not held against the row.
       preferredPathway: (() => {
         const soft: Problems = [];
-        const hit = oneOf(r.preferred_pathway, "preferred_pathway", schema.pathway.enumValues, soft, { degree: "DEGREE", ausbildung: "AUSBILDUNG", nursing: "NURSING" });
+        const hit = oneOf(r.preferred_pathway, "preferred_pathway", schema.pathway.enumValues, soft, { degree: "DEGREE", ausbildung: "AUSBILDUNG", nursing: "NURSING", fsj: "FSJ", bfd: "BFD" });
         if (soft.length) ignored.push(`preferred_pathway: "${String(r.preferred_pathway).trim()}" is not degree, Ausbildung or nursing, so it was left blank`);
         return hit;
       })(),

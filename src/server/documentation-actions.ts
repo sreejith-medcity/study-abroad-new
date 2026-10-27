@@ -419,7 +419,7 @@ const reqSchema = z.object({
   guidance: z.string().trim().max(600).optional(),
   guidanceMl: z.string().trim().max(600).optional(),
   sortOrder: z.string().optional(),
-  pathway: z.enum(["", "DEGREE", "AUSBILDUNG", "NURSING"]).optional(),
+  pathway: z.enum(["", "DEGREE", "AUSBILDUNG", "NURSING", "FSJ", "BFD"]).optional(),
 });
 
 /**

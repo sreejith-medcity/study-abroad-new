@@ -12,7 +12,7 @@ export type ProgramOption = {
   name: string;
   university: string;
   country: string;
-  pathway: "DEGREE" | "AUSBILDUNG" | "NURSING";
+  pathway: "DEGREE" | "AUSBILDUNG" | "NURSING" | "FSJ" | "BFD";
   level: string;
   intakeMonths: number[];
   shortlisted: boolean;

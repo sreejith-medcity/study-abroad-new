@@ -146,6 +146,8 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
               { value: "DEGREE", label: "Degree" },
               { value: "AUSBILDUNG", label: "Ausbildung" },
               { value: "NURSING", label: "Nurse registration" },
+              { value: "FSJ", label: "FSJ (Germany)" },
+              { value: "BFD", label: "BFD (Germany)" },
             ],
           },
           { kind: "select", name: "country", label: "Country", options: countries.map((c) => ({ value: c.name, label: c.name })) },

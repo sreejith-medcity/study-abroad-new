@@ -61,6 +61,7 @@ export const QUICK: { key: string; label: string; cond: () => SQL }[] = [
   { key: "commission", label: "Commission on offer", cond: () => hasCommissionRule },
   { key: "ausbildung", label: "Ausbildung", cond: () => eq(p.pathway, "AUSBILDUNG") },
   { key: "nursing", label: "Nurse registration", cond: () => eq(p.pathway, "NURSING") },
+  { key: "fsj", label: "FSJ / BFD", cond: () => inArray(p.pathway, ["FSJ", "BFD"]) },
 ];
 
 export const tagCond = (tag: string) => sql`${tag} = any(${p.tags})`;

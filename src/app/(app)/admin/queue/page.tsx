@@ -28,6 +28,8 @@ const PATHWAYS: { key: Pathway; label: string }[] = [
   { key: "DEGREE", label: "Degree" },
   { key: "AUSBILDUNG", label: "Ausbildung" },
   { key: "NURSING", label: "Nurse registration" },
+  { key: "FSJ", label: "FSJ" },
+  { key: "BFD", label: "BFD" },
 ];
 
 export default async function QueuePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {

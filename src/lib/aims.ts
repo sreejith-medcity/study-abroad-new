@@ -24,6 +24,8 @@ export const AIMS: Aim[] = [
   { value: "DEGREE:PG_DIPLOMA", label: "PG diploma", pathway: "DEGREE", level: "PG_DIPLOMA" },
   { value: "AUSBILDUNG", label: "Ausbildung (Germany)", pathway: "AUSBILDUNG", level: "VOCATIONAL" },
   { value: "NURSING", label: "Nurse registration", pathway: "NURSING", level: null },
+  { value: "FSJ", label: "FSJ, Freiwilliges Soziales Jahr (Germany)", pathway: "FSJ", level: null },
+  { value: "BFD", label: "BFD, Bundesfreiwilligendienst (Germany)", pathway: "BFD", level: null },
 ];
 
 /** The pair behind one choice, or nulls for "not decided". */

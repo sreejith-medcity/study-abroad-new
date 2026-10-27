@@ -15,7 +15,7 @@ const { applications: ap, vendorUpdates: vu, students: st, organizations: og, pr
  */
 
 /** The statuses the desk is offered first for one outcome, and the rest after. */
-export async function statusesForOutcome(pathway: "DEGREE" | "AUSBILDUNG" | "NURSING", outcome: VendorOutcome) {
+export async function statusesForOutcome(pathway: "DEGREE" | "AUSBILDUNG" | "NURSING" | "FSJ" | "BFD", outcome: VendorOutcome) {
   const group = OUTCOME_GROUP[outcome];
   const all = await db
     .select({ id: schema.statusDefinitions.id, label: schema.statusDefinitions.label, group: schema.statusDefinitions.group, requiresReason: schema.statusDefinitions.requiresReason })
@@ -41,7 +41,7 @@ export type DeskRow = {
   branch: string;
   course: string;
   university: string;
-  pathway: "DEGREE" | "AUSBILDUNG" | "NURSING";
+  pathway: "DEGREE" | "AUSBILDUNG" | "NURSING" | "FSJ" | "BFD";
   intakeMonth: number;
   intakeYear: number;
   deskStage: DeskStage;

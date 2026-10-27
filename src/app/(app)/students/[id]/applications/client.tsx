@@ -158,6 +158,8 @@ export function ApplyForm({
             <option value="DEGREE">University degree</option>
             <option value="AUSBILDUNG">Ausbildung (Germany)</option>
             <option value="NURSING">Nurse registration</option>
+            <option value="FSJ">FSJ, Freiwilliges Soziales Jahr (Germany)</option>
+            <option value="BFD">BFD, Bundesfreiwilligendienst (Germany)</option>
           </Select>
         </div>
         <FieldError name="programId" />

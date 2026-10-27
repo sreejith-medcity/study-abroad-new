@@ -17,6 +17,8 @@ export const PATHWAY_LABEL: Record<string, string> = {
   DEGREE: "Degree",
   AUSBILDUNG: "Ausbildung",
   NURSING: "Nurse registration",
+  FSJ: "FSJ (Germany)",
+  BFD: "BFD (Germany)",
 };
 
 /**
