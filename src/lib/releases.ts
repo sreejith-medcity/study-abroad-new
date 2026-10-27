@@ -12,6 +12,14 @@ export type Release = { version: string; date: string; changes: string[] };
 
 export const RELEASES: Release[] = [
   {
+    version: "1.8.9",
+    date: "2026-10-27",
+    changes: [
+      "Au pair follows the written Au pair process: 15 steps across the branch, documentation, the student mentor, the placement team, the visa team and the travel desk. Registration records the fee and the signed agreement and tells the branch the email to aupair@miak.in is theirs to send, with the text to copy; the documents in the guide are asked for and the file is handed to the documentation desk, which names a mentor. Interview preparation and mock interviews, the candidate's consent before the profile goes out, the host family search and every host family interview are recorded; a family that does not select the candidate sends the file back to interview preparation. The contract records pocket money, hours and duration and goes to the visa team, which works the pre-visa documents, checks the payments before the appointment, and records the appointment, processing and decision; an approved visa goes to the travel desk for pre-departure, departure and the arrival call.",
+      "Each Au pair student has an Au pair tab, the Au pair tracker lists every file by step and team, and the student sees their step on their portal.",
+    ],
+  },
+  {
     version: "1.8.8",
     date: "2026-10-27",
     changes: [

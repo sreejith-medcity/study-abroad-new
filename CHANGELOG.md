@@ -5,6 +5,13 @@ version in package.json and adds an entry here and in src/lib/releases.ts (the
 What's new page reads that one). After applying a release, tag it with the
 version so it can be found and rolled back to.
 
+## 1.8.9 (27 October 2026)
+
+- Au pair follows the written Au pair process: 15 steps across the branch, documentation, the student mentor, the placement team, the visa team and the travel desk. Registration records the fee and the signed agreement and tells the branch the email to aupair@miak.in is theirs to send, with the text to copy; the documents in the guide are asked for and the file is handed to the documentation desk, which names a mentor. Interview preparation and mock interviews, the candidate's consent before the profile goes out, the host family search and every host family interview are recorded; a family that does not select the candidate sends the file back to interview preparation. The contract records pocket money, hours and duration and goes to the visa team, which works the pre-visa documents, checks the payments before the appointment, and records the appointment, processing and decision; an approved visa goes to the travel desk for pre-departure, departure and the arrival call.
+- Each Au pair student has an Au pair tab, the Au pair tracker lists every file by step and team, and the student sees their step on their portal.
+
+On the VPS this release runs `docker compose --profile tools run --build --rm migrate` (migration 0090), then loads `deploy/au-pair-pathway.sql` again, before the new build. It moves any Au pair file on one of the provisional steps of 1.8.7 to the nearest written step and is safe to run twice.
+
 ## 1.8.8 (27 October 2026)
 
 - A head office admin can send a student to a team or another branch from the same Assign list on the students list and the student's file. Each team (Ausbildung, NCLEX-RN, Study abroad and the rest) has its own group with its members and a Whole team choice: picking one puts the student on that team and names the member on the file, while the student keeps their branch and counsellor, and the row shows the team. Each other branch has a Move to group with its people: picking one asks once to confirm, then moves the student to that branch with that counsellor, keeping their Medcity ID, documents and invoices.
