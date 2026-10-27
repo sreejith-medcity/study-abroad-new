@@ -12,6 +12,14 @@ export type Release = { version: string; date: string; changes: string[] };
 
 export const RELEASES: Release[] = [
   {
+    version: "1.8.6",
+    date: "2026-10-27",
+    changes: [
+      "A head office admin can move a student to another branch: one student from the Branch section of their file, or every active student of a branch at once from that branch on Partners, which is how a branch made by mistake is emptied before it is closed. The new counsellor is picked from the target branch, or the student is left for its branch head.",
+      "A move takes with it the student's applications and linked enquiries held by the old branch, and the open tasks about the student held by anyone at the old branch, which go to the new counsellor or the target's branch head. People from the old branch come off the file; head office and team people stay. The Medcity ID, the team, documents, history, invoices and receipts stay as they are. Everybody affected is told, and the move is kept in the audit log, the change history and the ownership ledger.",
+    ],
+  },
+  {
     version: "1.8.5",
     date: "2026-10-27",
     changes: [

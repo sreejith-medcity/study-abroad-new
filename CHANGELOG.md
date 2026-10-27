@@ -5,6 +5,13 @@ version in package.json and adds an entry here and in src/lib/releases.ts (the
 What's new page reads that one). After applying a release, tag it with the
 version so it can be found and rolled back to.
 
+## 1.8.6 (27 October 2026)
+
+- A head office admin can move a student to another branch: one student from the Branch section of their file, or every active student of a branch at once from that branch on Partners, which is how a branch made by mistake is emptied before it is closed. The new counsellor is picked from the target branch, or the student is left for its branch head.
+- A move takes with it the student's applications and linked enquiries held by the old branch, and the open tasks about the student held by anyone at the old branch, which go to the new counsellor or the target's branch head. People from the old branch come off the file; head office and team people stay. The Medcity ID, the team, documents, history, invoices and receipts stay as they are. Everybody affected is told, and the move is kept in the audit log, the change history and the ownership ledger.
+
+Nothing to run on the VPS beyond the new build: no migration and no SQL.
+
 ## 1.8.5 (27 October 2026)
 
 - NCLEX-RN, Weiterbildung and CCM are pathways of their own. A student, an enquiry, a programme, a routing rule and a learning item can be put on any of them, and the students, applications, programme and enquiry filters offer them.
