@@ -5,6 +5,14 @@ version in package.json and adds an entry here and in src/lib/releases.ts (the
 What's new page reads that one). After applying a release, tag it with the
 version so it can be found and rolled back to.
 
+## 1.8.5 (27 October 2026)
+
+- NCLEX-RN, Weiterbildung and CCM are pathways of their own. A student, an enquiry, a programme, a routing rule and a learning item can be put on any of them, and the students, applications, programme and enquiry filters offer them.
+- NCLEX-RN has the nurse registration statuses in US wording plus the steps from the NCLEX-RN placement process (CGFNS evaluation, ATT awaited, re-examination, visa screening, visa filed). The NCLEX-RN tab, tracker and dashboards work for NCLEX-RN files and for the nurse registration files that already carry an NCLEX case.
+- Weiterbildung and CCM follow a provisional list of steps until their written process guides are added.
+
+On the VPS this release runs `docker compose --profile tools run --rm migrate` (migration 0088, the three new pathways), then loads `deploy/new-pathways.sql` (their statuses and documents), before the new build. `deploy/nclex-pathway.sql` moves the existing NCLEX-RN files from nurse registration to the NCLEX-RN pathway; run it by hand once the counts are checked. An NCLEX-RN, Weiterbildung or CCM programme has to be added under Programs before an application can start.
+
 ## 1.8.4 (27 October 2026)
 
 - A team can carry pathways and work its students across branches. On the Teams screen each team ticks the pathways it carries (the Ausbildung team carries Ausbildung). A student who gets one of those pathways, at registration, with any application, from a bulk upload or from the CRM, and is not on a team yet, is put on the one live team carrying it, whichever branch registered them. A team somebody chose or cleared by hand on the file is never changed. An Apply to existing students button on each team does the same once for the files already in the portal, is written to the audit log and says how many it placed.

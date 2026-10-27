@@ -12,6 +12,15 @@ export type Release = { version: string; date: string; changes: string[] };
 
 export const RELEASES: Release[] = [
   {
+    version: "1.8.5",
+    date: "2026-10-27",
+    changes: [
+      "NCLEX-RN, Weiterbildung and CCM are pathways of their own. A student, an enquiry, a programme, a routing rule and a learning item can be put on any of them, and the students, applications, programme and enquiry filters offer them.",
+      "NCLEX-RN has the nurse registration statuses in US wording plus the steps from the NCLEX-RN placement process (CGFNS evaluation, ATT awaited, re-examination, visa screening, visa filed). The NCLEX-RN tab, tracker and dashboards work for NCLEX-RN files and for the nurse registration files that already carry an NCLEX case.",
+      "Weiterbildung and CCM follow a provisional list of steps until their written process guides are added.",
+    ],
+  },
+  {
     version: "1.8.4",
     date: "2026-10-27",
     changes: [
