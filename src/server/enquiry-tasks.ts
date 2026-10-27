@@ -65,8 +65,14 @@ export async function syncEnquiryFollowUps(enquiryIds: string[]) {
  * kept for enquiries, or by a path that did not say so, still reaches their
  * desk the next time they open it.
  */
-export const syncFollowUpsOwnedBy = (userIds: string[]) =>
-  userIds.length ? syncWhere(sql`${OWNER} in (${sql.join(userIds.map((id) => sql`${id}`), sql`, `)})`) : Promise.resolve();
+export function syncFollowUpsOwnedBy(userIds: string[]) {
+  if (!userIds.length) return Promise.resolve();
+  const ids = sql.join(userIds.map((id) => sql`${id}`), sql`, `);
+  // Also the enquiries whose open follow-up still sits on one of these desks,
+  // so a task left behind by a path that did not sync (an owner changed, a
+  // date restored from the history) leaves the wrong desk too.
+  return syncWhere(sql`(${OWNER} in (${ids}) or e.id in (select ot.enquiry_id from tasks ot where ot.enquiry_id is not null and ot.done_at is null and ot.assigned_to_id in (${ids})))`);
+}
 
 /**
  * The call or conversation that was the follow-up: the open task is finished,
@@ -107,4 +113,8 @@ export async function followTask(enquiryId: string | null | undefined, byId: str
       ),
     },
   );
+  // Then the task matches the enquiry again: one put back on an enquiry that
+  // has since been lost or registered goes, and one on the wrong desk moves.
+  // This never calls back into followTask, so the two cannot loop.
+  await syncEnquiryFollowUp(enquiryId);
 }

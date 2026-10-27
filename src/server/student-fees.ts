@@ -190,7 +190,7 @@ export async function issueInvoice(invoiceId: string, actorId: string | null, to
         sellerGstin: org.gstin,
         sellerState,
         sellerAddress: org.addressLine,
-        placeOfSupply: tax.kind === "TAX_INVOICE" ? (tax.interState ? student.state : sellerState) : null,
+        placeOfSupply: tax.kind === "TAX_INVOICE" ? (tax.interState ? tax.buyerState : sellerState) : null,
         gstPercent: tax.kind === "TAX_INVOICE" ? tax.percent : null,
         cgst: tax.cgst,
         sgst: tax.sgst,
@@ -303,7 +303,8 @@ async function writeReceipt(input: ReceiptInput): Promise<ReceiptResult> {
       const received = inv.received + input.amount;
       const state = stateAfterReceipts(inv.state, inv.total, received);
       await tx.update(fi).set({ received, state, updatedAt: new Date() }).where(eq(fi.id, inv.id));
-      const over = due == null ? 0 : Math.max(0, input.amount - due);
+      // Money on a cancelled invoice is owed back in full: nothing was due on it.
+      const over = inv.state === "CANCELLED" || inv.state === "DRAFT" ? input.amount : due == null ? 0 : Math.max(0, input.amount - due);
       return { ok: true as const, id: row.id, number, state, over };
     });
   } catch (e) {
@@ -585,6 +586,10 @@ export async function markPaymentLinkPaid(linkId: string, paymentId: string, amo
   const link = await db.query.feePaymentLinks.findFirst({ where: eq(pl.razorpayLinkId, linkId) });
   if (!link) return false;
   const amount = Math.round(amountMinor / 100);
+  if (!(amount > 0)) {
+    console.error("fees: payment link paid with no amount", linkId, paymentId, amountMinor);
+    return false;
+  }
   const r = await recordReceipt({ invoiceId: link.invoiceId, amount, method: "RAZORPAY", reference: paymentId, receivedOn: istToday(), recordedById: null, razorpayPaymentId: paymentId });
   await db.update(pl).set({ state: "PAID", paidAt: new Date() }).where(and(eq(pl.id, link.id), ne(pl.state, "PAID")));
   if (r.ok) {

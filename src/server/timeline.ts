@@ -149,9 +149,9 @@ export async function studentTimeline(studentId: string, limit = 120): Promise<T
         id: `ho-${a.id}`,
         at: a.handedOverAt,
         kind: "HANDOVER",
-        // An Ausbildung file goes to the documentation desk, as the written
-        // process has it; everything else to the vendor desk.
-        title: `${a.ackNo} handed to the ${a.program.pathway === "AUSBILDUNG" ? "documentation" : "Overseas"} desk`,
+        // An Ausbildung, FSJ or BFD file goes to the documentation desk, as
+        // its written process has it; everything else to the vendor desk.
+        title: `${a.ackNo} handed to the ${["AUSBILDUNG", "FSJ", "BFD"].includes(a.program.pathway) ? "documentation" : "Overseas"} desk`,
         detail: a.handoverNote,
         who: who(a.handedOverBy),
       });

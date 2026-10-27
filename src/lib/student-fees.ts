@@ -121,7 +121,9 @@ export function splitFee(items: FeePlanItem[], fee: number | null): (number | nu
   const last = shareIdx.at(-1);
   const shareTotal = shareIdx.reduce((s, k) => s + (items[k].share ?? 0), 0);
   // The whole of the shares' part of the fee, so the last one can be the remainder.
-  const pool = fee == null ? null : Math.round((fee * shareTotal) / 100);
+  // A plan all in shares (the only kind planProblem lets through) shares the
+  // whole fee, even where the shares add up to 100 only within the tolerance.
+  const pool = fee == null ? null : shareIdx.length === items.length ? fee : Math.round((fee * shareTotal) / 100);
   let given = 0;
   return items.map((it, k) => {
     if (it.amount != null) return it.amount;
@@ -131,6 +133,13 @@ export function splitFee(items: FeePlanItem[], fee: number | null): (number | nu
     given += part;
     return part;
   });
+}
+
+/** Whether a string is a real calendar day as YYYY-MM-DD: 2027-02-30 is not. */
+export function isDay(s: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const d = new Date(`${s}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
 }
 
 /** A day as YYYY-MM-DD, n days after another. */
@@ -220,7 +229,45 @@ export const GST_STATES: Record<string, string> = {
 
 export const stateFromGstin = (gstin: string): string | null => GST_STATES[gstin.slice(0, 2)] ?? null;
 
-const sameState = (a: string, b: string) => a.trim().toLowerCase().replace(/[^a-z]/g, "") === b.trim().toLowerCase().replace(/[^a-z]/g, "");
+const letters = (s: string) => s.toLowerCase().replace(/&/g, "and").replace(/[^a-z]/g, "");
+
+/** Older names and short forms people write for a state, by their letters only. */
+const STATE_ALIASES: Record<string, string> = {
+  keralam: "Kerala",
+  kl: "Kerala",
+  tn: "Tamil Nadu",
+  ka: "Karnataka",
+  mh: "Maharashtra",
+  dl: "Delhi",
+  ap: "Andhra Pradesh",
+  ts: "Telangana",
+  tg: "Telangana",
+  gj: "Gujarat",
+  up: "Uttar Pradesh",
+  wb: "West Bengal",
+  py: "Puducherry",
+  orissa: "Odisha",
+  pondicherry: "Puducherry",
+};
+
+/**
+ * A state as written on a student's file ("Kerala", "KERALA", "Kerala State",
+ * "Ernakulam, Kerala", "KL", "32") read as its GST name, or null where it
+ * names no state the GST list knows.
+ */
+export function gstStateOf(text: string | null | undefined): string | null {
+  const raw = (text ?? "").trim();
+  if (!raw) return null;
+  if (/^\d{2}$/.test(raw)) return GST_STATES[raw] ?? null;
+  const n = letters(raw);
+  if (!n) return null;
+  if (STATE_ALIASES[n]) return STATE_ALIASES[n];
+  const names = Object.values(GST_STATES);
+  const exact = names.find((s) => letters(s) === n);
+  if (exact) return exact;
+  // The longest state name written inside it, so "Goalpara, Assam" is Assam.
+  return names.filter((s) => n.includes(letters(s))).sort((a, b) => letters(b).length - letters(a).length)[0] ?? null;
+}
 
 export type GstResult = {
   /** A tax invoice when the seller has a GSTIN, otherwise a bill of supply. */
@@ -228,6 +275,8 @@ export type GstResult = {
   percent: number | null;
   /** IGST when the student's recorded state is another state; CGST and SGST otherwise. */
   interState: boolean;
+  /** The student's state as its GST name, or null where none is recorded or it names no known state. */
+  buyerState: string | null;
   cgst: number | null;
   sgst: number | null;
   igst: number | null;
@@ -245,24 +294,27 @@ export type GstResult = {
  * into CGST and SGST inside the seller's state and charged as IGST when the
  * student's address on record is in another state. Where the student's state
  * is not recorded, the place of supply is the seller's own state, which is
- * the rule for a buyer whose address is not on record. A seller with a GSTIN
- * and no rate gets no tax figure at all, never a guessed one.
+ * the rule for a buyer whose address is not on record; a state written so
+ * that it names no known state ("Kerala State" is Kerala, "Narnia" is no
+ * state) counts as not recorded rather than as another state. A seller with a
+ * GSTIN and no rate gets no tax figure at all, never a guessed one.
  */
 export function gstFor(taxable: number, percent: number | null, seller: { gstin: string | null; state: string | null }, buyerState: string | null): GstResult {
   if (!seller.gstin) {
-    return { kind: "BILL_OF_SUPPLY", percent: null, interState: false, cgst: null, sgst: null, igst: null, tax: null, total: taxable, missingRate: false };
+    return { kind: "BILL_OF_SUPPLY", percent: null, interState: false, buyerState: null, cgst: null, sgst: null, igst: null, tax: null, total: taxable, missingRate: false };
   }
-  const sellerState = seller.state ?? stateFromGstin(seller.gstin);
-  const interState = !!(buyerState && buyerState.trim() && sellerState && !sameState(buyerState, sellerState));
+  const sellerState = gstStateOf(seller.state) ?? stateFromGstin(seller.gstin);
+  const buyer = gstStateOf(buyerState);
+  const interState = !!(buyer && sellerState && buyer !== sellerState);
   if (percent == null) {
-    return { kind: "TAX_INVOICE", percent: null, interState, cgst: null, sgst: null, igst: null, tax: null, total: null, missingRate: true };
+    return { kind: "TAX_INVOICE", percent: null, interState, buyerState: buyer, cgst: null, sgst: null, igst: null, tax: null, total: null, missingRate: true };
   }
   if (interState) {
     const igst = Math.round((taxable * percent) / 100);
-    return { kind: "TAX_INVOICE", percent, interState, cgst: null, sgst: null, igst, tax: igst, total: taxable + igst, missingRate: false };
+    return { kind: "TAX_INVOICE", percent, interState, buyerState: buyer, cgst: null, sgst: null, igst, tax: igst, total: taxable + igst, missingRate: false };
   }
   const half = Math.round((taxable * percent) / 200);
-  return { kind: "TAX_INVOICE", percent, interState, cgst: half, sgst: half, igst: null, tax: half * 2, total: taxable + half * 2, missingRate: false };
+  return { kind: "TAX_INVOICE", percent, interState, buyerState: buyer, cgst: half, sgst: half, igst: null, tax: half * 2, total: taxable + half * 2, missingRate: false };
 }
 
 // ---------- Numbering ----------
@@ -453,7 +505,7 @@ export const rupees = (amount: number | null | undefined) => (amount == null ? "
 /** One spreadsheet cell, quoted, with a leading formula character defused. */
 export function csvCell(v: unknown): string {
   const s = v == null ? "" : String(v);
-  const safe = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+  const safe = /^\s*[=+\-@]|^[\t\r]/.test(s) ? `'${s}` : s;
   return `"${safe.replace(/"/g, '""')}"`;
 }
 

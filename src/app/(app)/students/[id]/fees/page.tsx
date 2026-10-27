@@ -239,7 +239,9 @@ export default async function StudentFeesPage({ params }: { params: Promise<{ id
                       <RequestRefund invoiceId={inv.id} room={room} />
                     </div>
                   )}
-                  {(inv.state === "DRAFT" ? access.act : access.desk && (inv.state === "ISSUED" || inv.state === "PART_PAID")) && (
+                  {(inv.state === "DRAFT"
+                    ? access.act
+                    : access.desk && (inv.state === "ISSUED" || inv.state === "PART_PAID" || (inv.state === "PAID" && inv.received - inv.refunded <= 0))) && (
                     <div className="w-full md:w-72">
                       <CancelInvoice invoiceId={inv.id} draft={inv.state === "DRAFT"} />
                     </div>

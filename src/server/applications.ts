@@ -7,7 +7,7 @@ import { fullName, intakeLabel } from "@/lib/format";
 import { audit } from "@/lib/audit";
 import { documentationIds, notifyUsers, partnerRecipients } from "./notify";
 import { sendWhatsApp } from "./whatsapp";
-import { isAdmin, isDocumentationTeam, isStaff } from "@/lib/permissions";
+import { isAdmin, isDocumentationTeam } from "@/lib/permissions";
 import { handedToDeskByStatus, stepOfStatus } from "@/lib/ausbildung";
 import { feeGate, feeGateRefusal, fsjPastBranch, fsjStepOf, isFsjPathway, needsFees } from "@/lib/fsj";
 import { raiseAusbildungInstalments, raiseFsjInstalments } from "@/server/student-fees";
@@ -87,10 +87,17 @@ export async function changeStatus(
         statusId: to.id,
         statusChangedAt: now,
         updatedAt: now,
-        // The first Medcity Overseas person to move the file becomes its
-        // officer. A branch recording an FSJ / BFD step of its own is not one.
-        officerId: app.officerId ?? (isStaff(user) ? user.id : null),
+        // The first person on the processing desk (an admin or the
+        // documentation team) to move the file becomes its officer, as before
+        // the FSJ / BFD steps let others move it. A branch, or a desk
+        // counsellor, recording an FSJ / BFD step of its own is not one.
+        officerId: app.officerId ?? (isAdmin(user) || isDocumentationTeam(user) ? user.id : null),
         ...(handsOver ? { handedOverAt: now, handedOverById: user.id } : {}),
+        // Moved onto a started-application status with both fees in (the
+        // gate above), from the status picker or an import rather than the
+        // payment check: the application has started, so the interview step
+        // does not wait on a payment check the file has already passed.
+        ...(fsj && needsFees(to.code) && !app.fsjApplicationStartedOn ? { fsjApplicationStartedOn: now.toISOString().slice(0, 10) } : {}),
       },
       { by: user.id, action: "application.status", tx },
     );

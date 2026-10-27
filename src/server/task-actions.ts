@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
@@ -110,7 +110,9 @@ export async function reopenTaskAction(fd: FormData): Promise<void> {
   if (!isStaff(user) && held.orgId !== user.orgId) return;
   // An enquiry holds one open follow-up: the one put back replaces whatever
   // was raised in its place since.
-  if (held.enquiryId) await db.delete(tk).where(and(eq(tk.enquiryId, held.enquiryId), isNull(tk.doneAt)));
+  // Only for a task that is done: a second click on a task already put back
+  // would otherwise delete that very task and clear the enquiry's date.
+  if (held.enquiryId && held.doneAt) await db.delete(tk).where(and(eq(tk.enquiryId, held.enquiryId), isNull(tk.doneAt), ne(tk.id, id)));
   await db.update(tk).set({ doneAt: null, doneById: null, doneNote: null, updatedAt: new Date() }).where(eq(tk.id, id));
   await followTask(held.enquiryId, user.id);
   await audit(user.id, "task.reopen", "task", id, {});

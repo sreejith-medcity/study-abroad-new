@@ -10,6 +10,7 @@ import {
   fyOf,
   fyStartYear,
   gstFor,
+  isDay,
   istToday,
   longestOverdue,
   numberInWords,
@@ -139,6 +140,28 @@ test("the state is read from the GSTIN's first two digits", () => {
   assert.equal(stateFromGstin("29ABCDE1234F1Z5"), "Karnataka");
   assert.equal(stateFromGstin("99ABCDE1234F1Z5"), null);
   assert.equal(gstFor(100, 18, { gstin: "32ABCDE1234F1Z5", state: null }, "Karnataka").interState, true);
+});
+
+test("a state written loosely is still the same state, and one that names no state counts as not recorded", () => {
+  for (const s of ["Kerala State", "Ernakulam, Kerala", "KL", "32", "Keralam"]) assert.equal(gstFor(10000, 18, kerala, s).interState, false, s);
+  assert.equal(gstFor(10000, 18, kerala, "Narnia").interState, false);
+  assert.equal(gstFor(10000, 18, kerala, "Mangalore, Karnataka").buyerState, "Karnataka");
+  assert.equal(gstFor(10000, 18, kerala, "Jammu & Kashmir").buyerState, "Jammu and Kashmir");
+});
+
+test("shares within the tolerance of a hundred still add up to the whole fee", () => {
+  const parts = splitFee([share("A", 33.333), share("B", 33.333), share("C", 33.3335)], 500000) as number[];
+  assert.equal(parts.reduce((s, n) => s + n, 0), 500000);
+});
+
+test("a calendar day is a real day", () => {
+  assert.equal(isDay("2027-02-30"), false);
+  assert.equal(isDay("2028-02-29"), true);
+  assert.equal(isDay("2026-13-01"), false);
+});
+
+test("a formula behind leading spaces is defused in a sheet", () => {
+  assert.equal(csvCell(" =1+1"), `"' =1+1"`);
 });
 
 // ---------- Numbering ----------

@@ -14,6 +14,7 @@ import {
   STAGE_INVOICE_DAYS,
   addDays,
   balanceDue,
+  isDay,
   istToday,
   planProblem,
   refundRoom,
@@ -46,7 +47,6 @@ import { adminIds, notifyUsers } from "@/server/notify";
 
 const { feeInvoices: fi, feeInstalments: fs, feeRefunds: rf, feePlans: fp } = schema;
 
-const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const NOT_YOURS = "That student is not one you can open.";
 const NO_ACT = "Your role reads students' fees and does not take them. Ask your branch head or finance.";
 const DESK_ONLY = "Only finance or the head office can do this.";
@@ -87,7 +87,7 @@ const itemShape = z.object({
   share: z.number().positive().max(100).nullable(),
   due: z.enum(["ON_APPLY", "DAYS", "DATE", "STEP"]),
   days: z.number().int().min(0).max(1500).nullable().optional(),
-  date: z.string().regex(DAY).nullable().optional(),
+  date: z.string().refine(isDay).nullable().optional(),
   pathway: z.string().max(40).nullable().optional(),
   stepKey: z.string().max(80).nullable().optional(),
   // Left out: the plan's rate. Null: the instalment's rate is not recorded.
@@ -194,7 +194,7 @@ export async function applyFeePlanAction(_: FormState, fd: FormData): Promise<Fo
     return { fieldErrors: { fee: ["This plan is in shares, so it needs the package fee"] }, error: "A share of a fee nobody recorded cannot be worked out. Enter the package fee." };
   }
   const startOn = String(fd.get("startOn") ?? "") || istToday();
-  if (!DAY.test(startOn)) return { fieldErrors: { startOn: ["Enter a date"] }, error: "Check the highlighted fields." };
+  if (!isDay(startOn)) return { fieldErrors: { startOn: ["Enter a date"] }, error: "Check the highlighted fields." };
   const live = await db.query.feeInstalments.findFirst({ where: and(eq(fs.studentId, student.id), inArray(fs.state, ["SCHEDULED", "INVOICED"])) });
   if (live) return { error: `${student.firstName} already has a fee schedule (${live.planName}). Cancel what is left of it first.` };
   const rows = scheduleFrom(plan.items, usesShares(plan.items) ? fee : null, startOn, plan.gstPercent);
@@ -270,7 +270,7 @@ export async function raiseInstalmentAction(_: FormState, fd: FormData): Promise
   const student = await studentFor(user, ins.studentId);
   if (!student) return { error: NOT_YOURS };
   const dueOn = String(fd.get("dueOn") ?? "") || ins.dueOn || istToday();
-  if (!DAY.test(dueOn)) return { fieldErrors: { dueOn: ["Enter a date"] }, error: "Check the highlighted fields." };
+  if (!isDay(dueOn)) return { fieldErrors: { dueOn: ["Enter a date"] }, error: "Check the highlighted fields." };
   const r = await invoiceInstalment(ins.id, user.id, dueOn);
   refresh(student.id);
   if (!r.ok) return { error: r.error };
@@ -298,7 +298,7 @@ export async function createFeeInvoiceAction(_: FormState, fd: FormData): Promis
   const gst = gstRate(fd.get("gstPercent"));
   if (gst === "bad") fieldErrors.gstPercent = ["A rate between 0 and 28, or leave it empty if it is not recorded"];
   const dueOn = String(fd.get("dueOn") ?? "");
-  if (!DAY.test(dueOn)) fieldErrors.dueOn = ["When is it due?"];
+  if (!isDay(dueOn)) fieldErrors.dueOn = ["When is it due?"];
   if (Object.keys(fieldErrors).length) return { fieldErrors, error: "Check the highlighted fields." };
   if (!lines.length) return { fieldErrors: { description1: ["Add at least one line"] }, error: "Check the highlighted fields." };
   const draft = await createDraft(db, {
@@ -359,7 +359,9 @@ export async function cancelFeeInvoiceAction(_: FormState, fd: FormData): Promis
   const { invoice } = found;
   const reason = String(fd.get("reason") ?? "").trim();
   if (reason.length < 3) return { fieldErrors: { reason: ["Say why, for the record"] }, error: "Check the highlighted fields." };
-  if (invoice.state === "CANCELLED" || invoice.state === "WRITTEN_OFF" || invoice.state === "PAID") return { error: "This invoice is already settled or closed." };
+  // A paid invoice can be cancelled once everything on it has gone back (the
+  // check on what is held follows), as the refusal below tells people to do.
+  if (invoice.state === "CANCELLED" || invoice.state === "WRITTEN_OFF") return { error: "This invoice is already closed." };
   if (invoice.state !== "DRAFT" && !access.desk) return { error: "An issued invoice is cancelled by finance or the head office." };
   if (invoice.received - invoice.refunded > 0) return { error: `${rupees(invoice.received - invoice.refunded)} has been received on this invoice. Refund it first, then cancel.` };
   if ((await pendingRefunds(db, invoice.id)) > 0) return { error: "A refund on this invoice is still open. Settle it first." };
@@ -417,7 +419,7 @@ export async function recordFeeReceiptAction(_: FormState, fd: FormData): Promis
   if (!COUNTER_METHODS.includes(method)) fieldErrors.method = ["How was it paid?"];
   if (amount === "bad" || amount == null) fieldErrors.amount = ["Whole rupees above nought"];
   if (method !== "CASH" && !reference) fieldErrors.reference = ["The UPI, card or bank reference, so it can be matched"];
-  if (!DAY.test(receivedOn) || receivedOn > today) fieldErrors.receivedOn = ["A day up to today"];
+  if (!isDay(receivedOn) || receivedOn > today) fieldErrors.receivedOn = ["A day up to today"];
   if (Object.keys(fieldErrors).length) return { fieldErrors, error: "Check the highlighted fields." };
   const r = await recordReceipt({ invoiceId: found.invoice.id, amount: amount as number, method, reference, receivedOn, recordedById: user.id, note: String(fd.get("note") ?? "").trim() || null });
   if (!r.ok) return { error: r.error };

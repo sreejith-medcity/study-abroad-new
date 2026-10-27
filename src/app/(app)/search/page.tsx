@@ -589,7 +589,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                           <span>{LEVEL_LABEL[r.level] ?? r.level}</span>
                           {r.studyArea && <span>· {r.studyArea}</span>}
                           {r.durationMonths && <span>· {r.durationMonths} months</span>}
-                          {r.pathway !== "DEGREE" && <Chip tone="brand">{r.pathway === "AUSBILDUNG" ? "Ausbildung" : "Nursing"}</Chip>}
+                          {r.pathway !== "DEGREE" && <Chip tone="brand">{r.pathway === "AUSBILDUNG" ? "Ausbildung" : r.pathway === "NURSING" ? "Nursing" : r.pathway}</Chip>}
                         </p>
                       </Td>
                       <Td>
@@ -741,7 +741,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                         <span>{LEVEL_LABEL[r.level] ?? r.level}</span>
                         {r.studyArea && <span>· {r.studyArea}</span>}
                         {r.durationMonths && <span>· {r.durationMonths} months</span>}
-                        {r.pathway !== "DEGREE" && <Chip tone="brand">{r.pathway === "AUSBILDUNG" ? "Ausbildung" : "Nursing"}</Chip>}
+                        {r.pathway !== "DEGREE" && <Chip tone="brand">{r.pathway === "AUSBILDUNG" ? "Ausbildung" : r.pathway === "NURSING" ? "Nursing" : r.pathway}</Chip>}
                       </p>
                       {/* A counsellor should not have to know which programmes lost
                           their work rights. Where the institution says so, the row

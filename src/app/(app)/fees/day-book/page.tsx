@@ -1,5 +1,5 @@
 import { fmtDate, fullName } from "@/lib/format";
-import { COUNTER_METHODS, FEE_METHOD_LABEL, istToday, rupees, type FeeMethod } from "@/lib/student-fees";
+import { COUNTER_METHODS, FEE_METHOD_LABEL, isDay, istToday, rupees, type FeeMethod } from "@/lib/student-fees";
 import { receiptsBetween, refundsPaidBetween, requireFees } from "@/server/student-fees";
 import { Card, CardHeader, EmptyState, Table, Td, Th } from "@/components/ui";
 
@@ -17,7 +17,7 @@ export default async function DayBookPage({ searchParams }: { searchParams: Prom
   const { user } = await requireFees();
   const today = istToday();
   const asked = (await searchParams).day ?? "";
-  const day = /^\d{4}-\d{2}-\d{2}$/.test(asked) ? asked : today;
+  const day = isDay(asked) && asked <= today ? asked : today;
   const [rows, refunds] = await Promise.all([receiptsBetween(user, day, day), refundsPaidBetween(user, new Date(`${day}T00:00:00+05:30`), new Date(`${day}T23:59:59.999+05:30`))]);
   const branches = [...new Set(rows.map((r) => r.branch))].sort();
   const cell = (branch: string | null, m: FeeMethod | null) => rows.filter((r) => (!branch || r.branch === branch) && (!m || r.receipt.method === m)).reduce((s, r) => s + r.receipt.amount, 0);

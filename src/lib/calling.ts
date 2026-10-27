@@ -167,7 +167,10 @@ export function planCall(
         ? { contact, nextOn: null, stage: touched("LOST"), lostReason: "Already enrolled elsewhere", next: null }
         : { contact, nextOn: null, stage: null, lostReason: null, next: null };
     case "CALL_BACK": {
-      const asked = r.callbackOn && /^\d{4}-\d{2}-\d{2}$/.test(r.callbackOn) && r.callbackOn >= r.today ? r.callbackOn : addDays(r.today, 1);
+      // A real calendar day only: "2026-02-31" passes the pattern but is not a
+      // day the database will take.
+      const real = !!r.callbackOn && /^\d{4}-\d{2}-\d{2}$/.test(r.callbackOn) && addDays(r.callbackOn, 0) === r.callbackOn;
+      const asked = real && r.callbackOn! >= r.today ? r.callbackOn! : addDays(r.today, 1);
       return { contact, nextOn: asked, stage: touched(firstContact), lostReason: null, next: "Call back as agreed" };
     }
     case "NOT_REACHABLE":

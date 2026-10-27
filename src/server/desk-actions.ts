@@ -10,6 +10,7 @@ import { intakeLabel } from "@/lib/format";
 import { ADMIN_ROLES, PARTNER_ROLES, PROCESSING_ROLES } from "@/lib/permissions";
 import { canHandOver, OUTCOME_LABEL, SETTLES_IT, TELLS_THE_BRANCH, vendorTurnaround } from "@/lib/desk";
 import { changeStatus, StatusChangeError } from "@/server/applications";
+import { isFsjPathway } from "@/lib/fsj";
 import { stageGate, studentChecklist, studentContext } from "@/server/documentation";
 import { deskIds, notifyUsers, partnerRecipients } from "@/server/notify";
 import { getApplicationForUser } from "@/server/queries";
@@ -60,6 +61,11 @@ export async function handOverAction(_: FormState, fd: FormData): Promise<FormSt
   await getApplicationForUser(user, id);
   const app = await loadApplication(id);
   if (!app) return { error: "That application no longer exists." };
+  // Ausbildung, FSJ and BFD files go to the documentation desk from their own
+  // tab, by their written process; the vendor desk is not where they belong.
+  if (app.program.pathway === "AUSBILDUNG" || isFsjPathway(app.program.pathway)) {
+    return { error: "This file is handed to the documentation desk from its own tab, not to the vendor desk." };
+  }
 
   const rows = await studentChecklist(app.studentId);
   const ctx = await studentContext(app.studentId);

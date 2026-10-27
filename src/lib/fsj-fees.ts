@@ -30,8 +30,15 @@ export type FsjPayments = {
 };
 
 export type PlanInstalment = { stepPathway: string | null; stepKey: string | null; state: string; invoiceId: string | null };
-/** An invoice, with the day of its last receipt as paidOn. */
-export type PlanInvoice = { id: string; number: string | null; state: string; paidOn: string | null };
+/**
+ * An invoice, with the day of its last receipt as paidOn. total and held (what
+ * was received less what was refunded) are read where known: a paid invoice
+ * whose money has gone back is not a fee paid.
+ */
+export type PlanInvoice = { id: string; number: string | null; state: string; paidOn: string | null; total?: number | null; held?: number | null };
+
+/** Paid in full and still held: an invoice refunded after it was paid no longer counts. */
+const paidAndHeld = (v: PlanInvoice | null): boolean => !!v && v.state === "PAID" && !!v.paidOn && (v.total == null || v.held == null || v.held >= v.total);
 
 export type StagePayment = {
   /** The day the last of the stage's invoices was paid in full, or null while any is unpaid or not yet raised. */
@@ -59,7 +66,7 @@ export function fsjPlanPayments(instalments: PlanInstalment[], invoices: PlanInv
     if (!rows.length) continue;
     const waiting = rows.some((r) => r.state === "SCHEDULED" || !r.invoiceId);
     const found = rows.map((r) => invoices.find((v) => v.id === r.invoiceId) ?? null);
-    const paid = !waiting && found.every((v) => !!v && v.state === "PAID" && !!v.paidOn);
+    const paid = !waiting && found.every(paidAndHeld);
     const days = found.map((v) => v?.paidOn ?? "").filter(Boolean).sort();
     stages[s.key] = {
       paidOn: paid ? days[days.length - 1] : null,

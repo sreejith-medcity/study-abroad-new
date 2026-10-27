@@ -8,7 +8,7 @@ import { leaderboard, leaderboardBranches, readsLeaderboard } from "@/server/lea
 export async function GET(req: Request) {
   const user = await getSession();
   if (!user) return new Response("Sign in required", { status: 401 });
-  if (!readsLeaderboard(user)) return new Response("Not found", { status: 404 });
+  if (user.mustChangePassword || !readsLeaderboard(user)) return new Response("Not found", { status: 404 });
 
   const params = Object.fromEntries(new URL(req.url).searchParams);
   const period = readPeriod(params, istDay());

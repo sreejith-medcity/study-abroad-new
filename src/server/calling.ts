@@ -65,6 +65,11 @@ const idList = (ids: string[]) => sql.join(ids.map((id) => sql`${id}`), sql`, `)
 export async function queueFor(ownerIds: string[], today = istDay(), only?: { kind: CallKind; id: string }): Promise<QueueItem[]> {
   if (!ownerIds.length) return [];
   const owners = idList(ownerIds);
+  // In the order the queue is worked (not contacted, then the oldest date,
+  // then the newest record), so what the cap leaves out is the least urgent;
+  // and per person, so a branch head's team queue is not cut at 300 for
+  // everybody together.
+  const cap = 300 * ownerIds.length;
   const enquiryRows = only?.kind === "STUDENT" ? [] : await db.execute<Raw>(sql`
     select e.id, e.name, e.phone, true as whatsapp, e.org_id, ${ENQUIRY_OWNER} as owner_id,
       e.stage::text as stage, e.created_at,
@@ -77,8 +82,8 @@ export async function queueFor(ownerIds: string[], today = istDay(), only?: { ki
       ${only ? sql`and e.id = ${only.id}` : sql`and (
         not (e.last_contacted_at is not null or exists (select 1 from contact_log c where c.enquiry_id = e.id))
         or (e.next_follow_up_at at time zone 'Asia/Kolkata')::date <= ${today}::date)`}
-    order by e.created_at desc
-    limit 300`);
+    order by contacted, due_on nulls first, created_at desc
+    limit ${cap}`);
   const studentRows = only?.kind === "ENQUIRY" ? [] : await db.execute<Raw>(sql`
     select * from (
       select s.id, s.first_name || ' ' || s.last_name as name, s.phone, s.whatsapp_opt_in as whatsapp, s.org_id,
@@ -94,8 +99,8 @@ export async function queueFor(ownerIds: string[], today = istDay(), only?: { ki
         ${only ? sql`and s.id = ${only.id}` : sql``}
     ) x
     ${only ? sql`` : sql`where not x.contacted or x.due_on <= ${today}`}
-    order by x.created_at desc
-    limit 300`);
+    order by x.contacted, x.due_on nulls first, x.created_at desc
+    limit ${cap}`);
 
   const out: QueueItem[] = [];
   const add = (kind: CallKind, r: Raw) => {

@@ -374,10 +374,16 @@ const ausbStatusBefore = sql(`select status_id from applications where id = '${a
   reset();
   const docs = await signIn("documentation@medcityoverseas.test");
   {
-    await docs.page.goto(`${BASE}${tabHref}`);
+    // Asked of the database as well as the page: the access rule reads only
+    // these rows, so a failure says whether the file was really open to the
+    // officer (a row left over) or the page was not the refusal (not signed
+    // in yet, still loading), which are different bugs.
+    const openedBy = sql(`select concat_ws(',', (select count(*) from applications where student_id = '${akshara}' and handed_over_at is not null), (select count(*) from applications where student_id = '${akshara}' and officer_id = '${docsId}'), (select count(*) from checklist_items where student_id = '${akshara}' and (claimed_by_id = '${docsId}' or decided_by_id = '${docsId}')), (select count(*) from student_people where student_id = '${akshara}' and user_id = '${docsId}'))`);
+    const res = await docs.page.goto(`${BASE}${tabHref}`);
     await docs.page.locator('[aria-busy="true"]').first().waitFor({ state: "detached", timeout: 15000 }).catch(() => {});
+    await docs.page.getByText(/could not be found/i).first().waitFor({ timeout: 10000 }).catch(() => {});
     const body = await docs.page.locator("body").innerText();
-    check(/could not be found/i.test(body), "before the hand-over a documentation officer cannot open the file");
+    check(/could not be found/i.test(body), `before the hand-over a documentation officer cannot open the file (HTTP ${res?.status()}, at ${new URL(docs.page.url()).pathname}, handed/officer/checked/on-file ${openedBy})`);
   }
 
   // The branch head hands it over, once the profile paper is in.

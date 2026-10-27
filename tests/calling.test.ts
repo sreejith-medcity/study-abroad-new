@@ -125,6 +125,7 @@ test("call back later takes the day asked for, tomorrow when none was given, and
   assert.equal(planCall("CALL_BACK", { kind: "ENQUIRY", stage: "CONTACTED", today, callbackOn: null }).nextOn, "2026-10-27");
   assert.equal(planCall("CALL_BACK", { kind: "ENQUIRY", stage: "CONTACTED", today, callbackOn: "2026-10-20" }).nextOn, "2026-10-27");
   assert.equal(planCall("CALL_BACK", { kind: "ENQUIRY", stage: "CONTACTED", today, callbackOn: "not a day" }).nextOn, "2026-10-27");
+  assert.equal(planCall("CALL_BACK", { kind: "ENQUIRY", stage: "CONTACTED", today, callbackOn: "2027-02-31" }).nextOn, "2026-10-27");
   assert.equal(planCall("CALL_BACK", { kind: "ENQUIRY", stage: "CONTACTED", today, callbackOn: today }).nextOn, today);
   // Somebody spoke to a new enquiry, so it is contacted now.
   assert.equal(planCall("CALL_BACK", { kind: "ENQUIRY", stage: "NEW", today }).stage, "CONTACTED");

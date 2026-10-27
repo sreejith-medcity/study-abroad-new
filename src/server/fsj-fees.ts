@@ -25,6 +25,8 @@ export async function fsjPlanPaymentsFor(studentId: string): Promise<FsjPlanPaym
           id: fi.id,
           number: fi.number,
           state: fi.state,
+          total: fi.total,
+          held: sql<number>`(${fi.received} - ${fi.refunded})::int`,
           // Written out with table names: inside a one-table select drizzle
           // leaves column names bare, and a bare "id" here would be the receipt's.
           paidOn: sql<string | null>`(select to_char(max(r.received_on), 'YYYY-MM-DD') from fee_receipts r where r.invoice_id = "fee_invoices"."id")`,

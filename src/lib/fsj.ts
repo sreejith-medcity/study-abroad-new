@@ -509,7 +509,8 @@ export function fsjDetailsMissing(d: {
 
 /* ---------------- The visa (steps 11 to 15) ---------------- */
 
-export const VFS_AT = ["VFS_SLOT_BOOKING", "PRE_VISA_DOCUMENTS"];
+/** Where a VFS slot is booked: on first reaching the visa team, during preparation, and again for a resubmission after a refusal. */
+export const VFS_AT = ["VFS_SLOT_BOOKING", "PRE_VISA_DOCUMENTS", "VISA_RESUBMISSION"];
 export const VISA_READY_AT = ["PRE_VISA_DOCUMENTS", "VISA_RESUBMISSION"];
 export const VISA_DECISION_AT = ["VISA_FILED", "VISA_PROCESSING"];
 

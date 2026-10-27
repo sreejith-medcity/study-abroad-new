@@ -138,6 +138,8 @@ export default async function CallsPage({ searchParams }: { searchParams: Promis
               <form action={logCallAction} className="space-y-3 border-t border-line pt-4">
                 <input type="hidden" name="key" value={current.key} />
                 <input type="hidden" name="skip" value={skip.join(",")} />
+                {/* A branch head making a call picked from the team queue goes back to it afterwards. */}
+                <input type="hidden" name="team" value={current.ownerId !== user.id && readsTeamQueue(user.role) ? "1" : ""} />
                 <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_200px]">
                   <Input name="note" placeholder="What was said (optional)" aria-label="What was said" maxLength={1000} />
                   <label className="text-2xs font-semibold uppercase tracking-wider text-muted">

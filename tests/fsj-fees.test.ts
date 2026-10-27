@@ -74,3 +74,13 @@ test("nothing here carries a long dash", () => {
   const words = [stagePaymentWords({ paidOn: null, waiting: true, invoices: [] }), ...FSJ_PAYMENT_STAGES.map((s) => s.label)];
   assert.ok(!words.join(" ").includes("\u2014"));
 });
+
+test("a paid invoice whose money went back in a refund no longer counts as the fee paid", () => {
+  const refunded: PlanInvoice = { ...inv("a", "PAID", "2026-10-20"), total: 11800, held: 0 };
+  const kept: PlanInvoice = { ...inv("b", "PAID", "2026-10-21"), total: 236000, held: 236000 };
+  const plan = fsjPlanPayments([ins("2", "INVOICED", "a"), ins("6", "INVOICED", "b")], [refunded, kept]);
+  const eff = effectivePayments(marked, plan);
+  assert.equal(eff.registrationFeePaidOn, null);
+  assert.equal(eff.applicationFeePaidOn, "2026-10-21");
+  assert.deepEqual(feeGate(eff), { clear: false, missing: ["registration fee"] });
+});

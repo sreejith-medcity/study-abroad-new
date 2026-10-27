@@ -14,6 +14,7 @@ import {
   FSJ_STEP_COUNT,
   FSJ_TRIGGERS,
   LANGUAGE_RESULT_LABEL,
+  VFS_AT,
   checklistOpen,
   daysBetween,
   emailDraft,
@@ -358,7 +359,7 @@ export default async function StudentFsjPage({ params }: { params: Promise<{ id:
                 </StepForm>
               )}
 
-              {code && ["VFS_SLOT_BOOKING", "PRE_VISA_DOCUMENTS"].includes(code) && may("vfs") && (
+              {code && VFS_AT.includes(code) && may("vfs") && (
                 <StepForm op="vfs" {...f} submitLabel="Save the VFS slot" className="flex flex-wrap items-end gap-3">
                   <Field label="VFS slot date" htmlFor="fsj-vfs">
                     <Input id="fsj-vfs" name="vfsSlotOn" type="date" defaultValue={app.vfsSlotOn ?? ""} />

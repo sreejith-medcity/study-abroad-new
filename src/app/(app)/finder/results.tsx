@@ -331,7 +331,7 @@ export async function FinderResults({
                           {row.name}
                         </Link>
                         <Chip tone={match.band === "strong" ? "ok" : match.band === "possible" ? "info" : "neutral"}>{BAND_LABEL[match.band]}</Chip>
-                        {row.pathway !== "DEGREE" && <Chip tone="brand">{row.pathway === "AUSBILDUNG" ? "Ausbildung" : "Nursing"}</Chip>}
+                        {row.pathway !== "DEGREE" && <Chip tone="brand">{row.pathway === "AUSBILDUNG" ? "Ausbildung" : row.pathway === "NURSING" ? "Nursing" : row.pathway}</Chip>}
                       </div>
                       <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
                         <span>{LEVEL_LABEL[row.level] ?? row.level}</span>
