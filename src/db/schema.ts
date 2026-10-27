@@ -62,7 +62,30 @@ export const role = pgEnum("role", [
    */
   "FINANCE",
 ]);
-export const pathway = pgEnum("pathway", ["DEGREE", "AUSBILDUNG", "NURSING"]);
+/**
+ * The journey a file follows. FSJ (Freiwilliges Soziales Jahr) and BFD
+ * (Bundesfreiwilligendienst) are Germany's two volunteer services; they share
+ * one written process (src/lib/fsj.ts) and differ only in the programme facts.
+ */
+export const pathway = pgEnum("pathway", ["DEGREE", "AUSBILDUNG", "NURSING", "FSJ", "BFD"]);
+/** The FSJ / BFD language assessment's outcome, as the documentation team records it. */
+export const fsjLanguageResult = pgEnum("fsj_language_result", ["SUFFICIENT", "NOT_SUFFICIENT"]);
+/** What the employer said after an FSJ / BFD interview. */
+export const fsjFeedback = pgEnum("fsj_feedback", ["POSITIVE", "SECOND_ROUND", "NOT_SELECTED"]);
+/** One recorded moment on an FSJ / BFD file, kept so every round can be read back. */
+export const fsjEventKind = pgEnum("fsj_event_kind", [
+  "LANGUAGE_ASSESSMENT",
+  "DOCUMENTS_MISSING",
+  "FEE_CHECK",
+  "INTERVIEW",
+  "FEEDBACK",
+  "OFFER",
+  "VFS_SLOT",
+  "VISA_SUBMITTED",
+  "VISA_DECISION",
+  "HANDOVER",
+  "NOTICE",
+]);
 export const studyLevel = pgEnum("study_level", [
   "SCHOOL",
   "UG_DIPLOMA",
@@ -952,6 +975,41 @@ export const applications = pgTable(
     visaLodgedOn: date("visa_lodged_on"),
     visaDecision: visaDecision("visa_decision"),
     visaDecisionOn: date("visa_decision_on"),
+    /*
+     * The FSJ / BFD written process, on the application it belongs to, so every
+     * change goes through updateTracked and reads back on the History tab. What
+     * happened in rounds (each assessment, each interview, each visa submission)
+     * is also kept in fsj_events. Nothing here is a threshold: the language
+     * level is stored as the team enters it, and no pass mark is applied.
+     */
+    fsjRegistrationFeePaidOn: date("fsj_registration_fee_paid_on"),
+    fsjAgreementSignedOn: date("fsj_agreement_signed_on"),
+    fsjApplicationFeePaidOn: date("fsj_application_fee_paid_on"),
+    /** The offer-letter stage payment the counsellor collects at step 10. */
+    fsjOfferPaymentOn: date("fsj_offer_payment_on"),
+    /** The pre-visa payment the visa team checks before submission (step 12). */
+    fsjPreVisaPaymentOn: date("fsj_pre_visa_payment_on"),
+    /** When the documentation team started the application, once both fees were in (step 6). */
+    fsjApplicationStartedOn: date("fsj_application_started_on"),
+    fsjLanguageLevel: text("fsj_language_level"),
+    fsjLanguageResult: fsjLanguageResult("fsj_language_result"),
+    fsjLanguageAssessedOn: date("fsj_language_assessed_on"),
+    /** The organisation of the interview in hand, and then of the offer. */
+    fsjEmployer: text("fsj_employer"),
+    fsjInterviewAt: timestamp("fsj_interview_at", { withTimezone: true }),
+    fsjInterviewLink: text("fsj_interview_link"),
+    fsjResponsibilities: text("fsj_responsibilities"),
+    fsjRequirements: text("fsj_requirements"),
+    fsjFeedback: fsjFeedback("fsj_feedback"),
+    fsjOfferOn: date("fsj_offer_on"),
+    fsjContractSignedOn: date("fsj_contract_signed_on"),
+    fsjVfsSlotOn: date("fsj_vfs_slot_on"),
+    /** Why the visa was refused, in the visa team's words. */
+    fsjVisaReason: text("fsj_visa_reason"),
+    fsjJoiningOn: date("fsj_joining_on"),
+    fsjDepartedOn: date("fsj_departed_on"),
+    /** The checklist items ticked on the visa approval, pre-departure, departure and follow-up steps. */
+    fsjDone: text("fsj_done").array().notNull().default(sql`'{}'::text[]`),
     createdAt: createdAt(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -1214,6 +1272,42 @@ export const ausbildungProfiles = pgTable("ausbildung_profiles", {
   updatedById: text("updated_by_id").references(() => users.id, { onDelete: "set null" }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/* ---------- FSJ and BFD ---------- */
+
+/**
+ * One recorded moment on an FSJ / BFD application: an assessment with its level
+ * and result, an interview with its employer, the employer's feedback, a visa
+ * submission or decision, a hand-over between departments, a notice raised for
+ * the email matrix. Inserted, never updated, so the re-assessment loop, the
+ * second employer after a "not selected" and the resubmission after a refusal
+ * can all be read back in order.
+ */
+export const fsjEvents = pgTable(
+  "fsj_events",
+  {
+    id: id(),
+    applicationId: text("application_id")
+      .notNull()
+      .references(() => applications.id, { onDelete: "cascade" }),
+    studentId: text("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    kind: fsjEventKind("kind").notNull(),
+    /** The guide's step it was recorded at. */
+    step: integer("step").notNull(),
+    outcome: text("outcome"),
+    level: text("level"),
+    employer: text("employer"),
+    at: timestamp("at", { withTimezone: true }),
+    on: date("on"),
+    link: text("link"),
+    detail: text("detail"),
+    createdById: text("created_by_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("fsj_events_application_idx").on(t.applicationId, t.createdAt)],
+);
 
 /* ---------- NCLEX-RN (USA) ---------- */
 
