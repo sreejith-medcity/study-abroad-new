@@ -114,3 +114,19 @@ test("finance holds the money and none of the files", () => {
   assert.equal(roleCan(fin, "SEE_EVERY_STUDENT"), true);
   assert.equal(roleCan(fin, "VIEW_AUDIT_LOG"), false);
 });
+
+test("the team leader sees the files nobody carries, and an ordinary officer gains nothing", () => {
+  assert.equal(roleCan("APPLICATION_TEAM_LEADER", "SEE_UNASSIGNED_FILES", []), true);
+  assert.equal(roleCan("SUPER_ADMIN", "SEE_UNASSIGNED_FILES", []), true);
+  // The documentation officer works what the leader gives them.
+  assert.equal(roleCan("DOCUMENTATION", "SEE_UNASSIGNED_FILES", []), false);
+  // A branch never hands out the desk's files.
+  for (const role of ["PARTNER", "COUNSELLOR", "SENIOR_COUNSELLOR", "TRAINEE_COUNSELLOR", "SUB_AGENT_COUNSELLOR"]) {
+    assert.equal(roleCan(role, "SEE_UNASSIGNED_FILES", []), false, role);
+  }
+  // And it can be taken off the leader like anything else on the matrix.
+  assert.equal(
+    roleCan("APPLICATION_TEAM_LEADER", "SEE_UNASSIGNED_FILES", [{ role: "APPLICATION_TEAM_LEADER", capability: "SEE_UNASSIGNED_FILES", allowed: false }]),
+    false,
+  );
+});

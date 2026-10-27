@@ -13,6 +13,10 @@ import { getSlaDays } from "@/server/dashboard";
 import { deskOfficers } from "@/server/documentation";
 import { InlineSelect } from "@/components/inline-select";
 import { assignOfficerAction } from "./actions";
+import { can } from "@/server/capabilities";
+import { unassignedFile } from "@/server/scope";
+import { unassignedFileCount } from "@/server/unassigned-files";
+import { UNASSIGNED, unassignedText } from "@/lib/unassigned-files";
 
 export const metadata = { title: "Work queue" };
 
@@ -37,11 +41,16 @@ export default async function QueuePage({ searchParams }: { searchParams: Promis
   const canMoveStatus = canChangeStatus(user);
   const f = readFilters(await searchParams) as Record<string, string>;
   const pathway = (PATHWAYS.find((p) => p.key === f.pathway)?.key ?? "DEGREE") as Pathway;
-  const mine = f.officer !== "all";
+  // The files handed to the desk that nobody has been given yet, for whoever
+  // hands them out. Anybody else asking for this view gets their own queue.
+  const handsOut = await can(user, "SEE_UNASSIGNED_FILES");
+  const waiting = handsOut && f.officer === UNASSIGNED;
+  const mine = f.officer !== "all" && !waiting;
+  const officerWhere = waiting ? unassignedFile() : mine ? sql`(${schema.applications.officerId} = ${user.id} or ${schema.applications.officerId} is null)` : undefined;
 
   const { applications: a, statusDefinitions: sd, countries: c } = schema;
   const rows = await applicationsBase()
-    .where(and(eq(sd.pathway, pathway), ne(sd.group, "CLOSED"), mine ? sql`(${a.officerId} = ${user.id} or ${a.officerId} is null)` : undefined, f.country ? eq(c.code, f.country) : undefined))
+    .where(and(eq(sd.pathway, pathway), ne(sd.group, "CLOSED"), officerWhere, f.country ? eq(c.code, f.country) : undefined))
     .orderBy(asc(a.statusChangedAt));
   const orgNames = Object.fromEntries((await db.select({ id: schema.organizations.id, name: schema.organizations.name }).from(schema.organizations)).map((o) => [o.id, o.name]));
   const statuses = (await statusesFor(pathway)).map((s) => ({ id: s.id, label: s.label, requiresReason: s.requiresReason, isMilestone: s.isMilestone, code: s.code }));
@@ -51,8 +60,11 @@ export default async function QueuePage({ searchParams }: { searchParams: Promis
     .select({ pathway: sd.pathway, n: sql<number>`count(*)::int` })
     .from(a)
     .innerJoin(sd, eq(a.statusId, sd.id))
-    .where(and(ne(sd.group, "CLOSED"), mine ? sql`(${a.officerId} = ${user.id} or ${a.officerId} is null)` : undefined))
+    .where(and(ne(sd.group, "CLOSED"), officerWhere))
     .groupBy(sd.pathway);
+  // How many are waiting for an officer, across every pathway, for the choice
+  // that opens them. The same number as the badge on the menu.
+  const unassigned = (await unassignedFileCount(user)) ?? 0;
 
   // Who is carrying each file, and who it could be handed to. The officer
   // used to fill itself in with whoever first moved the file, so nobody was
@@ -74,8 +86,12 @@ export default async function QueuePage({ searchParams }: { searchParams: Promis
   return (
     <>
       <PageHeader
-        title={mine ? "My queue" : "All applications queue"}
-        subtitle="Oldest first within each lane. Unassigned applications show in everyone's queue."
+        title={waiting ? "Waiting for an officer" : mine ? "My queue" : "All applications queue"}
+        subtitle={
+          waiting
+            ? `${unassignedText(unassigned)}, from every branch. Each one has been handed to the desk and nobody is carrying it yet: choose the officer on the card and it is theirs, with a notice to say so.`
+            : "Oldest first within each lane. Unassigned applications show in everyone's queue."
+        }
         actions={breaches > 0 ? <Chip tone="bad" className="px-3 py-1 text-md">{breaches} past SLA</Chip> : <Chip tone="ok" className="px-3 py-1 text-md">All within SLA</Chip>}
       />
       <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -88,9 +104,10 @@ export default async function QueuePage({ searchParams }: { searchParams: Promis
         </div>
         <form className="flex flex-wrap gap-2">
           <input type="hidden" name="pathway" value={pathway} />
-          <Select name="officer" defaultValue={mine ? "me" : "all"} aria-label="Officer" className="w-44">
+          <Select name="officer" defaultValue={waiting ? UNASSIGNED : mine ? "me" : "all"} aria-label="Officer" className="w-52">
             <option value="me">Mine + unassigned</option>
             <option value="all">Everyone</option>
+            {handsOut && <option value={UNASSIGNED}>Handed over, no officer ({unassigned})</option>}
           </Select>
           <Select name="country" defaultValue={f.country ?? ""} aria-label="Country" className="w-44">
             <option value="">All countries</option>
@@ -98,6 +115,15 @@ export default async function QueuePage({ searchParams }: { searchParams: Promis
           </Select>
           <Button type="submit" variant="secondary">Apply</Button>
         </form>
+        {handsOut && (
+          <Link
+            href={`/admin/queue?${qs({ officer: waiting ? "me" : UNASSIGNED })}`}
+            data-unassigned={unassigned}
+            className={cn("rounded-full px-3 py-1 text-xs font-medium", waiting ? "bg-brand-600 text-white" : unassigned > 0 ? "border border-warn-500/25 bg-warn-50 text-warn-700" : "border border-line text-muted hover:text-ink")}
+          >
+            Unassigned ({unassigned})
+          </Link>
+        )}
         <LinkButton variant="quiet" href={`/applications?pathway=${pathway}&group=CLOSED`} className="ml-auto">Closed cases</LinkButton>
       </div>
 

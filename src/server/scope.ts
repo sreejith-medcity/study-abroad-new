@@ -24,7 +24,7 @@ export type Viewer = Pick<SessionUser, "id" | "role" | "orgId">;
  */
 export async function studentWhere(user: SessionUser): Promise<SQL | undefined> {
   if (await can(user, "SEE_EVERY_STUDENT")) return orgOf(user);
-  return ownedBy(user);
+  return and(orgOf(user), theirs(user, await can(user, "SEE_UNASSIGNED_FILES")))!;
 }
 
 /**
@@ -43,6 +43,7 @@ export async function ownApplicationsOnly(user: SessionUser): Promise<SQL | unde
     // The desk works what the branches have handed it, which is the only thing
     // the portal records as giving a file to the desk.
     isDocumentationTeam(user) ? sql`${schema.applications.handedOverAt} is not null` : undefined,
+    (await can(user, "SEE_UNASSIGNED_FILES")) ? unassignedFile() : undefined,
     eq(schema.applications.officerId, user.id),
     exists(
       db
@@ -71,10 +72,36 @@ const handedToTheDesk = () =>
   );
 
 /**
+ * A file handed to the desk that nobody carries yet, as a condition on an
+ * applications row. The rule and why it reads as it does are in
+ * lib/unassigned-files.ts; this is the same rule for the database.
+ *
+ * Whoever may "See and hand out the files nobody is carrying" sees these
+ * files from every branch, in the lists, the counts and on opening, because
+ * handing a file out means being able to open it first. The status is read in
+ * its own subquery so the condition stands on its own inside any query over
+ * applications, joined or not.
+ */
+export const unassignedFile = () =>
+  sql`(${schema.applications.handedOverAt} is not null and ${schema.applications.officerId} is null and ${schema.applications.deskStage} <> 'RETURNED'
+    and not exists (select 1 from status_definitions sd_closed where sd_closed.id = ${schema.applications.statusId} and sd_closed."group" = 'CLOSED'))`;
+
+/** A student with at least one unassigned file. */
+const hasUnassignedFile = () =>
+  exists(
+    db
+      .select({ one: sql`1` })
+      .from(schema.applications)
+      .where(and(eq(schema.applications.studentId, schema.students.id), unassignedFile())),
+  );
+
+/**
  * A student is theirs if they registered them, if they counsel them, if they
  * are the officer on their file, if they have checked a document on it, if
  * they have been put on the file by name, or, for the documentation desk, if
- * the branch has handed the file to the desk.
+ * the branch has handed the file to the desk. Whoever hands out the desk's
+ * files also has the students with a file waiting for an officer
+ * (`seesUnassigned`, from the capability of that name).
  *
  * A student nobody has been given to is not, by that alone, anybody's. The
  * rule used to open every unassigned student of a branch to every counsellor
@@ -97,9 +124,10 @@ const handedToTheDesk = () =>
  * themselves because the counsellor has to belong to that branch, and would
  * otherwise watch the student they just typed in turn into a 404.
  */
-function theirs(user: Viewer): SQL {
+function theirs(user: Viewer, seesUnassigned = false): SQL {
   return or(
     isDocumentationTeam(user) ? handedToTheDesk() : undefined,
+    seesUnassigned ? hasUnassignedFile() : undefined,
     eq(schema.students.createdById, user.id),
     eq(schema.students.assignedToId, user.id),
     exists(
@@ -162,7 +190,7 @@ export async function ownedByPerson(id: string): Promise<SQL> {
  * organisation filter, and two of them would be one too many.
  */
 export async function ownStudentsOnly(user: SessionUser): Promise<SQL | undefined> {
-  return (await can(user, "SEE_EVERY_STUDENT")) ? undefined : theirs(user);
+  return (await can(user, "SEE_EVERY_STUDENT")) ? undefined : theirs(user, await can(user, "SEE_UNASSIGNED_FILES"));
 }
 
 /**
@@ -183,6 +211,10 @@ export async function mayOpenStudent(user: Viewer, student: { orgId: string; ass
       columns: { id: true },
     });
     if (handed) return true;
+  }
+  if (await can(user, "SEE_UNASSIGNED_FILES")) {
+    const waiting = await db.query.applications.findFirst({ where: and(eq(schema.applications.studentId, student.id), unassignedFile()), columns: { id: true } });
+    if (waiting) return true;
   }
   const own = await db.query.applications.findFirst({
     where: and(eq(schema.applications.studentId, student.id), eq(schema.applications.officerId, user.id)),
@@ -256,6 +288,13 @@ export async function whoMayOpenStudent(studentId: string, userIds: string[]): P
       columns: { id: true },
     });
     if (handed) for (const p of undecided) if (isDocumentationTeam(p)) open.add(p.id);
+  }
+
+  // The same for a file nobody carries yet, opened to whoever may hand it out.
+  const handsOut = undecided.filter((p) => !open.has(p.id) && roleCan(p.role, "SEE_UNASSIGNED_FILES", set));
+  if (handsOut.length) {
+    const waiting = await db.query.applications.findFirst({ where: and(eq(schema.applications.studentId, student.id), unassignedFile()), columns: { id: true } });
+    if (waiting) for (const p of handsOut) open.add(p.id);
   }
 
   const left = () => undecided.filter((p) => !open.has(p.id)).map((p) => p.id);

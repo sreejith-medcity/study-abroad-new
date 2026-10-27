@@ -31,6 +31,7 @@ export const CAPABILITIES = [
   "OVERRIDE_GATE",
   "REGISTER_STUDENT",
   "COLLECT_FEES",
+  "SEE_UNASSIGNED_FILES",
 ] as const;
 
 export type Capability = (typeof CAPABILITIES)[number];
@@ -74,9 +75,12 @@ export const CAPABILITY_LABEL: Record<Capability, string> = {
   OVERRIDE_GATE: "Let a stage through with a reason",
   REGISTER_STUDENT: "Register a student",
   COLLECT_FEES: "Bill a student and take their fees",
+  SEE_UNASSIGNED_FILES: "See and hand out the files nobody is carrying",
 };
 
 export const CAPABILITY_MEANS: Record<Capability, string> = {
+  SEE_UNASSIGNED_FILES:
+    "Every file a branch has handed to the desk that has no officer on it yet, from every branch: the Unassigned view on the work queue and the applications list, the count on the menu and the dashboard, and opening the student. Giving the file to an officer still needs the right to move files between officers.",
   COLLECT_FEES:
     "Putting a fee plan on a student, raising and issuing their invoices, recording what they paid and sending a payment link. Always inside the students the person may open; cancelling, writing off and approving a refund stay with finance and the head office.",
   SEE_MONEY: "Commission figures in search and on a course, the student's income sheet, the wallet and the Monday read.",
@@ -141,6 +145,11 @@ export const DEFAULTS: Record<Capability, AppRole[]> = {
   // finance, and at a branch whoever takes the money at the counter. A trainee
   // and a sub-agent's counsellor read a student's fees and take none.
   COLLECT_FEES: ["SUPER_ADMIN", "OPS_MANAGER", "ADMIN", "FINANCE", "PARTNER", "SENIOR_COUNSELLOR", "COUNSELLOR"],
+  // New, so nobody had it before: the team leader, whose job is deciding who
+  // carries a file the branch has just handed over. The roles that already see
+  // every student can open these files anyway and need nothing more; an
+  // ordinary documentation officer works what they are given and gains nothing.
+  SEE_UNASSIGNED_FILES: ["SUPER_ADMIN", "APPLICATION_TEAM_LEADER"],
 };
 
 /** A capability nobody may take off a super admin, whatever the matrix says. */

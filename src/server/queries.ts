@@ -2,7 +2,8 @@ import "server-only";
 import { DEADLINE_TYPES } from "@/lib/deadline-types";
 import { and, asc, eq, gte, ilike, inArray, isNull, lte, or, sql, type SQL } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { mayOpenStudent, ownApplicationsOnly, ownStudentsOnly, ownedByPerson } from "@/server/scope";
+import { mayOpenStudent, ownApplicationsOnly, ownStudentsOnly, ownedByPerson, unassignedFile } from "@/server/scope";
+import { UNASSIGNED } from "@/lib/unassigned-files";
 import { idSearchKey, looksLikeStudentId } from "@/lib/medcity-id";
 import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
@@ -28,6 +29,8 @@ export type ApplicationFilters = {
   of?: string;
   /** The officer carrying the file, or "none" for the files nobody has been given yet. */
   officer?: string;
+  /** "unassigned": handed to the desk with no officer on it yet, the files a team leader hands out. */
+  desk?: string;
   org?: string;
   pathway?: string;
   dlType?: string;
@@ -83,6 +86,8 @@ export function applicationWhere(user: SessionUser, f: ApplicationFilters, mine?
   // "none" is the students nobody has been given to yet, which a branch head hands out from.
   if (f.assignedTo) conds.push(f.assignedTo === "none" ? isNull(s.assignedToId) : eq(s.assignedToId, f.assignedTo));
   if (f.officer) conds.push(f.officer === "none" ? isNull(a.officerId) : eq(a.officerId, f.officer));
+  // Only ever narrows: who may see these files at all is ownApplicationsOnly's question.
+  if (f.desk === UNASSIGNED) conds.push(unassignedFile());
   if (f.org && isStaff(user)) conds.push(eq(a.orgId, f.org));
   // Our own branches, or the sub-agents working through them. Only the desk
   // can ask this, because it is the only one that sees both kinds.

@@ -8,12 +8,17 @@ import { requireUser } from "@/lib/auth";
 import { ViewTabs } from "@/components/view-tabs";
 import { viewsWithPins } from "@/server/views";
 import { fmtDate, fullName, intakeLabel, MONTHS } from "@/lib/format";
-import { APP_ROLES, isStaff } from "@/lib/permissions";
+import { APP_ROLES, canAssignDesk, isStaff } from "@/lib/permissions";
 import { applicationScope, applicationsBase, applicationWhere, orgUsers, readFilters } from "@/server/queries";
 import { Card, EmptyState, LinkButton, PageHeader, StatusBadge, Table, Td, Th, cn } from "@/components/ui";
 import { FilterBar } from "@/components/filter-bar";
 import { OwnFilesNote } from "@/components/own-files-note";
 import { IconApplications, IconExport } from "@/components/icons";
+import { InlineSelect } from "@/components/inline-select";
+import { UNASSIGNED, unassignedText } from "@/lib/unassigned-files";
+import { deskOfficers } from "@/server/documentation";
+import { unassignedFileCount } from "@/server/unassigned-files";
+import { assignOfficerAction } from "../admin/queue/actions";
 
 export const metadata = { title: "Applications" };
 
@@ -38,11 +43,17 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
   const hasNext = rows.length > PAGE;
   const list = rows.slice(0, PAGE);
 
-  const [countries, statuses, counsellors, orgs] = await Promise.all([
+  // The files handed to the desk with nobody on them, for whoever hands them
+  // out: a tab with the count, and on it the officer is chosen in the row.
+  const unassigned = await unassignedFileCount(user);
+  const waitingView = unassigned !== null && f.desk === UNASSIGNED;
+  const assignHere = waitingView && canAssignDesk(user);
+  const [countries, statuses, counsellors, orgs, officers] = await Promise.all([
     db.select().from(schema.countries).orderBy(asc(schema.countries.name)),
     db.selectDistinctOn([schema.statusDefinitions.code], { code: schema.statusDefinitions.code, label: schema.statusDefinitions.label }).from(schema.statusDefinitions).orderBy(schema.statusDefinitions.code),
     staff ? Promise.resolve([]) : orgUsers(user.orgId),
     staff ? db.select().from(schema.organizations).where(sql`type <> 'HQ'`).orderBy(asc(schema.organizations.name)) : Promise.resolve([]),
+    assignHere ? deskOfficers() : Promise.resolve([]),
   ]);
   const now = new Date();
   const years = [now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1, now.getFullYear() + 2];
@@ -53,18 +64,40 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
     <>
       <PageHeader
         title="Applications"
-        subtitle={f.kpi ? `Filtered: ${KPI_LABEL[f.kpi] ?? f.kpi}` : "Manage your students' applications"}
+        subtitle={
+          waitingView
+            ? `${unassignedText(unassigned ?? 0)}. Handed to the desk by a branch and not given to anybody yet; choose the officer in the row and the file is theirs.`
+            : f.kpi
+              ? `Filtered: ${KPI_LABEL[f.kpi] ?? f.kpi}`
+              : "Manage your students' applications"
+        }
         actions={<LinkButton variant="secondary" href={`/api/applications/export?${exportQs}`} prefetch={false}><IconExport className="size-4" /> Export CSV</LinkButton>}
       />
 
       <OwnFilesNote of={f.of} viewer={user} />
 
       <ViewTabs scope="APPLICATIONS" views={savedViews} canShareWithEverybody={staff} />
+      {unassigned !== null && (
+        <div className="mb-3 flex flex-wrap items-center gap-2" role="tablist" aria-label="Whose files">
+          <Link href="/applications" role="tab" aria-selected={!waitingView} className={waitingView ? "rounded-full border border-line px-3 py-1 text-xs text-muted hover:text-ink" : "rounded-full bg-brand-600 px-3 py-1 text-xs font-medium text-white"}>
+            Every application
+          </Link>
+          <Link
+            href={`/applications?desk=${UNASSIGNED}`}
+            role="tab"
+            aria-selected={waitingView}
+            data-unassigned={unassigned}
+            className={waitingView ? "rounded-full bg-brand-600 px-3 py-1 text-xs font-medium text-white" : "rounded-full border border-line px-3 py-1 text-xs text-muted hover:text-ink"}
+          >
+            Unassigned ({unassigned})
+          </Link>
+        </div>
+      )}
       <FilterBar
         primary={4}
         // One person's own files is where you are, not what you asked, so
         // "Clear all" keeps it: a dashboard's figure linked here with it.
-        keep={["of"]}
+        keep={["of", "desk"]}
         fields={[
           { kind: "search", name: "student", label: "Student", placeholder: "Student name" },
           staff
@@ -145,7 +178,20 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
                     </Td>
                     <Td>{r.createdByName ?? r.createdByFallback}</Td>
                     <Td><StatusBadge group={r.statusGroup} label={r.statusLabel} /></Td>
-                    <Td className="whitespace-nowrap">{r.officerName ?? <span className="text-muted">Unassigned</span>}{r.officerPhone && <p className="text-xs text-muted tabular">{r.officerPhone}</p>}</Td>
+                    {assignHere ? (
+                      <Td className="whitespace-nowrap">
+                        <InlineSelect action={assignOfficerAction} idName="applicationId" id={r.id} name="officerId" value={r.officerId ?? ""} label={`Officer for ${r.ackNo}`} className="w-44 py-1 text-xs">
+                          <option value="">Nobody yet</option>
+                          {officers.map((o) => (
+                            <option key={o.id} value={o.id}>
+                              {o.id === user.id ? "Me" : (o.deskLabel ?? o.name)}
+                            </option>
+                          ))}
+                        </InlineSelect>
+                      </Td>
+                    ) : (
+                      <Td className="whitespace-nowrap">{r.officerName ?? <span className="text-muted">Unassigned</span>}{r.officerPhone && <p className="text-xs text-muted tabular">{r.officerPhone}</p>}</Td>
+                    )}
                   </tr>
                 );
               })}

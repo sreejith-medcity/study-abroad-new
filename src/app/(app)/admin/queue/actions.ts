@@ -7,6 +7,7 @@ import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { DESK_ASSIGNING_ROLES, DOCUMENTATION_ROLES } from "@/lib/permissions";
 import { notifyUsers } from "@/server/notify";
+import { getApplicationForUser } from "@/server/queries";
 import { updateTracked } from "@/server/record-history";
 
 /**
@@ -21,8 +22,9 @@ export async function assignOfficerAction(fd: FormData) {
   const user = await requireUser([...DESK_ASSIGNING_ROLES]);
   const applicationId = String(fd.get("applicationId") ?? "");
   const officerId = String(fd.get("officerId") ?? "") || null;
-  const app = await db.query.applications.findFirst({ where: eq(schema.applications.id, applicationId) });
-  if (!app) return;
+  // The file has to be one this person may open, as everywhere else: the same
+  // answer the list they pressed it on gave.
+  const app = await getApplicationForUser(user, applicationId);
   if (app.officerId === officerId) return;
 
   if (officerId) {
@@ -35,10 +37,13 @@ export async function assignOfficerAction(fd: FormData) {
 
   await updateTracked("application", applicationId, { officerId, updatedAt: new Date() }, { by: user.id, action: "application.officer" });
   await audit(user.id, "application.officer", "application", applicationId, { from: app.officerId, to: officerId });
+  // notifyUsers asks whoMayOpenStudent before it writes anything, so an
+  // officer the file is closed to is never sent a link to it.
   if (officerId && officerId !== user.id) {
     await notifyUsers([officerId], "An application is on your desk", app.ackNo, `/students/${app.studentId}/applications?app=${applicationId}`);
   }
   revalidatePath("/admin/queue");
   revalidatePath("/applications");
+  revalidatePath("/dashboard");
   revalidatePath(`/students/${app.studentId}/applications`);
 }

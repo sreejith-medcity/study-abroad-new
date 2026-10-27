@@ -4,6 +4,8 @@ import { dashboardTiles, type Flow } from "@/server/dashboard-tiles";
 import { activity, branchesCompared, journey, monthly, stages } from "@/server/dashboard-charts";
 import { deadlinesThisWeek, officerLoad, pastServiceLevel } from "@/server/dashboard-work";
 import { PERIODS, type Lens } from "@/server/dashboard-lens";
+import { unassignedFileCount } from "@/server/unassigned-files";
+import { UNASSIGNED } from "@/lib/unassigned-files";
 import { DEADLINE_LABEL } from "@/lib/deadline-types";
 import { StatTiles, type StatTile } from "@/components/stat-tiles";
 import { MonthlyLines, APPS } from "@/components/charts/monthly-lines";
@@ -45,7 +47,7 @@ import {
 export default async function CommandCentre({ lens }: { lens: Lens }) {
   const { user } = lens;
   const staff = isStaff(user);
-  const [t, months, steps, standing, compared, week, load, late] = await Promise.all([
+  const [t, months, steps, standing, compared, week, load, late, unassigned] = await Promise.all([
     dashboardTiles(lens),
     monthly(lens),
     journey(lens),
@@ -54,6 +56,8 @@ export default async function CommandCentre({ lens }: { lens: Lens }) {
     deadlinesThisWeek(lens),
     officerLoad(lens),
     pastServiceLevel(lens),
+    // Null for anybody who does not hand out the desk's files.
+    unassignedFileCount(user, lens.org),
   ]);
   const latest = await activity(lens, 8);
 
@@ -86,7 +90,26 @@ export default async function CommandCentre({ lens }: { lens: Lens }) {
         },
       ];
 
+  // First on the board for whoever hands out the desk's files, because a
+  // file that has arrived and that nobody carries is the one thing nobody else
+  // will pick up.
+  const handOut: StatTile[] =
+    unassigned === null
+      ? []
+      : [
+          {
+            label: "Files with no officer",
+            value: unassigned,
+            note: unassigned === 0 ? "Every handed-over file has an officer" : "Handed over, nobody given it yet",
+            now: true,
+            tone: unassigned > 0 ? "warn" : "good",
+            icon: <IconQueue />,
+            href: `/applications?desk=${UNASSIGNED}${lens.org ? `&org=${lens.org}` : ""}`,
+          },
+        ];
+
   const tiles: StatTile[] = [
+    ...handOut,
     { label: "Total registrations", value: t.registrations.value.toLocaleString("en-IN"), change: change(t.registrations), note: "Students on the books", spark: t.registrations.spark, tone: "brand", icon: <IconStudents />, href: "/students" },
     { label: "Total applications", value: t.applications.value.toLocaleString("en-IN"), change: change(t.applications), note: "Every application made", spark: t.applications.spark, tone: "info", icon: <IconApplications />, href: "/applications" },
     { label: "Offers received", value: t.offers.value, change: change(t.offers), note: "Counting those now further on", spark: t.offers.spark, tone: "good", icon: <IconCheck />, href: "/applications?kpi=offers" },

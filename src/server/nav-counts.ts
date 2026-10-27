@@ -3,6 +3,8 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { isStaff, PARTNER_ROLES, PROCESSING_ROLES } from "@/lib/permissions";
+import { can } from "@/server/capabilities";
+import { unassignedWhere } from "@/server/unassigned-files";
 
 /**
  * The numbers that belong on the menu.
@@ -42,6 +44,18 @@ export async function navCounts(user: SessionUser): Promise<NavCounts> {
       href: "/program-options",
       tone: "warn",
       sql: sql`(select count(*) from option_requests where status = 'REQUESTED' and archived = false)`,
+    });
+  }
+
+  // Files the branches have handed over that nobody has been given yet, on
+  // the work queue, where they are handed out. Counted under the same
+  // conditions as the Unassigned view (server/unassigned-files.ts), so the
+  // badge and the view are the same number.
+  if (processing && (await can(user, "SEE_UNASSIGNED_FILES"))) {
+    wanted.push({
+      href: "/admin/queue",
+      tone: "warn",
+      sql: sql`(select count(*) from applications where ${await unassignedWhere(user)})`,
     });
   }
 
