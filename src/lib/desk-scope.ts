@@ -72,5 +72,22 @@ export function mayClaimDocument(args: { reach: DeskReach; studentIsTheirs: bool
 export function queueReachText(reach: DeskReach): string {
   return reach === "WHOLE_DESK"
     ? "One row per student, oldest first; open a row for the documents. A document is claimed while somebody checks it so two people never check the same one."
-    : "Only your own files: the applications you are the officer on, the documents you have claimed or checked, and the students you have been put on. The team leader hands out everything else.";
+    : "Only your own files: the students assigned to you, the applications you are the officer on, the documents you are checking now, and the students you have been put on. The team leader hands out everything else.";
+}
+
+/**
+ * A documentation officer: somebody whose files are theirs only while they
+ * carry them.
+ *
+ * For everybody else a file stays theirs once they have checked a document
+ * on it or while they are in the team carrying it. For a documentation
+ * officer neither counts: a document they checked last week, or a file their
+ * team carries but somebody else is assigned to, is not theirs, and the
+ * owner found exactly that, a student assigned to Rajeena still opening to
+ * Jeslin. Read from the role alone, so the rule is the same in every list,
+ * count and open, including the ones that cannot wait for the capability
+ * matrix.
+ */
+export function carriesOwnFilesOnly(role: string): boolean {
+  return role === "DOCUMENTATION";
 }

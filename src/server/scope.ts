@@ -1,9 +1,9 @@
 import "server-only";
-import { and, eq, exists, inArray, or, sql, type SQL } from "drizzle-orm";
+import { and, eq, exists, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { roleCan } from "@/lib/capabilities";
-import { opensHandedOverFiles } from "@/lib/desk-scope";
+import { opensHandedOverFiles, carriesOwnFilesOnly } from "@/lib/desk-scope";
 import { APP_ROLES, isStaff } from "@/lib/permissions";
 import { can, overrides } from "@/server/capabilities";
 
@@ -136,6 +136,7 @@ const hasUnassignedFile = () =>
 /**
  * A student is theirs if they registered them, if they counsel them, if they
  * are the officer on their file, if they have claimed or checked a document
+ * (for a documentation officer, only one they are checking now)
  * on it, if they have been put on the file by name (the mentor too), if they
  * are in the team carrying it, or, for somebody on the documentation desk who
  * runs the whole of it, if the branch has handed the file to the desk
@@ -167,8 +168,12 @@ const hasUnassignedFile = () =>
  * otherwise watch the student they just typed in turn into a 404.
  */
 function theirs(user: Viewer, widened: Reach = { wholeDesk: false, seesUnassigned: false }): SQL {
+  // A documentation officer's files are the ones they carry now: not a file
+  // their team carries for somebody else, and not one where they once checked
+  // a document (lib/desk-scope.ts carriesOwnFilesOnly).
+  const officer = carriesOwnFilesOnly(user.role);
   return or(
-    onTheirTeam(user),
+    officer ? undefined : onTheirTeam(user),
     widened.wholeDesk ? handedToTheDesk() : undefined,
     widened.seesUnassigned ? hasUnassignedFile() : undefined,
     eq(schema.students.createdById, user.id),
@@ -186,7 +191,9 @@ function theirs(user: Viewer, widened: Reach = { wholeDesk: false, seesUnassigne
         .where(
           and(
             eq(schema.checklistItems.studentId, schema.students.id),
-            or(eq(schema.checklistItems.claimedById, user.id), eq(schema.checklistItems.decidedById, user.id)),
+            officer
+              ? and(eq(schema.checklistItems.claimedById, user.id), isNull(schema.checklistItems.decidedById))
+              : or(eq(schema.checklistItems.claimedById, user.id), eq(schema.checklistItems.decidedById, user.id)),
           ),
         ),
     ),
@@ -319,10 +326,13 @@ export async function mayOpenStudent(user: Viewer, student: { orgId: string; ass
     columns: { id: true },
   });
   if (own) return true;
+  const officer = carriesOwnFilesOnly(user.role);
   const checked = await db.query.checklistItems.findFirst({
     where: and(
       eq(schema.checklistItems.studentId, student.id),
-      or(eq(schema.checklistItems.claimedById, user.id), eq(schema.checklistItems.decidedById, user.id)),
+      officer
+        ? and(eq(schema.checklistItems.claimedById, user.id), isNull(schema.checklistItems.decidedById))
+        : or(eq(schema.checklistItems.claimedById, user.id), eq(schema.checklistItems.decidedById, user.id)),
     ),
     columns: { id: true },
   });
@@ -332,7 +342,7 @@ export async function mayOpenStudent(user: Viewer, student: { orgId: string; ass
     columns: { id: true },
   });
   if (onFile) return true;
-  return onStudentsTeam(user.id, student.id);
+  return officer ? false : onStudentsTeam(user.id, student.id);
 }
 
 /**
@@ -382,7 +392,7 @@ export async function whoMayOpenStudent(studentId: string, userIds: string[]): P
   const undecided: typeof people = [];
   for (const p of people) {
     if (!(APP_ROLES as readonly string[]).includes(p.role)) continue;
-    if (team.has(p.id)) {
+    if (team.has(p.id) && !carriesOwnFilesOnly(p.role)) {
       open.add(p.id);
       continue;
     }
@@ -436,9 +446,11 @@ export async function whoMayOpenStudent(studentId: string, userIds: string[]): P
         ),
       );
     const wanted = new Set(ids);
+    const roleOf = new Map(people.map((p) => [p.id, p.role]));
     for (const c of checked) {
-      if (c.claimedById && wanted.has(c.claimedById)) open.add(c.claimedById);
-      if (c.decidedById && wanted.has(c.decidedById)) open.add(c.decidedById);
+      // A documentation officer counts only a document still in their hands.
+      if (c.claimedById && wanted.has(c.claimedById) && (!carriesOwnFilesOnly(roleOf.get(c.claimedById) ?? "") || !c.decidedById)) open.add(c.claimedById);
+      if (c.decidedById && wanted.has(c.decidedById) && !carriesOwnFilesOnly(roleOf.get(c.decidedById) ?? "")) open.add(c.decidedById);
     }
     ids = left();
   }

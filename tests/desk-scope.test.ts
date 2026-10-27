@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { deskReach, hearsOfHandovers, mayClaimDocument, opensHandedOverFiles, queueReachText, worksOwnFilesOnly } from "../src/lib/desk-scope";
+import { carriesOwnFilesOnly, deskReach, hearsOfHandovers, mayClaimDocument, opensHandedOverFiles, queueReachText, worksOwnFilesOnly } from "../src/lib/desk-scope";
 import type { Override } from "../src/lib/capabilities";
 
 test("a documentation officer works their own files; the team leader and the admins the whole desk", () => {
@@ -60,4 +60,9 @@ test("the queue says whose documents are on it, without a long dash", () => {
   assert.match(queueReachText("OWN_FILES"), /team leader/);
   assert.match(queueReachText("WHOLE_DESK"), /One row per student/);
   for (const r of ["OWN_FILES", "WHOLE_DESK"] as const) assert.doesNotMatch(queueReachText(r), /\u2014/);
+});
+
+test("a documentation officer's files are theirs only while they carry them, and nobody else's are", () => {
+  assert.equal(carriesOwnFilesOnly("DOCUMENTATION"), true);
+  for (const r of ["APPLICATION_TEAM_LEADER", "ADMIN", "SUPER_ADMIN", "COUNSELLOR", "PARTNER", "DESK_COUNSELLOR"]) assert.equal(carriesOwnFilesOnly(r), false, r);
 });
