@@ -9,14 +9,16 @@ import { APP_ROLES, ROLE_LABEL, canAssignStudents, isAdmin, isStaff } from "@/li
 import { fmtDate, fullName } from "@/lib/format";
 import { assignableFor, counsellorOptions, orgUsers, readFilters, studentListExtras, studentWhere } from "@/server/queries";
 import { programmesSummary } from "@/lib/student-list";
+import { teamLabel } from "@/lib/assign-choice";
 import { CountryNames } from "./country-names";
-import { livingTeams, peopleOnFiles, teamsOf } from "@/server/teams";
+import { livingTeams, peopleOnFiles, teamsOf, teamsToAssign } from "@/server/teams";
+import { moveBranchOptions } from "@/server/student-move";
 import { Card, Chip, EmptyState, LinkButton, PageHeader, Table, Td, Th } from "@/components/ui";
 import { FilterBar } from "@/components/filter-bar";
 import { OwnFilesNote } from "@/components/own-files-note";
 import { IconMail, IconPhone, IconPlus, IconStudents } from "@/components/icons";
 import { archiveStudentAction } from "./actions";
-import { RowAssign } from "./row-assign";
+import { AssignChoicesProvider, RowAssign } from "./row-assign";
 import { RowPeople } from "./row-people";
 
 export const metadata = { title: "Students" };
@@ -86,6 +88,13 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
     if (got) got.push(person);
     else branchPeople.set(person.orgId, [person]);
   }
+  // A head office admin can also give a student to a team, or move them to
+  // another branch, from the same dropdown. What that needs is read once for
+  // the page and shared by every row, never per row, and for nobody else.
+  const wider =
+    canAssign && isAdmin(user)
+      ? { teams: await teamsToAssign(), branches: (await moveBranchOptions("")).map((b) => ({ id: b.id, name: b.name, people: b.people })) }
+      : null;
   // Who shares each of these files, in one query rather than fifty.
   // Where each of these students is applying, and to what, in one more query
   // for the page rather than one for each row.
@@ -212,6 +221,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                 : "Every student your branch registers appears here, with what each application is waiting on."}
           </EmptyState>
         ) : (
+          <AssignChoicesProvider value={wider}>
           <Table tableClassName="min-w-[920px]">
             <thead>
               <tr>
@@ -254,7 +264,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                   <Td>
                     <Link href={`/students/${r.id}/profile`} className="whitespace-nowrap font-medium text-ink hover:text-brand-600 hover:underline">{fullName(r)}</Link>
                     {r.medcityId && <span className="block font-mono text-2xs text-muted">{r.medcityId}</span>}
-                    {r.teamName && <span className="block text-2xs text-muted">{r.teamName} team</span>}
+                    {r.teamName && <Chip className="mt-0.5">{teamLabel(r.teamName)}</Chip>}
                   </Td>
                   <Td className="hidden min-[1680px]:table-cell">
                     <CountryNames applied={extras.get(r.id)?.countries ?? []} preferred={r.preferredCountry} className="w-[6.5rem]" />
@@ -285,31 +295,18 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                   )}
                   {canAssign && !elsewhere(r) && (
                     <Td>
-                      <RowAssign studentId={r.id} current={r.assignedToId ?? ""} label={`Assign ${fullName(r)}`}>
-                        <option value="">Unassigned</option>
-                        {staff ? (
-                          <>
-                            {(branchPeople.get(r.orgId) ?? []).length > 0 && (
-                              <optgroup label={r.orgName}>
-                                {(branchPeople.get(r.orgId) ?? []).map((c) => (
-                                  <option key={c.id} value={c.id}>{c.deskLabel ?? c.name}</option>
-                                ))}
-                              </optgroup>
-                            )}
-                            {headOfficePeople.length > 0 && (
-                              <optgroup label="Head office">
-                                {headOfficePeople.map((c) => (
-                                  <option key={c.id} value={c.id}>
-                                    {c.deskLabel ?? c.name} ({ROLE_LABEL[c.role as keyof typeof ROLE_LABEL] ?? c.role})
-                                  </option>
-                                ))}
-                              </optgroup>
-                            )}
-                          </>
-                        ) : (
-                          assignable.map((c) => <option key={c.id} value={c.id}>{c.deskLabel ?? c.name}</option>)
-                        )}
-                      </RowAssign>
+                      <RowAssign
+                        studentId={r.id}
+                        studentName={fullName(r)}
+                        orgId={r.orgId}
+                        orgName={r.orgName}
+                        current={r.assignedToId ?? ""}
+                        label={`Assign ${fullName(r)}`}
+                        branch={staff ? (branchPeople.get(r.orgId) ?? []) : assignable}
+                        headOffice={staff ? headOfficePeople : []}
+                        roleLabels={staff ? ROLE_LABEL : undefined}
+                        grouped={staff}
+                      />
                       {/* A file belongs to one counsellor; this is everybody
                           else working on it. Item six of the branches' list:
                           "options to assign to more than 2". The head office
@@ -385,6 +382,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
               ))}
             </tbody>
           </Table>
+          </AssignChoicesProvider>
         )}
         {rows.length > 0 && (
           <div data-list-foot className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3 text-sm text-muted">

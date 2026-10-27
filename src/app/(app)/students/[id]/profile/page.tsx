@@ -3,9 +3,9 @@ import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { can } from "@/server/capabilities";
 import { profileCompleteness } from "@/lib/checks";
-import { fmtDate, fmtDateTime } from "@/lib/format";
+import { fmtDate, fmtDateTime, fullName } from "@/lib/format";
 import { APP_ROLES, PARTNER_ROLES, ROLE_LABEL, canAssignStudents, canSeeFullPassport, isAdmin, isStaff, maskPassport } from "@/lib/permissions";
-import { getStudentForUser } from "@/server/queries";
+import { assignableFor, getStudentForUser } from "@/server/queries";
 import { Alert, Button, Card, Chip } from "@/components/ui";
 import { Section } from "@/components/section";
 import { deleteProfileRowAction, revealPassportAction, toggleLockAction, togglePortalAccessAction } from "../../actions";
@@ -15,7 +15,8 @@ import { aiFeatureOn } from "@/server/ai";
 import { guardiansFor, GUARDIAN_LIMIT } from "@/server/family";
 import { AddGuardianForm, GuardianRowActions, ResetGuardianForm } from "@/components/family-forms";
 import { AutofillPanel } from "./autofill";
-import { livingTeams, peopleOnFile, peopleToAdd, teamToLead } from "@/server/teams";
+import { livingTeams, peopleOnFile, peopleToAdd, teamToLead, teamsToAssign } from "@/server/teams";
+import { AssignChoicesProvider, RowAssign } from "../../row-assign";
 import { removePersonFromFileAction, setStudentTeamAction } from "./team-actions";
 import { AddPersonForm, GiveToTeamMemberForm } from "./team-panel";
 import { moveStudentAction } from "./move-actions";
@@ -104,6 +105,16 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
   // only for a file still in use: an archived one is brought back first.
   const mayMoveBranch = isAdmin(user) && !student.archived;
   const moveTargets = mayMoveBranch ? await moveBranchOptions(student.orgId) : [];
+  // The same "Assigned to" dropdown as the student list, for the head office:
+  // the student's branch and the head office, and for an admin every team and
+  // every other branch as well. A branch names its counsellor from the list,
+  // as it always has, so its screen here is unchanged.
+  const assignHere = staffHere && mayAssign;
+  const assignable = assignHere ? await assignableFor([student.orgId], { includeHeadOffice: true }) : [];
+  const wider =
+    assignHere && isAdmin(user)
+      ? { teams: await teamsToAssign(), branches: (await moveBranchOptions("")).map((b) => ({ id: b.id, name: b.name, people: b.people })) }
+      : null;
 
   // One source for the row at the top and for whether each part opens folded.
   // A part that is done folds away; a part still wanting something stays open,
@@ -354,6 +365,32 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
           defaultOpen={staffHere ? !student.teamId : onFile.length > 0}
           bodyClassName=""
         >
+          {assignHere && (
+            <div className="border-b border-line px-4 py-3">
+              <p className="text-2xs font-semibold uppercase tracking-wider text-muted">Assigned to</p>
+              <div className="mt-1">
+                <AssignChoicesProvider value={wider}>
+                  <RowAssign
+                    studentId={id}
+                    studentName={fullName(student)}
+                    orgId={student.orgId}
+                    orgName={student.org.name}
+                    current={student.assignedToId ?? ""}
+                    label={`Assign ${fullName(student)}`}
+                    branch={assignable.filter((p) => !p.headOffice)}
+                    headOffice={assignable.filter((p) => p.headOffice)}
+                    roleLabels={ROLE_LABEL}
+                  />
+                </AssignChoicesProvider>
+              </div>
+              {wider && (
+                <p className="mt-1 text-2xs text-muted">
+                  A team keeps the branch and the counsellor and puts the member on the file. Another branch moves the student there, after you confirm.
+                </p>
+              )}
+            </div>
+          )}
+
           {staffHere && (
           <form action={setStudentTeamAction} className="flex flex-wrap items-end gap-2 border-b border-line px-4 py-3">
             <input type="hidden" name="studentId" value={id} />

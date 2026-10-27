@@ -40,6 +40,22 @@ export async function livingTeams() {
     .orderBy(asc(schema.teams.name));
 }
 
+/**
+ * Every live team with the members who can work a file, for the head
+ * office's "Assigned to" dropdown, in two queries for the whole page.
+ */
+export async function teamsToAssign() {
+  const teams = await livingTeams();
+  if (!teams.length) return [];
+  const members = await db
+    .select({ teamId: schema.teamMembers.teamId, id: schema.users.id, name: schema.users.name, deskLabel: schema.users.deskLabel })
+    .from(schema.teamMembers)
+    .innerJoin(schema.users, eq(schema.users.id, schema.teamMembers.userId))
+    .where(and(inArray(schema.teamMembers.teamId, teams.map((t) => t.id)), eq(schema.users.active, true), inArray(schema.users.role, [...STUDENT_WORK_ROLES])))
+    .orderBy(asc(schema.users.name));
+  return teams.map((t) => ({ ...t, members: members.filter((m) => m.teamId === t.id).map(({ id, name, deskLabel }) => ({ id, name, deskLabel })) }));
+}
+
 /** Everybody at the desk who can be put in a team or on a file. */
 export async function deskPeople() {
   return db

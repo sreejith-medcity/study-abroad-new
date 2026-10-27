@@ -14,6 +14,9 @@ import { convertedStudentOwner } from "@/lib/conversion";
 import { can } from "@/server/capabilities";
 import { readAim } from "@/lib/aims";
 import { placeOnPathwayTeam } from "@/server/team-pathways";
+import { parseAssignChoice, teamLabel } from "@/lib/assign-choice";
+import { giveFileToTeamMember, setTeamOnStudent } from "@/server/team-file";
+import { moveStudents } from "@/server/student-move";
 import { adminIds, notifyUsers, partnerRecipients, deskRecipients } from "@/server/notify";
 import { getStudentForUser } from "@/server/queries";
 import { tryMintStudentId } from "@/server/medcity-id";
@@ -285,27 +288,96 @@ export async function createStudentAction(_: FormState, formData: FormData): Pro
  * Whoever receives it must be able to work a student's file. Handing it to
  * somebody who can only read it would be handing it to a dead end.
  */
-export async function reassignStudentAction(formData: FormData) {
+/** What the list's dropdown is told back: a line for the toast, good or bad. */
+export type AssignOutcome = { ok?: string; error?: string };
+
+/**
+ * Hands a student to whoever was picked on the "Assigned to" dropdown, on the
+ * list or the student's file.
+ *
+ * The value says what was picked (see lib/assign-choice.ts), and each kind is
+ * checked again here rather than trusted because of the group it was shown
+ * in: a branch's own people and the head office for anybody who may assign,
+ * as it always was; a team or another branch for the head office admins
+ * only, the same people who may set a file's team and move a student.
+ */
+export async function assignStudentAction(formData: FormData): Promise<AssignOutcome> {
   const user = await requireUser([...PARTNER_ROLES, ...DESK_ASSIGNING_ROLES]);
-  if (!canAssignStudents(user)) return;
-  const studentId = String(formData.get("studentId"));
-  const assignedToId = String(formData.get("assignedToId") || "") || null;
+  if (!canAssignStudents(user)) return { error: "Your account cannot change who a student is assigned to." };
+  const studentId = String(formData.get("studentId") ?? "").slice(0, 40);
   const student = await getStudentForUser(user, studentId);
-  if (assignedToId) {
-    const assignee = await db.query.users.findFirst({
-      where: eq(schema.users.id, assignedToId),
-      with: { org: { columns: { type: true } } },
-    });
-    if (!assignee || !assignee.active) return;
-    if (!(STUDENT_WORK_ROLES as readonly string[]).includes(assignee.role)) return;
-    const sameBranch = assignee.orgId === student.orgId;
-    const headOffice = assignee.org?.type === "HQ";
-    if (!sameBranch && !(headOffice && isStaff(user))) return;
+  const choice = parseAssignChoice(String(formData.get("assignedToId") ?? ""));
+  if (!choice) return { error: "That choice is not on the list. Reload the page and pick again." };
+  const name = `${student.firstName} ${student.lastName}`;
+
+  if (choice.kind === "none" || choice.kind === "person") {
+    const assignedToId = choice.kind === "person" ? choice.userId : null;
+    if (assignedToId) {
+      const assignee = await db.query.users.findFirst({
+        where: eq(schema.users.id, assignedToId),
+        with: { org: { columns: { type: true } } },
+      });
+      if (!assignee || !assignee.active) return { error: "That person is switched off. Pick somebody who can sign in." };
+      if (!(STUDENT_WORK_ROLES as readonly string[]).includes(assignee.role)) return { error: "That person cannot work student files." };
+      const sameBranch = assignee.orgId === student.orgId;
+      const headOffice = assignee.org?.type === "HQ";
+      if (!sameBranch && !(headOffice && isStaff(user))) return { error: "Pick somebody at the student's own branch." };
+    }
+    if (assignedToId === student.assignedToId) return { ok: "No change." };
+    await updateTracked("student", studentId, { assignedToId, updatedAt: new Date() }, { by: user.id, action: "student.reassign" });
+    await audit(user.id, "student.reassign", "student", studentId, { from: student.assignedToId, to: assignedToId });
+    if (assignedToId) await notifyUsers([assignedToId], "Student assigned to you", name, `/students/${studentId}/profile`);
+    revalidatePath("/students");
+    revalidatePath(`/students/${studentId}`, "layout");
+    return { ok: "Saved." };
   }
-  await updateTracked("student", studentId, { assignedToId, updatedAt: new Date() }, { by: user.id, action: "student.reassign" });
-  await audit(user.id, "student.reassign", "student", studentId, { from: student.assignedToId, to: assignedToId });
-  if (assignedToId) await notifyUsers([assignedToId], "Student assigned to you", `${student.firstName} ${student.lastName}`, `/students/${studentId}/profile`);
+
+  // A team or another branch: the head office admins' call.
+  if (!isAdmin(user)) return { error: "Only the head office admins can give a student to a team or another branch." };
+
+  if (choice.kind === "team") {
+    const team = await db.query.teams.findFirst({ where: eq(schema.teams.id, choice.teamId), columns: { id: true, name: true, active: true } });
+    if (!team?.active) return { error: "That team has been retired. Reload the page and pick again." };
+    let member: { id: string; name: string; deskLabel: string | null } | null = null;
+    if (choice.userId) {
+      const [row] = await db
+        .select({ id: schema.users.id, name: schema.users.name, deskLabel: schema.users.deskLabel, role: schema.users.role, active: schema.users.active })
+        .from(schema.teamMembers)
+        .innerJoin(schema.users, eq(schema.users.id, schema.teamMembers.userId))
+        .where(and(eq(schema.teamMembers.teamId, team.id), eq(schema.teamMembers.userId, choice.userId)));
+      if (!row) return { error: `That person is not in the ${teamLabel(team.name)}.` };
+      if (!row.active || !(STUDENT_WORK_ROLES as readonly string[]).includes(row.role)) return { error: `${row.deskLabel ?? row.name} cannot work student files.` };
+      member = row;
+    }
+    // The team first, so the member is on a file their team carries and the
+    // scope rules open it to them from wherever they sit.
+    const teamChanged = student.teamId !== team.id;
+    if (teamChanged) await setTeamOnStudent(user.id, student, team.id);
+    let said = teamChanged ? `${name} is now with the ${teamLabel(team.name)}.` : `${name} is already with the ${teamLabel(team.name)}.`;
+    if (member) {
+      const given = await giveFileToTeamMember(user.id, student, team, member);
+      if ("error" in given && !teamChanged) return given;
+      said = "ok" in given ? `${name} is with the ${teamLabel(team.name)}, and ${member.deskLabel ?? member.name} has the file.` : said;
+    }
+    revalidatePath("/students");
+    revalidatePath(`/students/${studentId}`, "layout");
+    return { ok: said };
+  }
+
+  // Another branch, with the person picked as the counsellor there. The
+  // browser asks first; a post that skipped the question moves nobody.
+  if (formData.get("confirmed") !== "1") return { error: "Confirm the move first." };
+  const moved = await moveStudents(user, { studentId, fromOrgId: student.orgId, toOrgId: choice.orgId, choice: "assign", counsellorId: choice.userId });
+  if ("error" in moved) return { error: moved.error };
   revalidatePath("/students");
+  revalidatePath(`/students/${studentId}`, "layout");
+  revalidatePath("/admin/partners");
+  return { ok: moved.ok };
+}
+
+/** The same, for the dropdown's Save button before the script has run. */
+export async function reassignStudentAction(formData: FormData) {
+  await assignStudentAction(formData);
 }
 
 export async function archiveStudentAction(formData: FormData) {
