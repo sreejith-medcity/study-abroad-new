@@ -12,6 +12,15 @@ export type Release = { version: string; date: string; changes: string[] };
 
 export const RELEASES: Release[] = [
   {
+    version: "1.9.0",
+    date: "2026-10-27",
+    changes: [
+      "A documentation officer now sees only their own work: the files they are the officer on, the documents they have claimed or checked, the students they have been put on by name (mentors included), their team's students and anything they registered. Every other file handed to the desk, the unclaimed pool, other officers' files in the work queue and on the vendor desk, and the whole desk's counts are no longer shown to them, and a claim on a file that is not theirs is refused.",
+      "The application team leader and the admins still see the whole desk and hand out the work: from the Unassigned tab, and from a new Give it to somebody control on unclaimed documents in the queue, which tells the officer and opens the file to them. Notices about a file handed to the desk (vendor desk, enquiries, FSJ, Au pair and Ausbildung) go to whoever runs the desk, and to the officer once the file is theirs.",
+      "Who sees the whole desk is the See the whole desk line on the Who may do what screen, so it can be given to another role there.",
+    ],
+  },
+  {
     version: "1.8.10",
     date: "2026-10-27",
     changes: [

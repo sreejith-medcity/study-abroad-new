@@ -5,6 +5,14 @@ version in package.json and adds an entry here and in src/lib/releases.ts (the
 What's new page reads that one). After applying a release, tag it with the
 version so it can be found and rolled back to.
 
+## 1.9.0 (27 October 2026)
+
+- A documentation officer now sees only their own work: the files they are the officer on, the documents they have claimed or checked, the students they have been put on by name (mentors included), their team's students and anything they registered. Every other file handed to the desk, the unclaimed pool, other officers' files in the work queue and on the vendor desk, and the whole desk's counts are no longer shown to them, and a claim on a file that is not theirs is refused.
+- The application team leader and the admins still see the whole desk and hand out the work: from the Unassigned tab, and from a new Give it to somebody control on unclaimed documents in the queue, which tells the officer and opens the file to them. Notices about a file handed to the desk (vendor desk, enquiries, FSJ, Au pair and Ausbildung) go to whoever runs the desk, and to the officer once the file is theirs.
+- Who sees the whole desk is the See the whole desk line on the Who may do what screen, so it can be given to another role there.
+
+Nothing to run on the VPS beyond `bash /root/update-portal.sh`: no migration and no SQL.
+
 ## 1.8.10 (27 October 2026)
 
 - The Assign list on the students list and the student's file can be searched: type part of a name, a team or a branch and the list narrows as you type, so "ausb" leaves the Ausbildung team and branch and a name finds that person wherever they are. The arrow keys move, Enter picks and Escape closes. Moving a student to another branch still asks to confirm first.
