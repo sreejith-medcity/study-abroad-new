@@ -5,6 +5,12 @@ version in package.json and adds an entry here and in src/lib/releases.ts (the
 What's new page reads that one). After applying a release, tag it with the
 version so it can be found and rolled back to.
 
+## 1.8.10 (27 October 2026)
+
+- The Assign list on the students list and the student's file can be searched: type part of a name, a team or a branch and the list narrows as you type, so "ausb" leaves the Ausbildung team and branch and a name finds that person wherever they are. The arrow keys move, Enter picks and Escape closes. Moving a student to another branch still asks to confirm first.
+
+Nothing to run on the VPS beyond the new build: no migration and no SQL.
+
 ## 1.8.9 (27 October 2026)
 
 - Au pair follows the written Au pair process: 15 steps across the branch, documentation, the student mentor, the placement team, the visa team and the travel desk. Registration records the fee and the signed agreement and tells the branch the email to aupair@miak.in is theirs to send, with the text to copy; the documents in the guide are asked for and the file is handed to the documentation desk, which names a mentor. Interview preparation and mock interviews, the candidate's consent before the profile goes out, the host family search and every host family interview are recorded; a family that does not select the candidate sends the file back to interview preparation. The contract records pocket money, hours and duration and goes to the visa team, which works the pre-visa documents, checks the payments before the appointment, and records the appointment, processing and decision; an approved visa goes to the travel desk for pre-departure, departure and the arrival call.

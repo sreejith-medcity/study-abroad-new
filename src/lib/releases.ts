@@ -12,6 +12,13 @@ export type Release = { version: string; date: string; changes: string[] };
 
 export const RELEASES: Release[] = [
   {
+    version: "1.8.10",
+    date: "2026-10-27",
+    changes: [
+      "The Assign list on the students list and the student's file can be searched: type part of a name, a team or a branch and the list narrows as you type, so \"ausb\" leaves the Ausbildung team and branch and a name finds that person wherever they are. The arrow keys move, Enter picks and Escape closes. Moving a student to another branch still asks to confirm first.",
+    ],
+  },
+  {
     version: "1.8.9",
     date: "2026-10-27",
     changes: [
