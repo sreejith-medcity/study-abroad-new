@@ -772,6 +772,7 @@ export const students = pgTable(
     uniqueIndex("students_crm_id_uq").on(t.crmId),
     // A counsellor's own students: their board, their list and their team's figures.
     index("students_assigned_idx").on(t.assignedToId),
+    index("students_team_idx").on(t.teamId),
   ],
 );
 
@@ -3902,6 +3903,29 @@ export const teamMembers = pgTable(
 );
 
 /**
+ * The pathways a team carries: the Ausbildung team carries AUSBILDUNG.
+ *
+ * A student whose file gets one of these pathways, at registration or with an
+ * application, and who is not on a team yet, is put on the team that carries
+ * it, whichever branch registered them. The team then works the file
+ * alongside the branch; the branch and the counsellor stay as they were.
+ * Kept as the pathway type itself, so a pathway added to the list later can
+ * be linked here without changing this table.
+ */
+export const teamPathways = pgTable(
+  "team_pathways",
+  {
+    id: id(),
+    teamId: text("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    pathway: pathway("pathway").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("team_pathways_uq").on(t.teamId, t.pathway), index("team_pathways_pathway_idx").on(t.pathway)],
+);
+
+/**
  * Somebody with a part in this student's file besides the counsellor whose
  * file it is.
  *
@@ -3947,7 +3971,12 @@ export const serviceOwners = pgTable(
 
 export const teamsRelations = relations(teams, ({ many }) => ({
   members: many(teamMembers),
+  pathways: many(teamPathways),
   students: many(students),
+}));
+
+export const teamPathwaysRelations = relations(teamPathways, ({ one }) => ({
+  team: one(teams, { fields: [teamPathways.teamId], references: [teams.id] }),
 }));
 
 export const teamMembersRelations = relations(teamMembers, ({ one }) => ({

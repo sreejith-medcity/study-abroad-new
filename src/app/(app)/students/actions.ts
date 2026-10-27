@@ -13,6 +13,7 @@ import { ADMIN_ROLES, APP_ROLES, DESK_ASSIGNING_ROLES, PARTNER_ROLES, PROCESSING
 import { convertedStudentOwner } from "@/lib/conversion";
 import { can } from "@/server/capabilities";
 import { readAim } from "@/lib/aims";
+import { placeOnPathwayTeam } from "@/server/team-pathways";
 import { adminIds, notifyUsers, partnerRecipients, deskRecipients } from "@/server/notify";
 import { getStudentForUser } from "@/server/queries";
 import { tryMintStudentId } from "@/server/medcity-id";
@@ -224,6 +225,9 @@ export async function createStudentAction(_: FormState, formData: FormData): Pro
     throw err;
   }
   await audit(user.id, "student.create", "student", student.id, { consent: true, orgId });
+  // Registered with a pathway a team carries: the file goes on that team, so
+  // the team works it whichever branch it was registered at.
+  await placeOnPathwayTeam(student.id, user.id);
   // Registered by the desk rather than by the branch: the branch is told, so the
   // file does not sit unassigned in a list nobody is watching.
   if (isStaff(user)) {

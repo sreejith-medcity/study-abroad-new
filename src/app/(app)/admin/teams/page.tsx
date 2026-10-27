@@ -1,11 +1,13 @@
 import { requireUser } from "@/lib/auth";
 import { ADMIN_ROLES, ROLE_LABEL } from "@/lib/permissions";
-import { deskPeople, teamsWithMembers } from "@/server/teams";
+import { teamCandidates, teamsWithMembers } from "@/server/teams";
+import { schema } from "@/db";
+import { PATHWAY_LABEL } from "@/lib/catalogue";
 import { Button, Card, Chip, EmptyState, Input, PageHeader } from "@/components/ui";
 import { Section } from "@/components/section";
 import { IconPartners } from "@/components/icons";
-import { deleteTeamAction, removeTeamMemberAction, renameTeamAction, setTeamLeadAction, toggleTeamAction } from "./actions";
-import { AddMemberForm, NewTeamForm } from "./forms";
+import { deleteTeamAction, removeTeamMemberAction, renameTeamAction, setTeamLeadAction, setTeamPathwaysAction, toggleTeamAction } from "./actions";
+import { AddMemberForm, ApplyExistingForm, NewTeamForm } from "./forms";
 
 export const metadata = { title: "Teams" };
 
@@ -20,7 +22,14 @@ export const metadata = { title: "Teams" };
  */
 export default async function TeamsPage() {
   await requireUser([...ADMIN_ROLES]);
-  const [teams, people] = await Promise.all([teamsWithMembers(), deskPeople()]);
+  const [teams, people] = await Promise.all([teamsWithMembers(), teamCandidates()]);
+  // Which live teams carry each pathway, so a pathway two teams both carry
+  // can be pointed out: the portal leaves those files for a person to place.
+  const carriers = new Map<string, string[]>();
+  for (const t of teams) {
+    if (!t.active) continue;
+    for (const p of t.pathways) carriers.set(p.pathway, [...(carriers.get(p.pathway) ?? []), t.name]);
+  }
 
   return (
     <>
@@ -43,8 +52,11 @@ export default async function TeamsPage() {
             const unused = t.members.length === 0 && t.students === 0;
             const leads = members.filter((m) => m.lead);
             const inTeam = new Set(members.map((m) => m.userId));
+            const carried = new Set(t.pathways.map((p) => p.pathway as string));
+            const shared = [...carried].filter((p) => (carriers.get(p) ?? []).length > 1);
             const meta = [
               t.active ? null : "Retired",
+              carried.size ? `carries ${[...carried].map((p) => PATHWAY_LABEL[p] ?? p).join(", ")}` : null,
               `${members.length} ${members.length === 1 ? "person" : "people"}`,
               leads.length ? `led by ${leads.map((l) => l.user?.deskLabel ?? l.user?.name).join(", ")}` : "nobody leads it",
               `${t.students} ${t.students === 1 ? "student" : "students"}`,
@@ -68,12 +80,40 @@ export default async function TeamsPage() {
                   <Button variant="secondary" size="sm">Save</Button>
                 </form>
 
+                <div className="border-b border-line px-4 py-3">
+                  <form action={setTeamPathwaysAction} className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                    <input type="hidden" name="teamId" value={t.id} />
+                    <span className="text-2xs font-semibold uppercase tracking-wider text-muted">Pathways it carries</span>
+                    {schema.pathway.enumValues.map((p) => (
+                      <label key={p} className="flex items-center gap-1.5 text-sm">
+                        <input type="checkbox" name="pathway" value={p} defaultChecked={carried.has(p)} className="size-4 rounded border-line-strong accent-brand-600" />
+                        {PATHWAY_LABEL[p] ?? p}
+                      </label>
+                    ))}
+                    <Button variant="secondary" size="sm">Save</Button>
+                  </form>
+                  <p className="mt-2 text-2xs text-muted">
+                    A student who gets one of these pathways, when they are registered or with an application, and is not on a team yet, goes on this team whichever branch registered them. The team&apos;s people can then open and work the file; the branch and the counsellor stay as they are. A team chosen by hand on a file is never changed.
+                  </p>
+                  {shared.length > 0 && (
+                    <p className="mt-1 text-2xs text-warn-700">
+                      {shared.map((p) => `${PATHWAY_LABEL[p] ?? p} is also carried by ${(carriers.get(p) ?? []).filter((n) => n !== t.name).join(", ")}`).join(". ")}. Files on a pathway two teams carry are left for somebody to place by hand.
+                    </p>
+                  )}
+                  {t.active && carried.size > 0 && (
+                    <div className="mt-2">
+                      <ApplyExistingForm teamId={t.id} />
+                    </div>
+                  )}
+                </div>
+
                 <ul className="divide-y divide-line">
                   {members.length === 0 && <li className="px-4 py-3 text-sm text-muted">Nobody is in this team yet.</li>}
                   {members.map((m) => (
                     <li key={m.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-sm">
                       <span className="font-medium">{m.user?.deskLabel ?? m.user?.name}</span>
                       {m.user?.deskLabel && <span className="text-xs text-muted">{m.user?.name}</span>}
+                      <span className="text-xs text-muted">{m.user?.org?.type === "HQ" ? "Head office" : m.user?.org?.name}</span>
                       <Chip>{ROLE_LABEL[m.user?.role ?? ""] ?? m.user?.role}</Chip>
                       {m.lead && <Chip tone="gold">Leads it</Chip>}
                       <div className="ml-auto flex items-center gap-3">

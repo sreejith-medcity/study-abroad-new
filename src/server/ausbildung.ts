@@ -4,7 +4,7 @@ import type { PgColumn } from "drizzle-orm/pg-core";
 import { db, schema } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { orgScope } from "@/lib/permissions";
-import { ownStudentsOnly, ownedByPerson } from "@/server/scope";
+import { ownStudentsOnly, ownedByPerson, studentOrgScope } from "@/server/scope";
 import { AUSBILDUNG_CONTACT_AREA, AUSBILDUNG_STEPS, AUSBILDUNG_TEAM, MENTOR_PART, departmentOfStatus, moduleStanding, timedStatusCodes, type AusbildungDepartment, type ModuleState } from "@/lib/ausbildung";
 import { nclexStanding, type NclexResult } from "@/lib/nclex";
 
@@ -199,7 +199,7 @@ export async function trackerRows(user: SessionUser, f: TrackerFilters, limit = 
   // rule about whose: a counsellor without "See every student" is shown
   // their own files here too, not the whole branch's.
   const conds: (SQL | undefined)[] = [
-    orgScope(user, s.orgId),
+    studentOrgScope(user),
     await ownStudentsOnly(user),
     eq(s.archived, false),
     f.tab === "ausbildung"
@@ -306,7 +306,7 @@ export async function overTurnaroundCount(user: SessionUser) {
   const [row] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(s)
-    .where(and(orgScope(user, s.orgId), await ownStudentsOnly(user), eq(s.archived, false), isAusbildungSql, currentAusbildungOver));
+    .where(and(studentOrgScope(user), await ownStudentsOnly(user), eq(s.archived, false), isAusbildungSql, currentAusbildungOver));
   return Number(row?.n ?? 0);
 }
 

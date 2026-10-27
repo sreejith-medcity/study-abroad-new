@@ -7,6 +7,8 @@ import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { PARTNER_ROLES, STAFF_ROLES, STUDENT_WORK_ROLES, canAssignStudents, isStaff } from "@/lib/permissions";
 import { getStudentForUser } from "@/server/queries";
+import { teamToLead } from "@/server/teams";
+import { notifyUsers } from "@/server/notify";
 import { updateTracked } from "@/server/record-history";
 import type { FormState } from "@/lib/form-state";
 
@@ -89,4 +91,45 @@ export async function removePersonFromFileAction(fd: FormData) {
   await audit(user.id, "student.person.remove", "student", row.studentId, { userId: row.userId, part: row.part });
   revalidatePath(`/students/${row.studentId}`, "layout");
   revalidatePath("/students");
+}
+
+/** What a team member given a file by their lead is on it for. */
+const TEAM_PART = "Team";
+
+/**
+ * The team lead gives a team student to one of the team's members.
+ *
+ * Not the counsellor field: that is the branch's own person, and a team
+ * member usually sits at another branch or the head office. So the member is
+ * put on the file as its "Team" person, which every list and notice already
+ * reads, and the student keeps their branch and counsellor. One member at a
+ * time: giving it to somebody else takes the previous one off, though as a
+ * member of the team they can still open it.
+ */
+export async function giveToTeamMemberAction(_: FormState, fd: FormData): Promise<FormState> {
+  const user = await requireUser([...STUDENT_WORK_ROLES]);
+  const studentId = clean(fd.get("studentId"));
+  const student = await getStudentForUser(user, studentId);
+  const members = await teamToLead(user.id, student.teamId);
+  if (!members.length) return { error: "Only the lead of the team carrying this file can give it to a team member." };
+  const userId = clean(fd.get("userId"));
+  const member = members.find((m) => m.id === userId);
+  if (!member) return { error: "Pick somebody in the team." };
+  const name = member.deskLabel ?? member.name;
+
+  const current = await db.query.studentPeople.findMany({
+    where: and(eq(schema.studentPeople.studentId, studentId), eq(schema.studentPeople.part, TEAM_PART)),
+  });
+  if (current.some((c) => c.userId === userId) && current.length === 1) return { error: `${name} already has this file for the team.` };
+  await db.transaction(async (tx) => {
+    await tx.delete(schema.studentPeople).where(and(eq(schema.studentPeople.studentId, studentId), eq(schema.studentPeople.part, TEAM_PART)));
+    await tx.insert(schema.studentPeople).values({ studentId, userId, part: TEAM_PART, addedById: user.id });
+  });
+  await audit(user.id, "student.team_member", "student", studentId, { teamId: student.teamId, from: current.map((c) => c.userId), to: userId });
+  if (userId !== user.id) {
+    await notifyUsers([userId], "A team student for you", `${student.firstName} ${student.lastName}, from ${student.team?.name ?? "your team"}`, `/students/${studentId}/profile`);
+  }
+  revalidatePath(`/students/${studentId}`, "layout");
+  revalidatePath("/students");
+  return { ok: `${name} now has this file for the team.` };
 }

@@ -8,6 +8,7 @@ import { adminIds, notifyUsers } from "@/server/notify";
 import { audit } from "@/lib/audit";
 import { applyRepeat, findRepeat, routeNewEnquiry } from "@/server/enquiry-routing";
 import { ledgerCreated, updateTracked } from "@/server/record-history";
+import { placeOnPathwayTeam } from "@/server/team-pathways";
 
 /**
  * Taking a student or a lead in from Medcity's own CRM.
@@ -118,6 +119,7 @@ export async function applyIncomingStudent(incoming: IncomingStudent, actorNote:
       meta: { crmId: incoming.crmId, branch: branch.name, by: actorNote, fields: plan.changed.map((c) => c.field) },
     });
     await ledgerCreated(db, "student", [made], null, "From Medcity's CRM");
+    await placeOnPathwayTeam(made.id, null);
     return { ok: true, created: true, studentId: made.id, medcityId: made.medcityId, plan };
   }
 
@@ -144,6 +146,7 @@ export async function applyIncomingStudent(incoming: IncomingStudent, actorNote:
       meta: { crmId: incoming.crmId, by: actorNote, changed: plan.changed, ignored: plan.ignored },
     });
   }
+  if (plan.changed.some((c) => c.field === "preferredPathway")) await placeOnPathwayTeam(student.id, null);
   return { ok: true, created: false, studentId: student.id, medcityId: student.medcityId, plan };
 }
 

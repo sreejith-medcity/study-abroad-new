@@ -10,7 +10,7 @@ import { fmtDate, fullName } from "@/lib/format";
 import { assignableFor, counsellorOptions, orgUsers, readFilters, studentListExtras, studentWhere } from "@/server/queries";
 import { programmesSummary } from "@/lib/student-list";
 import { CountryNames } from "./country-names";
-import { peopleOnFiles } from "@/server/teams";
+import { livingTeams, peopleOnFiles, teamsOf } from "@/server/teams";
 import { Card, Chip, EmptyState, LinkButton, PageHeader, Table, Td, Th } from "@/components/ui";
 import { FilterBar } from "@/components/filter-bar";
 import { OwnFilesNote } from "@/components/own-files-note";
@@ -52,6 +52,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
       medcityId: s.medcityId,
       orgId: s.orgId,
       orgName: schema.organizations.name,
+      teamName: sql<string | null>`(select t.name from teams t where t.id = ${s.teamId})`,
       assignedToId: s.assignedToId,
       createdByDesk: sql<string | null>`coalesce(creator.desk_label, creator.name)`,
       source: s.source,
@@ -98,6 +99,12 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
   const countries = await db.select().from(schema.countries).orderBy(asc(schema.countries.name));
   const orgs = staff ? await db.select().from(schema.organizations).where(sql`type <> 'HQ'`).orderBy(asc(schema.organizations.name)) : [];
   const canWrite = user.role !== "MANAGEMENT";
+  // The teams the Team filter offers: every live one for the head office, and
+  // the ones a branch user is in, whose files from other branches appear here.
+  const teamOptions = staff ? await livingTeams() : await teamsOf(user.id);
+  // A file from another branch is on this list because this person is in the
+  // team carrying it. They work it; its branch still runs who it belongs to.
+  const elsewhere = (r: { orgId: string }) => !staff && r.orgId !== user.orgId;
   // Shown only to somebody the screen will actually let through: being offered
   // a button and then refused by it is how this was reported in the first place.
   const canRegister = await can(user, "REGISTER_STUDENT");
@@ -160,6 +167,9 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
               { value: "BFD", label: "BFD (Germany)" },
             ],
           },
+          ...(teamOptions.length
+            ? [{ kind: "select" as const, name: "team", label: "Team", options: teamOptions.map((t) => ({ value: t.id, label: t.name })) }]
+            : []),
           { kind: "select", name: "country", label: "Country", options: countries.map((c) => ({ value: c.name, label: c.name })) },
           { kind: "date", name: "from", label: "Created from" },
           { kind: "date", name: "to", label: "Created to" },
@@ -229,10 +239,10 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                         sub-agent's name like "Horizon Consultants, Thrissur"
                         was the widest thing in the row. */}
                     <span className="block max-w-[10rem]">
-                      {staff ? r.orgName : r.createdByDesk}
+                      {staff || elsewhere(r) ? r.orgName : r.createdByDesk}
                       {r.source !== "partner" && <Chip className="ml-1">{r.source.toUpperCase()}</Chip>}
                     </span>
-                    {staff && (
+                    {(staff || elsewhere(r)) && (
                       <span className="block text-2xs text-muted">{r.createdByDesk ?? "Not recorded"}</span>
                     )}
                   </Td>
@@ -240,6 +250,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                   <Td>
                     <Link href={`/students/${r.id}/profile`} className="whitespace-nowrap font-medium text-ink hover:text-brand-600 hover:underline">{fullName(r)}</Link>
                     {r.medcityId && <span className="block font-mono text-2xs text-muted">{r.medcityId}</span>}
+                    {r.teamName && <span className="block text-2xs text-muted">{r.teamName} team</span>}
                   </Td>
                   <Td className="hidden min-[1680px]:table-cell">
                     <CountryNames applied={extras.get(r.id)?.countries ?? []} preferred={r.preferredCountry} className="w-[6.5rem]" />
@@ -265,7 +276,10 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                       )}
                     </div>
                   </Td>
-                  {canAssign && (
+                  {canAssign && elsewhere(r) && (
+                    <Td className="text-xs text-muted">Team file, run by {r.orgName}</Td>
+                  )}
+                  {canAssign && !elsewhere(r) && (
                     <Td>
                       <RowAssign studentId={r.id} current={r.assignedToId ?? ""} label={`Assign ${fullName(r)}`}>
                         <option value="">Unassigned</option>
@@ -354,7 +368,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                     )}
                   </Td>
                   <Td>
-                    {canWrite && (user.role === "PARTNER" || isAdmin(user)) && (
+                    {canWrite && !elsewhere(r) && (user.role === "PARTNER" || isAdmin(user)) && (
                       <form action={archiveStudentAction}>
                         <input type="hidden" name="studentId" value={r.id} />
                         <button className="text-xs text-muted hover:text-stop-500" title={r.appCount === 0 ? "Delete student with no applications" : archived ? "Restore" : "Archive"}>

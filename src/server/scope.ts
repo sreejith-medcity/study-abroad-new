@@ -98,10 +98,11 @@ const hasUnassignedFile = () =>
 /**
  * A student is theirs if they registered them, if they counsel them, if they
  * are the officer on their file, if they have checked a document on it, if
- * they have been put on the file by name, or, for the documentation desk, if
- * the branch has handed the file to the desk. Whoever hands out the desk's
- * files also has the students with a file waiting for an officer
- * (`seesUnassigned`, from the capability of that name).
+ * they have been put on the file by name, if they are in the team carrying
+ * it, or, for the documentation desk, if the branch has handed the file to
+ * the desk. Whoever hands out the desk's files also has the students with a
+ * file waiting for an officer (`seesUnassigned`, from the capability of that
+ * name).
  *
  * A student nobody has been given to is not, by that alone, anybody's. The
  * rule used to open every unassigned student of a branch to every counsellor
@@ -126,6 +127,7 @@ const hasUnassignedFile = () =>
  */
 function theirs(user: Viewer, seesUnassigned = false): SQL {
   return or(
+    onTheirTeam(user),
     isDocumentationTeam(user) ? handedToTheDesk() : undefined,
     seesUnassigned ? hasUnassignedFile() : undefined,
     eq(schema.students.createdById, user.id),
@@ -156,8 +158,60 @@ function theirs(user: Viewer, seesUnassigned = false): SQL {
   )!;
 }
 
-/** The organisation a person's lists are bounded by: none for the desk, their own for everybody else. */
-const orgOf = (user: Viewer) => (isStaff(user) ? undefined : eq(schema.students.orgId, user.orgId));
+/**
+ * A student on a team this person is in.
+ *
+ * The work divides by pathway before it divides by branch: an Ausbildung
+ * student registered at Kannur is worked by the Ausbildung team, whichever
+ * branch its people sit at. So a member of the team carrying a file may open
+ * it and see it in their lists, wherever it was registered. The lead and the
+ * members alike: the point of the team is that it works its files together,
+ * and the lead hands one to a particular member on the file itself.
+ *
+ * This is shared working, not a transfer. The student stays at their branch
+ * with their counsellor, and the branch sees them exactly as before. A
+ * retired team opens nothing: its files keep its name, but nobody is working
+ * them as that team any more.
+ */
+export function onTheirTeam(user: Pick<Viewer, "id">): SQL {
+  return exists(
+    db
+      .select({ one: sql`1` })
+      .from(schema.teamMembers)
+      .innerJoin(schema.teams, eq(schema.teams.id, schema.teamMembers.teamId))
+      .where(
+        and(
+          eq(schema.teamMembers.teamId, schema.students.teamId),
+          eq(schema.teamMembers.userId, user.id),
+          eq(schema.teams.active, true),
+        ),
+      ),
+  );
+}
+
+/** Whether this person is in the live team carrying this one student. */
+async function onStudentsTeam(userId: string, studentId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ one: sql`1` })
+    .from(schema.students)
+    .where(and(eq(schema.students.id, studentId), onTheirTeam({ id: userId })))
+    .limit(1);
+  return !!row;
+}
+
+/**
+ * The organisation a person's lists are bounded by: none for the desk, their
+ * own for everybody else, and beyond it only the files of a team they are in.
+ */
+const orgOf = (user: Viewer) => (isStaff(user) ? undefined : or(eq(schema.students.orgId, user.orgId), onTheirTeam(user)));
+
+/**
+ * The same bound, for the lists that apply their own organisation filter
+ * before `ownStudentsOnly`: the students list, the Ausbildung and FSJ
+ * trackers. Without it they would stop a team member at their own branch
+ * while the file itself opened.
+ */
+export const studentOrgScope = (user: Viewer): SQL | undefined => orgOf(user);
 
 /**
  * One person's own students, exactly as their students list shows them when
@@ -201,7 +255,8 @@ export async function ownStudentsOnly(user: SessionUser): Promise<SQL | undefine
  */
 export async function mayOpenStudent(user: Viewer, student: { orgId: string; assignedToId: string | null; id: string; createdById?: string | null }) {
   if (!(APP_ROLES as readonly string[]).includes(user.role)) return false;
-  if (!isStaff(user) && student.orgId !== user.orgId) return false;
+  // Another branch's student opens only to a member of the team carrying it.
+  if (!isStaff(user) && student.orgId !== user.orgId) return onStudentsTeam(user.id, student.id);
   if (await can(user, "SEE_EVERY_STUDENT")) return true;
   if (student.createdById === user.id) return true;
   if (student.assignedToId === user.id) return true;
@@ -233,7 +288,8 @@ export async function mayOpenStudent(user: Viewer, student: { orgId: string; ass
     where: and(eq(schema.studentPeople.studentId, student.id), eq(schema.studentPeople.userId, user.id)),
     columns: { id: true },
   });
-  return !!onFile;
+  if (onFile) return true;
+  return onStudentsTeam(user.id, student.id);
 }
 
 /**
@@ -249,7 +305,7 @@ export async function whoMayOpenStudent(studentId: string, userIds: string[]): P
   if (!userIds.length) return [];
   const student = await db.query.students.findFirst({
     where: eq(schema.students.id, studentId),
-    columns: { id: true, orgId: true, assignedToId: true, createdById: true },
+    columns: { id: true, orgId: true, assignedToId: true, createdById: true, teamId: true },
   });
   if (!student) return [];
   const people = await db
@@ -267,10 +323,26 @@ export async function whoMayOpenStudent(studentId: string, userIds: string[]): P
   const seesEvery = new Map<string, boolean>();
   for (const p of people) if (!seesEvery.has(p.role)) seesEvery.set(p.role, roleCan(p.role, "SEE_EVERY_STUDENT", set));
 
+  // The members of the live team carrying the file, which opens it to them
+  // at any branch: one query for all of them.
+  const team = new Set<string>();
+  if (student.teamId) {
+    const members = await db
+      .select({ id: schema.teamMembers.userId })
+      .from(schema.teamMembers)
+      .innerJoin(schema.teams, eq(schema.teams.id, schema.teamMembers.teamId))
+      .where(and(eq(schema.teamMembers.teamId, student.teamId), eq(schema.teams.active, true), inArray(schema.teamMembers.userId, userIds)));
+    for (const m of members) team.add(m.id);
+  }
+
   const open = new Set<string>();
   const undecided: typeof people = [];
   for (const p of people) {
     if (!(APP_ROLES as readonly string[]).includes(p.role)) continue;
+    if (team.has(p.id)) {
+      open.add(p.id);
+      continue;
+    }
     if (!isStaff(p) && student.orgId !== p.orgId) continue;
     if (seesEvery.get(p.role) || student.createdById === p.id || student.assignedToId === p.id) {
       open.add(p.id);

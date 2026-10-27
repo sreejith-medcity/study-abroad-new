@@ -69,6 +69,7 @@ export default async function StudentLayout({ children, params }: { children: Re
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-lg font-semibold">{fullName(student)}</h1>
             {student.preferredPathway && <Chip tone="info">{aimLabel(student.preferredPathway, student.preferredLevel) ?? student.preferredPathway}</Chip>}
+            {student.team && <Chip>{student.team.name} team{student.team.active ? "" : " (retired)"}</Chip>}
             {student.profileLocked && <Chip tone="warn">Profile locked</Chip>}
           </div>
           {student.medcityId ? (
@@ -96,7 +97,9 @@ export default async function StudentLayout({ children, params }: { children: Re
             </div>
           )}
           <p className="mt-2 text-xs text-muted">
-            {isStaff(user) ? `${student.org.name} · ` : ""}Assigned to {student.assignedTo ? student.assignedTo.deskLabel ?? student.assignedTo.name : "nobody"}
+            {/* A team member at another branch is working this file with its
+                own branch, so the branch is named for them as for the desk. */}
+            {isStaff(user) || student.orgId !== user.orgId ? `${student.org.name} · ` : ""}Assigned to {student.assignedTo ? student.assignedTo.deskLabel ?? student.assignedTo.name : "nobody"}
             {` · Registered ${fmtDate(student.createdAt)}`}
             {student.consentAt ? " · Consent recorded" : " · No consent on file"}
           </p>

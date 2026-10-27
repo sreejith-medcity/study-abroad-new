@@ -9,6 +9,7 @@ import { z } from "zod";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/auth";
 import { can } from "@/server/capabilities";
+import { placeOnPathwayTeam } from "@/server/team-pathways";
 import { waiveRefusal } from "@/lib/journey";
 import { audit } from "@/lib/audit";
 import { nextAckNo } from "@/lib/ack";
@@ -129,6 +130,8 @@ export async function createApplicationAction(_: FormState, formData: FormData):
   const fsjStep = isFsjPathway(program.pathway) ? fsjStepOf(first.code) : null;
   if (fsjStep) await raiseFsjInstalments(student.id, fsjStep.step, user.id);
   if (!student.preferredPathway) await updateTracked("student", student.id, { preferredPathway: program.pathway }, { by: user.id, action: "student.pathway_from_application" });
+  // Any application can be the one that brings a team's pathway to the file.
+  await placeOnPathwayTeam(student.id, user.id);
 
   const deadline = await db.query.programDeadlines.findFirst({
     where: and(eq(schema.programDeadlines.programId, program.id), eq(schema.programDeadlines.intakeYear, year), eq(schema.programDeadlines.intakeMonth, month)),

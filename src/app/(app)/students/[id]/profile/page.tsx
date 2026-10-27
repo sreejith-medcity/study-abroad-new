@@ -15,9 +15,9 @@ import { aiFeatureOn } from "@/server/ai";
 import { guardiansFor, GUARDIAN_LIMIT } from "@/server/family";
 import { AddGuardianForm, GuardianRowActions, ResetGuardianForm } from "@/components/family-forms";
 import { AutofillPanel } from "./autofill";
-import { livingTeams, peopleOnFile, peopleToAdd } from "@/server/teams";
+import { livingTeams, peopleOnFile, peopleToAdd, teamToLead } from "@/server/teams";
 import { removePersonFromFileAction, setStudentTeamAction } from "./team-actions";
-import { AddPersonForm } from "./team-panel";
+import { AddPersonForm, GiveToTeamMemberForm } from "./team-panel";
 
 export const metadata = { title: "Student profile" };
 
@@ -75,7 +75,11 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
     the business carries a file is not a branch's call.
   */
   const staffHere = isStaff(user);
-  const mayAssign = canAssignStudents(user);
+  // A team member from another branch works the file but does not run it:
+  // who else is on it is the student's own branch's call, and the people a
+  // branch user could add are their own branch's, who could not open it.
+  const otherBranch = !staffHere && student.orgId !== user.orgId;
+  const mayAssign = canAssignStudents(user) && !otherBranch;
   // What they asked for before they were a student. The enquiry already
   // points at this file; it was simply never shown here, so the desk read a
   // registration with none of the conversation that led to it.
@@ -84,11 +88,14 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
     with: { notes: { orderBy: desc(schema.enquiryNotes.createdAt), limit: 20 } },
   });
 
-  const [teams, onFile, staff] = await Promise.all([
+  const [teams, onFile, staff, teamMembers] = await Promise.all([
     staffHere ? livingTeams() : Promise.resolve([]),
     peopleOnFile(id),
     mayAssign ? peopleToAdd(user) : Promise.resolve([]),
+    // The team's people, when this person leads the team carrying the file.
+    teamToLead(user.id, student.teamId),
   ]);
+  const leadsTeam = teamMembers.length > 0 && !!student.team;
 
   // One source for the row at the top and for whether each part opens folded.
   // A part that is done folds away; a part still wanting something stays open,
@@ -311,7 +318,7 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
         </Section>
       )}
 
-      {(staffHere || mayAssign) && (
+      {(staffHere || mayAssign || leadsTeam) && (
         <Section
           id="team"
           title={staffHere ? "Team and who is on this file" : "Who is on this file"}
@@ -344,6 +351,17 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
               Which part of the business carries this student: Ausbildung, Austria, the UK desk. The queues can be read one team at a time.
             </p>
           </form>
+          )}
+
+          {leadsTeam && student.team && (
+            <div className="border-b border-line px-4 py-3">
+              <GiveToTeamMemberForm
+                studentId={id}
+                teamName={student.team.name}
+                members={teamMembers}
+                current={onFile.find((r) => r.part === "Team" && teamMembers.some((m) => m.id === r.userId))?.userId ?? ""}
+              />
+            </div>
           )}
 
           <ul className="divide-y divide-line">

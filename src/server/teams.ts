@@ -1,7 +1,7 @@
 import "server-only";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { STAFF_ROLES, isStaff } from "@/lib/permissions";
+import { STAFF_ROLES, STUDENT_WORK_ROLES, isStaff } from "@/lib/permissions";
 import type { SessionUser } from "@/lib/auth";
 import { orgUsers } from "@/server/queries";
 import type { ServiceType } from "@/lib/services";
@@ -11,8 +11,14 @@ export async function teamsWithMembers() {
   const teams = await db.query.teams.findMany({
     with: {
       members: {
-        with: { user: { columns: { id: true, name: true, email: true, role: true, deskLabel: true, active: true } } },
+        with: {
+          user: {
+            columns: { id: true, name: true, email: true, role: true, deskLabel: true, active: true },
+            with: { org: { columns: { name: true, type: true } } },
+          },
+        },
       },
+      pathways: { columns: { pathway: true } },
     },
     orderBy: [sql`${schema.teams.active} desc`, asc(schema.teams.name)],
   });
@@ -53,6 +59,59 @@ export async function deskPeople() {
 export async function peopleToAdd(user: SessionUser) {
   if (isStaff(user)) return deskPeople();
   return (await orgUsers(user.orgId)).map((p) => ({ ...p, role: "" }));
+}
+
+/**
+ * Everybody who can be put in a team: the desk, and the branches' own people.
+ *
+ * A team carries its files across branches, so the people who work them can
+ * sit anywhere: the Ausbildung team is the head office's Ausbildung desk and
+ * the Kottayam counsellors who have always done Ausbildung. Sub-agents are
+ * left out: a team member opens every file the team carries, and a
+ * sub-agent's people are not Medcity's.
+ */
+export async function teamCandidates() {
+  const u = schema.users;
+  const o = schema.organizations;
+  const rows = await db
+    .select({ id: u.id, name: u.name, deskLabel: u.deskLabel, role: u.role, orgName: o.name, orgType: o.type })
+    .from(u)
+    .innerJoin(o, eq(o.id, u.orgId))
+    .where(and(eq(u.active, true), inArray(u.role, [...STUDENT_WORK_ROLES]), inArray(o.type, ["HQ", "BRANCH"])))
+    .orderBy(sql`${o.type} = 'HQ' desc`, asc(o.name), asc(u.name));
+  return rows.map((r) => ({ ...r, headOffice: r.orgType === "HQ" }));
+}
+
+/** The teams this person is in, live ones only: what a branch user's Team filter offers. */
+export async function teamsOf(userId: string) {
+  return db
+    .select({ id: schema.teams.id, name: schema.teams.name })
+    .from(schema.teamMembers)
+    .innerJoin(schema.teams, eq(schema.teams.id, schema.teamMembers.teamId))
+    .where(and(eq(schema.teamMembers.userId, userId), eq(schema.teams.active, true)))
+    .orderBy(asc(schema.teams.name));
+}
+
+/**
+ * The members of the live team carrying this student, when this person leads
+ * it, for the lead's "give to a team member" control. Empty for everybody
+ * else, which is also what keeps the control off their screen.
+ */
+export async function teamToLead(userId: string, teamId: string | null) {
+  if (!teamId) return [];
+  const mine = await db
+    .select({ one: sql`1` })
+    .from(schema.teamMembers)
+    .innerJoin(schema.teams, eq(schema.teams.id, schema.teamMembers.teamId))
+    .where(and(eq(schema.teamMembers.teamId, teamId), eq(schema.teamMembers.userId, userId), eq(schema.teamMembers.lead, true), eq(schema.teams.active, true)))
+    .limit(1);
+  if (!mine.length) return [];
+  return db
+    .select({ id: schema.users.id, name: schema.users.name, deskLabel: schema.users.deskLabel })
+    .from(schema.teamMembers)
+    .innerJoin(schema.users, eq(schema.users.id, schema.teamMembers.userId))
+    .where(and(eq(schema.teamMembers.teamId, teamId), eq(schema.users.active, true), inArray(schema.users.role, [...STUDENT_WORK_ROLES])))
+    .orderBy(asc(schema.users.name));
 }
 
 /** Who has a part in this student's file, besides the counsellor it belongs to. */

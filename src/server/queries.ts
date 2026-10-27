@@ -2,7 +2,7 @@ import "server-only";
 import { DEADLINE_TYPES } from "@/lib/deadline-types";
 import { and, asc, eq, gte, ilike, inArray, isNull, lte, or, sql, type SQL } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { mayOpenStudent, ownApplicationsOnly, ownStudentsOnly, ownedByPerson, unassignedFile } from "@/server/scope";
+import { mayOpenStudent, ownApplicationsOnly, ownStudentsOnly, ownedByPerson, studentOrgScope, unassignedFile } from "@/server/scope";
 import { UNASSIGNED } from "@/lib/unassigned-files";
 import { idSearchKey, looksLikeStudentId } from "@/lib/medcity-id";
 import { db, schema } from "@/db";
@@ -172,7 +172,7 @@ export function applicationsBase() {
 export async function getStudentForUser(user: SessionUser, id: string) {
   const student = await db.query.students.findFirst({
     where: eq(s.id, id),
-    with: { assignedTo: true, org: true },
+    with: { assignedTo: true, org: true, team: { columns: { id: true, name: true, active: true } } },
   });
   if (!student) notFound();
   // Not found rather than refused, so a counsellor cannot learn who exists at
@@ -184,9 +184,11 @@ export async function getStudentForUser(user: SessionUser, id: string) {
 export async function getApplicationForUser(user: SessionUser, id: string) {
   const app = await db.query.applications.findFirst({ where: eq(a.id, id) });
   if (!app) notFound();
-  if (!isStaff(user) && app.orgId !== user.orgId) notFound();
   // createdById included: whoever registered the student keeps their file.
   const student = await db.query.students.findFirst({ where: eq(s.id, app.studentId), columns: { id: true, orgId: true, assignedToId: true, createdById: true } });
+  // Another branch's application only where its student is, which for a
+  // branch means a student on a team this person is in.
+  if (!isStaff(user) && app.orgId !== user.orgId && app.orgId !== student?.orgId) notFound();
   if (!student || !(await mayOpenStudent(user, student))) notFound();
   return app;
 }
@@ -238,7 +240,9 @@ export async function assignableFor(orgIds: string[], opts: { includeHeadOffice:
 export async function studentWhere(user: SessionUser, f: Record<string, string | undefined>) {
   const st = schema.students;
   return and(
-    isStaff(user) ? (f.org ? eq(st.orgId, f.org) : undefined) : eq(st.orgId, user.orgId),
+    // A branch sees its own students, and another branch's only where they
+    // are on a team this person is in.
+    isStaff(user) ? (f.org ? eq(st.orgId, f.org) : undefined) : studentOrgScope(user),
     await ownStudentsOnly(user),
     // One named person's own students, which is how a counsellor's dashboard
     // opens the list behind a figure when the plain list would show more.

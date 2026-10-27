@@ -3,7 +3,7 @@
 import { ActionForm } from "@/components/action-form";
 import { TextField } from "@/components/fields";
 import { Button, Select } from "@/components/ui";
-import { addTeamMemberAction, createTeamAction } from "./actions";
+import { addTeamMemberAction, applyTeamToExistingAction, createTeamAction } from "./actions";
 
 export function NewTeamForm() {
   return (
@@ -14,7 +14,16 @@ export function NewTeamForm() {
   );
 }
 
-export function AddMemberForm({ teamId, people }: { teamId: string; people: { id: string; name: string; deskLabel: string | null }[] }) {
+type Candidate = { id: string; name: string; deskLabel: string | null; orgName: string; headOffice: boolean };
+
+export function AddMemberForm({ teamId, people }: { teamId: string; people: Candidate[] }) {
+  // Grouped by where they sit, head office first: a team carries files across
+  // branches, so its people can come from any of them.
+  const groups = new Map<string, Candidate[]>();
+  for (const p of people) {
+    const key = p.headOffice ? "Head office" : p.orgName;
+    groups.set(key, [...(groups.get(key) ?? []), p]);
+  }
   return (
     <ActionForm action={addTeamMemberAction} hideSubmit className="space-y-2" resetOnSuccess>
       <input type="hidden" name="teamId" value={teamId} />
@@ -26,10 +35,14 @@ export function AddMemberForm({ teamId, people }: { teamId: string; people: { id
           <option value="" disabled>
             Add somebody
           </option>
-          {people.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.deskLabel ?? p.name}
-            </option>
+          {[...groups].map(([where, list]) => (
+            <optgroup key={where} label={where}>
+              {list.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.deskLabel ?? p.name}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </Select>
         <label className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-wider text-muted">
@@ -40,6 +53,15 @@ export function AddMemberForm({ teamId, people }: { teamId: string; people: { id
           Add
         </Button>
       </div>
+    </ActionForm>
+  );
+}
+
+/** The one-off run over the files already in the portal, with what it did. */
+export function ApplyExistingForm({ teamId }: { teamId: string }) {
+  return (
+    <ActionForm action={applyTeamToExistingAction} submitLabel="Apply to existing students" className="space-y-2">
+      <input type="hidden" name="teamId" value={teamId} />
     </ActionForm>
   );
 }

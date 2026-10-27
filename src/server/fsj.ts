@@ -21,7 +21,7 @@ import {
   type FsjPathway,
   type VisaFacts,
 } from "@/lib/fsj";
-import { ownStudentsOnly, ownedByPerson } from "@/server/scope";
+import { ownStudentsOnly, ownedByPerson, studentOrgScope } from "@/server/scope";
 import { effectivePayments } from "@/lib/fsj-fees";
 import { fsjFeeFacts, fsjPaymentsFor, fsjPlanPaymentsFor, type MarkedColumns } from "@/server/fsj-fees";
 import { stageGate, studentChecklist, studentContext, syncChecklist } from "@/server/documentation";
@@ -306,7 +306,7 @@ export type FsjTrackerFilters = {
  * for FSJ or BFD with no application yet are listed too, as not started.
  */
 export async function fsjTrackerRows(user: SessionUser, f: FsjTrackerFilters, limit = 300) {
-  const conds: (SQL | undefined)[] = [orgScope(user, s.orgId), await ownStudentsOnly(user), eq(s.archived, false), isFsjSql];
+  const conds: (SQL | undefined)[] = [studentOrgScope(user), await ownStudentsOnly(user), eq(s.archived, false), isFsjSql];
   if (f.org) conds.push(eq(s.orgId, f.org));
   if (f.of) conds.push(await ownedByPerson(f.of));
   if (f.q?.trim()) {

@@ -9,6 +9,7 @@ import { reserveStudentIds } from "@/server/medcity-id";
 import { branchOwner, branchResolver, emptyResult, lineOf, phoneKey, staffByEmail, type ImportResult } from "./common";
 import { isCounsellor } from "@/lib/permissions";
 import { ledgerCreated, updateTracked } from "@/server/record-history";
+import { placeOnPathwayTeam } from "@/server/team-pathways";
 
 export const STUDENT_COLUMNS = [
   "branch", "name", "first_name", "last_name", "email", "phone", "counsellor_email", "consent",
@@ -200,6 +201,8 @@ export async function importStudents(user: SessionUser, rows: Row[], commit: boo
   for (const id of orgIds) owners.set(id, (await branchOwner(id))?.id ?? null);
 
   const toCreate: { plan: Plan; assignedToId: string | null; id: string }[] = [];
+  // Files this sheet gave a pathway to, so they can be put on the team that carries it.
+  const filled: string[] = [];
   for (const plan of plans) {
     let assignedToId: string | null = null;
     if (plan.counsellorEmail) {
@@ -259,6 +262,7 @@ export async function importStudents(user: SessionUser, rows: Row[], commit: boo
     if (newAcademics.length) await db.insert(schema.academicRecords).values(newAcademics.map((a) => ({ ...a, institution: a.institution!, studentId: current.id })));
     if (newTests.length) await db.insert(schema.testScores).values(newTests.map((t) => ({ ...t, studentId: current.id })));
     await audit(user.id, "student.profile.update", "student", current.id, { source: "bulk upload", fields: Object.keys(set) });
+    if (set.preferredPathway) filled.push(current.id);
   }
 
   // New students go in batches, so a sheet of thousands stays within the host's request time.
@@ -317,6 +321,10 @@ export async function importStudents(user: SessionUser, rows: Row[], commit: boo
     if (academics.length) await db.insert(schema.academicRecords).values(academics);
     if (tests.length) await db.insert(schema.testScores).values(tests);
     await db.insert(schema.auditLogs).values(made.map((m) => ({ actorId: user.id, action: "student.create", entityType: "student", entityId: m.id, meta: { source: "bulk upload" } })));
+    filled.push(...made.map((m) => m.id));
   }
+  // Every file the sheet gave a pathway to, new or filled in, goes on the team
+  // that carries it, the same as a student registered on the form.
+  await placeOnPathwayTeam(filled, user.id);
   return out;
 }
