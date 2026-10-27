@@ -12,8 +12,8 @@
  * When each instalment falls due is the one thing the sheet says in words
  * ("After Receiving Offer Letter", "Before Visa Submission"), so it is tied to
  * the matching step (src/lib/fee-steps.ts): a journey stage, an Ausbildung
- * step or an NCLEX-RN step. Finance can
- * change any of it on the Fee plans screen.
+ * step, an NCLEX-RN step or an FSJ / BFD step. Finance can change any of it
+ * on the Fee plans screen.
  *
  * These are put in by the "Migration for student fees" migration, once each,
  * by their key. Editing this list does not change plans already in a
@@ -21,6 +21,7 @@
  */
 import type { JourneyStage } from "@/db/schema";
 import type { NclexStepKey } from "./nclex";
+import { FSJ_FEE_PATHWAY } from "./fee-steps";
 import type { FeePlanItem } from "./student-fees";
 
 export type StarterPlan = {
@@ -46,8 +47,16 @@ const atStep = (label: string, amount: number, pathway: string, stepKey: string,
 const atStage = (label: string, amount: number, stage: JourneyStage) => atStep(label, amount, "JOURNEY", stage);
 const atAusbildung = (label: string, amount: number, step: number) => atStep(label, amount, "AUSBILDUNG", String(step));
 const atNclex = (label: string, amount: number, step: NclexStepKey, gst?: number | null) => atStep(label, amount, "NCLEX", step, gst);
+const atFsj = (label: string, amount: number, step: number) => atStep(label, amount, FSJ_FEE_PATHWAY, String(step));
 
 /*
+ * FSJ / BFD steps used below, from src/lib/fsj.ts: 2 is "Registration and
+ * agreement", 6 is "Payment status check and application start" (the
+ * application fee is checked there before the application starts), 10 is
+ * "Employer confirmation and contract" (the offer letter) and 12 is "Visa
+ * document preparation" (the pre-visa payment is verified there, before the
+ * visa is submitted at step 13).
+ *
  * Ausbildung steps used below, from src/lib/ausbildung.ts: 9 is "Profile
  * submission to employers" (the application), 11 is "Training contract" (the
  * offer letter) and 12 is "Pre-visa documentation" (before the visa is
@@ -62,10 +71,10 @@ export const STARTER_PLANS: StarterPlan[] = [
     note: "Airfare not included.",
     gstPercent: 18,
     items: [
-      on("Registration", 10000),
-      atStage("Application", 200000, "APPLICATION"),
-      atStage("After Receiving Offer Letter", 200000, "OFFER"),
-      atStage("Before Visa Submission", 90000, "VISA"),
+      atFsj("Registration", 10000, 2),
+      atFsj("Application", 200000, 6),
+      atFsj("After Receiving Offer Letter", 200000, 10),
+      atFsj("Before Visa Submission", 90000, 12),
     ],
   },
   {

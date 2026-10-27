@@ -75,10 +75,13 @@ status through `changeStatus` and tells the department that has the file next.
   no pass mark. Not sufficient sends the file to improvement classes (step 7);
   it is re-assessed from there, and every assessment is kept.
 - **Fees (step 6).** The payment check starts the application only when the
-  registration and application fees are both marked paid; otherwise the file is
-  on hold and the counsellor and branch head are told. The same gate stops any
+  registration and application fees are both paid; otherwise the file is on
+  hold and the counsellor and branch head are told. The same gate stops any
   status move onto a started-application status, from any screen. When the
-  branch marks the fees paid, the documentation team is told to start it.
+  fees come in, the documentation team is told to start it. Where the student
+  has a fee plan with instalments on the FSJ / BFD steps (see "Fees" below),
+  each fee is paid when its invoice is paid in full; otherwise the branch marks
+  the day it was paid on the tab.
 - **Interview (steps 8 and 9).** Scheduling needs the application started and
   the latest assessment sufficient, and records the employer, date and time,
   link, responsibilities and requirements. Feedback is positive, a second round
@@ -92,6 +95,23 @@ status through `changeStatus` and tells the department that has the file next.
   candidate, closed as visa rejected if not.
 - **Travel desk (steps 16 to 18).** The guide's checklists, the departure date,
   and the follow-up, which starts with the happy call.
+
+## Fees
+
+Student fees can wait on the FSJ / BFD steps (`src/lib/fee-steps.ts`, pathway
+`FSJ_BFD`, shared by both programmes): an instalment falls due when the file
+reaches its step or any later one. The "FSJ and BFD, Germany" starter fee plan
+is tied to the steps its fee sheet names, with the sheet's amounts: the
+registration fee at registration (step 2), the application fee at the payment
+check where the application starts (step 6), the offer-letter stage at the
+offer and contract (step 10) and the pre-visa payment at visa document
+preparation (step 12), where it is verified before VFS.
+
+With such a plan, the tab's Payments card, the registration step, the fee gate
+and the pre-visa check read the student's fee invoices (`src/lib/fsj-fees.ts`):
+a stage is paid on the day its invoice is paid in full. A stage the plan has no
+instalment for, and every stage of a student without one, keeps the day marked
+paid on the tab.
 
 ## Hand-overs and the ledger
 
@@ -127,6 +147,7 @@ migration that adds the pathways. Safe to run twice.
   but asked for without holding the file up, since not every candidate holds
   one. To confirm with the head office.
 - The emails themselves.
-- Amounts for the payment stages: the guide gives none, so only the dates paid
-  are recorded here; money is on the Income tab.
+- Amounts for the payment stages: the guide gives none. The amounts are the fee
+  sheet's, on the starter fee plan; without a fee plan only the days paid are
+  recorded here.
 - Malayalam for the new statuses, document types and the portal card.

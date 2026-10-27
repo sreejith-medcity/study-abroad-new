@@ -4,16 +4,17 @@
  * steps are, how each reads in words and when the file has reached one.
  *
  * The journey stages (src/lib/journey.ts), the Ausbildung guide's steps
- * (src/lib/ausbildung.ts) and the NCLEX-RN placement steps (src/lib/nclex.ts)
- * are here today. Another pathway with its own process is added by adding an
- * entry: the database stores only the pathway and the key, so nothing else
- * changes.
+ * (src/lib/ausbildung.ts), the NCLEX-RN placement steps (src/lib/nclex.ts)
+ * and the FSJ / BFD process steps (src/lib/fsj.ts) are here today. Another
+ * pathway with its own process is added by adding an entry: the database
+ * stores only the pathway and the key, so nothing else changes.
  */
 
 import type { JourneyStage } from "@/db/schema";
 import { STAGES, STAGE_ORDER } from "./journey";
 import { AUSBILDUNG_STEPS } from "./ausbildung";
 import { NCLEX_STEPS, type NclexStepKey } from "./nclex";
+import { FSJ_STEPS } from "./fsj";
 
 export type FeeStepOption = { key: string; label: string };
 
@@ -77,6 +78,19 @@ export function nclexStepReached(instalmentStep: NclexStepKey, completed: NclexS
   return !NCLEX_STEPS[s].after && s <= c;
 }
 
+/**
+ * FSJ and BFD follow one written process (src/lib/fsj.ts), so they share one
+ * entry: an instalment waits for a step of that process whichever of the two
+ * the student is on. Stored on plans and instalments, so it never changes.
+ */
+export const FSJ_FEE_PATHWAY = "FSJ_BFD";
+
+/** The FSJ / BFD steps an instalment can wait for: the ones a status can put a file at. */
+export const FSJ_TRIGGER_STEPS = FSJ_STEPS.filter((s) => s.statusCodes.length > 0);
+
+/** An FSJ / BFD instalment falls due at its step and at every step after it. */
+export const fsjStepReached = (instalmentStep: number, currentStep: number) => instalmentStep <= currentStep;
+
 export const FEE_STEP_PATHWAYS: FeeStepPathway[] = [
   {
     key: "JOURNEY",
@@ -113,6 +127,21 @@ export const FEE_STEP_PATHWAYS: FeeStepPathway[] = [
     },
     unknownWords: "at an NCLEX-RN step not recorded",
     reached: (waiting, progress) => progress.some((p) => nclexStepReached(waiting as NclexStepKey, p as NclexStepKey)),
+  },
+  {
+    key: FSJ_FEE_PATHWAY,
+    dueLabel: "At an FSJ / BFD step",
+    stepNoun: "FSJ / BFD step",
+    steps: FSJ_TRIGGER_STEPS.map((s) => ({ key: String(s.step), label: `${s.step}. ${s.title}` })),
+    words: (key) => {
+      const s = FSJ_TRIGGER_STEPS.find((x) => String(x.step) === key);
+      return s ? `at FSJ / BFD step ${s.step}, ${s.title.toLowerCase()}` : null;
+    },
+    unknownWords: "at an FSJ / BFD step not recorded",
+    reached: (waiting, progress) => {
+      const w = Number(waiting);
+      return Number.isInteger(w) && progress.some((p) => Number.isInteger(Number(p)) && fsjStepReached(w, Number(p)));
+    },
   },
 ];
 

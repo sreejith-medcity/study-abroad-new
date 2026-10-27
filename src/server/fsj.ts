@@ -6,6 +6,8 @@ import { orgScope } from "@/lib/permissions";
 import { GERMAN_LEVELS } from "@/lib/ausbildung";
 import { FSJ_CONTACT_AREA, FSJ_STEPS, FSJ_TEAM, daysBetween, fsjStepOf, isFsjPathway, type FsjDepartment, type FsjPathway } from "@/lib/fsj";
 import { ownStudentsOnly, ownedByPerson } from "@/server/scope";
+import { effectivePayments } from "@/lib/fsj-fees";
+import { fsjPlanPaymentsFor } from "@/server/fsj-fees";
 
 const { students: s, applications: a, programs: pg, statusDefinitions: sd, organizations: og, users: us, fsjEvents: fe } = schema;
 
@@ -63,8 +65,27 @@ const appColumns = {
  * keeps on it: the open one that moved most recently, a finished one giving
  * way to one still being worked. The tab, the actions and the tracker all read
  * this one, so a button acts on the file the tab describes.
+ *
+ * The four payment days are the ones the process works from: read from the
+ * student's fee invoices for each stage their fee plan covers, and as marked
+ * on the tab otherwise. The days marked by hand are kept in `marked`, and what
+ * the plan holds per stage in `feePlan`.
  */
 export async function currentFsjApplication(studentId: string) {
+  const row = await currentFsjRow(studentId);
+  if (!row) return null;
+  const marked = {
+    registrationFeePaidOn: row.registrationFeePaidOn,
+    applicationFeePaidOn: row.applicationFeePaidOn,
+    offerPaymentOn: row.offerPaymentOn,
+    preVisaPaymentOn: row.preVisaPaymentOn,
+  };
+  const feePlan = await fsjPlanPaymentsFor(studentId);
+  const { source, ...paid } = effectivePayments(marked, feePlan);
+  return { ...row, ...paid, marked, feePlan, paymentSource: source };
+}
+
+async function currentFsjRow(studentId: string) {
   const [row] = await db
     .select(appColumns)
     .from(a)

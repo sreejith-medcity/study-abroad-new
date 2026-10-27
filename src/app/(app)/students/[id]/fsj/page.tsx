@@ -31,6 +31,7 @@ import {
   type FsjTrigger,
 } from "@/lib/fsj";
 import { getStudentForUser } from "@/server/queries";
+import { FSJ_PAYMENT_STAGES, stagePaymentWords } from "@/lib/fsj-fees";
 import { currentFsjApplication, fsjContacts, fsjEventsOf, fsjStudentFacts, germanRecord } from "@/server/fsj";
 import { stageGate, studentChecklist, studentContext } from "@/server/documentation";
 import { Card, CardHeader, Checkbox, Chip, Field, Input, Select, Textarea, cn } from "@/components/ui";
@@ -211,10 +212,20 @@ export default async function StudentFsjPage({ params }: { params: Promise<{ id:
             <div className="space-y-5 px-4 pb-4">
               {code === "REGISTRATION" && may("registration") && (
                 <StepForm op="registration" {...f} submitLabel="Record registration" className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Registration fee paid on" htmlFor="fsj-regfee">
-                    <Input id="fsj-regfee" name="registrationFeePaidOn" type="date" defaultValue={app.registrationFeePaidOn ?? ""} />
-                    <FieldError name="registrationFeePaidOn" />
-                  </Field>
+                  {app.feePlan.stages.registration ? (
+                    <div className="space-y-1.5">
+                      <p className="block text-2xs font-semibold uppercase tracking-wider text-muted">Registration fee</p>
+                      <p className="text-sm" data-registration-fee={app.registrationFeePaidOn ? "paid" : "pending"}>
+                        {stagePaymentWords(app.feePlan.stages.registration, fmtDate)}.
+                      </p>
+                      <p className="text-xs text-muted">From the student&rsquo;s fee invoices, on the Fees tab.</p>
+                    </div>
+                  ) : (
+                    <Field label="Registration fee paid on" htmlFor="fsj-regfee">
+                      <Input id="fsj-regfee" name="registrationFeePaidOn" type="date" defaultValue={app.registrationFeePaidOn ?? ""} />
+                      <FieldError name="registrationFeePaidOn" />
+                    </Field>
+                  )}
                   <Field label="Consultancy agreement / declaration signed on" htmlFor="fsj-agreement">
                     <Input id="fsj-agreement" name="agreementSignedOn" type="date" defaultValue={app.agreementSignedOn ?? ""} />
                     <FieldError name="agreementSignedOn" />
@@ -359,7 +370,11 @@ export default async function StudentFsjPage({ params }: { params: Promise<{ id:
               {code && ["PRE_VISA_DOCUMENTS", "VISA_RESUBMISSION"].includes(code) && may("visaReady") && (
                 <div className="space-y-2">
                   <p className="text-sm" data-pre-visa={app.preVisaPaymentOn ? "paid" : "pending"}>
-                    {app.preVisaPaymentOn ? `Pre-visa payment received on ${fmtDate(app.preVisaPaymentOn)}.` : "The pre-visa payment is not marked received. It is verified before submission."}
+                    {app.feePlan.stages.preVisa
+                      ? `Pre-visa payment, from the fee invoices: ${stagePaymentWords(app.feePlan.stages.preVisa, fmtDate)}. It is verified before submission.`
+                      : app.preVisaPaymentOn
+                        ? `Pre-visa payment received on ${fmtDate(app.preVisaPaymentOn)}.`
+                        : "The pre-visa payment is not marked received. It is verified before submission."}
                     {code === "VISA_RESUBMISSION" && app.visaReason ? ` Refused for: ${app.visaReason}.` : ""}
                   </p>
                   <StepForm op="visaReady" {...f} submitLabel="Visa file ready for VFS" secondary />
@@ -480,32 +495,67 @@ export default async function StudentFsjPage({ params }: { params: Promise<{ id:
           </Card>
 
           {/* The payment stages. */}
-          <Card data-fsj-payments>
-            <CardHeader title="Payments" subtitle="The stages the guide names. The guide gives no amounts here, so none are shown; money itself is recorded on the Income tab." />
-            <div className="px-4 pb-4">
-              {may("payments") ? (
-                <StepForm op="payments" {...f} submitLabel="Save payments" secondary className="grid gap-3 sm:grid-cols-4">
-                  <Field label="Registration fee paid on" htmlFor="fsj-p-reg">
-                    <Input id="fsj-p-reg" name="registrationFeePaidOn" type="date" defaultValue={app.registrationFeePaidOn ?? ""} />
-                  </Field>
-                  <Field label="Application fee paid on" htmlFor="fsj-p-app">
-                    <Input id="fsj-p-app" name="applicationFeePaidOn" type="date" defaultValue={app.applicationFeePaidOn ?? ""} />
-                  </Field>
-                  <Field label="Offer-letter stage payment on" htmlFor="fsj-p-offer">
-                    <Input id="fsj-p-offer" name="offerPaymentOn" type="date" defaultValue={app.offerPaymentOn ?? ""} />
-                  </Field>
-                  <Field label="Pre-visa payment on" htmlFor="fsj-p-visa">
-                    <Input id="fsj-p-visa" name="preVisaPaymentOn" type="date" defaultValue={app.preVisaPaymentOn ?? ""} />
-                  </Field>
-                </StepForm>
-              ) : (
+          <Card data-fsj-payments data-fee-plan={app.feePlan.planned ? "yes" : "no"}>
+            <CardHeader
+              title="Payments"
+              subtitle={
+                app.feePlan.planned
+                  ? "The stages the guide names. Where the student's fee plan has a stage, it is read from their fee invoices on the Fees tab; any other stage is marked here."
+                  : "The stages the guide names. The student has no fee plan for the FSJ / BFD steps, so each payment is marked here; with a fee plan the stages are read from the fee invoices."
+              }
+            />
+            <div className="space-y-3 px-4 pb-4">
+              {app.feePlan.planned && (
                 <dl className="grid gap-3 text-sm sm:grid-cols-4">
-                  <Fact label="Registration fee">{app.registrationFeePaidOn ? fmtDate(app.registrationFeePaidOn) : "Not recorded"}</Fact>
-                  <Fact label="Application fee">{app.applicationFeePaidOn ? fmtDate(app.applicationFeePaidOn) : "Not recorded"}</Fact>
-                  <Fact label="Offer-letter stage">{app.offerPaymentOn ? fmtDate(app.offerPaymentOn) : "Not recorded"}</Fact>
-                  <Fact label="Pre-visa">{app.preVisaPaymentOn ? fmtDate(app.preVisaPaymentOn) : "Not recorded"}</Fact>
+                  {FSJ_PAYMENT_STAGES.filter((s) => app.feePlan.stages[s.key]).map((s) => (
+                    <div key={s.key} data-payment-stage={s.key} data-payment-source="invoices" data-paid={app[s.field] ? "yes" : "no"}>
+                      <dt className="text-2xs font-semibold uppercase tracking-wide text-muted">{s.label}</dt>
+                      <dd className="text-ink">{stagePaymentWords(app.feePlan.stages[s.key]!, fmtDate)}</dd>
+                    </div>
+                  ))}
+                  <div>
+                    <dt className="text-2xs font-semibold uppercase tracking-wide text-muted">Fee invoices</dt>
+                    <dd>
+                      <Link href={`/students/${id}/fees`} className="text-brand-700 underline-offset-2 hover:underline">
+                        Open the Fees tab
+                      </Link>
+                    </dd>
+                  </div>
                 </dl>
               )}
+              {FSJ_PAYMENT_STAGES.some((s) => app.paymentSource[s.key] === "MARKED") &&
+                (may("payments") ? (
+                  <StepForm op="payments" {...f} submitLabel="Save payments" secondary className="grid gap-3 sm:grid-cols-4">
+                    {app.paymentSource.registration === "MARKED" && (
+                      <Field label="Registration fee paid on" htmlFor="fsj-p-reg">
+                        <Input id="fsj-p-reg" name="registrationFeePaidOn" type="date" defaultValue={app.registrationFeePaidOn ?? ""} />
+                      </Field>
+                    )}
+                    {app.paymentSource.application === "MARKED" && (
+                      <Field label="Application fee paid on" htmlFor="fsj-p-app">
+                        <Input id="fsj-p-app" name="applicationFeePaidOn" type="date" defaultValue={app.applicationFeePaidOn ?? ""} />
+                      </Field>
+                    )}
+                    {app.paymentSource.offer === "MARKED" && (
+                      <Field label="Offer-letter stage payment on" htmlFor="fsj-p-offer">
+                        <Input id="fsj-p-offer" name="offerPaymentOn" type="date" defaultValue={app.offerPaymentOn ?? ""} />
+                      </Field>
+                    )}
+                    {app.paymentSource.preVisa === "MARKED" && (
+                      <Field label="Pre-visa payment on" htmlFor="fsj-p-visa">
+                        <Input id="fsj-p-visa" name="preVisaPaymentOn" type="date" defaultValue={app.preVisaPaymentOn ?? ""} />
+                      </Field>
+                    )}
+                  </StepForm>
+                ) : (
+                  <dl className="grid gap-3 text-sm sm:grid-cols-4">
+                    {FSJ_PAYMENT_STAGES.filter((s) => app.paymentSource[s.key] === "MARKED").map((s) => (
+                      <Fact key={s.key} label={s.label}>
+                        {app[s.field] ? fmtDate(app[s.field]!) : "Not recorded"}
+                      </Fact>
+                    ))}
+                  </dl>
+                ))}
             </div>
           </Card>
 

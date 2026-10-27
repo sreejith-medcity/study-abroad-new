@@ -9,8 +9,9 @@ import { documentationIds, notifyUsers, partnerRecipients } from "./notify";
 import { sendWhatsApp } from "./whatsapp";
 import { isAdmin, isDocumentationTeam, isStaff } from "@/lib/permissions";
 import { handedToDeskByStatus, stepOfStatus } from "@/lib/ausbildung";
-import { feeGate, feeGateRefusal, fsjPastBranch, isFsjPathway, needsFees } from "@/lib/fsj";
-import { raiseAusbildungInstalments } from "@/server/student-fees";
+import { feeGate, feeGateRefusal, fsjPastBranch, fsjStepOf, isFsjPathway, needsFees } from "@/lib/fsj";
+import { raiseAusbildungInstalments, raiseFsjInstalments } from "@/server/student-fees";
+import { fsjFeeFacts } from "@/server/fsj-fees";
 import { EARNING_CODES, accrueCommission } from "./commission";
 import { sendStatusChange } from "@/server/crm-out";
 import { updateTracked } from "@/server/record-history";
@@ -70,9 +71,10 @@ export async function changeStatus(
 
   // The FSJ / BFD fee gate (step 6 of that guide): the application does not
   // start, from any screen, until the registration and application fees are
-  // marked paid.
+  // paid: by their fee invoices where the student has a fee plan for the
+  // process, otherwise as marked paid on the FSJ / BFD tab.
   if (fsj && needsFees(to.code)) {
-    const gate = feeGate({ registrationFeePaidOn: app.fsjRegistrationFeePaidOn, applicationFeePaidOn: app.fsjApplicationFeePaidOn });
+    const gate = feeGate(await fsjFeeFacts(app.studentId, app));
     if (!gate.clear) throw new StatusChangeError(feeGateRefusal(gate.missing));
   }
 
@@ -138,6 +140,9 @@ export async function changeStatus(
   // step, or to one before it, fall due now.
   const guideStep = app.program.pathway === "AUSBILDUNG" ? stepOfStatus(to.code) : null;
   if (guideStep) await raiseAusbildungInstalments(app.studentId, guideStep.step, user.id);
+  // The same for an FSJ or BFD file at a step of its written process.
+  const fsjStep = fsj ? fsjStepOf(to.code) : null;
+  if (fsjStep) await raiseFsjInstalments(app.studentId, fsjStep.step, user.id);
 
   // A placement that reached a paying milestone accrues its commission once.
   if (EARNING_CODES.includes(to.code)) {

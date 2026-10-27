@@ -27,10 +27,11 @@ import {
   DUE_CHOICES,
   type FeePlanItem,
 } from "../src/lib/student-fees";
-import { FEE_STEP_PATHWAYS, ausbildungStepReached, feeStepReached, feeStepWords, isFeeStep, nclexStepReached, stageReached } from "../src/lib/fee-steps";
+import { FEE_STEP_PATHWAYS, FSJ_FEE_PATHWAY, ausbildungStepReached, feeStepReached, feeStepWords, fsjStepReached, isFeeStep, nclexStepReached, stageReached } from "../src/lib/fee-steps";
 import { STAGE_ORDER } from "../src/lib/journey";
 import { STARTER_PLANS } from "../src/lib/fee-plan-starters";
 import { AUSBILDUNG_STEPS } from "../src/lib/ausbildung";
+import { FSJ_STEPS, fsjStepOf } from "../src/lib/fsj";
 
 const share = (label: string, s: number, over: Partial<FeePlanItem> = {}): FeePlanItem => ({ label, share: s, amount: null, due: "ON_APPLY", ...over });
 const fixed = (label: string, a: number, over: Partial<FeePlanItem> = {}): FeePlanItem => ({ label, share: null, amount: a, due: "ON_APPLY", ...over });
@@ -280,14 +281,14 @@ test("a plan refuses a step that cannot bring an instalment due", () => {
 });
 
 test("a step is a pathway and a key, read the same way whichever pathway it is", () => {
-  assert.deepEqual(FEE_STEP_PATHWAYS.map((p) => p.key), ["JOURNEY", "AUSBILDUNG", "NCLEX"]);
+  assert.deepEqual(FEE_STEP_PATHWAYS.map((p) => p.key), ["JOURNEY", "AUSBILDUNG", "NCLEX", "FSJ_BFD"]);
   assert.ok(isFeeStep("JOURNEY", "OFFER"));
   assert.ok(isFeeStep("AUSBILDUNG", "11"));
   assert.ok(!isFeeStep("AUSBILDUNG", "11.5"));
   assert.ok(!isFeeStep("JOURNEY", null));
   assert.equal(feeStepWords("AUSBILDUNG", "11"), "at Ausbildung step 11, training contract (ausbildungsvertrag)");
   // One "due" choice per pathway, after the three kinds of day.
-  assert.deepEqual(DUE_CHOICES.map((c) => c.value), ["ON_APPLY", "DAYS", "DATE", "JOURNEY", "AUSBILDUNG", "NCLEX"]);
+  assert.deepEqual(DUE_CHOICES.map((c) => c.value), ["ON_APPLY", "DAYS", "DATE", "JOURNEY", "AUSBILDUNG", "NCLEX", "FSJ_BFD"]);
   const at = { JOURNEY: ["OFFER"], AUSBILDUNG: ["10"], NCLEX: ["SECOND_SERVICE_CHARGE"] };
   assert.ok(feeStepReached("JOURNEY", "APPLICATION", at));
   assert.ok(!feeStepReached("JOURNEY", "VISA", at));
@@ -298,6 +299,32 @@ test("a step is a pathway and a key, read the same way whichever pathway it is",
   // A pathway the file has no progress on, or one not listed, never brings anything due.
   assert.ok(!feeStepReached("JOURNEY", "PROFILE", { AUSBILDUNG: ["19"] }));
   assert.ok(!feeStepReached("FSJ", "ANY", { FSJ: ["ANY"] }));
+});
+
+test("FSJ and BFD share one list of steps, the process's own, read in words and reached at the step or after", () => {
+  assert.equal(FSJ_FEE_PATHWAY, "FSJ_BFD");
+  const fsj = FEE_STEP_PATHWAYS.find((p) => p.key === FSJ_FEE_PATHWAY)!;
+  // Every step a status can put a file at, and none that no status reaches.
+  assert.deepEqual(
+    fsj.steps.map((s) => s.key),
+    FSJ_STEPS.filter((s) => s.statusCodes.length > 0).map((s) => String(s.step)),
+  );
+  assert.ok(!isFeeStep(FSJ_FEE_PATHWAY, "1"), "step 1, the enquiry, has no status, so nothing would raise the invoice");
+  assert.ok(isFeeStep(FSJ_FEE_PATHWAY, "2"));
+  assert.equal(feeStepWords(FSJ_FEE_PATHWAY, "6"), "at FSJ / BFD step 6, payment status check and application start");
+  assert.equal(feeStepWords(FSJ_FEE_PATHWAY, "99"), "at an FSJ / BFD step not recorded");
+  assert.ok(fsjStepReached(10, 10));
+  assert.ok(fsjStepReached(2, 6));
+  assert.ok(!fsjStepReached(12, 11));
+  // A file on interview preparation (step 7) has reached registration and the application fee, not the offer.
+  const at = { [FSJ_FEE_PATHWAY]: [String(fsjStepOf("INTERVIEW_PREPARATION")!.step)] };
+  assert.ok(feeStepReached(FSJ_FEE_PATHWAY, "2", at));
+  assert.ok(feeStepReached(FSJ_FEE_PATHWAY, "6", at));
+  assert.ok(!feeStepReached(FSJ_FEE_PATHWAY, "10", at));
+  // Progress on another pathway never brings an FSJ / BFD instalment due.
+  assert.ok(!feeStepReached(FSJ_FEE_PATHWAY, "2", { AUSBILDUNG: ["19"], JOURNEY: ["ARRIVED"] }));
+  assert.equal(planProblem([fixed("A", 100, step(FSJ_FEE_PATHWAY, "12"))]), null);
+  assert.match(planProblem([fixed("A", 100, step(FSJ_FEE_PATHWAY, "1"))])!, /choose the stage or step/);
 });
 
 test("an Ausbildung instalment falls due at its step and every step after", () => {
@@ -351,18 +378,25 @@ test("every starter plan's amounts and rates are the ones its fee sheet writes, 
   }
 });
 
-test("the FSJ and BFD starter is the sheet's four instalments, tied to the stages they name", () => {
+test("the FSJ and BFD starter is the sheet's four instalments, tied to the FSJ / BFD steps they name", () => {
   const fsj = STARTER_PLANS.find((p) => p.key === "fsj-bfd")!;
   assert.deepEqual(
     fsj.items.map((i) => [i.label, i.amount, i.due, i.pathway ?? null, i.stepKey ?? null]),
     [
-      ["Registration", 10000, "ON_APPLY", null, null],
-      ["Application", 200000, "STEP", "JOURNEY", "APPLICATION"],
-      ["After Receiving Offer Letter", 200000, "STEP", "JOURNEY", "OFFER"],
-      ["Before Visa Submission", 90000, "STEP", "JOURNEY", "VISA"],
+      ["Registration", 10000, "STEP", "FSJ_BFD", "2"],
+      ["Application", 200000, "STEP", "FSJ_BFD", "6"],
+      ["After Receiving Offer Letter", 200000, "STEP", "FSJ_BFD", "10"],
+      ["Before Visa Submission", 90000, "STEP", "FSJ_BFD", "12"],
     ],
   );
   assert.equal(fsj.gstPercent, 18);
+  // Registration at registration, the application fee at the payment check
+  // where the application starts, the offer-letter stage at the offer and
+  // contract, and the pre-visa payment where it is verified before VFS.
+  assert.deepEqual(
+    fsj.items.map((i) => FSJ_STEPS.find((s) => String(s.step) === i.stepKey)!.statusCodes[0]),
+    ["REGISTRATION", "PAYMENT_CHECK", "EMPLOYER_CONFIRMED", "PRE_VISA_DOCUMENTS"],
+  );
 });
 
 test("Ausbildung starters wait for guide steps a status can reach, NCLEX-RN starters for placement steps", () => {

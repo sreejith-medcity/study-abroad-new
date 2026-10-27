@@ -492,6 +492,114 @@ const lead = await signIn("teamlead@medcityoverseas.test");
   } else check(false, "the head office's dashboard shows the FSJ / BFD figures");
 }
 
+/* ---------------- With a fee plan: the payments are the fee invoices ---------------- */
+{
+  // A second FSJ file at Kottayam, the counsellor's own, at registration. The
+  // branch head applies Medcity's FSJ and BFD fee sheet to it.
+  const kottayamOrg = sql(`select org_id from students where id = '${sid}'`);
+  const germany = sql("select id from users where email = 'germany@medcity.test'");
+  const ps = "fsjplanstudent";
+  const pa = "fsjplanapp";
+  const queueSize = async (page) => {
+    const text = (await go(page, "/calls")).text;
+    const next = Number((text.match(/Up next \((\d+)\)/) || [])[1] ?? 0);
+    return next + ((await page.locator("[data-call-card]").count()) > 0 ? 1 : 0);
+  };
+  const queuedBefore = await queueSize(counsellor.page);
+  sql(`insert into students (id, org_id, created_by_id, assigned_to_id, first_name, last_name, email, phone, portal_token, preferred_pathway)
+       values ('${ps}', '${kottayamOrg}', '${germany}', '${germany}', 'Fsjplan', 'Suite', 'fsjplan.suite@example.com', '+91 98470 55507', 'fsjplantoken', 'FSJ') on conflict do nothing`);
+  sql(`insert into applications (id, ack_no, student_id, program_id, org_id, intake_month, intake_year, status_id, created_by_id)
+       values ('${pa}', 'FSJ-PLAN-1', '${ps}', 'fsjsuiteprog', '${kottayamOrg}', 10, ${new Date().getFullYear() + 1},
+       (select id from status_definitions where pathway = 'FSJ' and code = 'REGISTRATION'), '${germany}') on conflict do nothing`);
+  const planStatus = () => sql(`select sd.code from applications a join status_definitions sd on sd.id = a.status_id where a.id = '${pa}'`);
+  const planWait = (code) => wait(`select sd.code from applications a join status_definitions sd on sd.id = a.status_id where a.id = '${pa}'`, code);
+  const ptab = `/students/${ps}/fsj`;
+  const states = () => sql(`select string_agg(state::text, ',' order by seq) from fee_instalments where student_id = '${ps}'`);
+
+  // Calling mode lists the FSJ student like any other student nobody has called yet.
+  const queued = await queueSize(counsellor.page);
+  check(queued === queuedBefore + 1, `calling mode counts the new FSJ student among the counsellor's calls (${queuedBefore} then ${queued})`);
+  await go(counsellor.page, `/calls?open=${encodeURIComponent(`s:${ps}`)}`);
+  check((await counsellor.page.locator("[data-call-card]").getAttribute("data-call-card").catch(() => null)) === `s:${ps}`, "and opens it with the call buttons");
+  await counsellor.page.locator('[data-outcome="NOT_REACHABLE"]').click();
+  check((await wait(`select count(*) from contact_log where student_id = '${ps}' and channel = 'CALL' and by_id = '${germany}'`, "1")) === "1", "a call to the FSJ student is logged from calling mode");
+
+  const head = await signIn(kottayamHead);
+  let t = await go(head.page, ptab);
+  check((await head.page.locator('[data-fsj-payments][data-fee-plan="no"]').count()) === 1, "without a fee plan the payments are marked on the tab");
+  check((await head.page.locator('[data-fsj-op="registration"] input[name="registrationFeePaidOn"]').count()) === 1, "and registration asks for the day the fee was paid");
+
+  // The leaderboard counts that call like any other.
+  await go(head.page, "/reports/leaderboard");
+  const monthStart = `${today.slice(0, 7)}-01`;
+  const calls = sql(`select count(*) from contact_log where by_id = '${germany}' and channel = 'CALL' and created_at >= '${monthStart} 00:00:00+05:30'::timestamptz`);
+  const shown = (await head.page.locator(`[data-leader-row="${germany}"] td`).allInnerTexts()).map((x) => x.replace(/\s+/g, " ").trim());
+  check(Number(calls) >= 1 && shown[2] === calls, `the counsellor leaderboard counts the call to the FSJ student (${shown[2]} shown, ${calls} logged)`);
+
+  await go(head.page, `/students/${ps}/fees`);
+  const apply = head.page.locator("form").filter({ has: head.page.getByRole("button", { name: "Apply plan" }) });
+  await apply.locator('select[name="planId"]').selectOption("starter-fsj-bfd");
+  await apply.getByRole("button", { name: "Apply plan" }).click();
+  await wait(`select count(*) from fee_instalments where student_id = '${ps}'`, "4");
+  check(states() === "INVOICED,SCHEDULED,SCHEDULED,SCHEDULED", `the file is at registration, so the registration fee is invoiced at once and the rest wait for their steps (${states()})`);
+  check(
+    sql(`select string_agg(step_pathway || ':' || step_key || ':' || amount, ',' order by seq) from fee_instalments where student_id = '${ps}'`) === "FSJ_BFD:2:10000,FSJ_BFD:6:200000,FSJ_BFD:10:200000,FSJ_BFD:12:90000",
+    "the instalments wait on the FSJ / BFD steps, with the sheet's amounts",
+  );
+
+  t = await go(head.page, ptab);
+  check((await head.page.locator('[data-fsj-payments][data-fee-plan="yes"]').count()) === 1, "with the plan the payments card reads the fee invoices");
+  check((await head.page.locator('[data-fsj-op="registration"] input[name="registrationFeePaidOn"]').count()) === 0 && (await head.page.locator('[data-registration-fee="pending"]').count()) === 1, "registration shows the registration fee invoice instead of asking for a day");
+  check((await head.page.locator('[data-fsj-op="payments"]').count()) === 0, "no stage is left to mark by hand");
+  let form = await step(head.page, "registration", { agreementSignedOn: today }, "Record registration");
+  check(/registration fee invoice is not paid/.test(await refusal(form)) && planStatus() === "REGISTRATION", "registration waits for the registration fee invoice to be paid");
+
+  // The registration fee paid at the counter.
+  async function payInFull(invoiceLike) {
+    const number = sql(`select f.number from fee_invoices f join fee_invoice_lines l on l.invoice_id = f.id where f.student_id = '${ps}' and l.description like '${invoiceLike}%' limit 1`);
+    const total = sql(`select total from fee_invoices where number = '${number}'`);
+    await go(head.page, `/students/${ps}/fees`);
+    const b = head.page.locator(`[data-invoice="${number}"]`);
+    await b.locator("summary").filter({ hasText: "Record receipt" }).click();
+    const f = b.locator("form").filter({ has: head.page.getByRole("button", { name: "Record receipt" }) });
+    await f.locator('input[name="amount"]').fill(total);
+    await f.getByRole("button", { name: "Record receipt" }).click();
+    return (await wait(`select state from fee_invoices where number = '${number}'`, "PAID")) === "PAID";
+  }
+  check(await payInFull("Registration"), "the registration fee invoice is paid in full");
+  t = await go(head.page, ptab);
+  check((await head.page.locator('[data-registration-fee="paid"]').count()) === 1, "the tab reads it as paid");
+  await step(head.page, "registration", { agreementSignedOn: today }, "Record registration");
+  check((await planWait("DOCUMENT_COLLECTION")) === "DOCUMENT_COLLECTION", "with the invoice paid, registration moves the file to document collection");
+  check(sql(`select coalesce(fsj_registration_fee_paid_on::text, 'none') from applications where id = '${pa}'`) === "none", "nothing is marked by hand: the invoice is the record");
+
+  // On to the payment check from the status picker: the application fee is invoiced as the file reaches step 6.
+  await go(admin.page, `/students/${ps}/applications?app=${pa}`);
+  await admin.page.locator(`#status-${pa}`).selectOption({ label: "Payment check: registration and application fee" });
+  await admin.page.getByRole("button", { name: "Update status" }).click();
+  check((await planWait("PAYMENT_CHECK")) === "PAYMENT_CHECK", "the file reaches the payment check");
+  check((await wait(`select string_agg(state::text, ',' order by seq) from fee_instalments where student_id = '${ps}'`, "INVOICED,INVOICED,SCHEDULED,SCHEDULED")) === "INVOICED,INVOICED,SCHEDULED,SCHEDULED", "reaching step 6 raises the application fee invoice; the offer and pre-visa still wait");
+
+  await go(docs.page, ptab);
+  form = await step(docs.page, "feecheck", {}, "Run the payment check");
+  check(/application fee is not marked paid/.test(await refusal(form)), "the payment check holds the application while the application fee invoice is unpaid");
+  check((await planWait("APPLICATION_ON_HOLD")) === "APPLICATION_ON_HOLD", "and puts it on hold");
+  await go(admin.page, `/students/${ps}/applications?app=${pa}`);
+  await admin.page.locator(`#status-${pa}`).selectOption({ label: "Application started: interview preparation" });
+  await admin.page.getByRole("button", { name: "Update status" }).click();
+  const said = await admin.page.locator('[role="alert"]').filter({ hasText: /not marked paid/ }).first().innerText({ timeout: 10000 }).catch(() => "");
+  check(/application fee is not marked paid/.test(said) && planStatus() === "APPLICATION_ON_HOLD", "the status picker is refused too while the invoice is unpaid");
+
+  check(await payInFull("Application"), "the application fee invoice is paid in full");
+  check(await noticed("documentation@medcityoverseas.test", "Fsjplan Suite: fees received"), "paying it tells the documentation team to start the application");
+  await go(docs.page, ptab);
+  await step(docs.page, "feecheck", {}, "Start the application");
+  check((await planWait("INTERVIEW_PREPARATION")) === "INTERVIEW_PREPARATION", "with both invoices paid, the application starts");
+  t = await go(docs.page, ptab);
+  check((await docs.page.locator('[data-payment-stage="application"][data-payment-source="invoices"][data-paid="yes"]').count()) === 1, "the payments card shows the application fee paid from its invoice");
+  await head.ctx.close();
+}
+
 for (const s of [counsellor, docs, admin, lead]) await s.ctx.close();
 for (const a of all) if (a.errors.length) check(false, `${a.email}: no page errors (${a.errors.slice(0, 3).join(" | ")})`);
 await browser.close();

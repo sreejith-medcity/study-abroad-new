@@ -25,12 +25,14 @@ import {
 import type { JourneyStage } from "@/db/schema";
 import { stepOfStatus } from "@/lib/ausbildung";
 import type { NclexStepKey } from "@/lib/nclex";
-import { feeStepReached, type StepProgress } from "@/lib/fee-steps";
+import { FSJ_FEE_PATHWAY, feeStepReached, type StepProgress } from "@/lib/fee-steps";
+import { fsjStepOf } from "@/lib/fsj";
 import { can } from "@/server/capabilities";
 import { ensureBranchCode } from "@/server/medcity-id";
 import { mayOpenStudent, studentWhere } from "@/server/scope";
 import { razorpayConfig } from "@/server/razorpay";
 import { notifyUsers, partnerRecipients } from "@/server/notify";
+import { tellDeskIfFsjFeesIn } from "@/server/fsj-fees";
 
 const { feeInvoices: fi, feeInvoiceLines: fl, feeInstalments: fs, feeReceipts: fr, feeRefunds: rf, feePaymentLinks: pl, students: st, organizations: og } = schema;
 
@@ -251,6 +253,16 @@ export type ReceiptResult = { ok: true; id: string; number: string; state: FeeIn
  * for finance to send back. The same Razorpay payment is recorded once.
  */
 export async function recordReceipt(input: ReceiptInput): Promise<ReceiptResult> {
+  const result = await writeReceipt(input);
+  // Paid in full: an FSJ / BFD file waiting at its payment check may now start.
+  if (result.ok && result.state === "PAID") {
+    const inv = await db.query.feeInvoices.findFirst({ where: eq(fi.id, input.invoiceId), columns: { studentId: true } });
+    if (inv) await tellDeskIfFsjFeesIn(inv.studentId, input.invoiceId);
+  }
+  return result;
+}
+
+async function writeReceipt(input: ReceiptInput): Promise<ReceiptResult> {
   const fromGateway = input.method === "RAZORPAY";
   const head = await db.query.feeInvoices.findFirst({ where: eq(fi.id, input.invoiceId), columns: { orgId: true } });
   if (!head) return { ok: false, error: "That invoice is not on record." };
@@ -356,6 +368,22 @@ export async function currentAusbildungStep(studentId: string): Promise<number |
   return steps.length ? Math.max(...steps) : null;
 }
 
+/**
+ * The furthest step of the FSJ / BFD process any of the student's FSJ or BFD
+ * applications is at, read off their statuses. Null when there is none, or
+ * none at a step the process places.
+ */
+export async function currentFsjStep(studentId: string): Promise<number | null> {
+  const rows = await db
+    .select({ code: schema.statusDefinitions.code })
+    .from(schema.applications)
+    .innerJoin(schema.programs, eq(schema.programs.id, schema.applications.programId))
+    .innerJoin(schema.statusDefinitions, eq(schema.statusDefinitions.id, schema.applications.statusId))
+    .where(and(eq(schema.applications.studentId, studentId), inArray(schema.programs.pathway, ["FSJ", "BFD"])));
+  const steps = rows.map((r) => fsjStepOf(r.code)?.step).filter((n): n is number => n != null);
+  return steps.length ? Math.max(...steps) : null;
+}
+
 /** The NCLEX-RN steps completed on the student's file. */
 export async function completedNclexSteps(studentId: string): Promise<NclexStepKey[]> {
   const rows = await db
@@ -367,21 +395,23 @@ export async function completedNclexSteps(studentId: string): Promise<NclexStepK
 
 /** Where the file stands now, on every pathway an instalment can wait on. */
 export async function fileProgress(studentId: string): Promise<FileProgress> {
-  const [student, ausbildungStep, nclexCompleted] = await Promise.all([
+  const [student, ausbildungStep, nclexCompleted, fsjStep] = await Promise.all([
     db.query.students.findFirst({ where: eq(st.id, studentId), columns: { journeyStage: true } }),
     currentAusbildungStep(studentId),
     completedNclexSteps(studentId),
+    currentFsjStep(studentId),
   ]);
   return {
     JOURNEY: student?.journeyStage ? [student.journeyStage] : [],
     AUSBILDUNG: ausbildungStep != null ? [String(ausbildungStep)] : [],
     NCLEX: nclexCompleted,
+    [FSJ_FEE_PATHWAY]: fsjStep != null ? [String(fsjStep)] : [],
   };
 }
 
 /**
- * The file has moved on: a journey stage, an Ausbildung status or a completed
- * NCLEX-RN step. Every scheduled instalment the file has now reached is
+ * The file has moved on: a journey stage, an Ausbildung status, a completed
+ * NCLEX-RN step or an FSJ / BFD status. Every scheduled instalment the file has now reached is
  * invoiced, due in a week. Called from the move itself, so nobody has to
  * remember to. The move has already happened when this runs; a failure here
  * is logged and left for "Invoice now" on the schedule, rather than failing
@@ -437,6 +467,10 @@ export const raiseAusbildungInstalments = (studentId: string, step: number, acto
 /** An NCLEX-RN step was completed. */
 export const raiseNclexInstalments = (studentId: string, step: NclexStepKey, actorId: string | null) =>
   raiseStepInstalments(studentId, "NCLEX", [step], actorId, "an NCLEX-RN step");
+
+/** An FSJ or BFD application reached a step of the written process. */
+export const raiseFsjInstalments = (studentId: string, step: number, actorId: string | null) =>
+  raiseStepInstalments(studentId, FSJ_FEE_PATHWAY, [String(step)], actorId, `FSJ / BFD step ${step}`);
 
 /** One student's schedule, invoices, receipts and refunds, for their fees tab. */
 export async function studentFees(studentId: string) {

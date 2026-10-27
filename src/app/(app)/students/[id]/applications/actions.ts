@@ -24,7 +24,8 @@ import { offerVisa, saveOfferVisa } from "@/server/offer-visa";
 import { saveUpload, UploadError } from "@/server/storage";
 import { sendWhatsApp } from "@/server/whatsapp";
 import { updateTracked } from "@/server/record-history";
-import { isFsjPathway } from "@/lib/fsj";
+import { fsjStepOf, isFsjPathway } from "@/lib/fsj";
+import { raiseFsjInstalments } from "@/server/student-fees";
 
 import type { FormState } from "@/lib/form-state";
 export type { FormState };
@@ -123,6 +124,10 @@ export async function createApplicationAction(_: FormState, formData: FormData):
     })
     .returning();
   await db.insert(schema.statusHistory).values({ applicationId: app.id, toStatusId: first.id, changedById: user.id });
+  // An FSJ or BFD application opens at registration, a step of its written
+  // process, so fee instalments waiting for that step fall due now.
+  const fsjStep = isFsjPathway(program.pathway) ? fsjStepOf(first.code) : null;
+  if (fsjStep) await raiseFsjInstalments(student.id, fsjStep.step, user.id);
   if (!student.preferredPathway) await updateTracked("student", student.id, { preferredPathway: program.pathway }, { by: user.id, action: "student.pathway_from_application" });
 
   const deadline = await db.query.programDeadlines.findFirst({

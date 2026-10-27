@@ -102,7 +102,13 @@ check(/Medcity Kottayam/.test(text) && /Not recorded/.test(text), "plans: no GST
 // The starter plans, as Medcity's fee sheets write them.
 const fsjCard = await fp.locator('[data-plan="FSJ and BFD, Germany"]').innerText();
 check(/From Medcity.s fee sheet/.test(fsjCard), "starters: FSJ and BFD is there, marked as from the fee sheet");
-check(/Registration\s+₹10,000/.test(fsjCard) && /Application\s+₹2,00,000\s+on application/.test(fsjCard) && /After Receiving Offer Letter\s+₹2,00,000\s+on offer/.test(fsjCard) && /Before Visa Submission\s+₹90,000\s+on visa/.test(fsjCard), "starters: FSJ and BFD's four instalments, each on the stage it names");
+check(
+  /Registration\s+₹10,000\s+at FSJ \/ BFD step 2, registration and agreement/.test(fsjCard) &&
+    /Application\s+₹2,00,000\s+at FSJ \/ BFD step 6, payment status check and application start/.test(fsjCard) &&
+    /After Receiving Offer Letter\s+₹2,00,000\s+at FSJ \/ BFD step 10, employer confirmation and contract/.test(fsjCard) &&
+    /Before Visa Submission\s+₹90,000\s+at FSJ \/ BFD step 12, visa document preparation/.test(fsjCard),
+  "starters: FSJ and BFD's four instalments, each at the FSJ / BFD step it names",
+);
 check(/₹5,00,000 in all/.test(fsjCard) && /GST 18%/.test(fsjCard) && /The fee sheet says: Registration: ₹10,000 \+ 18% GST/.test(fsjCard), "starters: the sheet's total, its rate and its own words");
 const ausCard = await fp.locator('[data-plan="Ausbildung Program (General), for B1 Full/B2 Part"]').innerText();
 check(/at Ausbildung step 11, training contract/.test(ausCard) && /₹90,000/.test(ausCard), "starters: the Ausbildung sheet waits for the guide's steps");

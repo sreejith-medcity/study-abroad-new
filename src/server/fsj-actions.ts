@@ -173,11 +173,18 @@ class Ctx {
 const RUN: Record<FsjOp, (c: Ctx, fd: FormData) => Promise<FormState>> = {
   /* Step 2: the registration fee and the agreement. */
   async registration(c, fd) {
-    const feeOn = day(fd.get("registrationFeePaidOn"));
+    // Where the student's fee plan has the registration fee, its invoice says
+    // whether it is paid; otherwise the day is given here, as before.
+    const fromInvoices = c.app.paymentSource.registration === "INVOICES";
+    const feeOn = fromInvoices ? c.app.registrationFeePaidOn : day(fd.get("registrationFeePaidOn"));
     const agreementOn = day(fd.get("agreementSignedOn"));
-    if (!feeOn) return bad("registrationFeePaidOn", "Give the day the registration fee was paid");
+    if (!feeOn) {
+      return fromInvoices
+        ? { error: "The registration fee invoice is not paid yet. Record the payment on the Fees tab, then record the registration." }
+        : bad("registrationFeePaidOn", "Give the day the registration fee was paid");
+    }
     if (!agreementOn) return bad("agreementSignedOn", "Give the day the agreement / declaration was signed");
-    await c.track({ fsjRegistrationFeePaidOn: feeOn, fsjAgreementSignedOn: agreementOn }, "fsj.registration");
+    await c.track(fromInvoices ? { fsjAgreementSignedOn: agreementOn } : { fsjRegistrationFeePaidOn: feeOn, fsjAgreementSignedOn: agreementOn }, "fsj.registration");
     if (c.app.statusCode !== "REGISTRATION") return { ok: "Registration details saved." };
     await c.move("DOCUMENT_COLLECTION");
     await c.notice("REGISTERED", await c.branch(), `${c.name}: registered for ${c.app.pathway}`, "Registration recorded. Document collection (step 3) is next.");
@@ -187,14 +194,22 @@ const RUN: Record<FsjOp, (c: Ctx, fd: FormData) => Promise<FormState>> = {
 
   /* The payment stages the guide names: registration, application, offer letter, pre-visa. */
   async payments(c, fd) {
-    const values = {
-      fsjRegistrationFeePaidOn: day(fd.get("registrationFeePaidOn")),
-      fsjApplicationFeePaidOn: day(fd.get("applicationFeePaidOn")),
-      fsjOfferPaymentOn: day(fd.get("offerPaymentOn")),
-      fsjPreVisaPaymentOn: day(fd.get("preVisaPaymentOn")),
+    // A stage the student's fee plan covers is read from its invoices, so only
+    // the other stages are marked here; the days marked earlier are kept.
+    const marked = (stage: keyof FsjApplication["paymentSource"], field: string) => (c.app.paymentSource[stage] === "MARKED" ? day(fd.get(field)) : undefined);
+    const all = {
+      fsjRegistrationFeePaidOn: marked("registration", "registrationFeePaidOn"),
+      fsjApplicationFeePaidOn: marked("application", "applicationFeePaidOn"),
+      fsjOfferPaymentOn: marked("offer", "offerPaymentOn"),
+      fsjPreVisaPaymentOn: marked("preVisa", "preVisaPaymentOn"),
     };
+    const values = Object.fromEntries(Object.entries(all).filter(([, v]) => v !== undefined)) as Partial<Record<keyof typeof all, string | null>>;
+    if (!Object.keys(values).length) return { error: "Every payment stage is read from the student's fee invoices. Record payments on the Fees tab." };
     const before = feeGate({ registrationFeePaidOn: c.app.registrationFeePaidOn, applicationFeePaidOn: c.app.applicationFeePaidOn });
-    const after = feeGate({ registrationFeePaidOn: values.fsjRegistrationFeePaidOn, applicationFeePaidOn: values.fsjApplicationFeePaidOn });
+    const after = feeGate({
+      registrationFeePaidOn: all.fsjRegistrationFeePaidOn === undefined ? c.app.registrationFeePaidOn : all.fsjRegistrationFeePaidOn,
+      applicationFeePaidOn: all.fsjApplicationFeePaidOn === undefined ? c.app.applicationFeePaidOn : all.fsjApplicationFeePaidOn,
+    });
     await c.track(values, "fsj.payments");
     await audit(c.by, "fsj.payments", "application", c.app.id, values);
     // The guide: once the fee is paid, proceed. The documentation team starts
