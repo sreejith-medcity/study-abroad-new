@@ -12,6 +12,15 @@ export type Release = { version: string; date: string; changes: string[] };
 
 export const RELEASES: Release[] = [
   {
+    version: "1.8.3",
+    date: "2026-10-27",
+    changes: [
+      "The application team leader can find and hand out the files nobody is carrying: every application a branch has handed to the desk that has no officer on it yet, from every branch, leaving out files sent back to their branch and closed cases. The applications list has an Unassigned tab with the count, where the officer (the team leader or a documentation officer) is chosen in the row and filed at once; the work queue has the same view as Handed over, no officer; the Work queue entry on the menu shows how many are waiting; and the team leader's dashboard has a Files with no officer tile.",
+      "Giving a file to an officer now checks the file is one the person may open, and the officer is only told when they can open it.",
+      "This is a new line on the Who may do what screen, See and hand out the files nobody is carrying, on for the application team leader and off for everybody else. An ordinary documentation officer sees nothing more than before.",
+    ],
+  },
+  {
     version: "1.8.2",
     date: "2026-10-27",
     changes: [

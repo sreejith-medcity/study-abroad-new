@@ -5,6 +5,14 @@ version in package.json and adds an entry here and in src/lib/releases.ts (the
 What's new page reads that one). After applying a release, tag it with the
 version so it can be found and rolled back to.
 
+## 1.8.3 (27 October 2026)
+
+- The application team leader can find and hand out the files nobody is carrying: every application a branch has handed to the desk that has no officer on it yet, from every branch, leaving out files sent back to their branch and closed cases. The applications list has an Unassigned tab with the count, where the officer (the team leader or a documentation officer) is chosen in the row and filed at once; the work queue has the same view as Handed over, no officer; the Work queue entry on the menu shows how many are waiting; and the team leader's dashboard has a Files with no officer tile.
+- Giving a file to an officer now checks the file is one the person may open, and the officer is only told when they can open it.
+- This is a new line on the Who may do what screen, See and hand out the files nobody is carrying, on for the application team leader and off for everybody else. An ordinary documentation officer sees nothing more than before.
+
+Nothing to run on the VPS beyond the new build: no migration and no SQL.
+
 ## 1.8.2 (27 October 2026)
 
 - The students list shows where each student is applying and to what: a Country column with the countries of their applications (or their preferred country, marked Preferred, when they have none yet), and a Programs applied column with how many applications, the first one or two programmes with their university, and how many more, linking to the student's applications. On a laptop the country is shown under the programmes, and Email and Phone share one Contact column so the table fits.
