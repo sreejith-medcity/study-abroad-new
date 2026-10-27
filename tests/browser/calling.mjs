@@ -217,6 +217,59 @@ const counter = async (page, k) => (await page.locator(`[data-counter="${k}"]`).
   check(/Queue clear/.test(text), "nobody comes back today once their call is logged");
   check(c.errors.length === 0, `calling mode works without an error ${c.errors.slice(0, 2).join(" | ")}`);
 
+  /* ---------------- A call sent twice is logged once ---------------- */
+  {
+    const twice = enquiry(`Calling Twice${tag}`, uk, kottayam, { stage: "NEW", contacted: false });
+    const other = await c.ctx.newPage();
+    await go(c.page, `/calls?open=e:${twice}`);
+    await go(other, `/calls?open=e:${twice}`);
+    check((await cardKey(c.page)) === `e:${twice}` && (await cardKey(other)) === `e:${twice}`, "the same person is open in two tabs");
+    await Promise.all([
+      c.page.locator('[data-outcome="NOT_REACHABLE"]').click(),
+      other.locator('[data-outcome="NOT_REACHABLE"]').click(),
+    ]);
+    await c.page.waitForURL(/done=/, { timeout: 15000 }).catch(() => {});
+    await other.waitForURL(/done=|error=/, { timeout: 15000 }).catch(() => {});
+    check(n(`select count(*) from contact_log where enquiry_id = '${twice}'`) === 1, "a call sent from two tabs at once is logged once");
+    check(n(`select count(*) from tasks where enquiry_id = '${twice}' and done_at is null`) === 1, "with one next follow-up");
+    const said = `${await settle(c.page)} ${await settle(other)}`;
+    check(/logged a moment ago/.test(said), "and the second tab is told it was already logged");
+    await other.close();
+    // The outcome buttons are held while a press is being saved.
+    const held = enquiry(`Calling Held${tag}`, uk, kottayam, { stage: "NEW", contacted: false });
+    await go(c.page, `/calls?open=e:${held}`);
+    await c.page.route("**/calls**", async (r) => {
+      if (r.request().method() === "POST") await new Promise((done) => setTimeout(done, 1500));
+      await r.continue();
+    });
+    await c.page.locator('[data-outcome="SWITCHED_OFF"]').click();
+    const disabled = await c.page.locator('[data-outcome="INTERESTED"]').isDisabled().catch(() => false);
+    check(disabled, "the outcome buttons are disabled while the call is being saved");
+    await c.page.waitForURL(/done=/, { timeout: 15000 }).catch(() => {});
+    await c.page.unroute("**/calls**");
+    check(n(`select count(*) from contact_log where enquiry_id = '${held}'`) === 1, "and the call is logged once");
+  }
+
+  /* ---------------- An enquiry closed or merged meanwhile is not written over ---------------- */
+  {
+    const closed = enquiry(`Calling Closed${tag}`, uk, kottayam, { due: today });
+    await go(c.page, `/calls?open=e:${closed}`);
+    sql(`update enquiries set stage = 'LOST', next_follow_up_at = null where id = '${closed}'`);
+    await c.page.locator('[data-outcome="INTERESTED"]').click();
+    await c.page.waitForURL(/error=/, { timeout: 15000 }).catch(() => {});
+    let said = await settle(c.page);
+    check(/already closed/.test(said) && n(`select count(*) from contact_log where enquiry_id = '${closed}'`) === 0, "a call on an enquiry closed meanwhile is refused and nothing is logged");
+    check(sql(`select stage from enquiries where id = '${closed}'`) === "LOST", "and the enquiry stays closed");
+    const keepIt = enquiry(`Calling Survivor${tag}`, uk, kottayam, { due: plus(4) });
+    const gone = enquiry(`Calling Gone${tag}`, uk, kottayam, { due: today });
+    await go(c.page, `/calls?open=e:${gone}`);
+    sql(`update enquiries set stage = 'MERGED', merged_into_id = '${keepIt}', next_follow_up_at = null where id = '${gone}'`);
+    await c.page.locator('[data-outcome="INTERESTED"]').click();
+    await c.page.waitForURL(/error=/, { timeout: 15000 }).catch(() => {});
+    said = await settle(c.page);
+    check(said.includes(`merged into Calling Survivor${tag}`) && n(`select count(*) from contact_log where enquiry_id = '${gone}'`) === 0, "a call on an enquiry merged meanwhile names the one it went into and logs nothing");
+  }
+
   /* ---------------- 2. Contact history on an enquiry ---------------- */
   text = await go(c.page, `/enquiries/${ids.overdue}`);
   check((await c.page.locator('[data-history="contact"]').count()) === 1 && /Call: No answer/.test(text), "the enquiry's history shows the call and what came of it");
@@ -359,8 +412,9 @@ const counter = async (page, k) => (await page.locator(`[data-counter="${k}"]`).
   const expect = (id) => {
     const calls = n(`select count(*) from contact_log where by_id = '${id}' and channel = 'CALL' and ${within("created_at")}`);
     const conn = n(`select count(*) from contact_log where by_id = '${id}' and channel = 'CALL' and outcome in ${CONNECTED} and ${within("created_at")}`);
-    const onTime = n(`select count(*) from tasks where assigned_to_id = '${id}' and kind in ('CALL','FOLLOW_UP') and ${within("done_at")} and (done_at at time zone 'Asia/Kolkata')::date <= due_on`);
-    const late = n(`select count(*) from tasks where assigned_to_id = '${id}' and kind in ('CALL','FOLLOW_UP') and ${within("done_at")} and (done_at at time zone 'Asia/Kolkata')::date > due_on`);
+    // Credited to whoever finished it, against the day it was first due.
+    const onTime = n(`select count(*) from tasks where done_by_id = '${id}' and kind in ('CALL','FOLLOW_UP') and ${within("done_at")} and (done_at at time zone 'Asia/Kolkata')::date <= coalesce(first_due_on, due_on)`);
+    const late = n(`select count(*) from tasks where done_by_id = '${id}' and kind in ('CALL','FOLLOW_UP') and ${within("done_at")} and (done_at at time zone 'Asia/Kolkata')::date > coalesce(first_due_on, due_on)`);
     const held = n(`select count(*) from enquiries where coalesce(assigned_to_id, case when submitted_by_org_id is null then created_by_id end) = '${id}' and stage <> 'MERGED'`);
     const conv = n(`select count(*) from enquiries e join students s on s.id = e.student_id where coalesce(e.assigned_to_id, case when e.submitted_by_org_id is null then e.created_by_id end) = '${id}' and e.stage = 'CONVERTED' and ${within("s.created_at")}`);
     const nr = "Not recorded";

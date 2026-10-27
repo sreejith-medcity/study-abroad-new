@@ -1,7 +1,7 @@
 import "server-only";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { CALLING_ROLES, callReason, orderQueue, queueKey, readsTeamQueue, type CallKind, type CallReason } from "@/lib/calling";
+import { CALLING_LIVE_ON, CALLING_ROLES, FIRST_JOURNEY_STAGE, callReason, orderQueue, queueKey, readsTeamQueue, type CallKind, type CallReason } from "@/lib/calling";
 import { CONNECTED_OUTCOMES } from "@/lib/crm";
 import { istAt, istDay, nextDay } from "@/lib/journal";
 import type { EnquiryStage, JourneyStage } from "@/db/schema";
@@ -60,7 +60,9 @@ const idList = (ids: string[]) => sql.join(ids.map((id) => sql`${id}`), sql`, `)
  *
  * An enquiry's follow-up is its date; a student's is the earliest open call or
  * follow-up task on the owner's desk for them. A student registered from an
- * enquiry counts as contacted, because somebody spoke to them to get there.
+ * enquiry counts as contacted, because somebody spoke to them to get there,
+ * and so does one registered before calling mode went live who has moved past
+ * the first journey stage (studentAwaitsFirstCall says why).
  */
 export async function queueFor(ownerIds: string[], today = istDay(), only?: { kind: CallKind; id: string }): Promise<QueueItem[]> {
   if (!ownerIds.length) return [];
@@ -70,6 +72,7 @@ export async function queueFor(ownerIds: string[], today = istDay(), only?: { ki
   // and per person, so a branch head's team queue is not cut at 300 for
   // everybody together.
   const cap = 300 * ownerIds.length;
+  const liveFrom = istAt(CALLING_LIVE_ON, "00:00").toISOString();
   const enquiryRows = only?.kind === "STUDENT" ? [] : await db.execute<Raw>(sql`
     select e.id, e.name, e.phone, true as whatsapp, e.org_id, ${ENQUIRY_OWNER} as owner_id,
       e.stage::text as stage, e.created_at,
@@ -88,7 +91,8 @@ export async function queueFor(ownerIds: string[], today = istDay(), only?: { ki
     select * from (
       select s.id, s.first_name || ' ' || s.last_name as name, s.phone, s.whatsapp_opt_in as whatsapp, s.org_id,
         coalesce(s.assigned_to_id, s.created_by_id) as owner_id, s.journey_stage::text as stage, s.created_at,
-        (exists (select 1 from contact_log c where c.student_id = s.id) or exists (select 1 from enquiries q where q.student_id = s.id)) as contacted,
+        (exists (select 1 from contact_log c where c.student_id = s.id) or exists (select 1 from enquiries q where q.student_id = s.id)
+          or not (s.created_at >= ${liveFrom}::timestamptz or s.journey_stage::text = ${FIRST_JOURNEY_STAGE})) as contacted,
         (select to_char(min(t.due_on), 'YYYY-MM-DD') from tasks t
           where t.student_id = s.id and t.done_at is null and t.kind in ('CALL','FOLLOW_UP')
             and t.assigned_to_id = coalesce(s.assigned_to_id, s.created_by_id)) as due_on,

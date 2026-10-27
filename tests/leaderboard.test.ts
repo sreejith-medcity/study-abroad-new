@@ -1,4 +1,5 @@
 import { strict as assert } from "node:assert";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   LEADERBOARD_HEADER,
@@ -54,6 +55,25 @@ test("a follow-up is on time when finished on or before its day", () => {
   assert.ok(doneOnTime("2026-10-26", "2026-10-25"));
   assert.ok(doneOnTime("2026-10-26", "2026-10-26"));
   assert.equal(doneOnTime("2026-10-26", "2026-10-27"), false);
+});
+
+test("follow-ups are counted to whoever finished them, against the day they were first due", () => {
+  const src = readFileSync(new URL("../src/server/leaderboard.ts", import.meta.url), "utf8");
+  assert.match(src, /t\.done_by_id = u\.id/);
+  assert.doesNotMatch(src, /t\.assigned_to_id = u\.id/);
+  assert.match(src, /<= coalesce\(t\.first_due_on, t\.due_on\)/);
+  assert.match(src, /> coalesce\(t\.first_due_on, t\.due_on\)/);
+});
+
+test("the day a task was first due is set as it is made and never moved", () => {
+  const sqlText = readFileSync(new URL("../drizzle/0085_task_first_due.sql", import.meta.url), "utf8");
+  assert.match(sqlText, /ADD COLUMN "first_due_on" date/);
+  assert.match(sqlText, /SET "first_due_on" = "due_on" WHERE "first_due_on" IS NULL/);
+  assert.match(sqlText, /NEW\.first_due_on := COALESCE\(NEW\.first_due_on, NEW\.due_on\)/);
+  assert.match(sqlText, /NEW\.first_due_on := OLD\.first_due_on/);
+  assert.match(sqlText, /BEFORE INSERT OR UPDATE OF first_due_on ON "tasks"/);
+  assert.match(sqlText, /"enquiries_student_idx" ON "enquiries" USING btree \("student_id"\)/);
+  assert.match(sqlText, /"enquiries_assigned_idx" ON "enquiries" USING btree \("assigned_to_id"\)/);
 });
 
 test("most converted first, then most connected, and a recorded 0 above not recorded", () => {

@@ -8,6 +8,35 @@
 
 import type { ContactOutcome, EnquiryStage } from "@/db/schema";
 
+/**
+ * The day calling mode went live (India day). Students registered before it
+ * were never asked to have every call logged, so a student with nothing on
+ * the contact history from before this day has most likely been spoken to
+ * off the record. Such a student only counts as not contacted yet while still
+ * in the first journey stage; otherwise they wait for a follow-up date like
+ * anybody else, so a few hundred old files do not bury today's new ones.
+ * Change this only if calling mode goes live on a different day.
+ */
+export const CALLING_LIVE_ON = "2026-10-27";
+
+/** The journey stage a newly registered student starts in. */
+export const FIRST_JOURNEY_STAGE = "PROFILE";
+
+/**
+ * Whether a student with nothing logged counts as not contacted yet:
+ * registered on or after the day calling mode went live, or still in the
+ * first journey stage. `registeredOn` is the India day they were registered.
+ */
+export const studentAwaitsFirstCall = (s: { registeredOn: string; stage: string }) =>
+  s.registeredOn >= CALLING_LIVE_ON || s.stage === FIRST_JOURNEY_STAGE;
+
+/**
+ * A second call by the same person on the same record within this many
+ * seconds is the same call sent twice (a double tap, or two tabs), and is not
+ * logged again.
+ */
+export const REPEAT_CALL_SECONDS = 60;
+
 /** Why a record is in somebody's queue. */
 export type CallReason = "NEVER_CONTACTED" | "OVERDUE" | "DUE_TODAY";
 
@@ -189,9 +218,16 @@ export function planCall(
 export const needsLostReason = (outcome: CallOutcome, r: { kind: CallKind; stage?: EnquiryStage | null }) =>
   planCall(outcome, { ...r, today: "2000-01-01" }).stage === "LOST";
 
-/** Digits only, for a tel: link and wa.me. A number without a country code is taken as Indian. */
+/**
+ * Digits only, for a tel: link and wa.me. A number without a country code is
+ * taken as Indian. A number written with the international 00 prefix
+ * (0044 20 7946 0000) is the same as one written with a plus, so the 00 goes
+ * and the country code after it is kept.
+ */
 export function dialDigits(phone: string): string {
   const d = phone.replace(/\D/g, "");
+  // Longer than a 0-prefixed Indian number (11 digits), so 00 is the international prefix.
+  if (d.startsWith("00") && d.length > 11) return d.slice(2);
   if (d.length === 10) return `91${d}`;
   if (d.length === 11 && d.startsWith("0")) return `91${d.slice(1)}`;
   return d;

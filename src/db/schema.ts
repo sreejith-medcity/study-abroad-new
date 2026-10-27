@@ -1619,6 +1619,14 @@ export const tasks = pgTable(
     title: text("title").notNull(),
     detail: text("detail"),
     dueOn: date("due_on").notNull(),
+    /**
+     * The day it was first due. Set by the database as the task is made (a
+     * trigger copies due_on) and never moved after, however often the task is
+     * pushed or re-dated, so the leaderboard counts a follow-up on time only
+     * when it was done by the day first promised. Filled with due_on on tasks
+     * made before this was kept.
+     */
+    firstDueOn: date("first_due_on"),
     assignedToId: text("assigned_to_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
@@ -3463,6 +3471,10 @@ export const enquiries = pgTable(
     index("enquiries_referrer_idx").on(t.submittedByOrgId),
     // The duplicates folded into an enquiry, and a merge repointing them at the survivor.
     index("enquiries_merged_into_idx").on(t.mergedIntoId),
+    // The enquiry a student came from, and each person's enquiries, which the
+    // calling queue and the leaderboard read for every row.
+    index("enquiries_student_idx").on(t.studentId),
+    index("enquiries_assigned_idx").on(t.assignedToId),
     uniqueIndex("enquiries_crm_id_uq").on(t.crmId),
     // The last ten digits of the number, which is how a repeat and a duplicate are matched.
     index("enquiries_phone_key_idx").on(sql`right(regexp_replace(${t.phone}, '[^0-9]', '', 'g'), 10)`),

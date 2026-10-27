@@ -1,6 +1,8 @@
 import { strict as assert } from "node:assert";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
+  CALLING_LIVE_ON,
   CALL_OUTCOMES,
   CALL_OUTCOME_CONTACT,
   CALL_OUTCOME_LABEL,
@@ -14,6 +16,8 @@ import {
   planCall,
   queueKey,
   readsTeamQueue,
+  REPEAT_CALL_SECONDS,
+  studentAwaitsFirstCall,
   telHref,
   whatsappHref,
   type QueueEntry,
@@ -186,6 +190,48 @@ test("a number is dialled with its country code, an Indian one where none was gi
   assert.equal(dialDigits("+44 7700 900123"), "447700900123");
   assert.equal(telHref("98470 11001"), "tel:+919847011001");
   assert.equal(whatsappHref("+91 98470-11001"), "https://wa.me/919847011001");
+});
+
+test("a number written with the international 00 prefix dials the same as one written with a plus", () => {
+  assert.equal(dialDigits("0044 7700 900123"), "447700900123");
+  assert.equal(dialDigits("0091 98470 11001"), "919847011001");
+  assert.equal(dialDigits("00971 50 123 4567"), "971501234567");
+  assert.equal(telHref("0044 7700 900123"), "tel:+447700900123");
+  assert.equal(whatsappHref("001 212 555 0100"), "https://wa.me/12125550100");
+  // A 0-prefixed Indian number is still Indian.
+  assert.equal(dialDigits("09847011001"), "919847011001");
+});
+
+/* ---------------- Students from before calling mode ---------------- */
+
+test("a student counts as not contacted yet only if registered since calling mode went live or still in the first stage", () => {
+  assert.equal(studentAwaitsFirstCall({ registeredOn: CALLING_LIVE_ON, stage: "APPLICATION" }), true);
+  assert.equal(studentAwaitsFirstCall({ registeredOn: "2027-01-05", stage: "OFFER" }), true);
+  assert.equal(studentAwaitsFirstCall({ registeredOn: "2025-03-01", stage: "PROFILE" }), true);
+  assert.equal(studentAwaitsFirstCall({ registeredOn: "2025-03-01", stage: "APPLICATION" }), false);
+  assert.equal(studentAwaitsFirstCall({ registeredOn: "2026-10-26", stage: "SHORTLIST" }), false);
+});
+
+test("the queue applies the same cut-off to students in the database", () => {
+  const src = readFileSync(new URL("../src/server/calling.ts", import.meta.url), "utf8");
+  assert.match(src, /CALLING_LIVE_ON/);
+  assert.match(src, /FIRST_JOURNEY_STAGE/);
+});
+
+/* ---------------- Logging a call once ---------------- */
+
+test("a call is logged in one locked transaction and a repeat within a minute is refused", () => {
+  assert.equal(REPEAT_CALL_SECONDS, 60);
+  const src = readFileSync(new URL("../src/app/(app)/calls/actions.ts", import.meta.url), "utf8");
+  assert.match(src, /db\.transaction\(/);
+  assert.match(src, /\.for\("update"\)/);
+  assert.match(src, /REPEAT_CALL_SECONDS/);
+  assert.match(src, /archived/);
+  assert.match(src, /"ARRIVED"/);
+  assert.match(src, /merged into/);
+  const buttons = readFileSync(new URL("../src/app/(app)/calls/outcome-buttons.tsx", import.meta.url), "utf8");
+  assert.match(buttons, /useFormStatus/);
+  assert.match(buttons, /disabled=\{pending\}/);
 });
 
 test("a queue key carries the kind and the id, and nothing else gets through", () => {

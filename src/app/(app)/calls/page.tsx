@@ -4,8 +4,6 @@ import { fmtDateTime } from "@/lib/format";
 import { dayText, istDay } from "@/lib/journal";
 import {
   CALLING_ROLES,
-  CALL_OUTCOMES,
-  CALL_OUTCOME_LABEL,
   REASON_LABEL,
   parseQueueKey,
   readsTeamQueue,
@@ -18,9 +16,10 @@ import { STAGE_LABEL } from "@/server/enquiries";
 import { callCounters, mayCall, queueFor, recentContacts, recordFor, teamFor, type QueueItem } from "@/server/calling";
 import { syncFollowUpsOwnedBy } from "@/server/enquiry-tasks";
 import { lostReasonList } from "@/server/lost-reasons";
-import { Alert, Button, Card, CardHeader, Chip, EmptyState, Input, LinkButton, PageHeader, Select, Stat, Table, Td, Th } from "@/components/ui";
+import { Alert, Card, CardHeader, Chip, EmptyState, Input, LinkButton, PageHeader, Select, Stat, Table, Td, Th } from "@/components/ui";
 import type { EnquiryStage } from "@/db/schema";
 import { logCallAction } from "./actions";
+import { OutcomeButtons } from "./outcome-buttons";
 
 export const metadata = { title: "Calling mode" };
 export const dynamic = "force-dynamic";
@@ -162,13 +161,7 @@ export default async function CallsPage({ searchParams }: { searchParams: Promis
                   The date is used for Call back later; left empty, that is tomorrow. Every other outcome sets its own next step.
                   {current.kind === "ENQUIRY" ? " Connected, not interested and Already enrolled elsewhere close the enquiry as lost, with the reason picked above." : ""}
                 </p>
-                <div className="flex flex-wrap gap-2">
-                  {CALL_OUTCOMES.map((o) => (
-                    <Button key={o} type="submit" name="outcome" value={o} variant={o === "INTERESTED" ? "primary" : o === "WRONG_NUMBER" || o === "ENROLLED_ELSEWHERE" || o === "NOT_INTERESTED" ? "quiet" : "secondary"} size="sm" data-outcome={o}>
-                      {CALL_OUTCOME_LABEL[o]}
-                    </Button>
-                  ))}
-                </div>
+                <OutcomeButtons />
                 <Link href={`/calls?skip=${encodeURIComponent(nextSkip)}`} className="inline-block text-xs text-brand-600 hover:underline" data-call-skip>
                   Skip for now
                 </Link>

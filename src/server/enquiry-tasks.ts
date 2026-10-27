@@ -6,6 +6,9 @@ import { updateTracked } from "@/server/record-history";
 
 const { tasks: tk } = schema;
 
+/** The database, or the transaction a caller is already in. */
+type Writer = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 /*
  * An enquiry's next follow-up, held as a task.
  *
@@ -28,19 +31,19 @@ const OWNER = ENQUIRY_OWNER;
 const WANTS_TASK = sql`e.stage in ('NEW','CONTACTED','QUALIFIED','COUNSELLING') and e.next_follow_up_at is not null and ${OWNER} is not null`;
 const DUE = sql`(e.next_follow_up_at at time zone 'Asia/Kolkata')::date`;
 
-async function syncWhere(which: SQL) {
+async function syncWhere(which: SQL, w: Writer = db) {
   // The ones that no longer stand for a follow-up: no date, or closed.
-  await db.execute(sql`
+  await w.execute(sql`
     delete from tasks t using enquiries e
     where t.enquiry_id = e.id and t.done_at is null and (${which}) and not (${WANTS_TASK})`);
   // The ones whose date, owner or branch moved.
-  await db.execute(sql`
+  await w.execute(sql`
     update tasks t set due_on = ${DUE}, assigned_to_id = ${OWNER}, org_id = e.org_id, title = 'Follow up with ' || e.name, updated_at = now()
     from enquiries e
     where t.enquiry_id = e.id and t.done_at is null and (${which}) and ${WANTS_TASK}
       and (t.due_on <> ${DUE} or t.assigned_to_id <> ${OWNER} or t.org_id <> e.org_id or t.title <> 'Follow up with ' || e.name)`);
   // The ones that should have a task and do not.
-  await db.execute(sql`
+  await w.execute(sql`
     insert into tasks (id, org_id, enquiry_id, kind, title, due_on, assigned_to_id, source)
     select replace(gen_random_uuid()::text, '-', ''), e.org_id, e.id, 'CALL', 'Follow up with ' || e.name, ${DUE}, ${OWNER}, 'an enquiry'
     from enquiries e
@@ -50,7 +53,7 @@ async function syncWhere(which: SQL) {
 }
 
 /** After an enquiry is saved: its one open follow-up task matches it. */
-export const syncEnquiryFollowUp = (enquiryId: string) => syncWhere(sql`e.id = ${enquiryId}`);
+export const syncEnquiryFollowUp = (enquiryId: string, w: Writer = db) => syncWhere(sql`e.id = ${enquiryId}`, w);
 
 /** After a bulk change to many enquiries. */
 export async function syncEnquiryFollowUps(enquiryIds: string[]) {
@@ -79,8 +82,8 @@ export function syncFollowUpsOwnedBy(userIds: string[]) {
  * by whoever made it, with what came of it as the note. Returns the task, if
  * there was one.
  */
-export async function finishEnquiryFollowUp(enquiryId: string, byId: string, note: string | null): Promise<string | null> {
-  const [done] = await db
+export async function finishEnquiryFollowUp(enquiryId: string, byId: string, note: string | null, w: Writer = db): Promise<string | null> {
+  const [done] = await w
     .update(tk)
     .set({ doneAt: new Date(), doneById: byId, doneNote: note?.slice(0, 300) ?? null, updatedAt: new Date() })
     .where(and(eq(tk.enquiryId, enquiryId), isNull(tk.doneAt)))

@@ -121,8 +121,9 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
         </Card>
       )}
       <p className="mt-2 text-xs text-muted">
-        Calls are the calls logged against students and enquiries, connected the ones where somebody was reached. A follow-up is on time when it was finished on or
-        before the day it was due. Converted counts the enquiries a person held whose student was registered in the period. {NOT_RECORDED} means there is nothing in the
+        Calls are the calls logged against students and enquiries, connected the ones where somebody was reached. Follow-ups are the call and follow-up tasks a person
+        finished, counted to whoever finished them as the day end report does, even where the task sat on somebody else&apos;s desk. One is on time only when it was
+        finished on or before the day it was first due; pushing it to a later day does not make it on time. Converted counts the enquiries a person held whose student was registered in the period. {NOT_RECORDED} means there is nothing in the
         portal to count from, which is not the same as {shown(0)}.
       </p>
     </>

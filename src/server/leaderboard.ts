@@ -31,9 +31,11 @@ export async function leaderboardBranches(user: { role: string; orgId: string })
  * Each person's recorded work over the period, India days inclusive.
  *
  * Calls and connected calls are read from the contact history (students and
- * enquiries alike), follow-ups from the call and follow-up tasks on their desk
- * that were finished in the period, on time when finished on or before the day they were due,
- * and conversions from enquiries they held whose student was registered in
+ * enquiries alike), follow-ups from the call and follow-up tasks they finished
+ * in the period (credited to whoever finished it, as the day end report does,
+ * not to whose desk it sat on), on time only when finished on or before the
+ * day it was first due, so pushing a task out does not make it on time, and
+ * conversions from enquiries they held whose student was registered in
  * the period. An enquiry merged into another is the same person counted
  * once, on the enquiry that carries on.
  */
@@ -59,12 +61,12 @@ export async function leaderboard(period: Period, orgId: string | null): Promise
          and c.created_at >= ${from}::timestamptz and c.created_at < ${to}::timestamptz)::int as calls,
       (select count(*) from contact_log c where c.by_id = u.id and c.channel = 'CALL' and c.outcome::text in (${connected})
          and c.created_at >= ${from}::timestamptz and c.created_at < ${to}::timestamptz)::int as connected,
-      (select count(*) from tasks t where t.assigned_to_id = u.id and t.kind in ('CALL', 'FOLLOW_UP')
+      (select count(*) from tasks t where t.done_by_id = u.id and t.kind in ('CALL', 'FOLLOW_UP')
          and t.done_at >= ${from}::timestamptz and t.done_at < ${to}::timestamptz
-         and (t.done_at at time zone 'Asia/Kolkata')::date <= t.due_on)::int as on_time,
-      (select count(*) from tasks t where t.assigned_to_id = u.id and t.kind in ('CALL', 'FOLLOW_UP')
+         and (t.done_at at time zone 'Asia/Kolkata')::date <= coalesce(t.first_due_on, t.due_on))::int as on_time,
+      (select count(*) from tasks t where t.done_by_id = u.id and t.kind in ('CALL', 'FOLLOW_UP')
          and t.done_at >= ${from}::timestamptz and t.done_at < ${to}::timestamptz
-         and (t.done_at at time zone 'Asia/Kolkata')::date > t.due_on)::int as late,
+         and (t.done_at at time zone 'Asia/Kolkata')::date > coalesce(t.first_due_on, t.due_on))::int as late,
       (select count(*) from enquiries e join students s on s.id = e.student_id
          where ${ENQUIRY_OWNER} = u.id and e.stage = 'CONVERTED' and s.created_at >= ${from}::timestamptz and s.created_at < ${to}::timestamptz)::int as converted,
       (select count(*) from enquiries e where ${ENQUIRY_OWNER} = u.id and e.stage <> 'MERGED' and e.created_at < ${to}::timestamptz)::int as held
