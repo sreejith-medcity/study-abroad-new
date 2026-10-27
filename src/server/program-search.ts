@@ -62,6 +62,9 @@ export const QUICK: { key: string; label: string; cond: () => SQL }[] = [
   { key: "ausbildung", label: "Ausbildung", cond: () => eq(p.pathway, "AUSBILDUNG") },
   { key: "nursing", label: "Nurse registration", cond: () => eq(p.pathway, "NURSING") },
   { key: "fsj", label: "FSJ / BFD", cond: () => inArray(p.pathway, ["FSJ", "BFD"]) },
+  { key: "nclex", label: "NCLEX-RN", cond: () => eq(p.pathway, "NCLEX") },
+  { key: "weiterbildung", label: "Weiterbildung", cond: () => eq(p.pathway, "WEITERBILDUNG") },
+  { key: "ccm", label: "CCM", cond: () => eq(p.pathway, "CCM") },
 ];
 
 export const tagCond = (tag: string) => sql`${tag} = any(${p.tags})`;

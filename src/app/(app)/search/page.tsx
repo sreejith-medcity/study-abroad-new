@@ -23,6 +23,7 @@ import { rankLabels } from "@/lib/rankings";
 import { LEVEL_LABEL, SHORTLIST_LIMIT, dayText, daysUntil, inrApprox, intakesText, tuitionText } from "@/lib/catalogue";
 import { Button, Card, Chip, EmptyState, Input, LinkButton, PageHeader, Select, Table, Td, Th, Toolbar, cn } from "@/components/ui";
 import { IconCheck, IconAlert, IconClock, IconGlobe, IconSearch, IconSpark } from "@/components/icons";
+import { pathwayName } from "@/lib/pathways";
 
 export const metadata = { title: "Search programs" };
 
@@ -589,7 +590,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                           <span>{LEVEL_LABEL[r.level] ?? r.level}</span>
                           {r.studyArea && <span>· {r.studyArea}</span>}
                           {r.durationMonths && <span>· {r.durationMonths} months</span>}
-                          {r.pathway !== "DEGREE" && <Chip tone="brand">{r.pathway === "AUSBILDUNG" ? "Ausbildung" : r.pathway === "NURSING" ? "Nursing" : r.pathway}</Chip>}
+                          {r.pathway !== "DEGREE" && <Chip tone="brand">{r.pathway === "AUSBILDUNG" ? "Ausbildung" : r.pathway === "NURSING" ? "Nursing" : pathwayName(r.pathway)}</Chip>}
                         </p>
                       </Td>
                       <Td>
@@ -741,7 +742,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                         <span>{LEVEL_LABEL[r.level] ?? r.level}</span>
                         {r.studyArea && <span>· {r.studyArea}</span>}
                         {r.durationMonths && <span>· {r.durationMonths} months</span>}
-                        {r.pathway !== "DEGREE" && <Chip tone="brand">{r.pathway === "AUSBILDUNG" ? "Ausbildung" : r.pathway === "NURSING" ? "Nursing" : r.pathway}</Chip>}
+                        {r.pathway !== "DEGREE" && <Chip tone="brand">{r.pathway === "AUSBILDUNG" ? "Ausbildung" : r.pathway === "NURSING" ? "Nursing" : pathwayName(r.pathway)}</Chip>}
                       </p>
                       {/* A counsellor should not have to know which programmes lost
                           their work rights. Where the institution says so, the row

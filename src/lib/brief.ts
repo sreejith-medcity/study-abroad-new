@@ -139,7 +139,8 @@ export function parseBrief(input: string, vocab: BriefVocab): Brief {
     if (re.test(text)) {
       params.level = level;
       if (level === "VOCATIONAL") params.pathway = "AUSBILDUNG";
-      if (level === "REGISTRATION") params.pathway = "NURSING";
+      // NCLEX-RN is a pathway of its own; any other registration route is NURSING.
+      if (level === "REGISTRATION") params.pathway = /\bnclex\b/.test(text) ? "NCLEX" : "NURSING";
       read.push(LEVEL_READ[level]);
       break;
     }

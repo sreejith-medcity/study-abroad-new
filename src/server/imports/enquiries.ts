@@ -10,6 +10,7 @@ import { isCounsellor } from "@/lib/permissions";
 import { applyRepeat, newRouteMemo, routeNewEnquiry } from "@/server/enquiry-routing";
 import { ledgerCreated, updateTracked } from "@/server/record-history";
 import { syncEnquiryFollowUps } from "@/server/enquiry-tasks";
+import { PATHWAY_IMPORT_ALIASES } from "@/lib/pathways";
 
 export const ENQUIRY_COLUMNS = ["branch", "name", "phone", "email", "city", "source", "interest_country", "interest_pathway", "intake_month", "intake_year", "budget_lakhs", "next_follow_up", "counsellor_email", "notes"] as const;
 export const ENQUIRY_EXAMPLE = ["", "Rahul Nair", "+91 94460 11223", "rahul.nair@example.com", "Pala", "WALK_IN", "Germany", "AUSBILDUNG", "9", "2027", "8", "2026-10-05", "", "Plus two science, 78%. Wants nursing Ausbildung."];
@@ -57,7 +58,7 @@ export async function importEnquiries(user: SessionUser, rows: Record<string, st
       city: text(r.city, 80),
       source: oneOf(r.source, "source", schema.enquirySource.enumValues, p, SOURCE_ALIASES),
       interestCountry: text(r.interest_country, 80),
-      interestPathway: oneOf(r.interest_pathway, "interest_pathway", schema.pathway.enumValues, p, { degree: "DEGREE", ausbildung: "AUSBILDUNG", nursing: "NURSING", fsj: "FSJ", bfd: "BFD" }),
+      interestPathway: oneOf(r.interest_pathway, "interest_pathway", schema.pathway.enumValues, p, PATHWAY_IMPORT_ALIASES),
       intakeMonth: num(r.intake_month, "intake_month", p, { int: true, min: 1, max: 12 }),
       intakeYear: num(r.intake_year, "intake_year", p, { int: true, min: 2020, max: 2100 }),
       budgetLakhs: num(r.budget_lakhs, "budget_lakhs", p, { min: 0, max: 1000 }),

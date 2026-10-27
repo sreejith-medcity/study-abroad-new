@@ -57,7 +57,7 @@ Rules: leave a key out when the description does not say. Never include a test s
       read.push(label(k, clean, vocab));
     }
     if (params.level === "VOCATIONAL") params.pathway = "AUSBILDUNG";
-    if (params.level === "REGISTRATION") params.pathway = "NURSING";
+    if (params.level === "REGISTRATION" && params.pathway !== "NCLEX") params.pathway = "NURSING";
     return { params, read, notes: base.notes, byAi: true, left: allowance.limit == null ? null : allowance.left - 1 };
   } catch (e) {
     await audit(user.id, "ai.error", "ai", "finder", { message: (e as Error).message });

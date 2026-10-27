@@ -116,6 +116,9 @@ export function ReferForm() {
           <option value="NURSING">Nurse registration</option>
           <option value="FSJ">FSJ, Freiwilliges Soziales Jahr (Germany)</option>
           <option value="BFD">BFD, Bundesfreiwilligendienst (Germany)</option>
+          <option value="NCLEX">NCLEX-RN (USA nurse licensing)</option>
+          <option value="WEITERBILDUNG">Weiterbildung (Germany: further training and nurse recognition)</option>
+          <option value="CCM">CCM</option>
         </SelectField>
       </div>
       <TextareaField label="Anything we should know" name="notes" rows={3} hint="Their qualifications, their budget, when they want to go, who to ask for." />

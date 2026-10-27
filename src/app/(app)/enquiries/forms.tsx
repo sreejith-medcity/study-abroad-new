@@ -98,6 +98,9 @@ export function EnquiryForm({
           <option value="NURSING">Nurse registration</option>
           <option value="FSJ">FSJ, Freiwilliges Soziales Jahr (Germany)</option>
           <option value="BFD">BFD, Bundesfreiwilligendienst (Germany)</option>
+          <option value="NCLEX">NCLEX-RN (USA nurse licensing)</option>
+          <option value="WEITERBILDUNG">Weiterbildung (Germany: further training and nurse recognition)</option>
+          <option value="CCM">CCM</option>
         </SelectField>
         <SelectField label="Destination" name="interestCountry" defaultValue={values.interestCountry ?? ""}>
           <option value="">Not decided</option>

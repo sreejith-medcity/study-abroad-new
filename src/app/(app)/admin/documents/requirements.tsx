@@ -31,8 +31,17 @@ export type RequirementRow = {
   pathway: Pathway | null;
 };
 
-/** The three journeys, as the team says them. */
-export const JOURNEY_LABEL: Record<Pathway, string> = { DEGREE: "Study abroad", AUSBILDUNG: "Ausbildung", NURSING: "Nursing / NCLEX-RN", FSJ: "FSJ (Germany)", BFD: "BFD (Germany)" };
+/** The journeys, as the team says them. */
+export const JOURNEY_LABEL: Record<Pathway, string> = {
+  DEGREE: "Study abroad",
+  AUSBILDUNG: "Ausbildung",
+  NURSING: "Nurse registration",
+  NCLEX: "NCLEX-RN",
+  WEITERBILDUNG: "Weiterbildung",
+  CCM: "CCM",
+  FSJ: "FSJ (Germany)",
+  BFD: "BFD (Germany)",
+};
 
 const OWED: OwedBy[] = ["STUDENT", "MEDCITY", "UNIVERSITY", "VENDOR"];
 

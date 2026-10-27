@@ -1,6 +1,8 @@
 import { revalidatePath } from "next/cache";
 import { asc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
+import type { Pathway } from "@/db/schema";
+import { PATHWAYS } from "@/lib/pathways";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { Button, Card, Input, PageHeader, Select, StatusBadge } from "@/components/ui";
@@ -8,7 +10,16 @@ import { ADMIN_ROLES } from "@/lib/permissions";
 
 export const metadata = { title: "Status flows" };
 
-const PATHWAY_LABEL = { DEGREE: "Degree (UK, IE, AU, CA, MT)", AUSBILDUNG: "Ausbildung (Germany)", NURSING: "Nurse registration (NCLEX, OET, Anerkennung)", FSJ: "FSJ, Freiwilliges Soziales Jahr (Germany)", BFD: "BFD, Bundesfreiwilligendienst (Germany)" } as const;
+const PATHWAY_LABEL: Record<Pathway, string> = {
+  DEGREE: "Degree (UK, IE, AU, CA, MT)",
+  AUSBILDUNG: "Ausbildung (Germany)",
+  NURSING: "Nurse registration (OET, Anerkennung, and NCLEX-RN files opened before NCLEX-RN had its own pathway)",
+  NCLEX: "NCLEX-RN (USA nurse licensing)",
+  WEITERBILDUNG: "Weiterbildung (Germany), provisional until the written guide arrives",
+  CCM: "CCM, provisional until the written guide arrives",
+  FSJ: "FSJ, Freiwilliges Soziales Jahr (Germany)",
+  BFD: "BFD, Bundesfreiwilligendienst (Germany)",
+};
 
 async function saveStatus(formData: FormData) {
   "use server";
@@ -32,7 +43,7 @@ async function saveStatus(formData: FormData) {
 export default async function StatusesPage() {
   await requireUser([...ADMIN_ROLES]);
   const rows = await db.select().from(schema.statusDefinitions).orderBy(asc(schema.statusDefinitions.pathway), asc(schema.statusDefinitions.sortOrder));
-  const pathways = ["DEGREE", "AUSBILDUNG", "NURSING", "FSJ", "BFD"] as const;
+  const pathways = PATHWAYS;
 
   return (
     <>

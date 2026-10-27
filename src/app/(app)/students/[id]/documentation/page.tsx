@@ -1,6 +1,7 @@
 import { PrintButton } from "@/components/print-button";
 import Link from "next/link";
 import { db, schema } from "@/db";
+import type { Pathway } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { requireUser } from "@/lib/auth";
 import { fmtDate } from "@/lib/format";
@@ -12,7 +13,16 @@ import { Alert, Card, CardHeader, Chip, Table, Td, Th } from "@/components/ui";
 import { AddItem, ItemActions, StageMover } from "./client";
 
 /** The journeys, as the team says them, for the line above the list. */
-const JOURNEY_NAME = { DEGREE: "Study abroad", AUSBILDUNG: "Ausbildung", NURSING: "Nursing / NCLEX-RN", FSJ: "FSJ (Germany)", BFD: "BFD (Germany)" } as const;
+const JOURNEY_NAME: Record<Pathway, string> = {
+  DEGREE: "Study abroad",
+  AUSBILDUNG: "Ausbildung",
+  NURSING: "Nurse registration",
+  NCLEX: "NCLEX-RN",
+  WEITERBILDUNG: "Weiterbildung",
+  CCM: "CCM",
+  FSJ: "FSJ (Germany)",
+  BFD: "BFD (Germany)",
+};
 
 export const metadata = { title: "Documentation" };
 

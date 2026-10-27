@@ -52,6 +52,8 @@ test("parseBrief picks the longest field name and the pathway behind a level", (
   const a = parseBrief("Ausbildung in Germany", VOCAB);
   assert.equal(a.params.level, "VOCATIONAL");
   assert.equal(a.params.pathway, "AUSBILDUNG");
+  assert.equal(parseBrief("NCLEX for the USA", VOCAB).params.pathway, "NCLEX", "NCLEX-RN is a pathway of its own");
+  assert.equal(parseBrief("nurse registration in the UK", VOCAB).params.pathway, "NURSING", "other registration routes stay nursing");
 });
 
 test("parseBrief reads the asks a family makes", () => {

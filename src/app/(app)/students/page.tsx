@@ -165,6 +165,9 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
               { value: "NURSING", label: "Nurse registration" },
               { value: "FSJ", label: "FSJ (Germany)" },
               { value: "BFD", label: "BFD (Germany)" },
+              { value: "NCLEX", label: "NCLEX-RN" },
+              { value: "WEITERBILDUNG", label: "Weiterbildung" },
+              { value: "CCM", label: "CCM" },
             ],
           },
           ...(teamOptions.length

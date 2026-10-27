@@ -37,13 +37,15 @@ export const isAusbildungSql = sql<boolean>`(
 export const hasNclexCaseSql = sql<boolean>`exists (select 1 from nclex_cases xn where xn.student_id = "students"."id")`;
 
 /**
- * A nursing student: registered for nursing, applied to a nursing course, or
- * already on the NCLEX-RN process. These are the files the NCLEX-RN steps are
- * offered on.
+ * A nursing student: registered for nursing or for NCLEX-RN, applied to a
+ * course on either pathway, or already on the NCLEX-RN process. These are the
+ * files the NCLEX-RN steps are offered on. NCLEX-RN is a pathway of its own
+ * now; NURSING stays on the list so the NCLEX-RN files opened on it before
+ * then keep their tab, their steps and their place on the tracker.
  */
 export const isNursingSql = sql<boolean>`(
-  "students"."preferred_pathway" = 'NURSING'
-  or exists (select 1 from applications xa join programs xp on xp.id = xa.program_id where xa.student_id = "students"."id" and xp.pathway = 'NURSING')
+  "students"."preferred_pathway" in ('NURSING', 'NCLEX')
+  or exists (select 1 from applications xa join programs xp on xp.id = xa.program_id where xa.student_id = "students"."id" and xp.pathway in ('NURSING', 'NCLEX'))
   or exists (select 1 from nclex_cases xn where xn.student_id = "students"."id")
 )`;
 

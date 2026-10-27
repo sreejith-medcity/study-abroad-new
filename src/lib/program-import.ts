@@ -17,7 +17,7 @@ export const IMPORT_COLUMNS = [
   "program_url", "min_ielts_band", "entry_requirements", "balance_deposit", "typical_scholarship", "tags", "offer_tat_days",
 ] as const;
 
-const PATHWAYS = ["DEGREE", "AUSBILDUNG", "NURSING", "FSJ", "BFD"] as const;
+const PATHWAYS = ["DEGREE", "AUSBILDUNG", "NURSING", "FSJ", "BFD", "NCLEX", "WEITERBILDUNG", "CCM"] as const;
 const LEVELS = ["SCHOOL", "UG_DIPLOMA", "UG", "PG_DIPLOMA", "PG", "PHD", "TOP_UP", "VOCATIONAL", "REGISTRATION", "CERTIFICATE"] as const;
 const STATUSES = ["DRAFT", "LIVE", "ARCHIVED"] as const;
 const WORK_RIGHTS = ["UNKNOWN", "ELIGIBLE", "INELIGIBLE"] as const;

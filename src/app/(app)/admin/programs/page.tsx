@@ -17,6 +17,7 @@ import { MiocForm } from "./mioc-form";
 import { fmtDateTime, groupInr } from "@/lib/format";
 import { ADMIN_ROLES } from "@/lib/permissions";
 import { draftTotal } from "@/server/draft-review";
+import { pathwayName } from "@/lib/pathways";
 
 export const metadata = { title: "Programs" };
 // The CRICOS sync runs from this page and takes up to a minute on a full release.
@@ -116,7 +117,7 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
                 {countries.map((x) => <option key={x.id} value={x.code}>{x.name}</option>)}
               </Select>
               <Select name="pathway" aria-label="Pathway" defaultValue={f.pathway ?? ""}>
-                <option value="">Pathway</option><option value="DEGREE">Degree</option><option value="AUSBILDUNG">Ausbildung</option><option value="NURSING">Nurse registration</option><option value="FSJ">FSJ</option><option value="BFD">BFD</option>
+                <option value="">Pathway</option><option value="DEGREE">Degree</option><option value="AUSBILDUNG">Ausbildung</option><option value="NURSING">Nurse registration</option><option value="FSJ">FSJ</option><option value="BFD">BFD</option><option value="NCLEX">NCLEX-RN</option><option value="WEITERBILDUNG">Weiterbildung</option><option value="CCM">CCM</option>
               </Select>
               <Select name="level" aria-label="Level" defaultValue={f.level ?? ""}>
                 <option value="">Any level</option>
@@ -166,7 +167,7 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
                 <tbody>
                   {rows.map((r) => (
                     <tr key={r.id} data-program-row={r.id}>
-                      <Td><Link prefetch={false} href={`/admin/programs/${r.id}`} className="font-medium hover:text-brand-700 hover:underline">{r.name}</Link>{r.pathway !== "DEGREE" && <Chip tone="info">{r.pathway === "AUSBILDUNG" ? "Ausbildung" : r.pathway === "NURSING" ? "Nursing" : r.pathway}</Chip>}</Td>
+                      <Td><Link prefetch={false} href={`/admin/programs/${r.id}`} className="font-medium hover:text-brand-700 hover:underline">{r.name}</Link>{r.pathway !== "DEGREE" && <Chip tone="info">{r.pathway === "AUSBILDUNG" ? "Ausbildung" : r.pathway === "NURSING" ? "Nursing" : pathwayName(r.pathway)}</Chip>}</Td>
                       <Td><Link prefetch={false} href={`/admin/universities/${r.universityId}`} className="hover:text-brand-700 hover:underline" title={`Edit ${r.university}`}>{r.university}</Link><p className="text-xs text-muted">{r.country}</p></Td>
                       <Td>{r.level}</Td>
                       <Td className="whitespace-nowrap">{intakesText(r.intakeMonths)}</Td>

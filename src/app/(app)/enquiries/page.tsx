@@ -38,6 +38,7 @@ import {
   TrendChart,
 } from "@/components/ui";
 import { IconAlert, IconCheck, IconEnquiry, IconPlus } from "@/components/icons";
+import { pathwayName } from "@/lib/pathways";
 
 export const metadata = { title: "Enquiries" };
 
@@ -141,6 +142,9 @@ export default async function EnquiriesPage({ searchParams }: { searchParams: Pr
                   { value: "NURSING", label: "Nurse registration" },
                   { value: "FSJ", label: "FSJ (Germany)" },
                   { value: "BFD", label: "BFD (Germany)" },
+                  { value: "NCLEX", label: "NCLEX-RN" },
+                  { value: "WEITERBILDUNG", label: "Weiterbildung" },
+                  { value: "CCM", label: "CCM" },
                 ],
               },
             ]}
@@ -176,7 +180,7 @@ export default async function EnquiriesPage({ searchParams }: { searchParams: Pr
                         <Td>
                           <p className="text-sm">{r.interestCountry ?? "Not decided"}</p>
                           <p className="text-xs text-muted">
-                            {r.interestPathway === "AUSBILDUNG" ? "Ausbildung" : r.interestPathway === "NURSING" ? "Nursing" : r.interestPathway === "FSJ" || r.interestPathway === "BFD" ? r.interestPathway : r.interestPathway === "DEGREE" ? "Degree" : "Pathway open"}
+                            {r.interestPathway === "AUSBILDUNG" ? "Ausbildung" : r.interestPathway === "NURSING" ? "Nursing" : r.interestPathway === "FSJ" || r.interestPathway === "BFD" ? r.interestPathway : r.interestPathway ? pathwayName(r.interestPathway) : "Pathway open"}
                             {r.intakeMonth && r.intakeYear ? ` · ${intakeLabel(r.intakeMonth, r.intakeYear)}` : ""}
                           </p>
                         </Td>

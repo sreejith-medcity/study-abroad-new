@@ -617,6 +617,13 @@
       "when": 1793076013833,
       "tag": "0087_team_pathways",
       "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1793076612833,
+      "tag": "0088_new_pathways",
+      "breakpoints": true
     }
   ]
 }

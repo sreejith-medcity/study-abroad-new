@@ -34,6 +34,9 @@ const PATHWAYS: { key: Pathway; label: string }[] = [
   { key: "NURSING", label: "Nurse registration" },
   { key: "FSJ", label: "FSJ" },
   { key: "BFD", label: "BFD" },
+  { key: "NCLEX", label: "NCLEX-RN" },
+  { key: "WEITERBILDUNG", label: "Weiterbildung" },
+  { key: "CCM", label: "CCM" },
 ];
 
 export default async function QueuePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {

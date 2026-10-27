@@ -94,6 +94,9 @@ export default async function InsightsPage({ searchParams }: { searchParams: Pro
             <option value="NURSING">Nurse registration</option>
             <option value="FSJ">FSJ, Freiwilliges Soziales Jahr (Germany)</option>
             <option value="BFD">BFD, Bundesfreiwilligendienst (Germany)</option>
+            <option value="NCLEX">NCLEX-RN (USA nurse licensing)</option>
+            <option value="WEITERBILDUNG">Weiterbildung (Germany: further training and nurse recognition)</option>
+            <option value="CCM">CCM</option>
           </Select>
           <Select name="org" aria-label="Partner" defaultValue={f.org ?? ""}>
             <option value="">All partners</option>

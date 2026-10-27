@@ -14,6 +14,7 @@ import { fxRates, getSettings } from "@/server/settings";
 import { ShortlistButton } from "@/components/shortlist-button";
 import { Button, Card, Chip, EmptyState, Input, LinkButton, Select, cn } from "@/components/ui";
 import { IconAlert, IconCheck, IconClock, IconGlobe, IconSearch, IconSpark } from "@/components/icons";
+import { pathwayName } from "@/lib/pathways";
 
 const BUDGETS = [5, 10, 15, 20, 25, 30, 40, 50];
 const TATS = [3, 5, 7, 14, 30];
@@ -331,7 +332,7 @@ export async function FinderResults({
                           {row.name}
                         </Link>
                         <Chip tone={match.band === "strong" ? "ok" : match.band === "possible" ? "info" : "neutral"}>{BAND_LABEL[match.band]}</Chip>
-                        {row.pathway !== "DEGREE" && <Chip tone="brand">{row.pathway === "AUSBILDUNG" ? "Ausbildung" : row.pathway === "NURSING" ? "Nursing" : row.pathway}</Chip>}
+                        {row.pathway !== "DEGREE" && <Chip tone="brand">{row.pathway === "AUSBILDUNG" ? "Ausbildung" : row.pathway === "NURSING" ? "Nursing" : pathwayName(row.pathway)}</Chip>}
                       </div>
                       <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
                         <span>{LEVEL_LABEL[row.level] ?? row.level}</span>

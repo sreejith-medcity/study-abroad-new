@@ -67,8 +67,12 @@ export const role = pgEnum("role", [
  * The journey a file follows. FSJ (Freiwilliges Soziales Jahr) and BFD
  * (Bundesfreiwilligendienst) are Germany's two volunteer services; they share
  * one written process (src/lib/fsj.ts) and differ only in the programme facts.
+ * NCLEX is the USA nurse licensing route with its own 20-step tab (src/lib/nclex.ts);
+ * WEITERBILDUNG (German further training, nurse recognition) and CCM have
+ * provisional status lists until their written guides arrive. src/lib/pathways.ts
+ * keeps the words for each.
  */
-export const pathway = pgEnum("pathway", ["DEGREE", "AUSBILDUNG", "NURSING", "FSJ", "BFD"]);
+export const pathway = pgEnum("pathway", ["DEGREE", "AUSBILDUNG", "NURSING", "FSJ", "BFD", "NCLEX", "WEITERBILDUNG", "CCM"]);
 /** The FSJ / BFD language assessment's outcome, as the documentation team records it. */
 export const fsjLanguageResult = pgEnum("fsj_language_result", ["SUFFICIENT", "NOT_SUFFICIENT"]);
 /** What the employer said after an FSJ / BFD interview. */

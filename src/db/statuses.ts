@@ -132,12 +132,75 @@ const fsjChain = (programme: "FSJ" | "BFD"): StatusSeed[] => [
 const FSJ = fsjChain("FSJ");
 const BFD = fsjChain("BFD");
 
+/*
+ * NCLEX-RN (USA) as a pathway of its own. Every NURSING code is kept, with the
+ * wording made the USA's alone (no NMC, CBT, Anerkennung or Kenntnisprüfung),
+ * so an NCLEX-RN file recorded on NURSING before this pathway existed moves
+ * across code for code (deploy/nclex-pathway.sql) with nothing to decide.
+ * Between them sit the waiting points the 20 NCLEX-RN steps (src/lib/nclex.ts)
+ * make plain: the CGFNS evaluation, the wait for the ATT, a re-examination
+ * after a fail, and the VisaScreen. The steps tab stays the detailed record;
+ * the status is what lists, dashboards and the student read. The numbers are
+ * explicit so the new codes sit between the NURSING ones.
+ */
+const NCLEX: StatusSeed[] = [
+  { code: "CREDENTIAL_CHECK", label: "Credential check: registered for the USA NCLEX-RN process", studentLabel: "Checking your qualifications", studentLabelMl: "നിങ്ങളുടെ യോഗ്യതകൾ പരിശോധിക്കുന്നു", group: "NEW", sortOrder: 10 },
+  { code: "CGFNS_EVALUATION", label: "CGFNS credential evaluation (CES / CVS)", studentLabel: "CGFNS is evaluating your nursing credentials", group: "IN_PROGRESS", sortOrder: 24 },
+  { code: "LANGUAGE_SCORE", label: "IELTS / OET score pending", studentLabel: "Language score needed", studentLabelMl: "ഭാഷാ പരീക്ഷയുടെ സ്കോർ വേണം", group: "PENDING_PARTNER", sortOrder: 28 },
+  { code: "BOARD_APPLICATION", label: "State board application and Pearson VUE registration", studentLabel: "Registration applied", studentLabelMl: "രജിസ്ട്രേഷന് അപേക്ഷിച്ചു", group: "IN_PROGRESS", isMilestone: true, sortOrder: 30 },
+  { code: "ATT_AWAITED", label: "Waiting for the Authorisation to Test (ATT)", studentLabel: "Waiting for your exam authorisation", group: "IN_PROGRESS", sortOrder: 35 },
+  { code: "EXAM", label: "NCLEX-RN exam approved and booked", studentLabel: "Licensing exam", studentLabelMl: "ലൈസൻസ് പരീക്ഷ", group: "IN_PROGRESS", sortOrder: 40 },
+  { code: "REEXAMINATION", label: "Re-examination after a fail", studentLabel: "Preparing for your next exam attempt", group: "IN_PROGRESS", sortOrder: 45 },
+  { code: "REGISTRATION", label: "NCLEX-RN passed: licence received", studentLabel: "Registered", studentLabelMl: "രജിസ്ട്രേഷൻ ലഭിച്ചു", group: "OFFER", isMilestone: true, sortOrder: 50 },
+  { code: "VISA_SCREENING", label: "VisaScreen (CGFNS) in progress", studentLabel: "Your VisaScreen certificate is in progress", group: "IN_PROGRESS", sortOrder: 55 },
+  { code: "JOB_OFFER", label: "Job offer received from a US employer", studentLabel: "Job offer", studentLabelMl: "ജോലി വാഗ്ദാനം ലഭിച്ചു", group: "OFFER", isMilestone: true, sortOrder: 60 },
+  { code: "VISA_FILED", label: "Visa filed", studentLabel: "Visa applied", studentLabelMl: "വിസയ്ക്ക് അപേക്ഷിച്ചു", group: "IN_PROGRESS", isMilestone: true, sortOrder: 65 },
+  { code: "VISA_RECEIVED", label: "Visa received", studentLabel: "Visa approved", studentLabelMl: "വിസ ലഭിച്ചു", group: "SUCCESS", isMilestone: true, sortOrder: 70 },
+  { code: "DEPLOYED", label: "Deployed: started work in the USA", studentLabel: "Started work", studentLabelMl: "ജോലി ആരംഭിച്ചു", group: "SUCCESS", isMilestone: true, sortOrder: 80 },
+];
+
+/*
+ * PROVISIONAL. Weiterbildung (German further training, the nurse recognition
+ * adaptation) and CCM have no written process yet: the owner has not sent the
+ * guides. Until then both follow one generic chain modelled on the others
+ * (assessment, documents, application, offer or contract, visa, travel,
+ * arrived; the closing statuses come from COMMON), so a file can be opened and
+ * moved. When a guide arrives, its own chain replaces this one the way the
+ * Ausbildung and FSJ / BFD chains were written: the codes here that the guide
+ * keeps stay, so a file already at one is not lost. Codes the dashboards count
+ * (VISA_FILED, VISA_RECEIVED, PRE_DEPARTURE, JOINED) are reused.
+ */
+const provisionalChain = (pathway: "WEITERBILDUNG" | "CCM"): StatusSeed[] => [
+  { code: "ASSESSMENT", label: "Assessment pending", studentLabel: "Application received", studentLabelMl: "അപേക്ഷ ലഭിച്ചു", group: "NEW", sortOrder: 10 },
+  { code: "DOCUMENT_COLLECTION", label: "Document collection", studentLabel: "Send us your documents", group: "NEW", sortOrder: 22 },
+  {
+    code: "APPLICATION_SUBMITTED",
+    label: pathway === "WEITERBILDUNG" ? "Application submitted to the training provider / recognition authority" : "Application submitted",
+    studentLabel: "Your application has been submitted",
+    group: "IN_PROGRESS",
+    isMilestone: true,
+    sortOrder: 30,
+  },
+  { code: "OFFER_RECEIVED", label: "Offer / contract received", studentLabel: "Your offer has arrived", group: "OFFER", isMilestone: true, sortOrder: 40 },
+  { code: "CONTRACT_SIGNED", label: "Contract signed", studentLabel: "Contract signed", studentLabelMl: "കരാർ ഒപ്പിട്ടു", group: "OFFER", isMilestone: true, sortOrder: 45 },
+  { code: "VISA_FILED", label: "Visa filed", studentLabel: "Visa applied", studentLabelMl: "വിസയ്ക്ക് അപേക്ഷിച്ചു", group: "IN_PROGRESS", isMilestone: true, sortOrder: 50 },
+  { code: "VISA_PROCESSING", label: "Visa processing", studentLabel: "Your visa is being processed", group: "IN_PROGRESS", sortOrder: 55 },
+  { code: "VISA_RECEIVED", label: "Visa received", studentLabel: "Visa approved", studentLabelMl: "വിസ ലഭിച്ചു", group: "SUCCESS", isMilestone: true, sortOrder: 60 },
+  { code: "PRE_DEPARTURE", label: "Pre-departure process", studentLabel: "Getting you ready to travel", group: "SUCCESS", isMilestone: true, sortOrder: 65 },
+  { code: "JOINED", label: "Arrived and started", studentLabel: "Arrived and started", group: "SUCCESS", isMilestone: true, sortOrder: 70 },
+];
+const WEITERBILDUNG = provisionalChain("WEITERBILDUNG");
+const CCM = provisionalChain("CCM");
+
 export const STATUS_SEED: Record<Pathway, StatusSeed[]> = {
   DEGREE: [...DEGREE.slice(0, 1), COMMON[0], ...DEGREE.slice(1), ...COMMON.slice(1)],
   AUSBILDUNG: [...AUSBILDUNG.slice(0, 1), COMMON[0], ...AUSBILDUNG.slice(1), ...COMMON.slice(1)],
   NURSING: [...NURSING.slice(0, 1), COMMON[0], ...NURSING.slice(1), ...COMMON.slice(1)],
   FSJ: [...FSJ.slice(0, 1), COMMON[0], ...FSJ.slice(1), ...COMMON.slice(1)],
   BFD: [...BFD.slice(0, 1), COMMON[0], ...BFD.slice(1), ...COMMON.slice(1)],
+  NCLEX: [...NCLEX.slice(0, 1), COMMON[0], ...NCLEX.slice(1), ...COMMON.slice(1)],
+  WEITERBILDUNG: [...WEITERBILDUNG.slice(0, 1), COMMON[0], ...WEITERBILDUNG.slice(1), ...COMMON.slice(1)],
+  CCM: [...CCM.slice(0, 1), COMMON[0], ...CCM.slice(1), ...COMMON.slice(1)],
 };
 
 export const DOCUMENT_TYPES = [

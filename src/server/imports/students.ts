@@ -10,6 +10,7 @@ import { branchOwner, branchResolver, emptyResult, lineOf, phoneKey, staffByEmai
 import { isCounsellor } from "@/lib/permissions";
 import { ledgerCreated, updateTracked } from "@/server/record-history";
 import { placeOnPathwayTeam } from "@/server/team-pathways";
+import { PATHWAY_IMPORT_ALIASES } from "@/lib/pathways";
 
 export const STUDENT_COLUMNS = [
   "branch", "name", "first_name", "last_name", "email", "phone", "counsellor_email", "consent",
@@ -124,8 +125,8 @@ export async function importStudents(user: SessionUser, rows: Row[], commit: boo
       // unrecognised value is left blank and said out loud, not held against the row.
       preferredPathway: (() => {
         const soft: Problems = [];
-        const hit = oneOf(r.preferred_pathway, "preferred_pathway", schema.pathway.enumValues, soft, { degree: "DEGREE", ausbildung: "AUSBILDUNG", nursing: "NURSING", fsj: "FSJ", bfd: "BFD" });
-        if (soft.length) ignored.push(`preferred_pathway: "${String(r.preferred_pathway).trim()}" is not degree, Ausbildung or nursing, so it was left blank`);
+        const hit = oneOf(r.preferred_pathway, "preferred_pathway", schema.pathway.enumValues, soft, PATHWAY_IMPORT_ALIASES);
+        if (soft.length) ignored.push(`preferred_pathway: "${String(r.preferred_pathway).trim()}" is not a pathway the portal knows (degree, Ausbildung, nursing, NCLEX-RN, Weiterbildung, CCM, FSJ or BFD), so it was left blank`);
         return hit;
       })(),
     };

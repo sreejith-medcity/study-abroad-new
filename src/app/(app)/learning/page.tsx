@@ -8,6 +8,7 @@ import { Button, Card, CardHeader, Chip, EmptyState, Input, LinkButton, PageHead
 import { IconDoc, IconGlobe, IconLearning, IconSpark } from "@/components/icons";
 import { ResourceForm } from "./forms";
 import { deleteResourceAction, toggleResourceAction } from "./actions";
+import { pathwayName } from "@/lib/pathways";
 
 export const metadata = { title: "Learning resources" };
 
@@ -89,7 +90,7 @@ export default async function LearningPage({ searchParams }: { searchParams: Pro
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
             <Chip tone={KIND_TONE[x.kind] ?? "neutral"}>{KIND_LABEL[x.kind] ?? x.kind}</Chip>
-            {x.pathway && <Chip>{x.pathway === "AUSBILDUNG" ? "Ausbildung" : x.pathway === "NURSING" ? "Nursing" : x.pathway === "FSJ" || x.pathway === "BFD" ? x.pathway : "Degree"}</Chip>}
+            {x.pathway && <Chip>{x.pathway === "AUSBILDUNG" ? "Ausbildung" : x.pathway === "NURSING" ? "Nursing" : x.pathway === "FSJ" || x.pathway === "BFD" ? x.pathway : x.pathway === "DEGREE" ? "Degree" : pathwayName(x.pathway)}</Chip>}
             {x.countryName && <Chip tone="info">{x.countryName}</Chip>}
             {!x.published && <Chip tone="bad">Unpublished</Chip>}
           </div>

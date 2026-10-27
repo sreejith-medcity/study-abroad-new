@@ -267,6 +267,26 @@ const FSJ_ROWS: Omit<SeedRequirement, "pathway">[] = [
 
 export const FSJ_REQUIREMENTS: SeedRequirement[] = (["FSJ", "BFD"] as const).flatMap((pathway) => FSJ_ROWS.map((r) => ({ ...r, pathway })));
 
+/* ---------- NCLEX-RN, Weiterbildung and CCM ---------- */
+
+/**
+ * NCLEX-RN asks for what the nursing rows above already ask for: they were
+ * written with the NCLEX-RN in mind (CGFNS is named), so the same list is
+ * placed on the NCLEX pathway and a file moved from NURSING owes the same paper.
+ *
+ * PROVISIONAL for Weiterbildung and CCM: no guide yet, so only what is plainly
+ * asked of every such file. The passport, the photograph and the school
+ * marksheets already reach every pathway from the stage lists. The owner's
+ * guide, when it comes, adds the rest under Settings or in a deploy file.
+ */
+export const NEW_PATHWAY_REQUIREMENTS: SeedRequirement[] = [
+  ...STAGE_REQUIREMENTS.filter((r) => r.pathway === "NURSING").map((r) => ({ ...r, pathway: "NCLEX" as const })),
+  { stage: "PROFILE", typeCode: "CV", pathway: "WEITERBILDUNG" },
+  { stage: "PROFILE", typeCode: "NURSING_DEGREE", pathway: "WEITERBILDUNG", guidance: "The nursing degree or diploma the recognition is for." },
+  { stage: "PROFILE", typeCode: "CV", pathway: "CCM" },
+  { stage: "PROFILE", typeCode: "DEGREE_CERTIFICATE", pathway: "CCM", required: false, guidance: "The highest qualification, where the student holds one." },
+];
+
 /** The reasons a document goes back. The words here are the words the student reads. */
 export const REJECTION_REASONS = [
   { code: "not_clear", label: "Not clear enough to read", labelMl: "വായിക്കാൻ വ്യക്തമല്ല" },

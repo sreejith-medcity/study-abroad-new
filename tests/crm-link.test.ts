@@ -225,4 +225,7 @@ test("a pathway is taken whatever case it arrives in, and only from the three", 
   assert.equal(normalise("preferredPathway", "ausbildung"), "AUSBILDUNG");
   assert.equal(normalise("preferredPathway", " Nursing "), "NURSING");
   assert.equal(normalise("preferredPathway", "PHD"), null);
+  assert.equal(normalise("preferredPathway", "nclex"), "NCLEX", "NCLEX-RN is a pathway of its own");
+  assert.equal(normalise("preferredPathway", "Weiterbildung"), "WEITERBILDUNG");
+  assert.equal(normalise("preferredPathway", "ccm"), "CCM");
 });

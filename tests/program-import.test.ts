@@ -23,6 +23,12 @@ test("reports row errors with line numbers and keeps valid rows", () => {
   assert.match(errors[0].message, /NOPE/);
 });
 
+test("takes the new pathways", () => {
+  const { rows, errors } = parseProgramCsv(`${header}\nNCLEX-RN placement,Board,US,NCLEX,REGISTRATION,Jan,,,\nPflege Weiterbildung,Klinik,DE,WEITERBILDUNG,CERTIFICATE,Jan,,,\nCCM course,Uni,GB,CCM,CERTIFICATE,Jan,,,`, []);
+  assert.equal(errors.length, 0, JSON.stringify(errors));
+  assert.deepEqual(rows.map((r) => r.pathway), ["NCLEX", "WEITERBILDUNG", "CCM"]);
+});
+
 test("rejects files missing required columns", () => {
   const { errors } = parseProgramCsv("program,university\nA,B", []);
   assert.match(errors[0].message, /Missing required columns/);

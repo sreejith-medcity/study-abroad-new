@@ -19,6 +19,7 @@ import { claimEnquiryAction, setEnquiryStageAction } from "../actions";
 import { SubTabs } from "@/components/tabs";
 import { OwnershipTimeline } from "@/components/ownership-timeline";
 import { ledgerFor } from "@/server/ledger";
+import { pathwayName } from "@/lib/pathways";
 
 export const metadata = { title: "Enquiry" };
 
@@ -222,7 +223,7 @@ export default async function EnquiryPage({ params, searchParams }: { params: Pr
                 { label: "Mobile", value: enquiry.phone },
                 { label: "Email", value: enquiry.email ?? "None" },
                 { label: "Town", value: enquiry.city ?? "Not given" },
-                { label: "Pathway", value: enquiry.interestPathway === "AUSBILDUNG" ? "Ausbildung" : enquiry.interestPathway === "NURSING" ? "Nurse registration" : enquiry.interestPathway === "FSJ" ? "FSJ (Germany)" : enquiry.interestPathway === "BFD" ? "BFD (Germany)" : enquiry.interestPathway === "DEGREE" ? "Degree" : "Open" },
+                { label: "Pathway", value: enquiry.interestPathway ? pathwayName(enquiry.interestPathway) : "Open" },
                 { label: "Destination", value: enquiry.interestCountry ?? "Not decided" },
                 { label: "Intake", value: enquiry.intakeMonth && enquiry.intakeYear ? intakeLabel(enquiry.intakeMonth, enquiry.intakeYear) : "Not decided" },
                 { label: "Budget", value: enquiry.budgetLakhs ? `${enquiry.budgetLakhs} lakhs` : "Not discussed" },

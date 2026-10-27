@@ -13,9 +13,12 @@ export const metadata = { title: "Document checklists" };
 const JOURNEYS: { key: Pathway; label: string; blurb: string }[] = [
   { key: "DEGREE", label: "Study abroad", blurb: "A degree, diploma or foundation course abroad" },
   { key: "AUSBILDUNG", label: "Ausbildung", blurb: "Vocational training with a German employer" },
-  { key: "NURSING", label: "NCLEX-RN and nursing", blurb: "Nursing registration abroad: NCLEX-RN, the NMC and the like" },
+  { key: "NURSING", label: "Nurse registration", blurb: "Nursing registration abroad: the NMC and the like, and NCLEX-RN files opened before NCLEX-RN had its own journey" },
+  { key: "NCLEX", label: "NCLEX-RN", blurb: "USA nurse licensing: CGFNS, the state board and the NCLEX-RN exam" },
   { key: "FSJ", label: "FSJ (Germany)", blurb: "Freiwilliges Soziales Jahr: the volunteer service, on the FSJ / BFD written process" },
   { key: "BFD", label: "BFD (Germany)", blurb: "Bundesfreiwilligendienst: the federal volunteer service, on the FSJ / BFD written process" },
+  { key: "WEITERBILDUNG", label: "Weiterbildung", blurb: "Further training in Germany and the nurse recognition adaptation. A starting list until the written guide arrives" },
+  { key: "CCM", label: "CCM", blurb: "A starting list until the written guide arrives" },
 ];
 
 /**

@@ -72,6 +72,9 @@ export function ProgramEditForm({ program, currency, docs }: { program: Editable
           <option value="NURSING">Nurse registration</option>
           <option value="FSJ">FSJ, Freiwilliges Soziales Jahr (Germany)</option>
           <option value="BFD">BFD, Bundesfreiwilligendienst (Germany)</option>
+          <option value="NCLEX">NCLEX-RN (USA nurse licensing)</option>
+          <option value="WEITERBILDUNG">Weiterbildung (Germany: further training and nurse recognition)</option>
+          <option value="CCM">CCM</option>
         </SelectField>
         <TextField label="Study area" name="studyArea" defaultValue={v(program.studyArea)} />
         <TextField label="Campus" name="campus" defaultValue={v(program.campus)} hint="The town that teaches it, where the university has more than one" />

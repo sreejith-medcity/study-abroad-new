@@ -26,6 +26,9 @@ export const AIMS: Aim[] = [
   { value: "NURSING", label: "Nurse registration", pathway: "NURSING", level: null },
   { value: "FSJ", label: "FSJ, Freiwilliges Soziales Jahr (Germany)", pathway: "FSJ", level: null },
   { value: "BFD", label: "BFD, Bundesfreiwilligendienst (Germany)", pathway: "BFD", level: null },
+  { value: "NCLEX", label: "NCLEX-RN (USA nurse licensing)", pathway: "NCLEX", level: null },
+  { value: "WEITERBILDUNG", label: "Weiterbildung (Germany: further training and nurse recognition)", pathway: "WEITERBILDUNG", level: null },
+  { value: "CCM", label: "CCM", pathway: "CCM", level: null },
 ];
 
 /** The pair behind one choice, or nulls for "not decided". */
